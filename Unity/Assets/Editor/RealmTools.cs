@@ -22,6 +22,10 @@ public static class RealmTools
     [MenuItem("Paradigm Realm/Run Engine Checks")]
     public static void Checks()
     {
+        var contact=World.New(42,"  Matt's Kingdom  ");Require(contact.civilisationName=="Matt's Kingdom","name trimmed");Require(!contact.met[1]&&!contact.met[2],"unknown civilisations hidden");Require(!contact.SetWar(1,true),"cannot declare war before contact");
+        var scout=contact.units.First(u=>u.owner==0);var rival=contact.units.First(u=>u.owner==1);scout.x=rival.x;scout.y=rival.y+1;contact.Reveal();Require(contact.met[1],"first contact");int notices=contact.log.Count;contact.Reveal();Require(contact.log.Count==notices,"contact announced once");Require(contact.SetWar(1,true),"diplomacy after contact");
+        var a=contact.At(10,10);var b=contact.At(11,11);a.road=b.road=true;a.seen=b.seen=true;Require(contact.RoadConnects(a,1,1)&&contact.RoadConnects(b,-1,-1),"reciprocal diagonal roads");b.road=false;Require(!contact.RoadConnects(a,1,1),"no connection to missing road");
+        a.terrain=0;a.resource=1;a.farm=false;Require(contact.TileYield(a)[0]==5,"wheat yield");a.resource=2;Require(contact.TileYield(a)[1]==3,"iron yield");a.resource=3;Require(contact.TileYield(a)[2]==2,"gold yield");
         var w=World.New(42);Require(w.Valid(),"new world valid");Require(w.tiles.Length==1440,"square map dimensions");
         Require(JsonUtility.ToJson(w)==JsonUtility.ToJson(World.New(42)),"deterministic seed");
         var settler=w.units.First(u=>u.owner==0&&u.type==0);var city=w.Found(settler);Require(city!=null&&!w.units.Contains(settler),"founding consumes settler");

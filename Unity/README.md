@@ -80,3 +80,17 @@ Stop Play mode. From this ZIP copy only `Assets/Scripts/RealmGame.cs` into the s
 ### Menu validation checklist
 
 Unity runtime testing remains outstanding. Check: initial title screen; disabled Continue with no save; New Game opens tutorial; How to Play returns to menu; Menu/Resume preserves the turn and selected unit; cancel new game and quit keeps the world; Save then restart Play and Continue loads the save; a malformed save displays an error and stays on the menu; Quit exits a built player or stops Editor Play mode.
+
+## Civilisation and map update
+
+New Game now asks for a civilisation name (1–32 characters). Names persist in saves. Rival nations appear in diplomacy only after your current sight reveals their unit or city. Contact is announced once; unseen AI captures do not appear in the chronicle.
+
+Terrain now has distinctive grass, forest, rounded hill, desert dune, wave and mountain shapes. Wheat (golden stalk), iron (silver ore) and gold (golden ore) badges identify resources. Worked wheat adds 2 food, iron adds 2 production and gold adds 2 gold per turn. City workers choose nearby tiles automatically. Hover over a tile for its description and yields. Unexplored tiles reveal no details.
+
+Road branches connect automatically to neighbouring revealed road tiles in all eight directions, matching diagonal movement.
+
+### Install this update into your existing project
+
+Stop Play. Copy BOTH `Assets/Scripts/RealmGame.cs` AND `Assets/Scripts/World.cs` from this archive into your existing project's Assets/Scripts folder, replacing both. Also replace `Assets/Editor/RealmTools.cs` for the updated checks. Keep your Packages and ProjectSettings untouched. Start a New Game to name your civilisation and generate resources. Existing version 1 Unity saves are upgraded on load with the default name; no resources are retroactively added.
+
+Unity execution remains unverified here. Added Editor checks cover names, initial hidden rivals, first contact once, diplomacy gating, reciprocal roads and resource yields. Manually check naming from both New Game buttons, save/reload, first contact, diagonal/cardinal roads, and hovering at different scroll positions and screen sizes.
