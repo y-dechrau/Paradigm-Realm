@@ -1,43 +1,40 @@
-# Paradigm Realm
+# Paradigm Realm — Earth alpha
 
-An original, 16-bit-inspired, square-tile civilisation strategy game. Early playable alpha inspired by the exploration, city-building and connected-world ideas of Civilization II: Test of Time.
+Original 16-bit-inspired square-tile civilisation strategy game, inspired by Civilization II: Test of Time. This iteration focuses exclusively on Earth; additional dimensions are deferred.
 
-## Play on Windows
+## Play
 
-1. Click **Code → Download ZIP** on this repository.
-2. Right-click the ZIP and choose **Extract All**.
-3. Open **index.html** in Edge, Chrome or Firefox.
-4. Read the in-game Guide, then select **Found settlement**.
+Download ZIP from GitHub's Code menu, extract it, and open index.html in Edge, Chrome or Firefox. Keep engine.js, game.js and style.css alongside it. No installation or internet is required.
 
-No installation, account, build step or internet connection is needed to play. Keep index.html, engine.js, game.js and style.css in the same folder.
+## Features
 
-## Included
-
-- Original pixel-drawn square terrain, settlement and unit sprites.
-- Seeded 48 × 30 Earth-like world and a parallel realm, with exploration fog.
-- Settlers, workers, scouts and military units; roads and farms; terrain movement costs.
+- Original pixel terrain, settlements and unit sprites on a generated 48 × 30 Earth-like map.
+- Settlers, workers, scouts and military units; exploration fog, terrain movement costs, roads and farms.
 - City growth, production, resources, granaries, libraries and walls.
-- Seven research advances from Agriculture to Gate Theory.
-- Two basic AI rivals that explore, settle and build armies; peace and war controls.
-- Combat, city capture, conquest and parallel-realm settlement victories.
-- Browser save/load, end-turn autosave and portable JSON export/import.
+- Six technologies from Agriculture through Electricity.
+- Two simple AI rivals, peace and war, combat, city capture and conquest victory.
+- Save/load, autosave and portable JSON saves.
 
-## Controls
+Click a unit, then an adjacent tile to move. Arrow keys also move. Tab selects the next unit, B founds a settlement and Enter ends the turn. Click a city to choose its production. The in-game Guide explains the rules.
 
-Click units to select; click adjacent tiles or use arrow keys to move. Click a selected unit's city tile to open the city panel, and click it again to select its unit. Tab selects the next unit with movement. B founds a settlement. Enter ends the turn. Use map scrollbars, overview or zoom controls to navigate.
+## Save compatibility
 
-## Development
+This Earth-only release uses version 2 saves. Earlier two-world saves are incompatible: start a new game. Export old saves separately if you want to retain them for the previous release.
 
-Plain JavaScript and Canvas 2D, without dependencies. `engine.js` holds rules and state; `game.js` draws the world and handles input; `style.css` styles the interface. Run `node test.cjs` for the engine regression checks. Open index.html to run locally.
+## Development and validation
 
-## Scope and next steps
+Plain JavaScript and Canvas 2D without dependencies. engine.js contains game rules, game.js handles rendering and input, and style.css styles the interface. Run `node test.cjs` for rule checks, a 130-turn simulation, save validation and conquest victory checks. Browser visual verification remains outstanding.
 
-This is an early alpha, not a feature-complete recreation. Geography is generated rather than an accurate map of Earth. AI and diplomacy are deliberately simple; rivals use basic units. Naval travel, pathfinding, trade routes, religion, a full historical technology tree, multiplayer, custom scenarios and richer animated artwork remain future work. Maps are currently bounded without wraparound. Pixel artwork is original procedural artwork, with room for a richer sprite atlas.
+## Scope
+
+Early alpha with generated geography, not an accurate Earth map. AI and diplomacy are basic. Naval travel, pathfinding, trade routes, religion, a full historical technology tree, multiplayer and richer sprites are future work. The map is bounded without wraparound. Parallel worlds and gates are removed from this release and can be developed later.
 
 ## References
 
-Design research used the original Civilization II: Test of Time player's manual (MicroProse/Hasbro, 1999), especially its city, movement, technology and multiple-map concepts: https://www.mogelpower.de/manuals/Civilization_2_Test_of_Time_Manual.pdf
+Design reference: Civilization II: Test of Time player's manual (MicroProse/Hasbro, 1999), for city, movement and technology concepts:
+https://www.mogelpower.de/manuals/Civilization_2_Test_of_Time_Manual.pdf
 
-Manual index consulted: https://manualzz.com/doc/o/sgfb1/microprose-test-of-time-civilization-ii-user-manual-terrain-and-movement
+Manual index consulted:
+https://manualzz.com/doc/o/sgfb1/microprose-test-of-time-civilization-ii-user-manual-terrain-and-movement
 
-All implementation and graphics in this alpha were created for Paradigm Realm. No Civilization game code, graphics, music or text are bundled. This project is not affiliated with the Civilization rights holders.
+All game code and pixel artwork are original. No Civilization code, graphics, music or text are bundled. This project is not affiliated with its rights holders.
