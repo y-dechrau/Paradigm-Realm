@@ -10,7 +10,7 @@ A new C# implementation for Unity 6.3 LTS. Earth only, square tiles and original
 4. The project records 6000.3.0f1 as its baseline. If Hub asks for that version, select your installed 6.3 LTS patch and allow the project upgrade. Use a copy when upgrading.
 5. Wait for import and compilation. Choose **Paradigm Realm → Open Earth Scene** from the Editor menu.
 6. Press the Editor's **Play** triangle. Open the **Game** tab and use a 1280 × 800 or larger view for comfortable reading.
-7. Dismiss the guide, select your Settler and click **Found city**.
+7. On the opening menu choose **New Game**, dismiss the guide, select your Settler and click **Found city**.
 
 No scene assembly, asset store downloads, API keys or Python installation are required. The runtime creates the game controller, camera and procedural pixel textures when Play starts.
 
@@ -68,3 +68,15 @@ Unity release guidance: https://unity.com/releases/unity-6/support
 Runtime bootstrap: https://docs.unity3d.com/6000.0/Documentation/ScriptReference/RuntimeInitializeOnLoadMethodAttribute.html
 GUI textures: https://docs.unity3d.com/6000.0/Documentation/ScriptReference/GUI.DrawTexture.html
 Save serialization: https://docs.unity3d.com/6000.0/Documentation/ScriptReference/JsonUtility.html
+
+## Opening menu update
+
+The game now opens on an original pixel landscape with New Game, Continue Saved Game, How to Play and Quit. Continue is disabled until a save exists. During a session, the Menu button returns to the title screen and Continue becomes Resume Game, preserving the current world. Starting over or quitting an active session asks for confirmation; cancel and save in-game if needed. In the Editor, Quit stops Play mode.
+
+### Update your existing project
+
+Stop Play mode. From this ZIP copy only `Assets/Scripts/RealmGame.cs` into the same location in your existing project, replacing that one file. Leave your existing ProjectSettings and Packages in place. Wait for Unity to recompile, then press Play.
+
+### Menu validation checklist
+
+Unity runtime testing remains outstanding. Check: initial title screen; disabled Continue with no save; New Game opens tutorial; How to Play returns to menu; Menu/Resume preserves the turn and selected unit; cancel new game and quit keeps the world; Save then restart Play and Continue loads the save; a malformed save displays an error and stays on the menu; Quit exits a built player or stops Editor Play mode.
