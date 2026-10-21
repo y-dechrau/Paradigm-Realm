@@ -1,4 +1,4 @@
-# Paradigm Realm — Foundation Alpha 0.2
+# Paradigm Realm — Foundation Alpha 0.3
 
 This is an updated Unity project based on the previous Paradigm-Realm-Unity.zip (version 5). It preserves the existing opening menu, civilisation naming, drag movement, persistent orders, first contact, procedural pixel artwork and connected roads.
 
@@ -14,16 +14,23 @@ This is an updated Unity project based on the previous Paradigm-Realm-Unity.zip 
 
 ## Update an existing copy
 
-Stop Play mode and back up the project first. Copy the entire **Assets/Scripts** folder and **Assets/Editor** folder from this ZIP into the existing project, replacing matching files. Two new script files accompany the updated World.cs and RealmGame.cs. Do not copy only RealmGame.cs. Copy Design and README if you want the specification alongside your project. Keep your existing ProjectSettings and Packages when updating a working project.
+Stop Play mode and back up the project first. Copy the entire **Assets/Scripts** folder and **Assets/Editor** folder from this ZIP into the existing project, replacing matching files. World.cs, RealmGame.cs, FoundationUI.cs and FoundationChecks.cs work together. Do not copy only RealmGame.cs. Copy Design and README if you want the specification alongside your project. Keep your existing ProjectSettings and Packages when updating a working project.
 
 ## Controls
 
 - Click a unit/city; repeated clicks cycle a stack.
 - Drag a selected unit to a destination. It continues on later turns.
 - Arrow keys move the selected unit one tile; WASD and middle drag pan.
-- Scroll bars move around the map; Zoom +/- buttons change tile scale.
+- Mouse wheel zooms toward the pointer; scroll bars and middle drag pan. Zoom +/- buttons also change tile scale.
 - Tab finds the next idle unit; B founds a city; Enter ends a turn; F1 opens help.
-- The right panel scrolls: city queue, worker jobs, ranged attacks, upgrades, economy, identity, research and diplomacy are there.
+- Double-click your city tile (even with units on it) to open its own management screen. Back to map closes it.
+- Escape opens Quick Save, Save As, Continue, Settings and Quit. Ctrl+S saves and briefly shows a fading "Game Saved" message. Quit asks Yes/No.
+- Settings control wheel sensitivity and tooltips.
+- Select a worker to see its job and remaining turns. X cancels the selected unit or co-located worker team activity/route.
+- Multiple workers can occupy a tile. Group all workers here shares construction: each worker contributes one work per turn. Ungroup stops the shared job. Grouping/reassigning/cancelling discards unfinished job progress.
+- Roads cost 2 work in your borders, 3 outside (4 on hills). Forests outside use the 3-work rule. Foreign border permission still applies. Farms/mines/forts remain restricted to your territory and cost 3 work.
+- Worker teams receive shared movement destinations; members with different movement allowances may arrive on different turns. Construction uses only members on the same tile.
+- The right panel scrolls: worker jobs, ranged attacks, upgrades, economy, identity, research and diplomacy are there.
 
 ## New working foundation systems
 
@@ -46,7 +53,7 @@ Resource icons and new units use placeholder procedural art. Naval transport, ai
 
 ## Save files
 
-Unity's Application.persistentDataPath contains earth-save.json, its .bak backup, and earth-auto-0/1/2.json. Manual saves use temporary-file replacement. The in-game button restores the newest valid autosave. A new game will rotate autosaves from a previous game, so use a manual save if you wish to retain it. There is one manual slot, not a campaign browser.
+Unity's Application.persistentDataPath contains earth-save.json, its .bak backup, and earth-auto-0/1/2.json. Manual saves use temporary-file replacement. The in-game button restores the newest valid autosave. A new game will rotate autosaves from a previous game, so use a manual save if you wish to retain it. Save As creates named earth-named-*.json files with replacement confirmation. Quick Save updates the active manual file. Named saves can be loaded from the Save As screen; Continue Saved Game chooses the most recently modified manual save after restarting. This is an in-game name dialog, not an operating-system file picker.
 
 ## Verification
 

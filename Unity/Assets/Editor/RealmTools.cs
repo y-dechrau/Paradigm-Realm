@@ -25,9 +25,11 @@ public static class RealmTools
         FoundationChecks.Run();
         var world=World.New(42,"Round trip");world.Found(world.units.First(u=>u.owner==0&&u.type==0));
         world.nations[0].tax=2;world.EndTurn();
+        var worker=world.units.First(u=>u.owner==0&&u.type==1);worker.moves=4;world.Add(0,1,worker.x,worker.y);world.GroupWorkers(worker);world.StartJob(worker,1);
         var json=JsonUtility.ToJson(world);
         var loaded=JsonUtility.FromJson<World>(json);loaded.UpgradeSave();
         Require(loaded.Valid(),"save round trip validity");
+        var restored=loaded.units.First(u=>u.id==worker.id);Require(loaded.WorkerTeam(restored).Count==2&&restored.job==1,"worker team and shared work survive saving");
         Require(JsonUtility.ToJson(loaded)==json,"save preserves complete state");
         var legacy=World.New(17);legacy.version=2;legacy.tech=new bool[6];legacy.tech[0]=true;
         legacy.UpgradeSave();Require(legacy.Valid()&&legacy.tech[0],"legacy migration retains technology");

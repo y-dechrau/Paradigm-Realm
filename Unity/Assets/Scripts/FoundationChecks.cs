@@ -31,6 +31,22 @@ namespace ParadigmRealm
             var memory=World.New(67);var spot=memory.At(9,12);memory.Reveal();int oldTerrain=spot.terrain;memory.units.RemoveAll(a=>a.owner==0);spot.terrain=3;Require(memory.KnownTile(spot).terrain==oldTerrain,"fog preserves last-seen terrain");
             var siege=Flat();siege.met[1]=true;siege.SetWar(1,true);var targetCity=siege.cities.First(a=>a.owner==1);siege.units.RemoveAll(a=>a.x==targetCity.x&&a.y==targetCity.y);var archer=siege.Add(0,4,targetCity.x-1,targetCity.y);siege.Reveal();siege.Order(archer,targetCity.x,targetCity.y);Require(archer.moves==0&&targetCity.owner==1,"ranged unit cannot capture or loop on empty city");
             var stack=Flat();var mover=stack.units.First(a=>a.owner==0&&a.type==2);int tx=mover.x+1,ty=mover.y;for(int i=0;i<3;i++)stack.Add(0,2,tx,ty);Require(!stack.Move(mover,tx,ty),"military stack limit");
+            var work=Flat();var a=work.units.First(v=>v.owner==0&&v.type==1);a.x=15;a.y=15;
+            Require(work.At(15,15).owner==-1&&work.StartJob(a,1)&&a.jobTurns==3,"unclaimed flat road costs three worker-turns");
+            work.EndTurn();work.EndTurn();Require(!work.At(15,15).road,"outside flat road not complete early");work.EndTurn();Require(work.At(15,15).road,"outside flat road completes");
+            a.x=16;a.moves=4;work.At(16,15).terrain=2;Require(work.StartJob(a,1)&&a.jobTurns==4,"outside hill road costs four worker-turns");
+            work.CancelActivity(a);Require(a.job==0&&!a.hasOrder,"cancel clears job and route");
+            a.moves=4;var b=work.Add(0,1,15,15);Require(work.Move(b,16,15),"workers can share a tile");
+            Require(work.GroupWorkers(a)&&a.workerGroup==b.workerGroup,"workers group by tile");
+            Require(work.StartJob(a,1)&&b.job==1&&work.JobTurnsRemaining(a)==2,"group job assigns both workers and calculates ETA");
+            work.EndTurn();Require(!work.At(16,15).road&&a.jobTurns==2&&b.jobTurns==2,"team contributes once per member per turn");
+            work.EndTurn();Require(work.At(16,15).road&&a.job==0&&b.job==0,"two workers finish four-work road in two turns");
+            a.moves=b.moves=4;work.At(16,15).road=false;work.StartJob(a,1);work.CancelActivity(b);Require(a.job==0&&b.job==0,"cancel applies to selected team");
+            work.UngroupWorkers(a);Require(a.workerGroup==0&&b.workerGroup==0,"ungroup resets all members");
+            a.moves=4;work.StartJob(a,1);work.units.Remove(b);work.EndTurn();Require(a.jobTurns==3,"ungrouped worker contributes one work");
+            work.CancelActivity(a);a.moves=4;work.At(a.x,a.y).owner=1;Require(work.JobReason(a,1)!="","closed foreign borders block road job");
+            work.openBorders[1]=true;Require(work.StartJob(a,1),"open borders permit foreign road work");Require(work.JobReason(a,2)!="","farms still require own territory");
+            Require(work.Valid(),"worker group state validates");
             var victory=World.New(22);victory.units.RemoveAll(a=>a.owner>0);victory.cities.RemoveAll(a=>a.owner>0);victory.CheckVictory();Require(victory.result.StartsWith("Conquest"),"conquest detected");
             var defeat=World.New(23);defeat.units.RemoveAll(a=>a.owner==0);defeat.CheckVictory();Require(defeat.result.Contains("fallen"),"defeat detected");
         }

@@ -15,12 +15,15 @@ namespace ParadigmRealm
         float tilePixels=32; readonly Color[] nations={new Color(.55f,.86f,.61f),new Color(.9f,.65f,.35f),new Color(.4f,.7f,.88f)};
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot(){if(FindFirstObjectByType<RealmGame>()==null)new GameObject("Paradigm Realm").AddComponent<RealmGame>();}
-        void Awake(){var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.055f,.09f,.11f);camera.orthographic=true;Application.targetFrameRate=30;world=World.New(Environment.TickCount&int.MaxValue);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
+        void Awake(){zoomSensitivity=PlayerPrefs.GetFloat("RealmZoomSensitivity",2f);tooltips=PlayerPrefs.GetInt("RealmTooltips",1)!=0;var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.055f,.09f,.11f);camera.orthographic=true;Application.targetFrameRate=30;world=World.New(Environment.TickCount&int.MaxValue);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
         Unit Selected(){return world.units.Find(u=>u.owner==0&&u.id==selected);}
         void Center(){var u=Selected();if(u!=null)mapScroll=new Vector2(Mathf.Max(0,u.x*tilePixels-350),Mathf.Max(0,u.y*tilePixels-250));}
         string SavePath {get{return Path.Combine(Application.persistentDataPath,"earth-save.json");}}
-        void Save(){try{AtomicSave(SavePath);status="Game saved.";}catch(Exception e){status="Could not save: "+e.Message;}}
-        void Load(){try{var next=JsonUtility.FromJson<World>(File.ReadAllText(SavePath));if(next!=null)next.UpgradeSave();if(next==null||!next.Valid())throw new Exception("Invalid or incompatible save.");world=next;renameText=world.civilisationName;selected=world.units.Where(u=>u.owner==0).Select(u=>u.id).DefaultIfEmpty(-1).First();cityId=-1;Center();hasSession=true;mainMenu=false;status="Game loaded.";}catch(Exception e){status="Could not load: "+e.Message;}}
+        void Save(){SaveTo(activeSavePath??SavePath);}
+        bool HasSavedGame(){return File.Exists(SavePath)||NamedSaves().Length>0;}
+        string[] NamedSaves(){try{return Directory.GetFiles(Application.persistentDataPath,"earth-named-*.json").OrderByDescending(File.GetLastWriteTimeUtc).ToArray();}catch{return new string[0];}}
+        void Load(){var candidates=NamedSaves().Concat(File.Exists(SavePath)?new[]{SavePath}:new string[0]);LoadFile(activeSavePath??candidates.OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault()??SavePath);}
+        void LoadFile(string path){try{var next=JsonUtility.FromJson<World>(File.ReadAllText(path));if(next!=null)next.UpgradeSave();if(next==null||!next.Valid())throw new Exception("Invalid or incompatible save.");world=next;renameText=world.civilisationName;selected=world.units.Where(u=>u.owner==0).Select(u=>u.id).DefaultIfEmpty(-1).First();cityId=-1;cityScreen=false;Center();hasSession=true;mainMenu=false;activeSavePath=path;status="Game loaded.";}catch(Exception e){status="Could not load: "+e.Message;}}
         void NextUnit(){var list=world.units.Where(u=>u.owner==0&&u.moves>0&&!u.fortified&&!u.hasOrder&&u.job==0).ToList();if(list.Count==0){status="No units with movement. End the turn.";return;}int i=list.FindIndex(u=>u.id==selected);selected=list[(i+1)%list.Count].id;cityId=-1;Center();}
         void Found(){var c=world.Found(Selected());if(c==null)status="Use a Settler with movement, at least 4 tiles from another city.";else{selected=-1;cityId=c.id;status=c.name+" founded.";}}
         void EndTurn(){world.EndTurn();AutoSave();status=world.result!=""?world.result:"Turn "+world.turn+". Choose your orders.";}
@@ -32,6 +35,10 @@ namespace ParadigmRealm
             GUI.DrawTexture(new Rect(0,0,1280,800),Texture2D.whiteTexture,ScaleMode.StretchToFill,false,0,new Color(.055f,.09f,.11f),0,0);
             if(nameSetup){DrawNameSetup();return;}
             if(mainMenu){DrawMainMenu();return;}
+            HandleGlobalInput();
+            if(pauseMenu){GUI.enabled=false;DrawMap();GUI.enabled=true;DrawPauseMenu();DrawSaveToast();return;}
+            if(cityScreen){DrawCityScreen();DrawSaveToast();return;}
+            NavigationInput();
             GUI.Label(new Rect(24,15,420,38),"PARADIGM REALM",title);GUI.Label(new Rect(25,55,500,25),"EARTH | "+world.Calendar()+" | Turn "+world.turn+" | Gold "+world.gold+" ("+world.Budget(0)[2]+"/turn)",body);
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1;
             if(GUI.Button(new Rect(680,26,100,32),"Menu",button)){mainMenu=true;GUIUtility.ExitGUI();}
@@ -39,16 +46,16 @@ namespace ParadigmRealm
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1;
             DrawMap();DrawPanel();GUI.Label(new Rect(24,744,865,42),status,body);
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1&&world.result=="";if(GUI.Button(new Rect(912,744,130,38),"Next unit [Tab]",button))NextUnit();if(GUI.Button(new Rect(1055,744,195,38),"END TURN [Enter]",button))EndTurn();GUI.enabled=true;
-            if(!guide&&!confirmNew&&pendingUnit==-1)DrawTileTooltip();
+            if(tooltips&&!guide&&!confirmNew&&pendingUnit==-1)DrawTileTooltip();
             if(guide)DrawGuide();if(confirmNew){GUI.Box(new Rect(420,270,440,190),"");GUILayout.BeginArea(new Rect(445,290,390,145));GUILayout.Label("Start a new world?",heading);GUILayout.Label("Save first if you want to keep your current game.",body);if(Button("Start new game")){confirmNew=false;nameSetup=true;GUIUtility.ExitGUI();}if(Button("Cancel"))confirmNew=false;GUILayout.EndArea();}
             if(pendingUnit!=-1){DrawWarPrompt();return;}
-            NavigationInput();var ev=Event.current;if(GUI.GetNameOfFocusedControl()!="rename"&&GUI.GetNameOfFocusedControl()!="cityrename"&&ev.type==EventType.KeyDown&&!guide&&!confirmNew&&pendingUnit==-1){var u=Selected();if(ev.keyCode==KeyCode.Tab){NextUnit();ev.Use();}else if(ev.keyCode==KeyCode.Return){EndTurn();ev.Use();}else if(ev.keyCode==KeyCode.B){Found();ev.Use();}else if(u!=null){int dx=ev.keyCode==KeyCode.LeftArrow?-1:ev.keyCode==KeyCode.RightArrow?1:0,dy=ev.keyCode==KeyCode.UpArrow?-1:ev.keyCode==KeyCode.DownArrow?1:0;if(dx!=0||dy!=0){IssueOrder(u,u.x+dx,u.y+dy);ev.Use();}}}
+            DrawSaveToast();var ev=Event.current;if(GUI.GetNameOfFocusedControl()!="rename"&&GUI.GetNameOfFocusedControl()!="cityrename"&&ev.type==EventType.KeyDown&&!guide&&!confirmNew&&pendingUnit==-1){var u=Selected();if(ev.keyCode==KeyCode.X&&u!=null){world.CancelActivity(u);ResetMapGesture();status="Activity and route cancelled.";ev.Use();}else if(ev.keyCode==KeyCode.Tab){NextUnit();ev.Use();}else if(ev.keyCode==KeyCode.Return){EndTurn();ev.Use();}else if(ev.keyCode==KeyCode.B){Found();ev.Use();}else if(u!=null){int dx=ev.keyCode==KeyCode.LeftArrow?-1:ev.keyCode==KeyCode.RightArrow?1:0,dy=ev.keyCode==KeyCode.UpArrow?-1:ev.keyCode==KeyCode.DownArrow?1:0;if(dx!=0||dy!=0){IssueOrder(u,u.x+dx,u.y+dy);ev.Use();}}}
         }
         void StartGame()
         {
             int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; world=World.New(chosenSeed,proposedName,setupMap,setupSpeed,1,setupTrait);renameText=world.civilisationName;nameSetup=false;
             selected=world.units.First(u=>u.owner==0).id;cityId=-1;
-            sideScroll=Vector2.zero;Center();hasSession=true;mainMenu=false;
+            sideScroll=Vector2.zero;cityScreen=false;pauseMenu=false;activeSavePath=null;Center();hasSession=true;mainMenu=false;
             guide=true;confirmNew=false;status="Select your Settler, then Found city.";
         }
         void QuitGame()
@@ -98,7 +105,7 @@ namespace ParadigmRealm
             if(GUI.Button(new Rect(465,317,350,48),"NEW GAME",menuButton)){
                 if(hasSession)confirmNew=true;else nameSetup=true;GUIUtility.ExitGUI();
             }
-            bool enabled=GUI.enabled;GUI.enabled=enabled&&(hasSession||File.Exists(SavePath));
+            bool enabled=GUI.enabled;GUI.enabled=enabled&&(hasSession||HasSavedGame());
             if(GUI.Button(new Rect(465,377,350,48),hasSession?"RESUME GAME":"CONTINUE SAVED GAME",menuButton)){
                 if(hasSession)mainMenu=false;else Load();GUIUtility.ExitGUI();
             }
@@ -108,9 +115,9 @@ namespace ParadigmRealm
                 if(hasSession)confirmQuit=true;else QuitGame();GUIUtility.ExitGUI();
             }
             GUI.enabled=true;
-            GUI.Label(new Rect(430,568,420,68),hasSession?"Your current game is paused. Save in-game to keep it after quitting.":File.Exists(SavePath)?"A saved civilisation awaits your return.":"Found a settlement. Shape a civilisation.\nYour story begins on Earth.",menuSubtitle);
+            GUI.Label(new Rect(430,568,420,68),hasSession?"Your current game is paused. Save in-game to keep it after quitting.":HasSavedGame()?"A saved civilisation awaits your return.":"Found a settlement. Shape a civilisation.\nYour story begins on Earth.",menuSubtitle);
             if(status.StartsWith("Could not load"))GUI.Label(new Rect(430,637,420,55),status,small);
-            GUI.Label(new Rect(390,735,500,30),"FOUNDATION ALPHA 0.2  |  EARTH",menuSubtitle);
+            GUI.Label(new Rect(390,735,500,30),"FOUNDATION ALPHA 0.3  |  EARTH",menuSubtitle);
             if(guide)DrawGuide();
             if(confirmNew||confirmQuit){
                 Fill(new Rect(0,0,1280,800),new Color(0,0,0,.82f));
@@ -163,12 +170,12 @@ namespace ParadigmRealm
                 text+="\nFood "+v[0]+" | Production "+v[1]+" | Gold "+v[2];
                 if(t.resource>0)text+="\nResource: "+World.ResourceNames[t.resource]+" (bonus when worked)";
                 if(t.road)text+="\nRoad: 1 movement between connected roads";if(t.farm)text+="\nFarm / pasture: +2 food";if(t.mine)text+="\nMine: +2 production";if(t.fort)text+="\nFort: +2 defence";
-                if(world.Visible(x,y)){var city=world.cities.Find(c=>c.x==x&&c.y==y);if(city!=null)text+="\n"+city.name+" - "+world.NationName(city.owner);var units=world.units.Where(u=>u.x==x&&u.y==y);foreach(var unit in units.Take(3))text+="\n"+world.NationName(unit.owner)+": "+World.UnitNames[unit.type];}
+                if(world.Visible(x,y)){var city=world.cities.Find(c=>c.x==x&&c.y==y);if(city!=null)text+="\n"+city.name+" - "+world.NationName(city.owner);var units=world.units.Where(u=>u.x==x&&u.y==y);foreach(var unit in units.OrderByDescending(a=>a.id==selected).Take(3))text+="\n\n"+world.NationName(unit.owner)+": "+World.UnitNames[unit.type]+" — "+UnitDescription(unit)+"\nStrength "+(World.Power[unit.type]+unit.promotion)+" | Movement "+unit.moves+"/"+World.Moves[unit.type]+"\n"+world.Activity(unit)+" | "+world.Remaining(unit);if(units.Count()>3)text+="\n+ "+(units.Count()-3)+" more units; select to inspect.";}
                 else text+="\nOutside current sight; last-known information"+(string.IsNullOrEmpty(t.rememberedCity)?"":"\nLast seen city: "+t.rememberedCity);
             }
-            float height=body.CalcHeight(new GUIContent(text),292)+20;
-            var box=new Rect(Mathf.Min(mouse.x+18,954),Mathf.Max(4,Mathf.Min(mouse.y+18,790-height)),316,height);
-            Fill(box,new Color(.025f,.04f,.045f,.98f));GUI.Box(box,"");GUI.Label(new Rect(box.x+10,box.y+8,296,height-16),text,body);
+            float height=body.CalcHeight(new GUIContent(text),392)+20;
+            var box=new Rect(Mathf.Min(mouse.x+18,854),Mathf.Max(4,Mathf.Min(mouse.y+18,790-height)),416,height);
+            Fill(box,new Color(.025f,.04f,.045f,.98f));GUI.Box(box,"");GUI.Label(new Rect(box.x+10,box.y+8,396,height-16),text,body);
         }
         void DrawMap()
         {
@@ -198,6 +205,8 @@ namespace ParadigmRealm
             int x=Mathf.FloorToInt((e.mousePosition.x-24+mapScroll.x)/tilePixels),y=Mathf.FloorToInt((e.mousePosition.y-100+mapScroll.y)/tilePixels);
             if(!GUI.enabled||world.result!=""){dragUnit=-1;dragging=false;mapPointerDown=false;return;}
             if(e.type==EventType.MouseDown&&e.button==0&&inside){
+                var city=world.cities.Find(c=>c.owner==0&&c.x==x&&c.y==y);
+                if(e.clickCount==2&&city!=null){e.Use();OpenCity(city);return;}
                 mapPointerDown=true;pressX=x;pressY=y;pressMouse=e.mousePosition;dragging=false;
                 var own=world.units.Where(u=>u.owner==0&&u.x==x&&u.y==y).ToList();
                 var unit=own.Find(u=>u.id==selected)??own.FirstOrDefault();dragUnit=unit==null?-1:unit.id;e.Use();
@@ -212,12 +221,12 @@ namespace ParadigmRealm
         }
         void IssueOrder(Unit u,int x,int y)
         {
-            if(u==null)return;world.CancelOrder(u);
+            if(u==null)return;world.CancelActivity(u);
             if(u.x==x&&u.y==y){status="Movement order cancelled.";return;}
             if(world.At(x,y)==null||world.Route(u,x,y).Count==0){status="No land route to that destination.";return;}
             var rivals=world.PeaceOwners(u,x,y);
             if(rivals.Length>0){pendingUnit=u.id;pendingX=x;pendingY=y;pendingWars=rivals;return;}
-            status=world.Order(u,x,y)?"Order issued. Travel continues each turn; new orders replace it.":"Cannot reach that destination.";
+            OrderTeam(u,x,y);
         }
         void DrawWarPrompt()
         {
@@ -226,7 +235,7 @@ namespace ParadigmRealm
             GUILayout.Label("This attack will declare war on "+string.Join(" and ",pendingWars.Select(i=>world.NationName(i)).ToArray())+". Proceed?",body);
             if(Button(pendingUnit==-2?"Yes — declare war":"Yes — declare war and attack")){
                 bool attack=pendingUnit>=0;var u=world.units.Find(a=>a.id==pendingUnit);foreach(int owner in pendingWars)world.SetWar(owner,true);
-                pendingUnit=-1;status=!attack?"War declared.":world.Order(u,pendingX,pendingY)?"War declared. Attack order issued.":"Attack order could not proceed.";
+                pendingUnit=-1;status=!attack?"War declared.":OrderTeam(u,pendingX,pendingY)?"War declared. Attack order issued.":"Attack order could not proceed.";
             }
             if(Button("No — cancel attack")){pendingUnit=-1;status="Attack cancelled. Peace maintained.";}
             GUILayout.EndArea();
@@ -243,18 +252,18 @@ namespace ParadigmRealm
             GUI.Box(new Rect(898,94,364,637),"");GUILayout.BeginArea(new Rect(914,108,330,610));sideScroll=GUILayout.BeginScrollView(sideScroll);
             GUILayout.Label(world.civilisationName,heading);GUILayout.Label(world.result==""?"Explore Earth. Build your civilisation.":world.result,body);GUILayout.Space(10);
             var c=world.cities.Find(a=>a.owner==0&&a.id==cityId);var u=Selected();
-            if(c!=null){var v=world.Yield(c);GUILayout.Label(c.name+"  |  Population "+c.pop,heading);GUILayout.Label("Food "+v[0]+"   Production +"+v[1]+"   Science +"+v[2],small);GUILayout.Label("Building: "+World.BuildName(c.build)+" ("+c.production+"/"+(c.build<0?0:world.Cost(c.build))+")",body);DrawCityManagement(c);}
-            else if(u!=null){GUILayout.Label(World.UnitNames[u.type],heading);GUILayout.Label("Moves "+u.moves+"/"+World.Moves[u.type]+"   Health "+u.hp+"/10",body);GUI.enabled=world.result==""&&!guide&&!confirmNew&&pendingUnit==-1;if(u.type==0&&Button("Found city [B]"))Found();if(u.type==1){for(int j=1;j<=4;j++){string reason=world.JobReason(u,j);if(Button(new[]{"","Road (2 turns)","Farm / pasture (3 turns)","Mine (3 turns)","Fort (3 turns)"}[j])){if(!world.StartJob(u,j))status=reason;}}}if(u.hasOrder){GUILayout.Label("Destination: "+u.destinationX+", "+u.destinationY,body);if(Button("Cancel movement order"))world.CancelOrder(u);}if(Button("Skip unit")){world.CancelOrder(u);u.moves=0;NextUnit();}GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1;}
+            if(c!=null){GUILayout.Label(c.name,heading);if(Button("Open city screen"))OpenCity(c);GUILayout.Label("Double-click a city tile to manage it.",small);}
+            else if(u!=null){GUILayout.Label(World.UnitNames[u.type],heading);GUILayout.Label("Moves "+u.moves+"/"+World.Moves[u.type]+"   Health "+u.hp+"/10",body);GUI.enabled=world.result==""&&!guide&&!confirmNew&&pendingUnit==-1;if(u.type==0&&Button("Found city [B]"))Found();if(u.type==1){for(int j=1;j<=4;j++){string reason=world.WorkerTeam(u).Select(a=>world.JobReason(a,j)).FirstOrDefault(r=>r!="")??"";if(Button(new[]{"","Road","Farm / pasture","Mine","Fort"}[j]+" ("+((world.JobWork(u,j)+world.WorkerTeam(u).Count-1)/world.WorkerTeam(u).Count)+" turns)")){if(!world.StartJob(u,j))status=reason;}}}if(u.hasOrder){GUILayout.Label("Destination: "+u.destinationX+", "+u.destinationY,body);if(Button("Cancel movement order [X]"))world.CancelActivity(u);}if(Button("Skip unit")){world.CancelActivity(u);u.moves=0;NextUnit();}GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1;}
             else GUILayout.Label("Select a unit or city on the map.",body);
             DrawFoundationPanel(u);GUILayout.Space(12);GUILayout.Label("RESEARCH",heading);GUILayout.Label(world.research<0?"All technologies discovered":World.TechNames[world.research]+"  "+world.science+"/"+world.ResearchCost(world.research),body);foreach(int t in world.AvailableTech())if(Button("Research "+World.TechNames[t]))world.SelectResearch(t);
             GUILayout.Space(12);GUILayout.Label("DIPLOMACY",heading);if(!world.met.Skip(1).Any(v=>v))GUILayout.Label("No other civilisations encountered.",body);for(int i=1;i<3;i++)if(world.met[i]&&Button(world.NationName(i)+": "+(world.war[i]?"offer peace":"declare war"))){if(world.war[i])world.SetWar(i,false);else{pendingUnit=-2;pendingWars=new[]{i};}}
-            for(int i=1;i<3;i++)if(world.met[i]&&!world.war[i]&&Button(world.NationName(i)+": "+(world.openBorders[i]?"Close borders":"Open borders")))world.SetBorders(i);GUILayout.Space(12);GUILayout.Label("CITIES",heading);foreach(var a in world.cities.Where(a=>a.owner==0))if(Button(a.name+"  ("+a.pop+")")){cityId=a.id;selected=-1;mapScroll=new Vector2(Mathf.Max(0,a.x*tilePixels-350),Mathf.Max(0,a.y*tilePixels-250));}
+            for(int i=1;i<3;i++)if(world.met[i]&&!world.war[i]&&Button(world.NationName(i)+": "+(world.openBorders[i]?"Close borders":"Open borders")))world.SetBorders(i);GUILayout.Space(12);GUILayout.Label("CITIES",heading);foreach(var a in world.cities.Where(a=>a.owner==0))if(Button(a.name+"  ("+a.pop+")")){mapScroll=new Vector2(Mathf.Max(0,a.x*tilePixels-350),Mathf.Max(0,a.y*tilePixels-250));OpenCity(a);}
             GUILayout.Space(12);GUILayout.Label("CHRONICLE",heading);foreach(var line in world.log.Take(8))GUILayout.Label(line,small);GUILayout.EndScrollView();GUILayout.EndArea();
         }
         void DrawGuide()
         {
             Fill(new Rect(0,0,1280,800),new Color(0,0,0,.8f));GUI.Box(new Rect(330,150,620,485),"");GUILayout.BeginArea(new Rect(358,175,564,435));GUILayout.Label("Welcome to Paradigm Realm",title);
-            logScroll=GUILayout.BeginScrollView(logScroll);GUILayout.Label("1. Found a city with your Settler. Select the city to queue projects and choose its focus.\n\n2. Drag units to destinations. Orders continue each turn. Peaceful borders and attacks require permission or a war confirmation. Three troops plus one civilian/support fit per tile.\n\n3. Workers build roads in 2 turns and farms, mines or forts in 3. Research Agriculture for farms and Bronze Working for mines. Connect improved resources to your capital by owned roads.\n\n4. Open Economy to set taxes and inspect upkeep. Low happiness reduces output and blocks growth. New projects have costs and locked-requirement explanations.\n\n5. Archers and catapults can fire at visible enemies using their panel. Infantry capture cities. Promotions and upgrades are available when eligible.\n\nWASD / middle drag pan. Zoom buttons change scale. Arrows move the selected unit; Tab selects an idle unit. B founds a city. Enter ends a turn. F1 opens help. Manual saves keep a backup; three autosaves rotate.\n\nFoundation alpha: Earth, 3 civilisations, 12 technologies. Naval units, aircraft and realms remain planned. See Design/MASTER-DESIGN.md for the full specification.",body);
+            logScroll=GUILayout.BeginScrollView(logScroll);GUILayout.Label("1. Found a city with your Settler. Double-click your city to open its screen, queue projects and choose its focus.\n\n2. Drag units to destinations. Orders continue each turn. Peaceful borders and attacks require permission or a war confirmation. Three troops plus one civilian/support fit per tile, with any number of workers.\n\n3. Workers build roads in 2 turns at home, 3 outside your borders (4 on hills). Farms, mines and forts take 3 worker-turns. Group workers on one tile to share construction; each contributes one work per turn. Research Agriculture for farms and Bronze Working for mines. Connect improved resources to your capital by owned roads.\n\n4. Open Economy to set taxes and inspect upkeep. Low happiness reduces output and blocks growth. New projects have costs and locked-requirement explanations.\n\n5. Archers and catapults can fire at visible enemies using their panel. Infantry capture cities. Promotions and upgrades are available when eligible.\n\nWASD / middle drag pan. Mouse wheel zooms at the pointer. Zoom buttons also change scale. X cancels the selected unit or worker team activity / route. Escape opens the game menu; Ctrl+S quick saves. Arrows move the selected unit; Tab selects an idle unit. B founds a city. Enter ends a turn. F1 opens help. Manual saves keep a backup; three autosaves rotate.\n\nFoundation alpha: Earth, 3 civilisations, 12 technologies. Naval units, aircraft and realms remain planned. See Design/MASTER-DESIGN.md for the full specification.",body);
             GUILayout.EndScrollView();GUILayout.FlexibleSpace();if(Button(mainMenu?"Back to menu":"Begin your story")){guide=false;GUIUtility.ExitGUI();}GUILayout.EndArea();
         }
         static void Fill(Rect r,Color c){var old=GUI.color;GUI.color=c;GUI.DrawTexture(r,Texture2D.whiteTexture);GUI.color=old;}

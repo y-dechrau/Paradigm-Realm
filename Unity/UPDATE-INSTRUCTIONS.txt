@@ -1,4 +1,4 @@
-PARADIGM REALM — FOUNDATION ALPHA 0.2
+PARADIGM REALM — FOUNDATION ALPHA 0.3
 
 1. Stop Play mode and back up your existing project.
 2. Extract this ZIP.
@@ -9,8 +9,11 @@ PARADIGM REALM — FOUNDATION ALPHA 0.2
 7. Run Paradigm Realm > Run Engine Checks.
 8. Open Earth scene and press Play. Start a new game to see setup options.
 
-New files: FoundationUI.cs, FoundationChecks.cs (plus their .meta files).
-Updated files: World.cs, RealmGame.cs, RealmTools.cs.
+Updated files: World.cs, RealmGame.cs, FoundationUI.cs, FoundationChecks.cs, RealmTools.cs.
+Copy both complete script folders; do not replace only RealmGame.cs.
+
+New controls: wheel zoom; double-click a city; Escape menu; Ctrl+S save; X cancel.
+Worker grouping controls appear in the selected worker panel.
 
 The full 36-topic design is in Design/MASTER-DESIGN.md.
 Design/IMPLEMENTATION-STATUS.md distinguishes current functionality from planned systems.

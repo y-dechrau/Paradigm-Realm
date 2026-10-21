@@ -1,4 +1,4 @@
-# Implementation coverage — Foundation Alpha 0.2
+# Implementation coverage — Foundation Alpha 0.3
 
 "Implemented" below means code exists with engine regression checks where applicable, not that the Unity user experience has been playtested. No full-game completion claim is made.
 
@@ -7,15 +7,15 @@
 | 1 Setting | Grounded Earth | Speculative-era content and final magic/physics decision |
 | 2 Realms | Full design recorded | World identifiers, portal simulation, other maps |
 | 3 Maps | Seeded continents and landmass presets | Layered terrain, rivers, archipelago, realistic Earth |
-| 4 Navigation | Pan, scroll, zoom buttons, selection and orders | Minimap, wheel zoom, route preview, group navigation |
-| 5 Cities | Population, food, automated tile focus, queue | Manual locks, specialists, project-specific suspended progress |
+| 4 Navigation | Pan, pointer-centred wheel zoom, zoom buttons, selection and worker-team orders | Minimap, route preview, military group navigation |
+| 5 Cities | Dedicated double-click city screen, population, food, automated tile focus, queue | Manual locks, specialists, project-specific suspended progress |
 | 6 Resources | Wheat, iron, gold, horses, spices; resource prerequisites | Material inventories, fuel, wider resource roster |
 | 7 Economy | Taxes, upkeep, treasury, deficits, connected-city income | Foreign sales, city budget screen, escalating bankruptcy |
 | 8 Units | Eleven land units | Ships, aircraft, spies, diplomats, advanced support |
 | 9 Movement | Costs, roads, persistent orders, unknown-terrain assumptions | Rivers, bridges, zones of control, advanced routing |
-| 10 Stacking | Three military plus one civilian/support; production waits for space | Groups, ships, amphibious landings |
+| 10 Stacking | Three military plus one non-worker civilian/support; unlimited workers; worker grouping | Military groups, ships, amphibious landings |
 | 11 Buildings | Nine functional buildings | Full building tree, ports, power, mothballing |
-| 12 Infrastructure | Jobs, roads, farms/pastures, mines, forts, pillaging | Rail, watchtowers, airfields, depots, clearing, repairs with retained progress |
+| 12 Infrastructure | Shared worker jobs, roads beyond borders at extra cost, farms/pastures, mines, forts, pillaging | Rail, watchtowers, airfields, depots, clearing, repairs with retained progress |
 | 13 Territory | Ownership, age-based growth, border permission | Contested borders, cultural influence, formal withdrawal timers |
 | 14 Networks | Capital road network and resource disconnection | Local independent supply networks, rivers, ports, contracts |
 | 15 Research | Twelve connected technologies, per-tech progress | Full historical/future tree, distant-tech path preview |
@@ -28,7 +28,7 @@
 | 22 Experience | Three strength ranks and two upgrade chains | Branching promotions, non-combat XP, unit histories |
 | 23 Setup | Seed, two maps, three speeds, four traits | Size, rival count, difficulty, resources, victory selection |
 | 24 Time | Shared calendar; research/construction speed | Era-specific presentation and growth speed balancing |
-| 25 Accessibility | Resolution scaling, labels, tooltips, lock reasons | Font scale, rebinding, colour-independent full interface |
+| 25 Accessibility | Resolution scaling, activity/ETA tooltips, lock reasons, Escape menu, quick/named saves, basic settings | Font scale, rebinding, colour-independent full interface |
 | 26 Balance | Provisional numbers and regression checks | Human campaigns and broader balancing |
 | 27 Graphics | Procedural pixel art, ownership tint, markers | Finished sprites, era cities, animation and audio |
 | 28 Tutorial | Revised help panel and status messages | Interactive tutorial scenario and searchable guide |
@@ -50,3 +50,16 @@
 - Cancelling production loses its progress, as stated on the button. There is no stored progress per cancelled project.
 - Map generation remains 48x30. No naval travel; all starting regions have land connections.
 - Unit artwork is placeholder. Flags are three simple symbols, not imported image assets.
+
+## Alpha 0.3 interface and worker update
+
+- Dedicated own-city screen opens by double left-clicking its tile, including when units occupy it.
+- Escape menu order: Quick Save, Save As, Continue, Settings, Quit. Ctrl+S quick saves; successful writes show "Game Saved" for two seconds with the final second fading. Failed writes report failure. Quit has Yes/No confirmation.
+- Named saves use a safe in-game name and stay within Unity's save directory; existing names require replacement confirmation.
+- Tooltips show unit roles, base strength plus promotions, movement, current activity and job/route ETA. Route estimates depend on currently known terrain and may change.
+- Unlimited workers may share a tile without using the non-worker support slot. Grouping includes friendly workers on the same tile; each contributes one work per turn. Job ETA rounds up.
+- A road requires 2 work inside your borders, 3 outside on non-hill land, 4 outside on hills. Foreign access rules still apply; other improvements require your own land. Outside roads aid movement; capital resource networks still require owned roads.
+- Group, ungroup, new jobs and X cancellation discard unfinished work. Movement points already spent are not refunded. Group destinations can split a team when movement allowances differ; only co-located members share work or X cancellation.
+- The new workerGroup field defaults to zero for previous version-3 saves. Save format version remains 3. Unity JSON round-trip checks include grouped active workers but require running in the editor.
+
+Validation: engine checks passed; runtime scripts compiled and simulated UI/input/save checks passed against Unity API doubles. Unity editor rendering, real mouse interaction and real JsonUtility checks remain unverified here.
