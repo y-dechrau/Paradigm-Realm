@@ -22,20 +22,15 @@ public static class RealmTools
     [MenuItem("Paradigm Realm/Run Engine Checks")]
     public static void Checks()
     {
-        var contact=World.New(42,"  Matt's Kingdom  ");Require(contact.civilisationName=="Matt's Kingdom","name trimmed");Require(!contact.met[1]&&!contact.met[2],"unknown civilisations hidden");Require(!contact.SetWar(1,true),"cannot declare war before contact");
-        var scout=contact.units.First(u=>u.owner==0);var rival=contact.units.First(u=>u.owner==1);scout.x=rival.x;scout.y=rival.y+1;contact.Reveal();Require(contact.met[1],"first contact");int notices=contact.log.Count;contact.Reveal();Require(contact.log.Count==notices,"contact announced once");Require(contact.SetWar(1,true),"diplomacy after contact");
-        var a=contact.At(10,10);var b=contact.At(11,11);a.road=b.road=true;a.seen=b.seen=true;Require(contact.RoadConnects(a,1,1)&&contact.RoadConnects(b,-1,-1),"reciprocal diagonal roads");b.road=false;Require(!contact.RoadConnects(a,1,1),"no connection to missing road");
-        a.terrain=0;a.resource=1;a.farm=false;Require(contact.TileYield(a)[0]==5,"wheat yield");a.resource=2;Require(contact.TileYield(a)[1]==3,"iron yield");a.resource=3;Require(contact.TileYield(a)[2]==2,"gold yield");
-        var w=World.New(42);Require(w.Valid(),"new world valid");Require(w.tiles.Length==1440,"square map dimensions");
-        Require(JsonUtility.ToJson(w)==JsonUtility.ToJson(World.New(42)),"deterministic seed");
-        var settler=w.units.First(u=>u.owner==0&&u.type==0);var city=w.Found(settler);Require(city!=null&&!w.units.Contains(settler),"founding consumes settler");
-        var worker=w.units.First(u=>u.owner==0&&u.type==1);Require(w.Improve(worker,false)&&worker.moves==0,"road consumes movement");Require(!w.Improve(worker,true),"farm locked");
-        var soldier=w.units.First(u=>u.owner==0&&u.type==2);int x=soldier.x+1,y=soldier.y;w.At(x,y).terrain=0;Require(w.Move(soldier,x,y)&&soldier.moves==2,"terrain movement cost");Require(!w.Move(soldier,x+3,y),"reject teleport");
-        var enemy=w.Add(1,2,x,y+1);w.At(x,y+1).terrain=0;Require(!w.Move(soldier,x,y+1),"peace blocks combat");w.war[1]=true;Require(w.Move(soldier,x,y+1)&&enemy.hp<10,"combat at war");w.war[1]=false;
-        for(int i=0;i<130;i++)w.EndTurn();Require(w.tech[5],"research reaches Electricity");Require(w.Valid(),"state valid after 130 turns");
-        var roundtrip=JsonUtility.FromJson<World>(JsonUtility.ToJson(w));Require(roundtrip.Valid()&&JsonUtility.ToJson(w)==JsonUtility.ToJson(roundtrip),"save round trip");
-        w.units.RemoveAll(u=>u.owner>0);w.cities.RemoveAll(c=>c.owner>0);w.CheckVictory();Require(w.result.StartsWith("Conquest"),"conquest victory");
-        roundtrip.units[0].type=99;Require(!roundtrip.Valid(),"reject malformed unit");
-        Debug.Log("PASS: world generation, founding, movement, improvements, combat, 130 turns, research, save round trip, victory, malformed save checks.");
+        FoundationChecks.Run();
+        var world=World.New(42,"Round trip");world.Found(world.units.First(u=>u.owner==0&&u.type==0));
+        world.nations[0].tax=2;world.EndTurn();
+        var json=JsonUtility.ToJson(world);
+        var loaded=JsonUtility.FromJson<World>(json);loaded.UpgradeSave();
+        Require(loaded.Valid(),"save round trip validity");
+        Require(JsonUtility.ToJson(loaded)==json,"save preserves complete state");
+        var legacy=World.New(17);legacy.version=2;legacy.tech=new bool[6];legacy.tech[0]=true;
+        legacy.UpgradeSave();Require(legacy.Valid()&&legacy.tech[0],"legacy migration retains technology");
+        Debug.Log("PASS: foundation engine checks, Unity JSON round trip and legacy save migration.");
     }
 }

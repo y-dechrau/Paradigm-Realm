@@ -1,96 +1,59 @@
-# Paradigm Realm — Unity Earth Alpha
+# Paradigm Realm — Foundation Alpha 0.2
 
-A new C# implementation for Unity 6.3 LTS. Earth only, square tiles and original 16-bit-inspired pixel graphics. This is a source project, not a compiled Windows executable.
+This is an updated Unity project based on the previous Paradigm-Realm-Unity.zip (version 5). It preserves the existing opening menu, civilisation naming, drag movement, persistent orders, first contact, procedural pixel artwork and connected roads.
 
-## First launch (Windows)
+**This is not the completed 36-system game.** All 36 design topics are incorporated into Design/MASTER-DESIGN.md. This release implements a broader Earth foundation and labels remaining features in Design/IMPLEMENTATION-STATUS.md.
 
-1. Install Unity Hub from https://unity.com/download.
-2. In Hub, install a Unity 6.3 LTS Editor. Include Windows Build Support if you want to build an executable.
-3. Extract the entire ZIP. In Unity Hub choose **Projects → Add → Add project from disk**, then select the **Paradigm-Realm-Unity** folder containing Assets, Packages and ProjectSettings.
-4. The project records 6000.3.0f1 as its baseline. If Hub asks for that version, select your installed 6.3 LTS patch and allow the project upgrade. Use a copy when upgrading.
-5. Wait for import and compilation. Choose **Paradigm Realm → Open Earth Scene** from the Editor menu.
-6. Press the Editor's **Play** triangle. Open the **Game** tab and use a 1280 × 800 or larger view for comfortable reading.
-7. On the opening menu choose **New Game**, dismiss the guide, select your Settler and click **Found city**.
+## Open the project
 
-No scene assembly, asset store downloads, API keys or Python installation are required. The runtime creates the game controller, camera and procedural pixel textures when Play starts.
+1. Extract the ZIP.
+2. In Unity Hub choose Add/Open project and select the inner **Paradigm-Realm-Unity** folder (the one containing Assets, Packages and ProjectSettings).
+3. Use your existing Unity 6 installation. The project records 6000.3.0f1; do not change your working editor just to match this file without a reason.
+4. Let scripts compile. Open **Assets/Scenes/Earth.unity**, or use **Paradigm Realm > Open Earth Scene**.
+5. Press Play and choose New Game.
+
+## Update an existing copy
+
+Stop Play mode and back up the project first. Copy the entire **Assets/Scripts** folder and **Assets/Editor** folder from this ZIP into the existing project, replacing matching files. Two new script files accompany the updated World.cs and RealmGame.cs. Do not copy only RealmGame.cs. Copy Design and README if you want the specification alongside your project. Keep your existing ProjectSettings and Packages when updating a working project.
 
 ## Controls
 
-- Click one of your units, then an adjacent land square to move. Arrow keys also move.
-- Click a selected unit's city tile to inspect the city. Click again to select its unit; further clicks cycle a stack.
-- **Tab**: next unit with movement. **B**: found a city. **Enter**: end turn.
-- Use map scrollbars and scroll the right-hand orders panel to see more options.
-- Workers build roads; Agriculture unlocks farms on grassland or desert.
-- Cities grow from food and produce units or improvements. Choose production in the city panel.
-- Declare war before attacking a rival. Eliminate all rival cities and units for conquest victory.
-- Save/Load use one local slot at `Application.persistentDataPath/earth-save.json`. Save before starting a new world or quitting. Browser and unfinished Python saves are incompatible.
+- Click a unit/city; repeated clicks cycle a stack.
+- Drag a selected unit to a destination. It continues on later turns.
+- Arrow keys move the selected unit one tile; WASD and middle drag pan.
+- Scroll bars move around the map; Zoom +/- buttons change tile scale.
+- Tab finds the next idle unit; B founds a city; Enter ends a turn; F1 opens help.
+- The right panel scrolls: city queue, worker jobs, ranged attacks, upgrades, economy, identity, research and diplomacy are there.
 
-## Implemented
+## New working foundation systems
 
-- Seeded 48 × 30 Earth-like map with exploration fog and connected starting regions.
-- Three civilisations, settlers, workers, scouts and four military unit types.
-- Terrain movement costs, roads, farms, city growth and production.
-- Six research advances: Agriculture, Archery, Writing, Engineering, Industry, Electricity.
-- Granaries, libraries and defensive walls; combat and city capture.
-- Basic peace/war controls, AI exploration and expansion, conquest and defeat.
-- Original procedurally drawn 16 × 16 pixel textures with point filtering.
-- Save validation and deterministic per-turn AI random choices.
+- Twelve technologies; independent progress retained when switching research.
+- Eleven unit types, including spearman, horseman, catapult and medic.
+- Nine city buildings with gameplay effects.
+- Construction queues, focus-based tile assignment, city growth and happiness.
+- City territory and expanding borders; peace/war confirmation and open borders.
+- Multi-turn roads, farms/pastures, mines and forts; pillaging.
+- Improved resources connected to the capital via owned roads; trade income for connected cities.
+- Tax policy, unit/city/building upkeep, treasury forecasts and unpaid-upkeep combat penalties.
+- Limited tile stacking, fortification, ranged fire, promotions and paid upgrades.
+- Four-turn occupation penalties after capture; conquest victory and defeat.
+- AI research, legal recruitment, upkeep, settlement and land development.
+- Last-seen player map snapshots and hidden enemy units.
+- Custom civilisation/city names, symbolic flags, traits, map preset, seed and speed.
+- Shared calendar, manual backup saves, three rotating autosaves and v1/v2 migration.
 
-## Validation — read before use
+Resource icons and new units use placeholder procedural art. Naval transport, aircraft, active portals, advanced diplomacy, national stability, interactive tutorials and additional victories remain planned. Map size and civilisation count remain fixed. See status document for details.
 
-Unity and a C# compiler were not available in the creation environment. This project has **not yet been compiled, run or visually verified in Unity**. File layout, references, JSON and package assembly were checked locally. Treat this as an unverified Unity alpha source handoff.
+## Save files
 
-In Unity choose **Paradigm Realm → Run Engine Checks**. The included checks cover seed reproducibility, city founding, road building, movement costs, peace/combat, a 130-turn simulation, research, JSON save round trips, conquest and malformed save rejection. A successful run prints PASS in the Console. These checks are provided but have not been executed here.
+Unity's Application.persistentDataPath contains earth-save.json, its .bak backup, and earth-auto-0/1/2.json. Manual saves use temporary-file replacement. The in-game button restores the newest valid autosave. A new game will rotate autosaves from a previous game, so use a manual save if you wish to retain it. There is one manual slot, not a campaign browser.
 
-Then manually verify: Play opens the guide, found a city, choose production, move a warrior, end a turn, save, start a new world, load and confirm the old position and turn return. Check the Console for errors. Test at 1280 × 800 and 1920 × 1080.
+## Verification
 
-## Build a Windows game
+The pure C# engine and its regression checks were compiled and executed outside Unity. A 45-turn campaign and targeted rules checks passed. Runtime scripts were also compiled against minimal Unity API contract doubles, which catch C# integration errors but do not emulate Unity. Unity Editor, actual GUI interaction, platform builds and Unity JsonUtility migration/round-trip checks were **not run here**.
 
-After successful Editor checks, choose **Paradigm Realm → Build Windows Game** and select an empty output folder. Windows Build Support must be installed. Distribute the whole resulting build folder, not just the EXE.
+In Unity, choose **Paradigm Realm > Run Engine Checks**. This runs engine checks plus real Unity JSON round-trip and legacy migration tests. Then manually test End Turn, queued movement, the war confirmation, save/load and right-panel layout before relying on this alpha.
 
-## Code layout
+## Windows build
 
-- `Assets/Scripts/World.cs`: serializable game state and turn rules; no rendering dependency.
-- `Assets/Scripts/RealmGame.cs`: bootstrap, pixel textures, scrolling map, interface and saves.
-- `Assets/Editor/RealmTools.cs`: scene shortcut, engine checks and Windows build command.
-- `Assets/Scenes/Earth.unity`: initial scene, registered in build settings.
-
-The prototype uses Unity IMGUI for a compact self-contained interface. It can later be replaced with a designed Canvas/UI Toolkit interface without rewriting World.cs. Pixel textures are generated by C# and can later be replaced with sprite sheets.
-
-## Known alpha limitations
-
-Generated Earth-like geography, not a real Earth map. AI uses simple local movement and can get stuck behind terrain. Rivals advance military units by turn count; they do not share the player's research economy. Diplomacy is a direct peace/war switch. Gold is tracked but has no spending mechanic yet. No naval units, trade routes, strategic resource system, religion, multiplayer, sound or animation. Single manual save slot; no autosave. No gates or extra dimensions.
-
-## References and ownership
-
-Original project code and procedural artwork. No Civilization code or assets included; not affiliated with its rights holders.
-Unity release guidance: https://unity.com/releases/unity-6/support
-Runtime bootstrap: https://docs.unity3d.com/6000.0/Documentation/ScriptReference/RuntimeInitializeOnLoadMethodAttribute.html
-GUI textures: https://docs.unity3d.com/6000.0/Documentation/ScriptReference/GUI.DrawTexture.html
-Save serialization: https://docs.unity3d.com/6000.0/Documentation/ScriptReference/JsonUtility.html
-
-## Opening menu update
-
-The game now opens on an original pixel landscape with New Game, Continue Saved Game, How to Play and Quit. Continue is disabled until a save exists. During a session, the Menu button returns to the title screen and Continue becomes Resume Game, preserving the current world. Starting over or quitting an active session asks for confirmation; cancel and save in-game if needed. In the Editor, Quit stops Play mode.
-
-### Update your existing project
-
-Stop Play mode. From this ZIP copy only `Assets/Scripts/RealmGame.cs` into the same location in your existing project, replacing that one file. Leave your existing ProjectSettings and Packages in place. Wait for Unity to recompile, then press Play.
-
-### Menu validation checklist
-
-Unity runtime testing remains outstanding. Check: initial title screen; disabled Continue with no save; New Game opens tutorial; How to Play returns to menu; Menu/Resume preserves the turn and selected unit; cancel new game and quit keeps the world; Save then restart Play and Continue loads the save; a malformed save displays an error and stays on the menu; Quit exits a built player or stops Editor Play mode.
-
-## Civilisation and map update
-
-New Game now asks for a civilisation name (1–32 characters). Names persist in saves. Rival nations appear in diplomacy only after your current sight reveals their unit or city. Contact is announced once; unseen AI captures do not appear in the chronicle.
-
-Terrain now has distinctive grass, forest, rounded hill, desert dune, wave and mountain shapes. Wheat (golden stalk), iron (silver ore) and gold (golden ore) badges identify resources. Worked wheat adds 2 food, iron adds 2 production and gold adds 2 gold per turn. City workers choose nearby tiles automatically. Hover over a tile for its description and yields. Unexplored tiles reveal no details.
-
-Road branches connect automatically to neighbouring revealed road tiles in all eight directions, matching diagonal movement.
-
-### Install this update into your existing project
-
-Stop Play. Copy BOTH `Assets/Scripts/RealmGame.cs` AND `Assets/Scripts/World.cs` from this archive into your existing project's Assets/Scripts folder, replacing both. Also replace `Assets/Editor/RealmTools.cs` for the updated checks. Keep your Packages and ProjectSettings untouched. Start a New Game to name your civilisation and generate resources. Existing version 1 Unity saves are upgraded on load with the default name; no resources are retroactively added.
-
-Unity execution remains unverified here. Added Editor checks cover names, initial hidden rivals, first contact once, diplomacy gating, reciprocal roads and resource yields. Manually check naming from both New Game buttons, save/reload, first contact, diagonal/cardinal roads, and hovering at different scroll positions and screen sizes.
+After a successful Unity test, choose **Paradigm Realm > Build Windows Game**. Unity's Windows Build Support module must be installed. This ZIP contains source, not a tested Windows executable.

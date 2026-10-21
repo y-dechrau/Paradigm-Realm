@@ -1,0 +1,18 @@
+PARADIGM REALM — FOUNDATION ALPHA 0.2
+
+1. Stop Play mode and back up your existing project.
+2. Extract this ZIP.
+3. Copy ALL contents of Assets/Scripts into your project's Assets/Scripts.
+4. Copy ALL contents of Assets/Editor into your project's Assets/Editor.
+5. Replace matching files. Keep your working ProjectSettings and Packages.
+6. Return to Unity and allow compilation.
+7. Run Paradigm Realm > Run Engine Checks.
+8. Open Earth scene and press Play. Start a new game to see setup options.
+
+New files: FoundationUI.cs, FoundationChecks.cs (plus their .meta files).
+Updated files: World.cs, RealmGame.cs, RealmTools.cs.
+
+The full 36-topic design is in Design/MASTER-DESIGN.md.
+Design/IMPLEMENTATION-STATUS.md distinguishes current functionality from planned systems.
+This is an expanded foundation alpha, not a finished implementation of all 36 topics.
+Unity playtesting has not been performed in the generating environment.
