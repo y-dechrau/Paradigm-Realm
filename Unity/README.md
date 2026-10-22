@@ -1,4 +1,4 @@
-# Paradigm Realm — Foundation Alpha 0.3
+# Paradigm Realm — Foundation Alpha 0.4
 
 This is an updated Unity project based on the previous Paradigm-Realm-Unity.zip (version 5). It preserves the existing opening menu, civilisation naming, drag movement, persistent orders, first contact, procedural pixel artwork and connected roads.
 
@@ -14,7 +14,7 @@ This is an updated Unity project based on the previous Paradigm-Realm-Unity.zip 
 
 ## Update an existing copy
 
-Stop Play mode and back up the project first. Copy the entire **Assets/Scripts** folder and **Assets/Editor** folder from this ZIP into the existing project, replacing matching files. World.cs, RealmGame.cs, FoundationUI.cs and FoundationChecks.cs work together. Do not copy only RealmGame.cs. Copy Design and README if you want the specification alongside your project. Keep your existing ProjectSettings and Packages when updating a working project.
+Stop Play mode and back up the project first. Copy the entire **Assets/Scripts** folder and **Assets/Editor** folder from this ZIP into the existing project, replacing matching files. World.cs, RealmGame.cs, FoundationUI.cs, InterfaceV4.cs and FoundationChecks.cs work together. InterfaceV4.cs and its .meta file are new and must be copied. Do not copy only RealmGame.cs. Copy Design and README if you want the specification alongside your project. Keep your existing ProjectSettings and Packages when updating a working project.
 
 ## Controls
 
@@ -22,7 +22,7 @@ Stop Play mode and back up the project first. Copy the entire **Assets/Scripts**
 - Drag a selected unit to a destination. It continues on later turns.
 - Arrow keys move the selected unit one tile; WASD and middle drag pan.
 - Mouse wheel zooms toward the pointer; scroll bars and middle drag pan. Zoom +/- buttons also change tile scale.
-- Tab finds the next idle unit; B founds a city; Enter ends a turn; F1 opens help.
+- Tab finds the next idle unit; B founds a city; Enter or keypad Enter ends a turn; Space skips only the selected unit; F1 opens help. Gameplay shortcuts are blocked while menus are open or text is being edited.
 - Double-click your city tile (even with units on it) to open its own management screen. Back to map closes it.
 - Escape opens Quick Save, Save As, Continue, Settings and Quit. Ctrl+S saves and briefly shows a fading "Game Saved" message. Quit asks Yes/No.
 - Settings control wheel sensitivity and tooltips.
@@ -30,14 +30,18 @@ Stop Play mode and back up the project first. Copy the entire **Assets/Scripts**
 - Multiple workers can occupy a tile. Group all workers here shares construction: each worker contributes one work per turn. Ungroup stops the shared job. Grouping/reassigning/cancelling discards unfinished job progress.
 - Roads cost 2 work in your borders, 3 outside (4 on hills). Forests outside use the 3-work rule. Foreign border permission still applies. Farms/mines/forts remain restricted to your territory and cost 3 work.
 - Worker teams receive shared movement destinations; members with different movement allowances may arrive on different turns. Construction uses only members on the same tile.
-- The right panel scrolls: worker jobs, ranged attacks, upgrades, economy, identity, research and diplomacy are there.
+- Game details are in the top bar: Research, Economy, Diplomacy, Identity, Cities and Chronicle. The right panel contains the current selection and unit actions.
+- Research opens a connected tree of labelled technology cards, each with a unique pixel icon, benefits, prerequisites and a research button.
+- Upgrades require a city owned by the unit’s civilisation, as well as the existing technology, resource and gold requirements.
+- Map labels show a lone unit’s type, Stack for matching types, or nothing for mixed types belonging to the same civilisation.
+- Load Game on the opening menu lists manual saves and autosaves. Invalid saves leave the current session intact.
 
 ## New working foundation systems
 
 - Twelve technologies; independent progress retained when switching research.
 - Eleven unit types, including spearman, horseman, catapult and medic.
 - Nine city buildings with gameplay effects.
-- Construction queues, focus-based tile assignment, city growth and happiness.
+- Separate simultaneous unit and building queues; focus-based tile assignment, city growth and happiness.
 - City territory and expanding borders; peace/war confirmation and open borders.
 - Multi-turn roads, farms/pastures, mines and forts; pillaging.
 - Improved resources connected to the capital via owned roads; trade income for connected cities.
@@ -64,3 +68,16 @@ In Unity, choose **Paradigm Realm > Run Engine Checks**. This runs engine checks
 ## Windows build
 
 After a successful Unity test, choose **Paradigm Realm > Build Windows Game**. Unity's Windows Build Support module must be installed. This ZIP contains source, not a tested Windows executable.
+
+## City screen and production (Alpha 0.4)
+
+Double-click an owned city. The inset map enlarges its neighbouring tiles and can be scrolled as borders grow. F/P/G show actual raw food, production and gold contributed by worked tiles; unworked tiles contribute zero. The central city contributes its base 2 food and 2 production. Food consumption, city buildings and other modifiers are reflected in the city totals. Constructed buildings have a dedicated list with unique icons.
+
+Units and buildings have separate production lines. **Each receives the city's full production output per turn**; an occupied unit tile can delay unit completion without delaying a building.
+
+- Left-click a unit/building: select one project and clear that line's waiting queue. Switching the active project discards its unfinished progress.
+- Ctrl+left-click: add one project to that line (up to eight waiting projects). Repeated unit types are allowed.
+- Ctrl+right-click inside either production line: remove its last waiting project. If none are waiting, cancel its active project.
+- Only one copy of each building type can be present in a city; duplicate active/queued buildings are blocked. Different building types can coexist.
+
+Save format 4 migrates versions 1–3. Old mixed queues split into unit and building lines while retaining each category's order and the old active project's progress. Keep the older save backup if you need to return to Alpha 0.3.

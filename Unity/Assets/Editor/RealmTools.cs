@@ -26,9 +26,11 @@ public static class RealmTools
         var world=World.New(42,"Round trip");world.Found(world.units.First(u=>u.owner==0&&u.type==0));
         world.nations[0].tax=2;world.EndTurn();
         var worker=world.units.First(u=>u.owner==0&&u.type==1);worker.moves=4;world.Add(0,1,worker.x,worker.y);world.GroupWorkers(worker);world.StartJob(worker,1);
+        var city=world.cities.First(c=>c.owner==0);world.tech[0]=true;world.ChooseProject(city,1,false);world.QueueBuild(city,1);world.ChooseProject(city,7,false);world.Produce(city,3);
         var json=JsonUtility.ToJson(world);
         var loaded=JsonUtility.FromJson<World>(json);loaded.UpgradeSave();
         Require(loaded.Valid(),"save round trip validity");
+        var restoredCity=loaded.cities.First(c=>c.owner==0);Require(restoredCity.build==1&&restoredCity.queue.Count==1&&restoredCity.buildingProject==7&&restoredCity.buildingProduction==3,"both production lines survive saving");
         var restored=loaded.units.First(u=>u.id==worker.id);Require(loaded.WorkerTeam(restored).Count==2&&restored.job==1,"worker team and shared work survive saving");
         Require(JsonUtility.ToJson(loaded)==json,"save preserves complete state");
         var legacy=World.New(17);legacy.version=2;legacy.tech=new bool[6];legacy.tech[0]=true;

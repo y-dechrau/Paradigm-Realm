@@ -20,7 +20,7 @@ namespace ParadigmRealm
             Require(w.StartJob(worker,1),"worker can start road");w.EndTurn();Require(!w.At(worker.x,worker.y).road,"road not instant");w.EndTurn();Require(w.At(worker.x,worker.y).road&&worker.job==0,"job finishes after two turns");
             w.tech[6]=true;var ore=w.At(c.x+1,c.y);ore.resource=2;ore.mine=true;ore.road=true;w.RebuildTerritory();
             Require(w.HasResource(0,2),"improved road-connected iron");ore.road=false;w.RebuildTerritory();Require(!w.HasResource(0,2),"cut road removes access");
-            c.build=-1;Require(w.QueueBuild(c,7)&&w.QueueBuild(c,2),"queue accepts valid projects");Require(!w.QueueBuild(c,7),"duplicate building rejected");c.production=w.Cost(7);w.EndTurn();Require(c.granary&&c.build==2,"completion advances queue");
+            c.build=-1;Require(w.QueueBuild(c,7)&&w.QueueBuild(c,2),"queue accepts valid projects");Require(!w.QueueBuild(c,7),"duplicate building rejected");c.buildingProduction=w.Cost(7);w.EndTurn();Require(c.granary&&c.build==2,"completion advances queue");
             c.pop=8;w.nations[0].tax=0;int low=w.Happiness(c),lowTax=w.Budget(0)[0];w.nations[0].tax=2;Require(w.Happiness(c)==low-4&&w.Budget(0)[0]>lowTax,"taxes trade happiness for revenue");
             u.experience=5;Require(w.Promote(u)&&u.promotion==1&&u.experience==0,"promotion consumes experience");
             var neutral=w.Add(1,2,u.x,u.y+1);w.Reveal();u.moves=World.Moves[u.type];Require(!w.Move(u,neutral.x,neutral.y),"peace blocks combat");Require(w.SetWar(1,true),"contact enables declaration");Require(w.Move(u,neutral.x,neutral.y)&&neutral.hp<10,"war enables combat");
@@ -47,6 +47,26 @@ namespace ParadigmRealm
             work.CancelActivity(a);a.moves=4;work.At(a.x,a.y).owner=1;Require(work.JobReason(a,1)!="","closed foreign borders block road job");
             work.openBorders[1]=true;Require(work.StartJob(a,1),"open borders permit foreign road work");Require(work.JobReason(a,2)!="","farms still require own territory");
             Require(work.Valid(),"worker group state validates");
+            var dual=Flat();var dc=dual.Found(dual.units.First(v=>v.owner==0&&v.type==0));for(int i=0;i<dual.tech.Length;i++)dual.tech[i]=true;
+            Require(dual.ChooseProject(dc,1,false)&&dual.ChooseProject(dc,7,false),"unit and building can be selected independently");
+            dual.Produce(dc,5);Require(dc.production==5&&dc.buildingProduction==5,"both production lines advance simultaneously");
+            Require(dual.QueueBuild(dc,1)&&dual.QueueBuild(dc,3)&&dual.QueueBuild(dc,8)&&dual.QueueBuild(dc,9),"both queues accept mixed projects");
+            Require(!dual.QueueBuild(dc,7)&&!dual.QueueBuild(dc,8),"duplicate buildings rejected in active and queued orders");
+            dual.RemoveLastProject(dc,false);Require(dc.queue.SequenceEqual(new[]{1})&&dc.buildingQueue.SequenceEqual(new[]{8,9}),"unit removal is last-first and leaves buildings alone");
+            dual.RemoveLastProject(dc,true);Require(dc.buildingQueue.SequenceEqual(new[]{8}),"building removal is last-first");
+            dual.ChooseProject(dc,3,false);Require(dc.build==3&&dc.queue.Count==0&&dc.production==0&&dc.buildingProject==7&&dc.buildingProduction==5,"single click selects one and clears only its line");
+            dc.production=dual.Cost(3)-1;dc.buildingProduction=dual.Cost(7)-1;int unitCount=dual.units.Count;dual.Produce(dc,1);
+            Require(dual.units.Count==unitCount+1&&dc.granary&&dc.build<0&&dc.buildingProject==8,"unit and building complete in same production step");
+            Require(!dual.ChooseProject(dc,7,false),"constructed building cannot be built twice");
+            dual.ChooseProject(dc,2,false);for(int i=0;i<2;i++)dual.Add(0,2,dc.x,dc.y);dc.production=dual.Cost(2);dc.buildingProduction=dual.Cost(8);dual.Produce(dc,1);
+            Require(dc.build==2&&dc.library,"blocked unit stack does not block building construction");
+            var old=Flat();var oc=old.Found(old.units.First(v=>v.owner==0&&v.type==0));old.version=3;oc.build=8;oc.production=17;oc.queue=new System.Collections.Generic.List<int>{1,7,1,9};old.UpgradeSave();
+            Require(old.version==4&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
+            old.UpgradeSave();Require(oc.buildingProduction==17&&oc.queue.Count==1,"migration is idempotent");
+            var upgrade=Flat();var uc=upgrade.Found(upgrade.units.First(v=>v.owner==0&&v.type==0));var troop=upgrade.units.First(v=>v.owner==0&&v.type==2);upgrade.tech[6]=true;upgrade.gold=100;
+            Require(!upgrade.Upgrade(troop),"owned territory alone does not permit upgrades");troop.x=uc.x;troop.y=uc.y;Require(upgrade.Upgrade(troop)&&troop.type==7,"owned city permits eligible upgrade");
+            var other=upgrade.units.First(v=>v.owner==0&&v.type==1);int otherMoves=other.moves;upgrade.SkipTurn(troop);Require(troop.moves==0&&other.moves==otherMoves,"skip affects only selected unit");
+            Require(World.StackLabel(new[]{new Unit{type=1}})=="Worker"&&World.StackLabel(new[]{new Unit{type=1},new Unit{type=1}})=="Stack"&&World.StackLabel(new[]{new Unit{type=1},new Unit{type=2}})=="","unit label rules");
             var victory=World.New(22);victory.units.RemoveAll(a=>a.owner>0);victory.cities.RemoveAll(a=>a.owner>0);victory.CheckVictory();Require(victory.result.StartsWith("Conquest"),"conquest detected");
             var defeat=World.New(23);defeat.units.RemoveAll(a=>a.owner==0);defeat.CheckVictory();Require(defeat.result.Contains("fallen"),"defeat detected");
         }

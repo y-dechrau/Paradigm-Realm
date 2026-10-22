@@ -1,21 +1,21 @@
-PARADIGM REALM — FOUNDATION ALPHA 0.3
+PARADIGM REALM — FOUNDATION ALPHA 0.4
 
-1. Stop Play mode and back up your existing project.
-2. Extract this ZIP.
-3. Copy ALL contents of Assets/Scripts into your project's Assets/Scripts.
-4. Copy ALL contents of Assets/Editor into your project's Assets/Editor.
-5. Replace matching files. Keep your working ProjectSettings and Packages.
-6. Return to Unity and allow compilation.
-7. Run Paradigm Realm > Run Engine Checks.
-8. Open Earth scene and press Play. Start a new game to see setup options.
+1. Stop Play mode in Unity.
+2. Extract this ZIP and open its Paradigm-Realm-Unity folder, then Assets.
+3. Select BOTH Scripts and Editor in the downloaded Assets folder and copy them.
+4. Open your EXISTING Unity project's Assets folder in Windows Explorer.
+5. Paste there. Merge the folders and replace matching files.
+6. Do not paste inside the old Scripts folder; paste inside Assets.
+7. Return to Unity, allow compilation, then run Paradigm Realm > Run Engine Checks.
+8. Press Play. Load Game opens old/new saves; double-click a city for its new screen.
 
-Updated files: World.cs, RealmGame.cs, FoundationUI.cs, FoundationChecks.cs, RealmTools.cs.
-Copy both complete script folders; do not replace only RealmGame.cs.
+NEW REQUIRED FILE: Assets/Scripts/InterfaceV4.cs (and InterfaceV4.cs.meta).
+Copy the full Scripts and Editor folders, not only RealmGame.cs.
+Keep your existing ProjectSettings and Packages.
 
-New controls: wheel zoom; double-click a city; Escape menu; Ctrl+S save; X cancel.
-Worker grouping controls appear in the selected worker panel.
+Controls: Enter ends turn; Space skips selected unit; X cancels activity.
+City: click selects one; Ctrl+left-click queues; Ctrl+right-click removes last.
+Units and buildings now have independent production lines. One copy of each building type per city.
 
-The full 36-topic design is in Design/MASTER-DESIGN.md.
-Design/IMPLEMENTATION-STATUS.md distinguishes current functionality from planned systems.
-This is an expanded foundation alpha, not a finished implementation of all 36 topics.
-Unity playtesting has not been performed in the generating environment.
+Save format 4 upgrades previous saves. Keep a backup for use with older code.
+Unity editor playtesting has not been performed in the generating environment.

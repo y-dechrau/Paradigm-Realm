@@ -62,3 +62,26 @@ Required Unity manual checks (not executed here):
 7. Settings save wheel sensitivity and tooltip visibility across restart.
 8. Group workers, build outside borders on flat/hills, inspect ETA and hover details, cancel with X, ungroup and reload a grouped job.
 9. Confirm layout and End Turn visibility at the user's display resolution.
+
+## Alpha 0.4 — 22 October 2026
+
+Passed outside Unity:
+- Foundation engine suite including the existing campaign and worker regressions.
+- Simultaneous unit/building progress and completion, blocked unit stack not blocking buildings, duplicate building prevention, normal selection and last-first queue removal.
+- Version-3 mixed queue migration preserves active progress, each category's order and remains idempotent.
+- Upgrade fails on owned land outside a city and succeeds inside an eligible owned city.
+- Unit labels and selected-unit-only skip semantics.
+- All runtime scripts compile against Unity API doubles.
+- Simulated Return/keypad Enter, Space with and without selection, modal keyboard blocking, normal/Ctrl-left/Ctrl-right production input.
+- Drawing calls cover all technology names/prerequisites, 21 distinct valid pixel icons, city tile contributions and constructed building list. These checks do not validate rendered appearance.
+- Main menu Load entry, valid dual-production load and malformed-load preservation using a JSON serializer double (not Unity JsonUtility).
+
+Required real Unity verification (not run here):
+1. Run Paradigm Realm > Run Engine Checks for actual Unity JSON round trips including both production lines and worker groups.
+2. Load an Alpha 0.3 save, check split queues/progress, save and reopen.
+3. Test Return/keypad Enter/Space with and without selected units, and when typing names or opening menus.
+4. Inspect unit labels at all zoom levels and on mixed stacks.
+5. Inspect the city inset, scrolling, worked/unworked values, constructed building icons and both production queues.
+6. Ctrl-click repeated/mixed units, distinct buildings, remove last orders, and verify simultaneous construction.
+7. Open each top-bar details menu; scroll and select available research cards; verify locked prerequisites.
+8. Inspect actual game layout at the user's resolution and test Save, Load, Escape and Quit.
