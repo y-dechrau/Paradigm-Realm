@@ -16,7 +16,7 @@ namespace ParadigmRealm
         void ClampMapScroll(){mapScroll.x=Mathf.Clamp(mapScroll.x,0,Mathf.Max(0,World.Width*tilePixels-836));mapScroll.y=Mathf.Clamp(mapScroll.y,0,Mathf.Max(0,World.Height*tilePixels-608));}
         void OpenCity(City c){cityId=c.id;selected=-1;cityScreen=true;cityScroll=Vector2.zero;cityMapScroll=new Vector2(Mathf.Max(0,(Math.Min(4,2+c.age/25)*2+1)*40-207),Mathf.Max(0,(Math.Min(4,2+c.age/25)*2+1)*40-147));builtScroll=Vector2.zero;unitQueueScroll=Vector2.zero;buildingQueueScroll=Vector2.zero;researchScreen=false;detailsScreen="";GUI.FocusControl(null);ResetMapGesture();GUIUtility.ExitGUI();}
         bool OrderTeam(Unit u,int x,int y){var team=world.WorkerTeam(u).ToList();bool ok=false;foreach(var member in team)ok=world.Order(member,x,y)||ok;status=ok?"Order issued. Travel continues each turn; new orders replace it.":"Cannot reach that destination.";return ok;}
-        string UnitDescription(Unit u){return new[]{"Founds new cities","Builds roads and improvements","Basic close-combat infantry","Explores distant territory","Ranged infantry","Armoured mounted troops","Gunpowder infantry","Counters mounted troops","Fast mounted troops","Siege artillery","Helps nearby units heal"}[u.type];}
+        string UnitDescription(Unit u){return new[]{"Founds new cities","Builds roads and improvements","Basic close-combat infantry","Explores distant territory","Ranged infantry","Armoured mounted troops","Gunpowder infantry","Counters mounted troops","Fast mounted troops","Siege artillery","Helps nearby units heal","Establishes trade routes and supplies wonders"}[u.type];}
         void HandleGlobalInput(){var e=Event.current;if(e.type!=EventType.KeyDown)return;
             if(e.keyCode==KeyCode.S&&e.control){Save();e.Use();return;}
             if(e.keyCode!=KeyCode.Escape)return;
@@ -96,6 +96,7 @@ namespace ParadigmRealm
         void DrawFoundationPanel(Unit u)
         {
             if(u!=null){
+                DrawEmpireUnit(u);
                 GUILayout.Label("Upkeep "+World.Upkeep[u.type]+" gold | Experience "+u.experience+" | Rank "+u.promotion,small);
                 GUILayout.Label("Activity: "+world.Activity(u)+" | "+world.Remaining(u),body);
                 if(u.type==1){GUILayout.Label("Worker team: "+world.WorkerTeam(u).Count,small);

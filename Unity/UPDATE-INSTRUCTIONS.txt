@@ -1,28 +1,20 @@
-PARADIGM REALM — FOUNDATION ALPHA 0.5
+PARADIGM REALM — ALPHA 0.7
 
-1. Stop Play mode in Unity.
-2. Download and extract this ZIP.
-3. Open the extracted Paradigm-Realm-Unity folder, then open Assets.
-4. Select these THREE folders: Scripts, Editor, Resources. Press Ctrl+C.
-5. Open a SECOND Explorer window showing your EXISTING Unity project's Assets folder.
-   In Unity's Project panel, right-click Assets and choose Show in Explorer if needed.
-6. Click inside that existing Assets folder and press Ctrl+V.
-7. Choose to merge folders and replace matching files.
-   Paste into Assets itself, NOT inside Assets/Scripts.
-8. Return to Unity and let importing and compiling finish.
-9. Choose Paradigm Realm > Run Engine Checks.
-10. Press Play and choose NEW GAME to see the new terrain distribution.
-11. Open Research in the top bar. Use era buttons and Inspect to explore the tree.
+1. Stop Play mode. Back up your Unity project.
+2. Extract the ZIP and open Paradigm-Realm-Unity, then Assets.
+3. Copy Scripts, Editor and Resources (including all .meta files).
+4. Paste them into your EXISTING project Assets folder.
+5. Merge folders and replace matching files. Do not paste inside Scripts.
+6. Return to Unity and wait for import/compilation.
+7. Select Paradigm Realm > Run Engine Checks.
+8. Press Play. Load an old save or start a new game.
 
-Resources contains the 21 textures. All Scripts files work together.
-Keep your existing ProjectSettings and Packages.
+New games include exploration sites. Older saves retain their existing map.
+Economy: governments, luxury spending, trade income.
+City screen > Citizens / specialists: assign specialists.
+City production panels: Rush buttons and new buildings/wonders.
+Cities: atlas, military adviser, wonder list.
+Caravan unit panel: trade with a nearby city or supply a wonder.
+Diplomacy: gifts, technology purchases and peace offers.
 
-Older saves can still load. Their geography is preserved, so start a new game
-if you want all the new terrain types. Save format 5 upgrades previous saves;
-keep a backup if you need to return to older code.
-
-All 124 technologies are researchable. The technology details distinguish
-working game effects from future design unlocks that are not yet implemented.
-
-Code and simulated interface checks passed; actual Unity playtesting has not
-been performed in the generating environment.
+Actual Unity playtesting is still needed. See ALPHA-0.7-README.md.

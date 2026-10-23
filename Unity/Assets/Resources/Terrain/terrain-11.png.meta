@@ -4,7 +4,7 @@ TextureImporter:
   serializedVersion: 13
   mipmaps:
     enableMipMap: 0
-  isReadable: 0
+  isReadable: 1
   textureType: 0
   maxTextureSize: 128
   textureSettings:

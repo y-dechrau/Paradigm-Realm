@@ -77,6 +77,7 @@ namespace ParadigmRealm
             var benefits=new System.Collections.Generic.List<string>();
             for(int i=0;i<UnitNames.Length;i++)if(UnitTech[i]==id)benefits.Add("Train "+UnitNames[i]);
             for(int i=0;i<BuildingIds.Length;i++)if(BuildingTech[i]==id)benefits.Add("Build "+BuildingNames[i]);
+            for(int g=1;g<Governments.Length;g++)if(TechnologyCatalog.Index(GovernmentTech[g])==id)benefits.Add("Government: "+Governments[g]);
             string key=TechnologyCatalog.Ids[id];
             switch(key){
                 case "agriculture":benefits.Add("Workers can build farms / pastures");break;

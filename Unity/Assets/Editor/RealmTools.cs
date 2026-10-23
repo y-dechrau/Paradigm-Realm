@@ -22,7 +22,7 @@ public static class RealmTools
     [MenuItem("Paradigm Realm/Run Engine Checks")]
     public static void Checks()
     {
-        FoundationChecks.Run();
+        FoundationChecks.Run();ContentChecks.Run();EmpireChecks.Run();
         var world=World.New(42,"Round trip");world.Found(world.units.First(u=>u.owner==0&&u.type==0));
         world.nations[0].tax=2;world.EndTurn();
         var worker=world.units.First(u=>u.owner==0&&u.type==1);worker.moves=4;world.Add(0,1,worker.x,worker.y);world.GroupWorkers(worker);world.tech[TechnologyCatalog.Index("wheel")]=true;world.StartJob(worker,1);

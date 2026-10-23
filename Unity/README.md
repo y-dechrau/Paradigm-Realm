@@ -1,3 +1,7 @@
+# Current release: Alpha 0.7
+
+Read **ALPHA-0.7-README.md** for the current feature list, controls, installation and limitations. The sections below document the earlier foundation.
+
 # Paradigm Realm — Foundation Alpha 0.5
 
 This is an updated Unity project based on the previous Paradigm-Realm-Unity.zip (version 5). It preserves the existing opening menu, civilisation naming, drag movement, persistent orders, first contact, connected roads and placeholder unit artwork. Terrain now uses your supplied textures.

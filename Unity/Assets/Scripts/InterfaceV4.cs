@@ -48,18 +48,24 @@ namespace ParadigmRealm
             if(detailsScreen=="Economy"){
                 var b=world.Budget(0);GUILayout.Label("Income +"+b[0]+" | Upkeep -"+b[1]+" | Net "+b[2],heading);
                 GUILayout.Label("Tax policy",body);world.nations[0].tax=GUILayout.SelectionGrid(world.nations[0].tax,new[]{"Low","Normal","High"},3);
-                GUILayout.Label("Low: less tax, +2 happiness. High: more tax, -2 happiness. First 4 gold of unit upkeep supported.",body);
+                GUILayout.Label("Low: less tax, +2 happiness. High: more tax, -2 happiness. Government determines free unit upkeep.",body);
                 for(int r=2;r<World.ResourceNames.Length;r++)GUILayout.Label(World.ResourceNames[r]+": "+(world.HasResource(0,r)?"connected":"not connected"),body);
+            DrawEmpireEconomy();
+            }else if(detailsScreen=="Citizens"){DrawCitizenManagement();
             }else if(detailsScreen=="Identity"){
                 GUI.SetNextControlName("rename");renameText=GUILayout.TextField(renameText,32);if(Button("Apply civilisation name"))world.civilisationName=World.CleanName(renameText);
                 world.flag=GUILayout.SelectionGrid(world.flag,new[]{"Leaf","Star","Sun"},3);
             }else if(detailsScreen=="Diplomacy"){
                 if(!world.met.Skip(1).Any(v=>v))GUILayout.Label("No other civilisations encountered.",body);
                 for(int i=1;i<3;i++)if(world.met[i]){
-                    if(Button(world.NationName(i)+": "+(world.war[i]?"Offer peace":"Declare war"))){if(world.war[i])world.SetWar(i,false);else{pendingUnit=-2;pendingWars=new[]{i};detailsScreen="";cityScreen=false;GUIUtility.ExitGUI();}}
+                    if(Button(world.NationName(i)+": "+(world.war[i]?"Offer peace":"Declare war"))){if(world.war[i])status=world.OfferPeace(i)?"Peace agreed.":"Peace refused: relations are hostile and their army is stronger.";else{pendingUnit=-2;pendingWars=new[]{i};detailsScreen="";cityScreen=false;GUIUtility.ExitGUI();}}
                     if(!world.war[i]&&Button(world.NationName(i)+": "+(world.openBorders[i]?"Close borders":"Open borders")))world.SetBorders(i);
+                    DrawEmpireDiplomacy(i);
                 }
+            }else if(detailsScreen=="Atlas"){DrawAtlas();
+            }else if(detailsScreen=="Military"){DrawMilitaryAdviser();
             }else if(detailsScreen=="Cities"){
+                DrawEmpireAdvisors();
                 foreach(var c in world.cities.Where(c=>c.owner==0))if(Button(c.name+" — Population "+c.pop))OpenCity(c);
             }else {GUILayout.Label(world.result==""?"Your civilisation's history":world.result,heading);foreach(var line in world.log)GUILayout.Label(line,body);}
             GUILayout.EndScrollView();GUILayout.EndArea();
@@ -83,7 +89,8 @@ namespace ParadigmRealm
             DrawCityTiles(c);DrawBuiltBuildings(c);
             GUI.SetNextControlName("cityrename");c.name=GUI.TextField(new Rect(490,185,330,30),c.name,32);
             c.focus=GUI.SelectionGrid(new Rect(840,185,390,30),c.focus,new[]{"Balanced","Growth","Production","Science"},4);
-            GUI.Label(new Rect(490,220,740,42),"Click: select one. Ctrl+left-click: queue. Ctrl+right-click anywhere in a line: remove last. One of each building per city.",small);
+            if(GUI.Button(new Rect(490,220,180,30),"Citizens / specialists",button)){managedCity=c.id;cityScreen=false;OpenDetails("Citizens");}
+            GUI.Label(new Rect(680,220,550,42),"Click: select one. Ctrl+left-click: queue. Ctrl+right-click anywhere in a line: remove last. One of each building per city.",small);
             DrawProductionLine(c,false,new Rect(485,270,365,438));
             DrawProductionLine(c,true,new Rect(870,270,365,438));
             GUI.Label(new Rect(24,744,1232,42),status,body);
@@ -97,7 +104,7 @@ namespace ParadigmRealm
                 var t=world.At(c.x+dx,c.y+dy);var r=new Rect((dx+radius)*size,(dy+radius)*size,size-2,size-2);if(t==null)continue;
                 bool centre=dx==0&&dy==0,active=worked.Contains(t),influence=t.owner==c.owner;
                 if(!t.seen){Fill(r,new Color(.04f,.07f,.09f));GUI.Label(r,"Unknown",small);continue;}
-                var known=world.KnownTile(t);GUI.DrawTexture(r,terrain[known.terrain]);if(centre)GUI.DrawTexture(new Rect(r.x+16,r.y+4,46,46),cityTexture);
+                var known=world.KnownTile(t);GUI.DrawTexture(r,TerrainAppearance(known));if(centre)GUI.DrawTexture(new Rect(r.x+16,r.y+4,46,46),cityTexture);
                 if(!influence)Fill(r,new Color(0,0,0,.6f));
                 if(influence){int[] v=centre?new[]{2,2,0}:active?world.TileYield(t):new[]{0,0,0};
                     Fill(new Rect(r.x,r.y+39,r.width,39),new Color(.02f,.04f,.05f,.9f));
@@ -122,8 +129,9 @@ namespace ParadigmRealm
             string message=current<0?"Idle":World.BuildName(current)+"  "+progress+" / "+world.Cost(current);
             if(current>=0){int output=world.Yield(c)[1];message+=" — "+Math.Max(0,(world.Cost(current)-progress+output-1)/output)+" turns";var reason=world.BuildReason(c,current);if(reason!="")message+="\nPaused: "+reason;}
             GUI.Label(new Rect(area.x+10,area.y+37,area.width-20,48),message,small);
+            if(current>=0&&GUI.Button(new Rect(area.x+10,area.y+105,area.width-20,24),"Rush: "+world.RushPrice(c,building)+" gold",button))status=world.Rush(c,building)?"Paid; completes next turn if space permits.":"Cannot rush: insufficient gold, blocked, or already funded.";
             var e=Event.current;if(e.type==EventType.MouseDown&&e.button==1&&e.control&&GUI.enabled&&world.result==""&&area.Contains(e.mousePosition)){world.RemoveLastProject(c,building);status="Removed the last "+(building?"building":"unit")+" order.";e.Use();GUIUtility.ExitGUI();}
-            GUI.Label(new Rect(area.x+10,area.y+82,area.width-20,42),"Next: "+(queue.Count==0?"none":string.Join(" → ",queue.Take(3).Select(World.BuildName).ToArray())+(queue.Count>3?" +"+(queue.Count-3):"")),small);
+            GUI.Label(new Rect(area.x+10,area.y+82,area.width-20,22),"Next: "+(queue.Count==0?"none":string.Join(" → ",queue.Take(3).Select(World.BuildName).ToArray())+(queue.Count>3?" +"+(queue.Count-3):"")),small);
             int[] options=building?World.BuildingIds:Enumerable.Range(0,World.UnitNames.Length).Select(World.UnitBuild).ToArray();
             Vector2 scroll=building?buildingQueueScroll:unitQueueScroll;
             scroll=GUI.BeginScrollView(new Rect(area.x+8,area.y+130,area.width-16,area.height-140),scroll,new Rect(0,0,area.width-34,options.Length*67+queue.Count*26+62));
@@ -132,7 +140,7 @@ namespace ParadigmRealm
                 if(!building)GUI.DrawTexture(new Rect(4,y+5,26,26),people[World.BuildUnit(project)]);
                 var r=new Rect(37,y,area.width-78,32);string reason=world.BuildReason(c,project);bool enabled=GUI.enabled;GUI.enabled=enabled&&reason==""&&world.result=="";
                 bool append=e.control;if(GUI.Button(r,World.BuildName(project),button)){bool ok=world.ChooseProject(c,project,append);status=ok?(append?"Added to queue.":"Selected one "+World.BuildName(project)+"."):"Already built/queued or queue full.";GUIUtility.ExitGUI();}
-                GUI.enabled=enabled;GUI.Label(new Rect(37,y+34,area.width-78,31),reason!=""?reason:world.Cost(project)+" production"+(building&&(current==project||queue.Contains(project))?" | Ordered":""),small);
+                GUI.enabled=enabled;GUI.Label(new Rect(37,y+34,area.width-78,31),reason!=""?reason:world.Cost(project)+" production"+(building?" | "+World.BuildingEffect(project):"")+(building&&(current==project||queue.Contains(project))?" | Ordered":""),small);
             }
             float qy=options.Length*67;GUI.Label(new Rect(5,qy,area.width-40,25),"Waiting queue ("+queue.Count+" / 8)",heading);
             if(queue.Count==0)GUI.Label(new Rect(5,qy+28,area.width-40,24),"Empty",small);
@@ -164,6 +172,6 @@ namespace ParadigmRealm
             "...#..../#######./.#.#.#../.#.#.#../#..#..#./#######./...#..../.#####..", // courthouse
             "########/#..##..#/#..##..#/#.####.#/#..##..#/#..##..#/########/........" // hospital
         };
-        void DrawIcon(Rect rect,int id){if(id<0||id>=IconPatterns.Length)return;Fill(rect,new Color(.12f,.19f,.22f));string pixels=IconPatterns[id].Replace("/","").Replace(" ","");float size=rect.width/8;for(int i=0;i<Math.Min(64,pixels.Length);i++)if(pixels[i]=='#')Fill(new Rect(rect.x+i%8*size,rect.y+i/8*size,size,size),new Color(.87f,.76f,.43f));}
+        void DrawIcon(Rect rect,int id){if(id>=IconPatterns.Length){DrawEmpireGlyph(rect,id);return;}if(id<0)return;Fill(rect,new Color(.12f,.19f,.22f));string pixels=IconPatterns[id].Replace("/","").Replace(" ","");float size=rect.width/8;for(int i=0;i<Math.Min(64,pixels.Length);i++)if(pixels[i]=='#')Fill(new Rect(rect.x+i%8*size,rect.y+i/8*size,size,size),new Color(.87f,.76f,.43f));}
     }
 }
