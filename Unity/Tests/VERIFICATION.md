@@ -37,7 +37,7 @@ Result: PASS.
 
 1. Open the project and wait for compilation.
 2. Select Paradigm Realm > Run Engine Checks. The editor command runs the engine suite plus real JsonUtility round-trip and legacy migration checks.
-3. Start a new game. Found a city, queue a granary after Agriculture, and issue a multi-turn movement order.
+3. Start a new game. Found a city, queue a granary after Pottery, and issue a multi-turn movement order.
 4. Press End Turn several times. Confirm turn/calendar changes, jobs progress and orders continue.
 5. Meet a rival, issue a hostile order and cancel the war prompt. Confirm peace is preserved; repeat and confirm to test war.
 6. Save, change orders, then load. Check treasury, orders, research, queue and worker job state.
@@ -85,3 +85,16 @@ Required real Unity verification (not run here):
 6. Ctrl-click repeated/mixed units, distinct buildings, remove last orders, and verify simultaneous construction.
 7. Open each top-bar details menu; scroll and select available research cards; verify locked prerequisites.
 8. Inspect actual game layout at the user's resolution and test Save, Load, Escape and Quit.
+
+
+## Alpha 0.5 — 22 October 2026
+
+Passed outside Unity:
+- Full foundation regression suite, including the 45-turn campaign, worker teams, queues, movement, input rules and save migration.
+- 124-node research reachability and prerequisite ordering, 14 eras, science victory, cold settlement gating, road/building tech gates, science/food/map-reveal effects.
+- All 21 terrain types generated across six seeded worlds; terrain yield coverage, impassable water/ice/mountain rules and jungle movement cost.
+- Legacy 12-tech migration preserves discoveries, required prerequisites, grandfathered unlocks and stored progress; repeat migration is idempotent.
+- All runtime scripts compile against Unity API doubles; simulated drawing calls cover all 124 cards, era/technology focus, detail labels, city contributions, production actions, input shortcuts and save failure handling.
+- Texture resources and importer metadata inspected; 128×128 terrain contact sheet visually inspected. This is asset inspection, not an in-game screenshot.
+
+Not run: real Unity Editor import/compilation, Play mode, actual visual layout, Unity JsonUtility, Windows build or full campaign balancing. The editor Run Engine Checks command includes real JsonUtility tests and should be run after copying all three Assets folders.

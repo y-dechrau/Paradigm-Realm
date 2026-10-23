@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>From flint to the stars: a strategy-game tech tree</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+  --page:#E2CBA6; --pageink:#3B2614;
+  --surface:#FFFFFF; --surfink:#1F1B16; --muted:#6B6258; --rule:rgba(0,0,0,.12);
+  --line:#B4461A; --unl:#0E7C74; --halo:rgba(255,255,255,.8);
+  --kU:#B83227; --kB:#2B6CB0; --kW:#A86B12; --kI:#2F7A4F; --kG:#6B46C1; --kP:#0E7C74; --kA:#4A5568; --kV:#A86B12;
+  --serif:"Young Serif", Georgia, "Times New Roman", serif;
+  --sans:"Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#2A1F14; --pageink:#EBD9BD;
+    --surface:#1A1816; --surfink:#EEE7DC; --muted:#A59B8F; --rule:rgba(255,255,255,.14);
+    --line:#F2A65A; --unl:#4FD1C5; --halo:rgba(0,0,0,.6);
+    --kU:#F08A7E; --kB:#7FB3F0; --kW:#F0C062; --kI:#7DD3A0; --kG:#B79CF5; --kP:#4FD1C5; --kA:#B6BECB; --kV:#F0C062;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#2A1F14; --pageink:#EBD9BD;
+  --surface:#1A1816; --surfink:#EEE7DC; --muted:#A59B8F; --rule:rgba(255,255,255,.14);
+  --line:#F2A65A; --unl:#4FD1C5; --halo:rgba(0,0,0,.6);
+  --kU:#F08A7E; --kB:#7FB3F0; --kW:#F0C062; --kI:#7DD3A0; --kG:#B79CF5; --kP:#4FD1C5; --kA:#B6BECB; --kV:#F0C062;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 110px)}
+body{margin:0;background:var(--page);color:var(--pageink);font-family:var(--sans);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--surface)}
+
+.hero{padding:2.75rem 1.25rem 2rem;max-width:62rem;margin:0 auto}
+.hero h1{font-family:var(--serif);font-weight:400;font-size:clamp(2.5rem,9vw,5rem);line-height:1;margin:0 0 1rem;letter-spacing:-.01em}
+.hero p{max-width:38rem;margin:0 0 .75rem;font-size:1.05rem}
+.legend{display:flex;flex-wrap:wrap;gap:1.25rem;margin-top:1.25rem;font-size:.9rem}
+.legend span{display:inline-flex;align-items:center;gap:.5rem}
+
+/* sticky bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:25;background:var(--surface);color:var(--surfink);border-bottom:1px solid var(--rule)}
+.bar-top{max-width:62rem;margin:0 auto;padding:.6rem 1rem 0;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem}
+.mode{display:inline-flex;border:1px solid var(--rule);border-radius:999px;padding:3px}
+.mode button{font:inherit;font-size:.88rem;font-weight:600;border:0;background:transparent;color:inherit;padding:.3rem .9rem;border-radius:999px;cursor:pointer}
+.mode button[aria-pressed="true"]{background:var(--surfink);color:var(--surface)}
+.status{display:none;flex-wrap:wrap;align-items:center;gap:.25rem .9rem;font-size:.85rem}
+body.play .status{display:flex}
+.status b{font-weight:700}
+.status .win{color:var(--kV);font-weight:700}
+.reset{font:inherit;font-size:.8rem;font-weight:600;background:transparent;color:inherit;border:1px solid var(--rule);border-radius:999px;padding:.15rem .7rem;cursor:pointer}
+.eranav{list-style:none;margin:0 auto;padding:.5rem 1rem .6rem;display:flex;gap:.4rem;overflow-x:auto;max-width:62rem;scrollbar-width:none}
+.eranav::-webkit-scrollbar{display:none}
+.eranav a{display:inline-flex;align-items:center;gap:.45rem;white-space:nowrap;text-decoration:none;color:inherit;font-size:.82rem;font-weight:500;padding:.3rem .7rem;border-radius:999px;border:1px solid var(--rule)}
+.eranav a .dot{width:.7rem;height:.7rem;border-radius:50%;background:var(--sw);border:1px solid rgba(128,128,128,.4)}
+.eranav a.on{background:var(--surfink);color:var(--surface);border-color:var(--surfink)}
+.bar button:focus-visible,.eranav a:focus-visible{outline:3px solid var(--line);outline-offset:2px}
+
+/* tree */
+#tree{position:relative;z-index:0}
+#lines{position:absolute;left:0;top:0;z-index:1;pointer-events:none;overflow:visible}
+#lines path{fill:none}
+#lines .h{stroke:var(--halo);stroke-width:5;stroke-linecap:round}
+#lines .a{stroke:var(--line);stroke-width:1.6}
+#lines .u{stroke:var(--unl);stroke-width:1.9;stroke-dasharray:5 4}
+
+.era{--band:var(--bl);--ink:var(--il);--chip:var(--cl);background:var(--band);color:var(--ink);padding:2.25rem 1.25rem 2.5rem}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .era{--band:var(--bd);--ink:var(--id);--chip:var(--cd)}}
+:root[data-theme="dark"] .era{--band:var(--bd);--ink:var(--id);--chip:var(--cd)}
+.era.darkband{--line:#F2A65A;--unl:#4FD1C5}
+.era-inner{max-width:62rem;margin:0 auto}
+.era-head{margin-bottom:1.25rem;max-width:40rem;display:grid;grid-template-columns:auto 1fr;column-gap:1rem;align-items:baseline}
+.era-num{font-family:var(--serif);font-size:clamp(1.7rem,5.5vw,2.6rem);line-height:1.1;opacity:.45;grid-row:span 3}
+.era-head h2{font-family:var(--serif);font-weight:400;font-size:clamp(1.7rem,5.5vw,2.6rem);line-height:1.1;margin:0 0 .3rem}
+.era-dates{margin:0 0 .4rem;font-weight:600;font-size:.88rem;opacity:.8}
+.era-blurb{margin:0;font-size:.98rem}
+
+.nodes{display:flex;flex-wrap:wrap;gap:.55rem}
+.node{position:relative;z-index:2;font:inherit;text-align:left;background:var(--chip);color:var(--ink);border:1.5px solid color-mix(in srgb,var(--ink) 22%,transparent);border-radius:10px;padding:.5rem .75rem .55rem;cursor:pointer;display:flex;flex-direction:column;gap:.15rem;max-width:100%;transition:opacity .2s ease,background-color .2s ease}
+.n-name{font-weight:600;font-size:.95rem;line-height:1.2}
+.n-meta{font-size:.76rem;opacity:.75;display:flex;gap:.6rem}
+.n-check{display:none;font-weight:700}
+.node:hover{border-color:color-mix(in srgb,var(--ink) 55%,transparent)}
+.node:focus-visible{outline:3px solid var(--line);outline-offset:2px}
+
+#tree.play .node{opacity:.45}
+#tree.play .node.avail{opacity:1;box-shadow:0 0 0 2px var(--unl)}
+#tree.play .node.done{opacity:1;background:color-mix(in srgb,var(--ink) 16%,var(--chip))}
+#tree.play .node.done .n-check{display:inline}
+#tree.sel-on .node{opacity:.28}
+#tree.sel-on .node.anc,#tree.sel-on .node.unl,#tree.sel-on .node.sel{opacity:1}
+.node.anc{border-color:var(--line);border-width:2px}
+.node.unl{border-color:var(--unl);border-style:dashed;border-width:2px}
+.node.sel{background:var(--ink);color:var(--band);border-color:var(--ink)}
+
+.note{max-width:62rem;margin:0 auto;padding:1.5rem 1.25rem 2.5rem;font-size:.88rem;opacity:.85}
+body.sheet-open main{padding-bottom:62vh}
+
+/* sheet */
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:30;margin:0 auto;max-width:680px;background:var(--surface);color:var(--surfink);border-radius:16px 16px 0 0;box-shadow:0 -8px 32px rgba(0,0,0,.25);padding:1rem 1.25rem calc(1.1rem + env(safe-area-inset-bottom,0px));max-height:min(64vh,600px);overflow-y:auto;transform:translateY(110%);transition:transform .25s ease;visibility:hidden}
+.sheet.open{transform:none;visibility:visible}
+.s-top{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+.s-era{font-size:.85rem;color:var(--muted);margin:.15rem 0 0}
+.s-close{font:inherit;font-size:.9rem;font-weight:600;background:transparent;color:inherit;border:1px solid var(--rule);border-radius:999px;padding:.3rem .85rem;cursor:pointer}
+.sheet button:focus-visible{outline:3px solid var(--line);outline-offset:2px}
+.sheet h3{font-family:var(--serif);font-weight:400;font-size:1.65rem;line-height:1.15;margin:.35rem 0 .15rem}
+.s-cost{margin:0 0 .6rem;font-weight:600;font-size:.92rem}
+.s-desc{margin:0 0 .9rem;max-width:36rem}
+.s-group{margin-bottom:.95rem}
+.s-group h4{margin:0 0 .4rem;font-size:.9rem;font-weight:700}
+.unlocks{list-style:none;margin:0;padding:0;display:grid;gap:.3rem}
+.unlocks li{display:flex;align-items:baseline;gap:.6rem;font-size:.93rem}
+.kind{flex:0 0 5.6rem;font-size:.74rem;font-weight:700;color:var(--k);border:1px solid var(--k);border-radius:6px;padding:.05rem .4rem;text-align:center}
+.s-stats{margin:0 0 1rem;font-size:.88rem;color:var(--muted)}
+.s-links{display:flex;flex-wrap:wrap;gap:.4rem}
+.s-link{font:inherit;font-size:.85rem;background:transparent;color:inherit;border:1.5px solid var(--line);border-radius:8px;padding:.25rem .6rem;cursor:pointer}
+.s-link.u{border-color:var(--unl);border-style:dashed}
+.s-none{font-size:.88rem;color:var(--muted);margin:0}
+.s-actions{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:0 0 1rem}
+.btn{font:inherit;font-size:.92rem;font-weight:700;border-radius:10px;padding:.5rem 1rem;cursor:pointer;border:1.5px solid var(--surfink)}
+.btn.primary{background:var(--surfink);color:var(--surface)}
+.btn.ghost{background:transparent;color:inherit}
+.done-flag{font-weight:700;color:var(--kI)}
+.victory{margin:0 0 1rem;padding:.7rem .9rem;border:1.5px solid var(--kV);border-radius:10px;color:var(--kV);font-weight:700}
+
+@media (min-width:700px){
+  .hero{padding:4rem 2rem 2.5rem}
+  .era{padding:2.75rem 2rem 3rem}
+  .note{padding:1.5rem 2rem 3rem}
+}
+@media (prefers-reduced-motion:reduce){ .sheet,.node{transition:none} }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <h1>From flint to the stars</h1>
+    <p id="intro"></p>
+    <p>Explore mode: tap any tech to trace everything it needs and see what it unlocks. Play mode: start with nothing and research your way to a science victory.</p>
+    <div class="legend" aria-hidden="true">
+      <span><svg width="36" height="10"><path d="M2 5H34" stroke="var(--line)" stroke-width="2"/></svg>Required</span>
+      <span><svg width="36" height="10"><path d="M2 5H34" stroke="var(--unl)" stroke-width="2" stroke-dasharray="5 4"/></svg>Leads to</span>
+    </div>
+  </header>
+
+  <div class="bar">
+    <div class="bar-top">
+      <div class="mode" role="group" aria-label="Mode">
+        <button type="button" id="m-explore" aria-pressed="true">Explore</button>
+        <button type="button" id="m-play" aria-pressed="false">Play</button>
+      </div>
+      <div class="status" id="status" aria-live="polite"></div>
+    </div>
+    <nav aria-label="Jump to an era"><ol class="eranav" id="nav"></ol></nav>
+  </div>
+
+  <div id="tree"><svg id="lines" aria-hidden="true"></svg></div>
+</main>
+
+<aside class="sheet" id="sheet" role="dialog" aria-label="Tech details" aria-hidden="true"></aside>
+
+<script>
+const ERAS = [
+ {k:"sto",n:"Stone Age",b:"Survive, gather and hunt. Every civilisation starts with flint.",base:15,c:["#E2CBA6","#3B2614","#F3E6D0","#2A1F14","#EBD9BD","#3A2C1E"]},
+ {k:"anc",n:"Ancient Age",b:"Settle down, farm, and raise the first cities and monuments.",base:40,c:["#D5CDA6","#2F2C14","#ECE6CC","#24231A","#E3DDBF","#333124"]},
+ {k:"cla",n:"Classical Age",b:"Iron, coin and philosophy. Empires take shape.",base:80,c:["#E4E1DA","#2A2830","#F6F4F0","#24232A","#E2E0E8","#33323A"]},
+ {k:"med",n:"Medieval Age",b:"Castles, cathedrals, universities and the compass.",base:150,c:["#D9C7A4","#2E2312","#EEE3CC","#282016","#E8D9BA","#382E22"]},
+ {k:"ren",n:"Renaissance Age",b:"Print, gunpowder and the open ocean.",base:280,c:["#C8D3D6","#1B2A30","#E4EBEC","#19232A","#D3E0E5","#26323A"]},
+ {k:"ind",n:"Industrial Age",b:"Steam, rail and the factory.",base:480,c:["#B3ADA5","#1C1A18","#D7D3CE","#1A1918","#DCD7D0","#292725"]},
+ {k:"mod",n:"Modern Age",b:"Electricity, oil and powered flight.",base:720,c:["#BFD0E6","#12253F","#DFE8F4","#121E31","#CFE0F7","#1E2C42"]},
+ {k:"ato",n:"Atomic Age",b:"The split atom, rockets and the first computers.",base:1050,c:["#ACB8CF","#0F1A2E","#D3DBE8","#0E1527","#CBD6EA","#1A2338"]},
+ {k:"inf",n:"Information Age",b:"Chips, networks and thinking machines.",base:1500,c:["#A9CFC9","#0E2A27","#D4E8E5","#0F2421","#CDE8E3","#1B3330"]},
+ {k:"spa",n:"Space Age",b:"Orbit, the Moon and the first footsteps on Mars.",base:2100,c:["#10163A","#E4E8FF","#1E2758","#070A1D","#E4E8FF","#141A3D"],dark:true},
+ {k:"fus",n:"Fusion Age",b:"Near-limitless energy and a permanent foothold off Earth.",base:2900,c:["#241446","#EEE4FF","#35245E","#150B2C","#EEE4FF","#24183F"],dark:true},
+ {k:"ipl",n:"Interplanetary Age",b:"The whole solar system becomes your territory.",base:4000,c:["#3A1A12","#FFE6DA","#55291E","#220E09","#FFE6DA","#361912"],dark:true},
+ {k:"ist",n:"Interstellar Age",b:"Starships set out for other suns.",base:5500,c:["#05070F","#DCE6FF","#151B2E","#020308","#DCE6FF","#0E1220"],dark:true},
+ {k:"tra",n:"Transcendent Age",b:"The end of the tree, and a science victory.",base:7500,c:["#120E04","#F6E3A6","#2A2210","#0A0802","#F6E3A6","#1F190A"],dark:true}
+];
+const KINDS = {U:"Unit",B:"Building",W:"Wonder",I:"Improvement",G:"Government",P:"Project",A:"Bonus",V:"Victory"};
+
+// [id, name, era, requires, description, unlocks]
+const T = [
+["toolmaking","Toolmaking","sto",[],"Knapped flint, the root of every tech. Your tribe starts here.",["U:Warrior","U:Scout"]],
+["fire","Fire","sto",["toolmaking"],"Warmth, cooked food and light after dark.",["B:Hearth","A:Settle in Tundra"]],
+["hunting","Hunting","sto",["toolmaking"],"Organised hunts for big game.",["I:Hunting Camp","A:Reveals Deer and Furs"]],
+["foraging","Foraging","sto",["toolmaking"],"Knowing which plants feed you and which kill you.",["I:Forager’s Hut","A:Reveals Wheat and Rice"]],
+["cordage","Cordage","sto",["foraging"],"Twisted fibre for nets, snares and lashings.",["A:+1 Production from Camps"]],
+["tailoring","Tailoring","sto",["hunting","fire"],"Bone needles and fitted furs.",["A:No attrition in Snow and Tundra"]],
+["archery","Archery","sto",["hunting","cordage"],"The first weapon that kills at a distance.",["U:Archer"]],
+["rafting","Rafting","sto",["cordage"],"Logs lashed together reach the next shore.",["U:Raft","A:Embark on coast"]],
+["cave_art","Cave Painting","sto",["fire"],"Ochre handprints and herds on the walls.",["B:Shaman’s Hut","W:Painted Caves"]],
+
+["agriculture","Agriculture","anc",["foraging","fire"],"Planting seed and waiting for harvest. Settled life begins.",["I:Farm","U:Settler"]],
+["husbandry","Animal Husbandry","anc",["agriculture","hunting"],"Herds you own rather than hunt.",["I:Pasture","A:Reveals Horses"]],
+["pottery","Pottery","anc",["fire","agriculture"],"Fired clay to store the surplus.",["B:Granary"]],
+["masonry","Masonry","anc",["toolmaking","agriculture"],"Dressed stone for walls and tombs.",["B:Ancient Walls","I:Quarry","W:Pyramids"]],
+["mining","Mining","anc",["masonry"],"Dig for ore and stone.",["I:Mine","A:Reveals Copper"]],
+["bronze","Bronze Working","anc",["mining","pottery"],"Copper and tin, smelted together in a hot kiln.",["U:Spearman","W:Colossus"]],
+["wheel","The Wheel","anc",["husbandry","pottery"],"Carts, chariots and the potter’s wheel.",["U:War Chariot","I:Road"]],
+["writing","Writing","anc",["pottery"],"Marks on clay that remember for you.",["B:Library"]],
+["sailing","Sailing","anc",["rafting"],"Cloth catches the wind.",["U:Galley","I:Fishing Boats"]],
+["irrigation","Irrigation","anc",["agriculture","masonry"],"Canals carry the river to the field.",["A:+1 Food on irrigated Farms","W:Hanging Gardens"]],
+["mysticism","Mysticism","anc",["cave_art","writing"],"Priests, rituals and sacred sites.",["B:Temple","W:Stonehenge"]],
+["calendar","Calendar","anc",["mysticism","agriculture"],"Read the stars to know when to sow.",["I:Plantation"]],
+
+["iron","Iron Working","cla",["bronze"],"Common ore, hard blades.",["U:Swordsman","A:Reveals Iron"]],
+["horseback","Horseback Riding","cla",["wheel","tailoring"],"Mounted warriors outrun everything.",["U:Horseman","B:Stable"]],
+["alphabet","Alphabet","cla",["writing"],"A few dozen letters anyone can learn.",["A:+1 Science from Libraries"]],
+["currency","Currency","cla",["bronze","writing"],"Coins of guaranteed weight.",["B:Market","A:+1 Trade Route"]],
+["laws","Code of Laws","cla",["writing","currency"],"Rules written down for all to see.",["G:Monarchy","B:Courthouse"]],
+["maths","Mathematics","cla",["alphabet","wheel"],"Numbers for engineers and generals.",["U:Catapult"]],
+["philosophy","Philosophy","cla",["mysticism","alphabet"],"Reason applied to everything.",["G:Republic","W:Great Library","W:Oracle"]],
+["construction","Construction","cla",["masonry","maths"],"Arches, concrete and great walls.",["B:Colosseum","W:Great Wall"]],
+["engineering","Engineering","cla",["construction","irrigation"],"Roads, aqueducts and bridges.",["B:Aqueduct","I:Paved Road"]],
+["drama","Drama and Poetry","cla",["philosophy"],"Stories shared by the whole city.",["B:Amphitheatre","W:Parthenon"]],
+["shipbuilding","Shipbuilding","cla",["sailing","bronze"],"Oared warships and deep-water harbours.",["U:Trireme","B:Harbour","W:Great Lighthouse"]],
+
+["astronomy","Astronomy","med",["maths","calendar"],"Charting the heavens.",["B:Observatory"]],
+["education","Education","med",["philosophy","maths"],"Schools and the first universities.",["B:University"]],
+["theology","Theology","med",["philosophy","drama"],"Organised faith and soaring cathedrals.",["B:Cathedral","W:Hagia Sophia"]],
+["feudalism","Feudalism","med",["laws","horseback"],"Land in exchange for loyalty.",["G:Feudal Monarchy","U:Pikeman","B:Castle"]],
+["steel","Steel","med",["iron","engineering"],"Folded, quenched and tempered.",["U:Longswordsman"]],
+["machinery","Machinery","med",["engineering","archery"],"Gears, cranks and windmills.",["U:Crossbowman","I:Windmill","B:Workshop"]],
+["chivalry","Chivalry","med",["feudalism","steel"],"Armoured knights and codes of honour.",["U:Knight","W:Alhambra"]],
+["compass","Compass","med",["shipbuilding","astronomy"],"A needle that always points north.",["U:Cog","A:+1 Movement for naval units"]],
+["banking","Banking","med",["currency","education"],"Credit, ledgers and lenders.",["B:Bank","W:Forbidden City"]],
+["guilds","Guilds","med",["currency","machinery"],"Craftsmen organise.",["B:Guild Hall","I:Trading Post"]],
+["alchemy","Alchemy","med",["education","mysticism"],"Furnaces, flasks and secret recipes.",["B:Apothecary"]],
+
+["printing","Printing Press","ren",["education","machinery"],"Books for everyone.",["B:Printing House","A:+10% Science"]],
+["gunpowder","Gunpowder","ren",["alchemy","steel"],"Saltpetre, sulphur and charcoal.",["U:Musketman","A:Reveals Saltpetre"]],
+["navigation","Navigation","ren",["compass","astronomy"],"Find your latitude in mid-ocean.",["U:Caravel","A:Cross deep ocean","W:Admiralty"]],
+["physics","Physics","ren",["astronomy","printing"],"Motion and force, in numbers.",["A:+25% Production towards siege units"]],
+["invention","Invention","ren",["printing","machinery"],"Genius on paper.",["W:Leonardo’s Workshop","A:+50% Great Engineer points"]],
+["metallurgy","Metallurgy","ren",["gunpowder","physics"],"Cast iron cannon and bastion forts.",["U:Cannon","B:Star Fort"]],
+["economics","Economics","ren",["banking","navigation"],"Trading companies and joint stock.",["G:Mercantilism","B:Royal Mint"]],
+["sci_method","Scientific Method","ren",["physics","printing"],"Test, publish, repeat.",["B:Academy of Sciences","W:Royal Society"]],
+["architecture","Architecture","ren",["banking","invention"],"Domes, palaces and perspective.",["W:Versailles","W:Taj Mahal"]],
+
+["steam","Steam Power","ind",["physics","invention"],"Coal becomes motion.",["U:Ironclad","A:+1 Production from Mines"]],
+["industrialisation","Industrialisation","ind",["steam","economics"],"The factory system.",["B:Factory","W:Big Ben"]],
+["railways","Railways","ind",["steam","metallurgy"],"Iron roads across the continent.",["I:Railway","B:Railway Station"]],
+["rifling","Rifling","ind",["metallurgy","sci_method"],"Spinning bullets fly true.",["U:Rifleman"]],
+["chemistry","Chemistry","ind",["sci_method","alchemy"],"Elements, compounds and reactions.",["B:Chemical Works","A:+1 Food from Farms"]],
+["medicine","Medicine","ind",["chemistry","sci_method"],"Vaccines, germ theory and sanitation.",["B:Hospital","A:+25% city growth"]],
+["military_science","Military Science","ind",["rifling","economics"],"Staff colleges and doctrine.",["U:Cavalry","B:Military Academy"]],
+["archaeology","Archaeology","ind",["sci_method","architecture"],"Dig up the past and put it on display.",["U:Archaeologist","B:Museum"]],
+
+["electricity","Electricity","mod",["chemistry","steam"],"Power down a wire.",["B:Power Plant","A:Reveals Aluminium"]],
+["refining","Refining","mod",["chemistry","industrialisation"],"Crude oil into fuel.",["I:Oil Well","A:Reveals Oil"]],
+["combustion","Combustion","mod",["refining","railways"],"The internal combustion engine.",["U:Armoured Car","U:Destroyer"]],
+["flight","Flight","mod",["combustion","electricity"],"Powered, controlled, heavier than air.",["U:Biplane","B:Aerodrome"]],
+["radio","Radio","mod",["electricity"],"Voices across the world.",["B:Broadcast Tower","W:Eiffel Tower"]],
+["mass_production","Mass Production","mod",["industrialisation","electricity"],"The assembly line.",["U:Infantry","B:Assembly Plant"]],
+["corporations","Corporations","mod",["industrialisation","economics"],"Companies bigger than countries.",["B:Stock Exchange","W:Statue of Liberty"]],
+["biology","Biology","mod",["medicine","chemistry"],"Evolution, cells and heredity.",["I:Fertilised Farm"]],
+["ballistics","Ballistics","mod",["rifling","mass_production"],"Machine guns and long-range guns.",["U:Machine Gun","U:Artillery"]],
+
+["electronics","Electronics","ato",["radio","electricity"],"Valves, then the transistor.",["B:Electronics Plant","A:+1 Science per University"]],
+["plastics","Plastics","ato",["refining","biology"],"Materials made from oil.",["B:Research Lab"]],
+["atomic_theory","Atomic Theory","ato",["electricity","chemistry"],"The atom has parts.",["A:Reveals Uranium"]],
+["fission","Nuclear Fission","ato",["atomic_theory","electronics"],"Split the atom.",["B:Nuclear Plant","U:Atomic Bomb","W:Manhattan Project"]],
+["rocketry","Rocketry","ato",["ballistics","combustion"],"Liquid-fuelled rockets.",["U:Rocket Artillery","U:Anti-air Missile"]],
+["radar","Radar","ato",["electronics","flight"],"See aircraft before they see you.",["U:Fighter","B:Airport"]],
+["computers","Computers","ato",["electronics","mass_production"],"Machines that calculate.",["W:Bletchley Park","A:+10% Science"]],
+["antibiotics","Antibiotics","ato",["biology","plastics"],"Penicillin and beyond.",["B:Medical Centre","A:Units heal +10 HP per turn"]],
+["combined_arms","Combined Arms","ato",["ballistics","combustion","military_science"],"Tanks, aircraft and infantry together.",["U:Tank","U:Paratrooper"]],
+
+["microchips","Microchips","inf",["computers","plastics"],"A computer on a fingernail.",["A:+1 Science per Research Lab"]],
+["telecoms","Telecommunications","inf",["microchips","radio"],"Mobile networks everywhere.",["B:Cell Tower","A:+1 Trade Route"]],
+["internet","The Internet","inf",["telecoms","computers"],"Every library, everywhere.",["B:Data Centre","W:World Wide Web"]],
+["genetics","Genetic Engineering","inf",["antibiotics","computers"],"Read and rewrite the code of life.",["B:Biotech Lab","I:GM Farm"]],
+["lasers","Lasers","inf",["fission","microchips"],"Coherent light for cutting and guiding.",["U:Guided Missile","U:Missile Cruiser"]],
+["robotics","Robotics","inf",["microchips","combined_arms"],"Machines that build machines.",["U:Modern Armour","B:Automated Factory"]],
+["renewables","Renewable Energy","inf",["plastics","microchips"],"Sun and wind on the grid.",["I:Solar Farm","I:Wind Farm"]],
+["stealth","Stealth","inf",["radar","lasers"],"Invisible to radar.",["U:Stealth Bomber"]],
+["globalisation","Globalisation","inf",["internet","corporations"],"One world economy.",["G:Global Federation","W:United Nations"]],
+["ai","Artificial Intelligence","inf",["internet","robotics"],"Machines that learn.",["B:AI Research Centre","U:Drone Swarm"]],
+
+["satellites","Satellites","spa",["rocketry","microchips"],"Eyes and ears in orbit.",["A:Reveals the whole map","P:Launch Earth Satellite"]],
+["reusable","Reusable Rockets","spa",["satellites","robotics"],"Land the booster, fly it again.",["B:Spaceport","A:−25% space project cost"]],
+["space_station","Orbital Stations","spa",["reusable","renewables"],"Permanent homes in orbit.",["W:International Space Station","P:Orbital Laboratory"]],
+["lunar_base","Lunar Base","spa",["space_station","robotics"],"Back to the Moon, this time to stay.",["P:Lunar Outpost"]],
+["nanotech","Nanotechnology","spa",["microchips","genetics"],"Engineering atom by atom.",["B:Nanofactory","A:+15% Production"]],
+["materials","Advanced Materials","spa",["nanotech","plastics"],"Graphene and metamaterials.",["U:Exosuit Infantry","A:+10 HP for all units"]],
+["quantum","Quantum Computing","spa",["ai","nanotech"],"Problems no classical machine can touch.",["B:Quantum Lab","A:+20% Science"]],
+["asteroid_mining","Asteroid Mining","spa",["lunar_base","ai"],"Metals by the mountain-load.",["P:Capture Asteroid","A:Reveals Platinum"]],
+["mars","Mars Landing","spa",["lunar_base","genetics"],"Footprints on the red planet.",["P:Mars Expedition"]],
+
+["fusion","Fusion Power","fus",["quantum","materials"],"A star in a bottle.",["B:Fusion Reactor"]],
+["space_elevator","Space Elevator","fus",["materials","reusable"],"A cable to geostationary orbit.",["W:Space Elevator","A:−50% space project cost"]],
+["longevity","Longevity Medicine","fus",["genetics","nanotech"],"Ageing becomes treatable.",["B:Regeneration Clinic","A:+2 Amenities in every city"]],
+["arcologies","Arcologies","fus",["materials","renewables"],"Whole cities in a single building.",["B:Arcology"]],
+["orbital_industry","Orbital Industry","fus",["asteroid_mining","space_station"],"Factories in zero gravity.",["B:Orbital Shipyard"]],
+["climate","Climate Engineering","fus",["renewables","ai"],"Repair the atmosphere.",["I:Carbon Scrubber","A:Reverses sea-level rise"]],
+["mars_colony","Mars Colony","fus",["mars","fusion"],"A permanent city on another world.",["P:Found Mars Colony"]],
+["plasma","Plasma Weapons","fus",["fusion","lasers"],"Contained star-stuff, aimed.",["U:Hover Tank","U:Plasma Frigate"]],
+
+["fusion_drive","Fusion Drive","ipl",["fusion","orbital_industry"],"Weeks to Jupiter, not years.",["U:System Cruiser","P:Jovian Survey"]],
+["terraforming","Terraforming","ipl",["mars_colony","climate"],"Thicken the air, warm the planet.",["P:Terraform Mars","I:Terraformed Tile"]],
+["neural","Neural Interface","ipl",["ai","longevity"],"Think it, and it happens.",["B:Neural Hub","A:+50% Great Person points"]],
+["replicators","Self-replicating Machines","ipl",["nanotech","orbital_industry"],"Factories that build factories.",["I:Replicator Foundry"]],
+["solar_array","Orbital Solar Arrays","ipl",["space_elevator","orbital_industry"],"Sunlight harvested above the clouds.",["B:Orbital Solar Array"]],
+["antimatter","Antimatter Production","ipl",["solar_array","quantum"],"The densest fuel there is.",["A:Reveals Antimatter"]],
+["outer_colonies","Outer System Colonies","ipl",["fusion_drive","replicators"],"Settlements on Europa and Titan.",["U:System Colony Ship","P:Titan Outpost"]],
+
+["antimatter_drive","Antimatter Drive","ist",["antimatter","fusion_drive"],"A tenth of the speed of light.",["P:Interstellar Probe"]],
+["suspended","Suspended Animation","ist",["longevity","neural"],"Sleep through the voyage.",["A:Colony ships carry 2 extra population"]],
+["dyson","Dyson Swarm","ist",["solar_array","replicators"],"Wrap the Sun in collectors.",["W:Dyson Swarm"]],
+["quantum_net","Quantum Relay","ist",["quantum","neural"],"Secure links across the stars.",["B:Quantum Relay"]],
+["generation_ship","Generation Ship","ist",["antimatter_drive","suspended","outer_colonies"],"A whole world in a hull.",["P:Build Starship"]],
+["exoplanets","Exoplanet Colonisation","ist",["generation_ship","terraforming"],"A new home around another star.",["P:Found Alpha Centauri Colony"]],
+
+["spacetime","Spacetime Engineering","tra",["antimatter_drive","quantum_net"],"Bend the rules of distance.",["U:Warp Ship"]],
+["uploading","Mind Uploading","tra",["neural","quantum_net"],"Minds freed from bodies.",["A:Population no longer needs Food"]],
+["stellar","Stellar Engineering","tra",["dyson","spacetime"],"Move and mine stars.",["W:Star Lifter"]],
+["matrioshka","Matrioshka Brain","tra",["dyson","uploading"],"A computer the size of a solar system.",["W:Matrioshka Brain"]],
+["galactic","Galactic Network","tra",["spacetime","exoplanets"],"Gateways between worlds.",["P:Wormhole Gate"]],
+["transcendence","Transcendence","tra",["matrioshka","galactic","stellar"],"Your civilisation becomes something new.",["V:Science Victory"]]
+];
+
+// ---------- model ----------
+const byId = {}, kids = {}, eraOf = {}, eraIdx = {};
+ERAS.forEach((e,i) => { eraOf[e.k] = e; eraIdx[e.k] = i; });
+const posInEra = {};
+T.forEach(t => {
+  posInEra[t[2]] = (posInEra[t[2]] || 0) + 1;
+  const base = eraOf[t[2]].base;
+  const cost = Math.round(base * (1 + 0.07 * (posInEra[t[2]] - 1)) / 5) * 5;
+  byId[t[0]] = {id:t[0], name:t[1], era:t[2], req:t[3], desc:t[4], un:t[5], cost};
+  kids[t[0]] = [];
+});
+T.forEach(t => t[3].forEach(p => kids[p].push(t[0])));
+ERAS.forEach(e => {
+  const cs = T.filter(t => t[2] === e.k).map(t => byId[t[0]].cost);
+  e.range = `${Math.min(...cs).toLocaleString("en-GB")}–${Math.max(...cs).toLocaleString("en-GB")} science per tech`;
+});
+function ancestors(id){ const s = new Set(); (function go(n){ byId[n].req.forEach(p => { if(!s.has(p)){ s.add(p); go(p); } }); })(id); return s; }
+function descendants(id){ const s = new Set(); (function go(n){ kids[n].forEach(c => { if(!s.has(c)){ s.add(c); go(c); } }); })(id); return s; }
+const fmt = n => n.toLocaleString("en-GB");
+
+// ---------- state ----------
+const KEY = "techtree-play-v1";
+let play = false, done = new Set();
+try {
+  const s = JSON.parse(localStorage.getItem(KEY) || "null");
+  if (s){ play = !!s.play; done = new Set((s.done || []).filter(id => byId[id])); }
+} catch(e){}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify({play, done:[...done]})); } catch(e){} }
+const avail = id => !done.has(id) && byId[id].req.every(p => done.has(p));
+
+// ---------- render ----------
+const tree = document.getElementById("tree"), svg = document.getElementById("lines");
+const nav = document.getElementById("nav"), sheet = document.getElementById("sheet"), status = document.getElementById("status");
+const els = {};
+const totalCost = T.reduce((s,t) => s + byId[t[0]].cost, 0);
+document.getElementById("intro").textContent =
+  `${T.length} techs across ${ERAS.length} ages, from the first flint tool to a science victory. Each tech has a research cost, the techs it requires, and the units, buildings, wonders and bonuses it unlocks.`;
+
+ERAS.forEach((e, i) => {
+  const c = e.c;
+  const sec = document.createElement("section");
+  sec.className = "era" + (e.dark ? " darkband" : "");
+  sec.id = "era-" + e.k;
+  sec.setAttribute("style", `--bl:${c[0]};--il:${c[1]};--cl:${c[2]};--bd:${c[3]};--id:${c[4]};--cd:${c[5]}`);
+  sec.innerHTML = `<div class="era-inner"><div class="era-head"><span class="era-num">${i+1}</span><h2>${e.n}</h2><p class="era-dates">${e.range}</p><p class="era-blurb">${e.b}</p></div><div class="nodes"></div></div>`;
+  const box = sec.querySelector(".nodes");
+  T.filter(t => t[2] === e.k).forEach(t => {
+    const d = byId[t[0]];
+    const wonder = d.un.some(u => u[0] === "W");
+    const b = document.createElement("button");
+    b.className = "node"; b.type = "button"; b.dataset.id = d.id;
+    b.setAttribute("aria-pressed","false");
+    b.innerHTML = `<span class="n-name"><span class="n-check">✓ </span>${d.name}</span><span class="n-meta"><span>⚗ ${fmt(d.cost)}</span>${wonder ? "<span>★ Wonder</span>" : ""}</span>`;
+    b.addEventListener("click", () => select(cur === d.id ? null : d.id, false));
+    box.appendChild(b); els[d.id] = b;
+  });
+  tree.appendChild(sec);
+
+  const li = document.createElement("li");
+  li.innerHTML = `<a href="#era-${e.k}" data-era="${e.k}" style="--sw:${c[0]}"><span class="dot"></span>${e.n.replace(" Age","")}</a>`;
+  li.querySelector("a").addEventListener("click", ev => {
+    ev.preventDefault();
+    document.getElementById("era-" + e.k).scrollIntoView({behavior: reduce() ? "auto" : "smooth", block:"start"});
+  });
+  nav.appendChild(li);
+});
+const note = document.createElement("p");
+note.className = "note";
+note.textContent = `Costs rise each age, so the full tree takes ${fmt(totalCost)} science. Late ages are speculative by design: fusion, terraforming and starships are game fiction built on plausible science.`;
+tree.after(note);
+
+function reduce(){ return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+
+// ---------- modes ----------
+const mExplore = document.getElementById("m-explore"), mPlay = document.getElementById("m-play");
+function setMode(p){
+  play = p; save();
+  mExplore.setAttribute("aria-pressed", String(!p)); mPlay.setAttribute("aria-pressed", String(p));
+  document.body.classList.toggle("play", p); tree.classList.toggle("play", p);
+  refreshPlay(); if (cur) openSheet(cur);
+}
+mExplore.addEventListener("click", () => setMode(false));
+mPlay.addEventListener("click", () => setMode(true));
+
+function refreshPlay(){
+  Object.values(els).forEach(b => {
+    const id = b.dataset.id;
+    b.classList.toggle("done", play && done.has(id));
+    b.classList.toggle("avail", play && avail(id));
+  });
+  const spent = [...done].reduce((s,id) => s + byId[id].cost, 0);
+  let era = "None yet";
+  if (done.size){ const top = Math.max(...[...done].map(id => eraIdx[byId[id].era])); era = ERAS[top].n; }
+  const win = done.has("transcendence");
+  status.innerHTML = `<span>Researched <b>${done.size}</b> of ${T.length}</span><span>Science spent <b>${fmt(spent)}</b></span><span>${win ? '<span class="win">Science victory</span>' : `Age <b>${era}</b>`}</span><button type="button" class="reset">Reset</button>`;
+  status.querySelector(".reset").addEventListener("click", () => {
+    if (!done.size || confirm("Reset all research?")){ done.clear(); save(); refreshPlay(); if (cur) openSheet(cur); }
+  });
+}
+function research(ids){ ids.forEach(i => done.add(i)); save(); refreshPlay(); openSheet(cur); }
+
+// ---------- selection ----------
+let cur = null, anc = new Set();
+function select(id, fromSheet){
+  cur = id;
+  Object.values(els).forEach(b => { b.classList.remove("anc","unl","sel"); b.setAttribute("aria-pressed","false"); });
+  if (!id){ tree.classList.remove("sel-on"); closeSheet(); draw(); return; }
+  anc = ancestors(id);
+  tree.classList.add("sel-on");
+  anc.forEach(a => els[a].classList.add("anc"));
+  kids[id].forEach(u => els[u].classList.add("unl"));
+  els[id].classList.add("sel"); els[id].setAttribute("aria-pressed","true");
+  openSheet(id);
+  requestAnimationFrame(() => {
+    draw();
+    const r = els[id].getBoundingClientRect();
+    const limit = window.innerHeight - sheet.offsetHeight - 16;
+    if (fromSheet || r.bottom > limit || r.top < 120){
+      const y = window.scrollY + r.top - Math.max(130, (limit - r.height) / 2);
+      window.scrollTo({top: y, behavior: reduce() ? "auto" : "smooth"});
+    }
+  });
+}
+function linkList(ids, cls){
+  if (!ids.length) return null;
+  return ids.map(i => `<button type="button" class="s-link ${cls}" data-go="${i}">${play && done.has(i) ? "✓ " : ""}${byId[i].name}</button>`).join("");
+}
+function openSheet(id){
+  const t = byId[id], e = eraOf[t.era];
+  const path = [...anc, id];
+  const pathCost = path.reduce((s,i) => s + byId[i].cost, 0);
+  const desc = descendants(id).size;
+  const unlocks = t.un.map(u => { const k = u[0], name = u.slice(2); return `<li><span class="kind" style="--k:var(--k${k})">${KINDS[k]}</span><span>${name}</span></li>`; }).join("");
+  let actions = "";
+  if (play){
+    if (done.has(id)) actions = `<div class="s-actions"><span class="done-flag">✓ Researched</span></div>`;
+    else if (avail(id)) actions = `<div class="s-actions"><button type="button" class="btn primary" data-act="one">Research for ${fmt(t.cost)} science</button></div>`;
+    else {
+      const todo = path.filter(i => !done.has(i));
+      const c = todo.reduce((s,i) => s + byId[i].cost, 0);
+      actions = `<div class="s-actions"><button type="button" class="btn ghost" data-act="path">Research path: ${todo.length} techs, ${fmt(c)} science</button></div>`;
+    }
+  }
+  const victory = play && id === "transcendence" && done.has(id) ? `<p class="victory">Science victory. Your civilisation has transcended.</p>` : "";
+  const needs = linkList(t.req, "a"), leads = linkList(kids[id], "u");
+  sheet.innerHTML = `
+    <div class="s-top"><p class="s-era">${e.n}</p><button type="button" class="s-close">Close</button></div>
+    <h3>${t.name}</h3>
+    <p class="s-cost">⚗ ${fmt(t.cost)} science</p>
+    ${victory}${actions}
+    <p class="s-desc">${t.desc}</p>
+    <div class="s-group"><h4>Unlocks</h4><ul class="unlocks">${unlocks}</ul></div>
+    <p class="s-stats">${t.req.length ? `Reaching it from scratch takes ${path.length} techs and ${fmt(pathCost)} science.` : "Your starting tech."} ${desc ? `${desc} later techs depend on it.` : "Nothing later depends on it."}</p>
+    <div class="s-group"><h4>Requires</h4>${needs ? `<div class="s-links">${needs}</div>` : `<p class="s-none">Nothing. Every game starts here.</p>`}</div>
+    <div class="s-group"><h4>Leads to</h4>${leads ? `<div class="s-links">${leads}</div>` : `<p class="s-none">The end of the tree.</p>`}</div>`;
+  sheet.querySelector(".s-close").addEventListener("click", () => { const last = cur; select(null); if (last) els[last].focus(); });
+  sheet.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => select(b.dataset.go, true)));
+  const one = sheet.querySelector('[data-act="one"]'); if (one) one.addEventListener("click", () => research([id]));
+  const pth = sheet.querySelector('[data-act="path"]'); if (pth) pth.addEventListener("click", () => research(path));
+  sheet.classList.add("open"); sheet.setAttribute("aria-hidden","false");
+  document.body.classList.add("sheet-open");
+}
+function closeSheet(){ sheet.classList.remove("open"); sheet.setAttribute("aria-hidden","true"); document.body.classList.remove("sheet-open"); }
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && cur){ const last = cur; select(null); els[last].focus(); } });
+
+// ---------- lines ----------
+function box(id, tr){
+  const r = els[id].getBoundingClientRect();
+  return {l:r.left-tr.left, r:r.right-tr.left, t:r.top-tr.top, b:r.bottom-tr.top, cx:(r.left+r.right)/2-tr.left, cy:(r.top+r.bottom)/2-tr.top};
+}
+function pathFor(a, b){
+  if (a.b <= b.t + 2){ const dy = Math.max(18, (b.t - a.b) * 0.5); return `M${a.cx},${a.b} C${a.cx},${a.b+dy} ${b.cx},${b.t-dy} ${b.cx},${b.t}`; }
+  if (b.b <= a.t + 2){ const dy = Math.max(18, (a.t - b.b) * 0.5); return `M${a.cx},${a.t} C${a.cx},${a.t-dy} ${b.cx},${b.b+dy} ${b.cx},${b.b}`; }
+  const right = a.cx < b.cx, x1 = right ? a.r : a.l, x2 = right ? b.l : b.r;
+  const dx = Math.max(14, Math.abs(x2 - x1) / 2) * (right ? 1 : -1);
+  return `M${x1},${a.cy} C${x1+dx},${a.cy} ${x2-dx},${b.cy} ${x2},${b.cy}`;
+}
+function draw(){
+  const w = tree.offsetWidth, h = tree.offsetHeight;
+  svg.setAttribute("width", w); svg.setAttribute("height", h); svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  if (!cur){ svg.innerHTML = ""; return; }
+  const tr = tree.getBoundingClientRect(), boxes = {};
+  const B = id => boxes[id] || (boxes[id] = box(id, tr));
+  const edges = [];
+  [...anc, cur].forEach(n => byId[n].req.forEach(p => { if (anc.has(p)) edges.push([p, n, "a"]); }));
+  kids[cur].forEach(u => edges.push([cur, u, "u"]));
+  let halo = "", main = "";
+  edges.forEach(([p, n, c]) => { const d = pathFor(B(p), B(n)); halo += `<path class="h" d="${d}"/>`; main += `<path class="${c}" d="${d}"/>`; });
+  svg.innerHTML = halo + main;
+}
+let raf = 0;
+window.addEventListener("resize", () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+
+// ---------- active era ----------
+if ("IntersectionObserver" in window){
+  const links = {}; nav.querySelectorAll("a").forEach(a => links[a.dataset.era] = a);
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (en.isIntersecting){
+        Object.values(links).forEach(a => a.classList.remove("on"));
+        const a = links[en.target.id.slice(4)]; a.classList.add("on");
+        nav.scrollTo({left: a.parentElement.offsetLeft - 16});
+      }
+    });
+  }, {rootMargin:"-45% 0px -50% 0px"});
+  document.querySelectorAll(".era").forEach(s => io.observe(s));
+}
+setMode(play);
+draw();
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
-# Paradigm Realm — Foundation Alpha 0.4
+# Paradigm Realm — Foundation Alpha 0.5
 
-This is an updated Unity project based on the previous Paradigm-Realm-Unity.zip (version 5). It preserves the existing opening menu, civilisation naming, drag movement, persistent orders, first contact, procedural pixel artwork and connected roads.
+This is an updated Unity project based on the previous Paradigm-Realm-Unity.zip (version 5). It preserves the existing opening menu, civilisation naming, drag movement, persistent orders, first contact, connected roads and placeholder unit artwork. Terrain now uses your supplied textures.
 
 **This is not the completed 36-system game.** All 36 design topics are incorporated into Design/MASTER-DESIGN.md. This release implements a broader Earth foundation and labels remaining features in Design/IMPLEMENTATION-STATUS.md.
 
@@ -14,7 +14,9 @@ This is an updated Unity project based on the previous Paradigm-Realm-Unity.zip 
 
 ## Update an existing copy
 
-Stop Play mode and back up the project first. Copy the entire **Assets/Scripts** folder and **Assets/Editor** folder from this ZIP into the existing project, replacing matching files. World.cs, RealmGame.cs, FoundationUI.cs, InterfaceV4.cs and FoundationChecks.cs work together. InterfaceV4.cs and its .meta file are new and must be copied. Do not copy only RealmGame.cs. Copy Design and README if you want the specification alongside your project. Keep your existing ProjectSettings and Packages when updating a working project.
+Stop Play mode. Copy the **Scripts**, **Editor** and **Resources** folders from the downloaded project's **Assets** folder into your existing project's **Assets** folder. Merge folders and replace matching files. Copy all three: Resources contains the textures; Scripts includes the new content and research files. Do not paste inside the old Scripts folder. Keep your existing ProjectSettings and Packages. See UPDATE-INSTRUCTIONS.txt for the exact sequence.
+
+Start a **New Game** to generate the new terrain types. Existing saves load with refreshed artwork but retain their original geography. Version 5 upgrades versions 1–4; keep a backup if you need to return to older code.
 
 ## Controls
 
@@ -38,7 +40,7 @@ Stop Play mode and back up the project first. Copy the entire **Assets/Scripts**
 
 ## New working foundation systems
 
-- Twelve technologies; independent progress retained when switching research.
+- 124 technologies across 14 eras, with original prerequisite links, descriptions, unlock descriptions and research costs; independent progress retained when switching research. Active effects and planned content are explicitly separated.
 - Eleven unit types, including spearman, horseman, catapult and medic.
 - Nine city buildings with gameplay effects.
 - Separate simultaneous unit and building queues; focus-based tile assignment, city growth and happiness.
@@ -47,13 +49,13 @@ Stop Play mode and back up the project first. Copy the entire **Assets/Scripts**
 - Improved resources connected to the capital via owned roads; trade income for connected cities.
 - Tax policy, unit/city/building upkeep, treasury forecasts and unpaid-upkeep combat penalties.
 - Limited tile stacking, fortification, ranged fire, promotions and paid upgrades.
-- Four-turn occupation penalties after capture; conquest victory and defeat.
+- Four-turn occupation penalties after capture; conquest, Transcendence science victory and defeat.
 - AI research, legal recruitment, upkeep, settlement and land development.
 - Last-seen player map snapshots and hidden enemy units.
 - Custom civilisation/city names, symbolic flags, traits, map preset, seed and speed.
-- Shared calendar, manual backup saves, three rotating autosaves and v1/v2 migration.
+- Shared calendar, manual backup saves, three rotating autosaves and migration from saves v1–4.
 
-Resource icons and new units use placeholder procedural art. Naval transport, aircraft, active portals, advanced diplomacy, national stability, interactive tutorials and additional victories remain planned. Map size and civilisation count remain fixed. See status document for details.
+Resource icons and new units use placeholder procedural art. Naval transport, aircraft, active portals, advanced diplomacy, national stability, interactive tutorials and diplomatic/realm victories remain planned. Map size and civilisation count remain fixed. See status document for details.
 
 ## Save files
 
@@ -80,4 +82,21 @@ Units and buildings have separate production lines. **Each receives the city's f
 - Ctrl+right-click inside either production line: remove its last waiting project. If none are waiting, cancel its active project.
 - Only one copy of each building type can be present in a city; duplicate active/queued buildings are blocked. Different building types can coexist.
 
-Save format 4 migrates versions 1–3. Old mixed queues split into unit and building lines while retaining each category's order and the old active project's progress. Keep the older save backup if you need to return to Alpha 0.3.
+Save format 5 migrates versions 1–4. Old mixed queues split into unit and building lines while retaining each category's order and the old active project's progress. Keep the older save backup if you need to return to Alpha 0.3.
+
+
+## Attached terrain and technology content (Alpha 0.5)
+
+All 21 distinct images from the texture archive are integrated into map and city rendering. Two duplicate images were omitted. Runtime textures are 128×128 PNGs sampled with nearest-neighbour scaling, point-filtered, without mipmaps or lossy compression. Original upload filenames and SHA-256 hashes are recorded in Design/TEXTURE-MANIFEST.json. The uploaded archive remains the full-resolution source.
+
+Terrain includes the six original types plus lakes, rivers, tundra, bogs, desolate wasteland, jungle, coral reefs, arctic forest, ice sheets, glaciers, savanna, volcanic terrain, rocky coast and mangroves/steppe. Climate bands and seeded patches place the new biomes. Rivers use short north–south segments matching the supplied art. Shoreline art is fixed-orientation; autotiling, seamless river junctions and directional shores remain future work. The starting areas retain guaranteed land access.
+
+The supplied HTML is preserved at Design/From-flint-to-the-stars.html. TechnologyCatalog.cs contains its complete 124-node dependency graph, 14 eras, descriptions, unlock text and original cost formula. Game-speed multipliers still apply. The Research screen has era shortcuts, inspectable cards, highlighted prerequisite/successor connections, navigation buttons and retained per-technology progress. New games begin researching Toolmaking; the starting settler and warrior are bootstrap units. Training later settlers requires Agriculture.
+
+Existing unit/building/job unlocks now follow the imported tree where matching content exists: Pottery → Granary; Masonry → Walls; Horseback Riding → Horseman; Chivalry → Knight; Rifling → Rifleman; Mathematics → Catapult; The Wheel → roads; Mining → mines. Existing Workshop/Barracks/Gardens/Medic bonuses remain foundation additions and appear in Active game effects.
+
+Additional active effects: Fire allows cold settlement; Alphabet adds library science; Irrigation adds river-adjacent farm food; Chemistry adds farm food; Steam adds mine production; Printing/Computers/Quantum add science percentages; Nanotechnology adds production; Satellites reveal the map; Longevity adds happiness; Mind Uploading removes population food consumption; Transcendence wins a science victory. Percentage yields round down to whole numbers.
+
+**Importing the tree does not implement every listed future unit, wonder, building, improvement, government or space project.** Their original descriptions are preserved in the detail panel, alongside an explicit distinction from playable effects. All technologies can be researched, and prerequisite-only technologies advance towards later discoveries. The game still plays on Earth; other worlds and spacecraft remain planned.
+
+Older saves keep their maps, discoveries, queues and stored research progress. Migration adds prerequisites for older discoveries, preserves previously unlocked military/building options and grants The Wheel so existing road workers remain usable. Research whose new prerequisites are still missing is stored until it becomes available. The new tree's long-term pacing needs human playtesting.

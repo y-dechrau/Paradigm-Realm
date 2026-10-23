@@ -1,0 +1,149 @@
+[
+  {
+    "terrain": 0,
+    "name": "Grassland",
+    "source": "Textures - Copy/Seamless 16-Bit Grassland Tile.png",
+    "source_sha256": "7556928ba2dd394c408d8b3acf2fa3b000c288842d5d3eef44053a1c98f925f5",
+    "runtime": "terrain-00.png"
+  },
+  {
+    "terrain": 1,
+    "name": "Forest",
+    "source": "Textures - Copy/Olive woodland pixel mosaic-11.png",
+    "source_sha256": "555bc064e8747babcc9afba0de51b1bd0c712a9700b62e3c63708bc671673667",
+    "runtime": "terrain-01.png"
+  },
+  {
+    "terrain": 2,
+    "name": "Hills",
+    "source": "Textures - Copy/Rolling Olive Pixel Hills-1.png",
+    "source_sha256": "9d66124870a2c1ebe1bd09d5291c56104233a9248e03a9314ac097197606cc0e",
+    "runtime": "terrain-02.png"
+  },
+  {
+    "terrain": 3,
+    "name": "Desert",
+    "source": "Textures - Copy/16-bit golden sand dunes-2.png",
+    "source_sha256": "ef04a3f815aa63e81d5edca9949fc5f3301121dae4295f51cef914e0b783f1ab",
+    "runtime": "terrain-03.png"
+  },
+  {
+    "terrain": 4,
+    "name": "Ocean",
+    "source": "Textures - Copy/Deep Ocean Pixel Waves-1.png",
+    "source_sha256": "f0b7abc5e3f783b3a743cc5ed86d8f4ce55c0da921aa479b02440de318affd24",
+    "runtime": "terrain-04.png"
+  },
+  {
+    "terrain": 5,
+    "name": "Mountains",
+    "source": "Textures - Copy/16-bit Mountain Ridges with Snow-2.png",
+    "source_sha256": "20501711e70b8f6acab26c97e33e1a20dcbd28ac50b2e881c7cbcf3fe7c10f2e",
+    "runtime": "terrain-05.png"
+  },
+  {
+    "terrain": 6,
+    "name": "Lake",
+    "source": "Textures - Copy/16-Bit Lake with Grassy Shores-4.png",
+    "source_sha256": "af1059ffeaa049d6228caf6ebd0c89f038a1f4aefcee2f8a646d84f4f7c5932a",
+    "runtime": "terrain-06.png"
+  },
+  {
+    "terrain": 7,
+    "name": "River",
+    "source": "Textures - Copy/Winding River Through Pixel Grassland-3.png",
+    "source_sha256": "ec41954dc51e941a3475ca25a8ef8e398f82af20499bd4d89131bd6d84db5e22",
+    "runtime": "terrain-07.png"
+  },
+  {
+    "terrain": 8,
+    "name": "Arctic tundra",
+    "source": "Textures - Copy/16-bit patchy Arctic tundra-10.png",
+    "source_sha256": "3c6d16bec549c0eeaa0aed8fb41dbf7a6286719ff404daa5bfd9c6219fcfa334",
+    "runtime": "terrain-08.png"
+  },
+  {
+    "terrain": 9,
+    "name": "Bog",
+    "source": "Textures - Copy/Olive Peat Bog with Mossy Pools-3.png",
+    "source_sha256": "167ca8a68eca9d591b7d2e916ec32e5c3bea59b188bd8ddf9ed4f2e19f3fd5b2",
+    "runtime": "terrain-09.png"
+  },
+  {
+    "terrain": 10,
+    "name": "Desolate wasteland",
+    "source": "Textures - Copy/Cracked Ash Wasteland-4.png",
+    "source_sha256": "eeaf66d75324cf7037dbfcb55b5995b97e7436536ae59100c43337a5927387d1",
+    "runtime": "terrain-10.png"
+  },
+  {
+    "terrain": 11,
+    "name": "Jungle",
+    "source": "Textures - Copy/Emerald Jungle Canopy Texture-5.png",
+    "source_sha256": "2c6623d3815cb9177af9f8156e89e366d32a5df34da93222c56c98c6191a0218",
+    "runtime": "terrain-11.png"
+  },
+  {
+    "terrain": 12,
+    "name": "Coral reef",
+    "source": "Textures - Copy/16-Bit Coral Reef Waters-12.png",
+    "source_sha256": "e195fe0f70d812d1d173e6d61a336854d17d5949b7bc0497ca21a34b176c3f8d",
+    "runtime": "terrain-12.png"
+  },
+  {
+    "terrain": 13,
+    "name": "Arctic forest",
+    "source": "Textures - Copy/Snowy Boreal Forest Texture-13.png",
+    "source_sha256": "40e413a1572fd16ca90b6fb16d911a01213271a7eb38eb17954b0511026346ee",
+    "runtime": "terrain-13.png"
+  },
+  {
+    "terrain": 14,
+    "name": "Ice sheet",
+    "source": "Textures - Copy/Cracked Polar Ice Sheet-14.png",
+    "source_sha256": "8eb3b4dc27c4c76c7f4eb92d7958f9caf1807e53ed5e329522810b3305feb286",
+    "runtime": "terrain-14.png"
+  },
+  {
+    "terrain": 15,
+    "name": "Glacier",
+    "source": "Textures - Copy/Glacial flow and cyan crevasses-15.png",
+    "source_sha256": "cf9582a2d20daa6ef25b71e7e8986dfd5ba59097e89012db80bb6e86170d7250",
+    "runtime": "terrain-15.png"
+  },
+  {
+    "terrain": 16,
+    "name": "Savanna",
+    "source": "Textures - Copy/16-bit Savanna Grassland with Acacia Trees-17.png",
+    "source_sha256": "6ddfeaa3f7e1f3c372f1fac3c14386c8501f9a0705ba8da84cc0fc1f606957d0",
+    "runtime": "terrain-16.png"
+  },
+  {
+    "terrain": 17,
+    "name": "Volcanic terrain",
+    "source": "Textures - Copy/Pixel volcanic ground with glowing fissures-16.png",
+    "source_sha256": "7fe5b01fd3d66ae15939c5da9ff59aa78871238628edad75dae0c1205498fce1",
+    "runtime": "terrain-17.png"
+  },
+  {
+    "terrain": 18,
+    "name": "Rocky coastline",
+    "source": "Textures - Copy/16-Bit Rocky Coastline Terrain-18.png",
+    "source_sha256": "d3920be3519d0dac21b4b8e65d6082bf06987b96092e9e5935186079ee86db96",
+    "runtime": "terrain-18.png"
+  },
+  {
+    "terrain": 19,
+    "name": "Mangrove",
+    "source": "Textures - Copy/16-Bit Mangrove Wetland Texture-19.png",
+    "source_sha256": "90ec9b972601f3dacfbe88ba9456b847a9d8ce3b02c18e4fba079008b33bb789",
+    "runtime": "terrain-19.png"
+  },
+  {
+    "terrain": 20,
+    "name": "Dry steppe",
+    "source": "Textures - Copy/16-Bit Dry Steppe Terrain-20.png",
+    "source_sha256": "769d1f05ca9ea7562f0d4e6267b3c33493fa3245d1d27cda1931df712018e5a3",
+    "runtime": "terrain-20.png"
+  }
+]

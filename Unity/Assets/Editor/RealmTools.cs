@@ -25,8 +25,8 @@ public static class RealmTools
         FoundationChecks.Run();
         var world=World.New(42,"Round trip");world.Found(world.units.First(u=>u.owner==0&&u.type==0));
         world.nations[0].tax=2;world.EndTurn();
-        var worker=world.units.First(u=>u.owner==0&&u.type==1);worker.moves=4;world.Add(0,1,worker.x,worker.y);world.GroupWorkers(worker);world.StartJob(worker,1);
-        var city=world.cities.First(c=>c.owner==0);world.tech[0]=true;world.ChooseProject(city,1,false);world.QueueBuild(city,1);world.ChooseProject(city,7,false);world.Produce(city,3);
+        var worker=world.units.First(u=>u.owner==0&&u.type==1);worker.moves=4;world.Add(0,1,worker.x,worker.y);world.GroupWorkers(worker);world.tech[TechnologyCatalog.Index("wheel")]=true;world.StartJob(worker,1);
+        var city=world.cities.First(c=>c.owner==0);world.tech[0]=true;world.tech[TechnologyCatalog.Index("pottery")]=true;world.ChooseProject(city,1,false);world.QueueBuild(city,1);world.ChooseProject(city,7,false);world.Produce(city,3);
         var json=JsonUtility.ToJson(world);
         var loaded=JsonUtility.FromJson<World>(json);loaded.UpgradeSave();
         Require(loaded.Valid(),"save round trip validity");

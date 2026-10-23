@@ -7,7 +7,7 @@ namespace ParadigmRealm
     public static class FoundationChecks
     {
         static void Require(bool condition,string message){if(!condition)throw new Exception("FAIL: "+message);}
-        static World Flat(){var w=World.New(73);foreach(var t in w.tiles){t.terrain=0;t.road=false;t.resource=0;t.seen=true;for(int n=0;n<3;n++)w.nations[n].known[t.y*World.Width+t.x]=true;}return w;}
+        static World Flat(){var w=World.New(73);foreach(string id in new[]{"toolmaking","wheel","pottery"})w.tech[TechnologyCatalog.Index(id)]=true;foreach(var t in w.tiles){t.terrain=0;t.road=false;t.resource=0;t.seen=true;for(int n=0;n<3;n++)w.nations[n].known[t.y*World.Width+t.x]=true;}return w;}
         public static void Run()
         {
             var w=Flat();Require(w.Valid(),"new state validates");
@@ -24,7 +24,7 @@ namespace ParadigmRealm
             c.pop=8;w.nations[0].tax=0;int low=w.Happiness(c),lowTax=w.Budget(0)[0];w.nations[0].tax=2;Require(w.Happiness(c)==low-4&&w.Budget(0)[0]>lowTax,"taxes trade happiness for revenue");
             u.experience=5;Require(w.Promote(u)&&u.promotion==1&&u.experience==0,"promotion consumes experience");
             var neutral=w.Add(1,2,u.x,u.y+1);w.Reveal();u.moves=World.Moves[u.type];Require(!w.Move(u,neutral.x,neutral.y),"peace blocks combat");Require(w.SetWar(1,true),"contact enables declaration");Require(w.Move(u,neutral.x,neutral.y)&&neutral.hp<10,"war enables combat");
-            var research=World.New(81);research.science=12;research.SelectResearch(1);research.science=7;research.SelectResearch(0);Require(research.science==12&&research.nations[0].progress[1]==7,"switching preserves individual research progress");
+            var research=World.New(81);research.tech[TechnologyCatalog.Index("toolmaking")]=true;int fire=TechnologyCatalog.Index("fire"),hunting=TechnologyCatalog.Index("hunting");research.SelectResearch(fire);research.science=12;research.SelectResearch(hunting);research.science=7;research.SelectResearch(fire);Require(research.science==12&&research.nations[0].progress[hunting]==7,"switching preserves individual research progress");
             var campaign=World.New(91);campaign.Found(campaign.units.First(a=>a.owner==0&&a.type==0));
             for(int i=0;i<45&&campaign.result=="";i++){campaign.EndTurn();Require(campaign.Valid(),"campaign state valid after turn "+campaign.turn);}
             campaign.units[0].type=99;Require(!campaign.Valid(),"malformed unit rejected");
@@ -61,12 +61,13 @@ namespace ParadigmRealm
             dual.ChooseProject(dc,2,false);for(int i=0;i<2;i++)dual.Add(0,2,dc.x,dc.y);dc.production=dual.Cost(2);dc.buildingProduction=dual.Cost(8);dual.Produce(dc,1);
             Require(dc.build==2&&dc.library,"blocked unit stack does not block building construction");
             var old=Flat();var oc=old.Found(old.units.First(v=>v.owner==0&&v.type==0));old.version=3;oc.build=8;oc.production=17;oc.queue=new System.Collections.Generic.List<int>{1,7,1,9};old.UpgradeSave();
-            Require(old.version==4&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
+            Require(old.version==5&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
             old.UpgradeSave();Require(oc.buildingProduction==17&&oc.queue.Count==1,"migration is idempotent");
             var upgrade=Flat();var uc=upgrade.Found(upgrade.units.First(v=>v.owner==0&&v.type==0));var troop=upgrade.units.First(v=>v.owner==0&&v.type==2);upgrade.tech[6]=true;upgrade.gold=100;
             Require(!upgrade.Upgrade(troop),"owned territory alone does not permit upgrades");troop.x=uc.x;troop.y=uc.y;Require(upgrade.Upgrade(troop)&&troop.type==7,"owned city permits eligible upgrade");
             var other=upgrade.units.First(v=>v.owner==0&&v.type==1);int otherMoves=other.moves;upgrade.SkipTurn(troop);Require(troop.moves==0&&other.moves==otherMoves,"skip affects only selected unit");
             Require(World.StackLabel(new[]{new Unit{type=1}})=="Worker"&&World.StackLabel(new[]{new Unit{type=1},new Unit{type=1}})=="Stack"&&World.StackLabel(new[]{new Unit{type=1},new Unit{type=2}})=="","unit label rules");
+            ContentChecks.Run();
             var victory=World.New(22);victory.units.RemoveAll(a=>a.owner>0);victory.cities.RemoveAll(a=>a.owner>0);victory.CheckVictory();Require(victory.result.StartsWith("Conquest"),"conquest detected");
             var defeat=World.New(23);defeat.units.RemoveAll(a=>a.owner==0);defeat.CheckVictory();Require(defeat.result.Contains("fallen"),"defeat detected");
         }

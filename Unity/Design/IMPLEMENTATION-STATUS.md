@@ -1,4 +1,4 @@
-# Implementation coverage — Foundation Alpha 0.4
+# Implementation coverage — Foundation Alpha 0.5
 
 "Implemented" below means code exists with engine regression checks where applicable, not that the Unity user experience has been playtested. No full-game completion claim is made.
 
@@ -6,23 +6,23 @@
 |---|---|---|
 | 1 Setting | Grounded Earth | Speculative-era content and final magic/physics decision |
 | 2 Realms | Full design recorded | World identifiers, portal simulation, other maps |
-| 3 Maps | Seeded continents and landmass presets | Layered terrain, rivers, archipelago, realistic Earth |
+| 3 Maps | 21 textured terrain types, seeded climate bands, rivers and lakes | Layered terrain, directional shoreline autotiling, archipelago, realistic Earth |
 | 4 Navigation | Pan, pointer-centred wheel zoom, zoom buttons, selection and worker-team orders | Minimap, route preview, military group navigation |
 | 5 Cities | Dedicated city screen with enlarged tile yields, icon building list, separate unit/building queues, population, food and focus | Manual locks, specialists, project-specific suspended progress |
 | 6 Resources | Wheat, iron, gold, horses, spices; resource prerequisites | Material inventories, fuel, wider resource roster |
 | 7 Economy | Taxes, upkeep, treasury, deficits, connected-city income | Foreign sales, city budget screen, escalating bankruptcy |
 | 8 Units | Eleven land units | Ships, aircraft, spies, diplomats, advanced support |
-| 9 Movement | Costs, roads, persistent orders, unknown-terrain assumptions | Rivers, bridges, zones of control, advanced routing |
+| 9 Movement | Terrain-specific costs (including rivers), roads, persistent orders, unknown-terrain assumptions | Bridges, zones of control, advanced routing |
 | 10 Stacking | Three military plus one non-worker civilian/support; unlimited workers; worker grouping | Military groups, ships, amphibious landings |
 | 11 Buildings | Nine functional buildings | Full building tree, ports, power, mothballing |
 | 12 Infrastructure | Shared worker jobs, roads beyond borders at extra cost, farms/pastures, mines, forts, pillaging | Rail, watchtowers, airfields, depots, clearing, repairs with retained progress |
 | 13 Territory | Ownership, age-based growth, border permission | Contested borders, cultural influence, formal withdrawal timers |
 | 14 Networks | Capital road network and resource disconnection | Local independent supply networks, rivers, ports, contracts |
-| 15 Research | Twelve technologies in a connected card tree with icons/benefits; per-tech progress | Full historical/future tree, distant-tech path preview |
-| 16 Unlock effects | Units, buildings, jobs, upgrades, electricity science | Power/fuel dependencies, resource discoveries |
+| 15 Research | 124 imported technologies across 14 eras, prerequisite graph, era navigation, descriptions, per-tech progress | Research queues and full future unlock implementation |
+| 16 Unlock effects | Existing units/buildings/jobs, science/food/production modifiers, map reveal, cold settlement, food-free population | Full imported unlock roster, power/fuel dependencies, resource discoveries |
 | 17 Diplomacy | Contact, confirmed war, auto-accepted peace/open borders | Negotiations, attitudes, alliances, truces, AI war strategy |
 | 18 Capture | Occupation, population loss, wall damage, cleared queue | Return, liberation, razing, garrison integration |
-| 19 Victory | Conquest and defeat | Science, diplomacy, realm, score, sandbox continuation |
+| 19 Victory | Conquest, Transcendence science victory and defeat | Diplomacy, realm, score, sandbox continuation |
 | 20 Happiness | Local modifiers, output/growth penalties | National stability, war weariness, revolt, autonomy |
 | 21 Identity | Name, city names, symbolic flag, fixed trait | Premade historical roster, leaders, imported flags, reforms |
 | 22 Experience | Three strength ranks and two upgrade chains restricted to owned city tiles | Branching promotions, non-combat XP, unit histories |
@@ -30,7 +30,7 @@
 | 24 Time | Shared calendar; research/construction speed | Era-specific presentation and growth speed balancing |
 | 25 Accessibility | Top game-details bar, selection sidebar, activity/ETA tooltips, main-menu Load, keyboard controls, Escape menu, quick/named saves and settings | Font scale, rebinding, colour-independent full interface |
 | 26 Balance | Provisional numbers and regression checks | Human campaigns and broader balancing |
-| 27 Graphics | Procedural pixel art, ownership tint, markers | Finished sprites, era cities, animation and audio |
+| 27 Graphics | 21 imported terrain textures, procedural unit art, ownership tint, markers | Terrain transition tiles, finished sprites, era cities, animation and audio |
 | 28 Tutorial | Revised help panel and status messages | Interactive tutorial scenario and searchable guide |
 | 29 Turns | Ordered processing and re-entrancy guard | Asynchronous AI progress UI and double-click debounce |
 | 30 Combat | Deterministic melee/ranged, defence, counters and healing | Damage preview, detailed LOS and advanced combat |
@@ -76,3 +76,13 @@ Validation: engine checks passed; runtime scripts compiled and simulated UI/inpu
 - Version-4 saves migrate prior mixed queues, preserving active progress and order within each new line. Worker groups remain supported.
 
 Validation: engine regression checks, runtime compilation and simulated input/drawing/save checks passed with Unity API doubles. These are not Unity editor rendering or real JsonUtility tests; in-editor checks remain required.
+
+
+## Alpha 0.5 — attached terrain and full research tree
+
+- All 21 distinct textures are runtime assets in Assets/Resources/Terrain. Duplicate ocean/jungle images are omitted. New games generate the added biomes; old maps are not regenerated. Resource textures load for both map and city inset.
+- All 124 technologies, 14 eras, dependencies, costs, descriptions and source unlock labels are imported. Research screen distinguishes active effects from planned unlocks. Every node is researchable when its prerequisites are met.
+- Existing content is gated by the matching technology. Additional working modifiers and science victory are described in README. No ships, aircraft, governments, wonders or space-world simulation are claimed implemented by this import.
+- Save version 5 expands technology arrays, preserves old progress and queues, restores prerequisites and grandfathered unlocks. Existing map terrain IDs 0–5 retain their meanings.
+- Original HTML preserved under Design; texture provenance under Design/TEXTURE-MANIFEST.json.
+- Engine regression checks and simulated UI/input/save checks passed outside Unity. Actual Unity rendering, asset import and JsonUtility remain to be verified in the editor.

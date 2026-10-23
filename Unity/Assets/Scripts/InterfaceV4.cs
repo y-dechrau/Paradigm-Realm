@@ -10,7 +10,7 @@ namespace ParadigmRealm
         bool loadScreen,researchScreen;
         string detailsScreen="",loadError="";
         Vector2 loadScroll,researchScroll,detailsScroll,cityMapScroll,builtScroll,unitQueueScroll,buildingQueueScroll;
-        GUIStyle tileLabel,cardTitle;
+        GUIStyle tileLabel;
         void OpenLoadScreen(){loadScreen=true;loadError="";loadScroll=Vector2.zero;ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
         void DrawLoadScreen()
         {
@@ -139,38 +139,7 @@ namespace ParadigmRealm
             for(int i=0;i<queue.Count;i++)GUI.Label(new Rect(5,qy+28+i*26,area.width-40,25),(i+1)+". "+World.BuildName(queue[i]),body);
             GUI.EndScrollView();if(building)buildingQueueScroll=scroll;else unitQueueScroll=scroll;
         }
-        static readonly string[] TechBenefits={
-            "• Farms and pastures\n• Granary and Gardens", "• Train Archers", "• Library (+4 science)",
-            "• Knights and Walls\n• Worker forts", "• Train Riflemen", "• +3 science per city",
-            "• Spearmen and mines\n• Workshop and Barracks", "• Train Horsemen", "• Train Catapults",
-            "• Medics and Hospital", "• Market (+3 gold)", "• Courthouse (lower upkeep)"};
-        static readonly int[] TechColumns={0,0,1,2,3,4,0,1,1,2,2,3};
-        static readonly int[] TechRows={0,1,0,0,0,0,2,1,2,1,2,2};
-        Rect TechRect(int i){return new Rect(20+TechColumns[i]*260,20+TechRows[i]*205,230,175);}
-        void DrawResearchScreen()
-        {
-            GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(45,110,920,36),"Research — "+(world.research<0?"Complete":World.TechNames[world.research]+" ("+world.science+" / "+world.ResearchCost(world.research)+")"),heading);
-            if(GUI.Button(new Rect(1055,110,180,34),"Back",button)){researchScreen=false;GUIUtility.ExitGUI();}
-            GUI.Label(new Rect(45,150,1140,25),"Follow the connecting arrows. Every listed prerequisite is required. Select an available technology to research it.",small);
-            researchScroll=GUI.BeginScrollView(new Rect(40,185,1195,525),researchScroll,new Rect(0,0,1330,635));
-            for(int i=0;i<World.TechNames.Length;i++)foreach(int prerequisite in World.Requirements[i]){
-                Rect from=TechRect(prerequisite),to=TechRect(i);float x=from.xMax+12,y=from.y+80,ty=to.y+80;
-                Color line=new Color(.6f,.65f,.45f);Fill(new Rect(from.xMax,y,x-from.xMax,2),line);
-                if(TechColumns[i]-TechColumns[prerequisite]>1){float lane=from.yMax+10,near=to.x-14;Fill(new Rect(x,y,2,lane-y),line);Fill(new Rect(x,lane,near-x,2),line);Fill(new Rect(near,Mathf.Min(lane,ty),2,Math.Abs(lane-ty)),line);Fill(new Rect(near,ty,to.x-near,2),line);}
-                else {Fill(new Rect(x,Mathf.Min(y,ty),2,Math.Abs(y-ty)),line);Fill(new Rect(x,ty,to.x-x,2),line);}
-                GUI.Label(new Rect(to.x-12,ty-9,14,20),">",body);
-            }
-            var available=world.AvailableTech();if(cardTitle==null)cardTitle=new GUIStyle(body){fontStyle=FontStyle.Bold,fontSize=15};
-            for(int i=0;i<World.TechNames.Length;i++){
-                Rect r=TechRect(i);Fill(r,world.tech[i]?new Color(.12f,.3f,.21f):world.research==i?new Color(.23f,.27f,.39f):new Color(.10f,.15f,.18f));GUI.Box(r,"");DrawIcon(new Rect(r.x+10,r.y+12,26,26),i);
-                GUI.Label(new Rect(r.x+45,r.y+10,175,40),World.TechNames[i],cardTitle);GUI.Label(new Rect(r.x+10,r.y+52,210,50),TechBenefits[i],small);
-                string prereq=World.Requirements[i].Length==0?"No prerequisites":"Needs: "+string.Join(", ",World.Requirements[i].Select(t=>World.TechNames[t]).ToArray());GUI.Label(new Rect(r.x+10,r.y+104,210,35),prereq,small);
-                bool enabled=GUI.enabled;GUI.enabled=enabled&&available.Contains(i)&&world.result=="";
-                if(GUI.Button(new Rect(r.x+10,r.y+142,210,25),world.tech[i]?"Discovered":world.research==i?"Researching":available.Contains(i)?"Research ("+world.ResearchCost(i)+")":"Locked",button)){world.SelectResearch(i);status="Research selected: "+World.TechNames[i];}
-                GUI.enabled=enabled;
-            }
-            GUI.EndScrollView();
-        }
+        void DrawResearchScreen(){DrawExpandedResearch();}
         // Distinct original 8x8 pixel glyphs, drawn with the existing code-based art system.
         static readonly string[] IconPatterns={
             "...#..../.#.#.#../..###.../.#.##.#./..###.../...#..../...#..../..###...", // wheat
