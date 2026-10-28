@@ -58,7 +58,11 @@ namespace ParadigmRealm { public partial class RealmGame {
  }
  // While the map is being drawn only a few milliseconds a frame go on painting new tiles; the rest show the plain
  // supplied texture for a moment and are upgraded on later frames.
- Texture2D PlainTerrain(Tile t){int id=Math.Max(0,Math.Min(terrain.Length-1,t.terrain));return terrain[id];}
+ // Remembers what each tile last showed. A tile that has to be repainted (for example because its neighbours were just
+ // explored) keeps showing its old picture until the new one is ready, so nothing flickers back to a placeholder.
+ readonly Dictionary<int,Texture2D> lastShown=new Dictionary<int,Texture2D>();
+ Texture2D Shown(int index,Texture2D picture){Texture2D current;if(!lastShown.TryGetValue(index,out current)||current!=picture)lastShown[index]=picture;return picture;}
+ Texture2D WaitingPicture(int index,int ground){Texture2D previous;if(lastShown.TryGetValue(index,out previous)&&previous!=null)return previous;return UniformTexture(ground);}
  Texture2D TerrainAppearance(Tile t){
   if(terrainSnapshot==null||terrainWorld!=world)PrepareTerrainView();
   // 5x5 includes the river segments and warped corners influencing this tile.
@@ -66,14 +70,15 @@ namespace ParadigmRealm { public partial class RealmGame {
   int ground0=-1;bool uniform=true,river=false;
   for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){int id=ids[(dy+2)*5+dx+2];if(id<0)id=0;if(id==7)river=true;int g=TerrainPainter.GroundOf(id);if(ground0<0)ground0=g;else if(g!=ground0)uniform=false;}
   uniform=uniform&&!river;
-  if(uniform&&!TerrainPainter.Raised(ground0))return UniformTexture(ground0);
+  int tileIndex=t.y*world.Width+t.x;
+  if(uniform&&!TerrainPainter.Raised(ground0))return Shown(tileIndex,UniformTexture(ground0));
   ulong hash=14695981039346656037UL;
   unchecked{
    for(int k=0;k<25;k++)hash=(hash^(ulong)(ids[k]+1))*1099511628211UL;
    hash=(hash^(ulong)(uint)t.x)*1099511628211UL;hash=(hash^(ulong)(uint)t.y)*1099511628211UL;hash=(hash^(ulong)(uint)world.seed)*1099511628211UL;
   }
-  long key=(long)hash;Texture2D output;if(terrainComposites.TryGetValue(key,out output))return output;
-  if(compositeBudgetOn&&compositeClock.ElapsedMilliseconds>=CompositeBudgetMs)return PlainTerrain(t);
+  long key=(long)hash;Texture2D output;if(terrainComposites.TryGetValue(key,out output))return Shown(tileIndex,output);
+  if(compositeBudgetOn&&compositeClock.ElapsedMilliseconds>=CompositeBudgetMs){int centre=ids[12];if(centre<0)centre=0;return WaitingPicture(tileIndex,TerrainPainter.GroundOf(centre));}
   int size=TerrainPainter.Size;output=new Texture2D(size,size,TextureFormat.RGBA32,false){filterMode=FilterMode.Point,wrapMode=TextureWrapMode.Clamp};
   var pixels=new Color[size*size];Func<int,int,int> paint=PaintTerrain;Func<int,float,float,TerrainInk> source=SourceTerrain;
   for(int y=0;y<size;y++)for(int x=0;x<size;x++){
@@ -84,7 +89,7 @@ namespace ParadigmRealm { public partial class RealmGame {
   output.SetPixels(pixels);output.Apply();
   // Enough for the full fixed-size world plus changed edges; no pan-induced churn.
   if(terrainComposites.Count>=2048){long oldest=terrainCacheOrder.Dequeue();Destroy(terrainComposites[oldest]);terrainComposites.Remove(oldest);}
-  terrainComposites.Add(key,output);terrainCacheOrder.Enqueue(key);return output;
+  terrainComposites.Add(key,output);terrainCacheOrder.Enqueue(key);return Shown(tileIndex,output);
  }
- void ClearTerrainComposites(){foreach(var t in terrainComposites.Values)Destroy(t);foreach(var t in uniformTerrain.Values)Destroy(t);terrainComposites.Clear();terrainCacheOrder.Clear();uniformTerrain.Clear();terrainSourcePixels.Clear();terrainSnapshot=null;}
+ void ClearTerrainComposites(){foreach(var t in terrainComposites.Values)Destroy(t);foreach(var t in uniformTerrain.Values)Destroy(t);terrainComposites.Clear();terrainCacheOrder.Clear();uniformTerrain.Clear();lastShown.Clear();terrainSourcePixels.Clear();terrainSnapshot=null;}
 }}
