@@ -1,5 +1,7 @@
 # Current release: Advanced diplomacy — Stage 3
 
+> **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas.
+
 See [Diplomacy implementation](DIPLOMACY-STAGE-3.md) and [Play instructions](../START-HERE-DIPLOMACY.md).
 
 Implemented: bilateral relationships for all three civilisation pairs; negotiated timed borders, friendship, defensive alliances, research, trade, peace and border promises; joint war; gold/resource contracts; grievances, denunciation, embargoes and war weariness; AI offers/counteroffers; inbox, acceptance previews, save v7 migration and regression checks.
