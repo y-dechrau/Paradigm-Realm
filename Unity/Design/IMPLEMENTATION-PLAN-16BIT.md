@@ -28,7 +28,7 @@ Small stays the default so existing saves and behaviour are unchanged. A Custom 
 1. **Fixed map size.** `World.Width=48, Height=30` are compile-time constants used in about 35 places across 13 files. Saves are only valid if the tile count equals 48 x 30.
 2. **Fixed three civilisations.** `nations` is created with exactly 3 entries, loops use `owner<3`, and diplomacy assumes the three pairs.
 3. **No drawing cull.** The map renderer loops over every tile every frame, drawing with IMGUI.
-4. **Per-tile texture cache.** Each tile gets its own 64x64 RGBA32 composite texture (about 16 KB) keyed by seed and position. Small is about 24 MB if every tile is seen, but Massive would be about 1 GB in the worst case. This must change.
+4. **Terrain texture cache and snapshot.** The per-tile art cache is already capped at 2,048 entries (about 32 MB), so memory is bounded. The real costs were rebuilding the whole-map terrain snapshot every frame and drawing every tile. (An earlier version of this plan overstated the memory risk.)
 5. **Fog is recomputed for every tile.** `Reveal()` loops over all tiles for each of 3 owners. This will not scale to Massive.
 6. **AI and turn processing** scan whole maps and all cities; budgets are unmeasured.
 
@@ -37,7 +37,8 @@ Small stays the default so existing saves and behaviour are unchanged. A Custom 
 ### Stage 0 — Get it compiling and running in Unity (done, owner-reported 28 Oct 2026)
 The owner opened the Unity folder in Unity 6000.3.25f1: no compile errors, Earth scene working. This is the baseline for later stages.
 
-### Stage 1 — Variable map size foundation (save v8)
+### Stage 1 — Variable map size foundation (save v8) — source written 28 Oct 2026, awaiting Unity testing
+Done in source: variable size and v8 migration, scaled starts and terrain features, visible-tile drawing, incremental fog, windowed terrain snapshot, scalable Known World screen, New Game size picker, delete saved games, autosave throttle on large maps. Not done: a separate minimap overlay, per-size camera limits beyond the existing scroll clamp, faster pathfinding, and a measured performance budget.
 - Make width and height saved fields of `World` instead of constants. Old saves load as 48 x 30.
 - Parameterise terrain generation and starting positions; keep land connected and starts fair at every size.
 - Size `nations[].known` and all per-tile arrays from the saved size.

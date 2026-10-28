@@ -11,7 +11,7 @@ class SettlementUIChecks {
  static T Get<T>(RealmGame g,string name){return (T)typeof(RealmGame).GetField(name,flags).GetValue(g);}
  static void Call(RealmGame g,string name,params object[] args){try{typeof(RealmGame).GetMethod(name,flags).Invoke(g,args);}catch(TargetInvocationException e)when(e.InnerException is ExitGUIException){}}
  static void Main(){
-  var w=World.New(213);foreach(var t in w.tiles){t.terrain=t.rememberedTerrain=0;t.resource=t.rememberedResource=0;t.seen=true;t.rememberedOwner=t.owner;for(int n=0;n<3;n++)w.nations[n].known[t.y*World.Width+t.x]=true;}
+  var w=World.New(213);foreach(var t in w.tiles){t.terrain=t.rememberedTerrain=0;t.resource=t.rememberedResource=0;t.seen=true;t.rememberedOwner=t.owner;for(int n=0;n<3;n++)w.nations[n].known[t.y*w.Width+t.x]=true;}
   var u=w.units.First(a=>a.owner==0&&a.type==0);var game=new RealmGame();Set(game,"world",w);Set(game,"selected",u.id);Set(game,"mainMenu",false);Set(game,"hasSession",true);Call(game,"Styles");Call(game,"MakeArt");
   var before=JsonUtility.ToJson(w);Call(game,"OpenSettlementAdviser",u);
   Check(Get<string>(game,"detailsScreen")=="Settlement adviser","adviser opens");

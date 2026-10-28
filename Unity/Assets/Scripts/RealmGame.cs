@@ -60,7 +60,7 @@ namespace ParadigmRealm
 
         void StartGame()
         {
-            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; world=World.New(chosenSeed,proposedName,setupMap,setupSpeed,1,setupTrait);ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
+            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; world=World.New(chosenSeed,proposedName,setupMap,setupSpeed,1,setupTrait,setupSize);ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
             selected=world.units.First(u=>u.owner==0).id;cityId=-1;
             sideScroll=Vector2.zero;researchScreen=false;detailsScreen="";cityScreen=false;pauseMenu=false;activeSavePath=null;Center();hasSession=true;mainMenu=false;
             guide=true;confirmNew=false;status="Select your Settler, then Found city.";
@@ -177,14 +177,14 @@ namespace ParadigmRealm
         void DrawMap()
         {
             PrepareTerrainView();mapScroll=new Vector2(Mathf.Round(mapScroll.x),Mathf.Round(mapScroll.y));
-            GUI.Box(new Rect(18,94,865,637),"");mapScroll=GUI.BeginScrollView(new Rect(24,100,852,624),mapScroll,new Rect(0,0,World.Width*tilePixels,World.Height*tilePixels));
+            GUI.Box(new Rect(18,94,865,637),"");mapScroll=GUI.BeginScrollView(new Rect(24,100,852,624),mapScroll,new Rect(0,0,world.Width*tilePixels,world.Height*tilePixels));
             // Draw terrain before raised scenery. Use remembered tiles, never unseen live state.
-            foreach(var source in world.tiles){var t=world.KnownTile(source);var r=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
+            foreach(var source in TilesInView()){var t=world.KnownTile(source);var r=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
                 if(r.xMax<mapScroll.x||r.x>mapScroll.x+852||r.yMax<mapScroll.y||r.y>mapScroll.y+624)continue;
                 if(!t.seen){Fill(r,new Color(.035f,.065f,.085f));continue;}
                 GUI.DrawTexture(r,TerrainAppearance(t));
             }
-            foreach(var source in world.tiles){var t=world.KnownTile(source);var rect=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
+            foreach(var source in TilesInView()){var t=world.KnownTile(source);var rect=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
                 if(!t.seen||rect.xMax<mapScroll.x||rect.x>mapScroll.x+852||rect.yMax<mapScroll.y||rect.y>mapScroll.y+tilePixels+624)continue;
                 bool visible=world.Visible(t.x,t.y);var old=GUI.color;if(!visible)GUI.color=new Color(.48f,.51f,.6f,1);
                 DrawLandscape(t,rect);DrawTerritory(t,rect);
@@ -193,7 +193,7 @@ namespace ParadigmRealm
                 var c=world.cities.Find(a=>a.x==t.x&&a.y==t.y&&(a.owner==0||visible));
                 if(c!=null){DrawCityArt(c,new Rect(rect.x-rect.width*.08f,rect.y-rect.height*.3f,rect.width*1.16f,rect.height*1.3f));Fill(new Rect(rect.x+rect.width*.35f,rect.y+2,rect.width*.3f,3),nations[c.owner]);}
             }
-            foreach(var source in world.tiles){var t=world.KnownTile(source);var rect=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
+            foreach(var source in TilesInView()){var t=world.KnownTile(source);var rect=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
                 if(rect.xMax<mapScroll.x||rect.x>mapScroll.x+852||rect.yMax<mapScroll.y||rect.y>mapScroll.y+624)continue;
                 if(!t.seen){Fill(rect,new Color(.035f,.065f,.085f));continue;}
                 bool visible=world.Visible(t.x,t.y);if(!visible)Fill(rect,new Color(.015f,.025f,.055f,.4f));DrawResource(t,rect);

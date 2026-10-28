@@ -2,6 +2,16 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive).
 
+## Stage 1: map sizes and save deletion (source written 28 Oct 2026; NOT yet tested in Unity)
+
+- Map size is chosen on the New Game screen: Tiny 32x20, Small 48x30 (default, same as before), Medium 80x50, Large 120x75, Huge 180x110, Massive 320x200. Save version is now 8; version 7 saves load as Small.
+- Rivals and starts scale with the map but there are still exactly three civilisations on every size. More civilisations are Stage 2.
+- Only on-screen tiles are drawn, fog of war updates only around units and cities, and the terrain-art snapshot refreshes only the visible window on maps over 4,000 tiles. The Known World screen scales to the map; maps over 4,000 tiles draw it as one small texture. There is no separate minimap overlay yet.
+- The Load Game screen has a Delete button with a confirmation for every save, including autosaves. Deleting also removes the .bak copy.
+- Autosave on maps over 9,000 tiles runs every fifth turn because saves are large.
+- Pathfinding is still a brute-force search; its speed on Large, Huge and Massive maps is unmeasured.
+- Verification: the pure C# checks were extended (all map sizes, fog equivalence, v7 migration, delete) but could NOT be compiled or run in the session that wrote them; only bracket balance was checked. Compile and Play Mode results from Unity are needed.
+
 See [Diplomacy implementation](DIPLOMACY-STAGE-3.md) and [Play instructions](../START-HERE-DIPLOMACY.md).
 
 Implemented: bilateral relationships for all three civilisation pairs; negotiated timed borders, friendship, defensive alliances, research, trade, peace and border promises; joint war; gold/resource contracts; grievances, denunciation, embargoes and war weariness; AI offers/counteroffers; inbox, acceptance previews, save v7 migration and regression checks.

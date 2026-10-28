@@ -8,11 +8,23 @@ namespace ParadigmRealm { public partial class RealmGame {
  int[] terrainSnapshot; World terrainWorld;
  // Snapshot known information once per draw, not for every pixel or neighbour.
  void PrepareTerrainView(){
-  if(terrainWorld!=world){ClearTerrainComposites();terrainWorld=world;}
-  if(terrainSnapshot==null)terrainSnapshot=new int[World.Width*World.Height];
-  foreach(var t in world.tiles)terrainSnapshot[t.y*World.Width+t.x]=t.seen?world.KnownTile(t).terrain:-1;
+  // Small maps refresh everything; large maps refresh only the visible window plus a margin for neighbour lookups.
+  if(world.tiles.Length<=4000)PrepareTerrainRegion(0,0,world.Width-1,world.Height-1);
+  else PrepareTerrainRegion((int)(mapScroll.x/tilePixels)-4,(int)(mapScroll.y/tilePixels)-4,(int)((mapScroll.x+852)/tilePixels)+4,(int)((mapScroll.y+624)/tilePixels)+4);
  }
- int ViewTerrain(int x,int y){x=Math.Max(0,Math.Min(World.Width-1,x));y=Math.Max(0,Math.Min(World.Height-1,y));return terrainSnapshot[y*World.Width+x];}
+ void PrepareTerrainRegion(int x0,int y0,int x1,int y1){
+  if(terrainWorld!=world){ClearTerrainComposites();terrainWorld=world;}
+  if(terrainSnapshot==null||terrainSnapshot.Length!=world.tiles.Length){terrainSnapshot=new int[world.tiles.Length];for(int i=0;i<terrainSnapshot.Length;i++)terrainSnapshot[i]=-1;}
+  x0=Math.Max(0,x0);y0=Math.Max(0,y0);x1=Math.Min(world.Width-1,x1);y1=Math.Min(world.Height-1,y1);
+  for(int y=y0;y<=y1;y++)for(int x=x0;x<=x1;x++){var t=world.tiles[y*world.Width+x];terrainSnapshot[y*world.Width+x]=t.seen?world.KnownTile(t).terrain:-1;}
+ }
+ // Only tiles on screen are drawn, in the same row-by-row order as the full tile list.
+ IEnumerable<Tile> TilesInView(){
+  int x0=Math.Max(0,(int)(mapScroll.x/tilePixels)-1),y0=Math.Max(0,(int)(mapScroll.y/tilePixels)-1);
+  int x1=Math.Min(world.Width-1,(int)((mapScroll.x+852)/tilePixels)+1),y1=Math.Min(world.Height-1,(int)((mapScroll.y+624)/tilePixels)+1);
+  for(int y=y0;y<=y1;y++)for(int x=x0;x<=x1;x++)yield return world.tiles[y*world.Width+x];
+ }
+ int ViewTerrain(int x,int y){x=Math.Max(0,Math.Min(world.Width-1,x));y=Math.Max(0,Math.Min(world.Height-1,y));return terrainSnapshot[y*world.Width+x];}
  // Unknown neighbours are neutral grass; their hidden live type never affects art.
  int PaintTerrain(int x,int y){int t=ViewTerrain(x,y);return t<0?0:t;}
  TerrainInk SourceTerrain(int id,float u,float v){

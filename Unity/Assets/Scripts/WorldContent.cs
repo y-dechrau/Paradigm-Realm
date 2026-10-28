@@ -30,13 +30,13 @@ namespace ParadigmRealm
                 bool coast=new[]{At(t.x-1,t.y),At(t.x+1,t.y),At(t.x,t.y-1),At(t.x,t.y+1)}.Any(a=>a!=null&&(a.terrain==4||a.terrain==12));
                 if(coast)t.terrain=t.terrain==11?19:18;
             }
-            for(int i=0;i<4;i++){
+            for(int i=0,lakes=Math.Max(2,tiles.Length/360);i<lakes;i++){
                 int x=random.Next(5,Width-5),y=random.Next(5,Height-5);var lake=At(x,y);
                 if(!IsImpassable(lake.terrain))lake.terrain=6;
             }
             // The supplied river artwork runs north/south, so short connected streams follow that axis.
-            for(int i=0;i<3;i++){
-                int x=5+i*14+random.Next(4),start=random.Next(6,12);
+            for(int i=0,rivers=Math.Max(1,(Width-5)/14);i<rivers;i++){
+                int x=5+i*14+random.Next(4),start=random.Next(6,12);if(Height>30)start+=random.Next(Height-24);
                 for(int y=start;y<Math.Min(Height-4,start+9);y++)if(!IsImpassable(At(x,y).terrain))At(x,y).terrain=7;
             }
         }

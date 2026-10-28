@@ -19,7 +19,12 @@ namespace ParadigmRealm
     }
     [Serializable] public partial class World
     {
-        public const int Width=48,Height=30;
+        public const int DefaultWidth=48,DefaultHeight=30;
+        public static readonly string[] MapSizeNames={"Tiny","Small","Medium","Large","Huge","Massive"};
+        public static readonly int[] MapWidths={32,48,80,120,180,320},MapHeights={20,30,50,75,110,200};
+        public int mapWidth=DefaultWidth,mapHeight=DefaultHeight,mapSizeIndex=1;
+        public int Width{get{return mapWidth;}}
+        public int Height{get{return mapHeight;}}
         public static readonly string[] TerrainNames={"Grassland","Forest","Hills","Desert","Ocean","Mountains","Lake","River","Arctic tundra","Bog","Desolate wasteland","Jungle","Coral reef","Arctic forest","Ice sheet","Glacier","Savanna","Volcanic terrain","Rocky coastline","Mangrove","Dry steppe"};
         public static readonly string[] ResourceNames={"None","Wheat","Iron","Gold","Horses","Spices"};
         public static readonly string[] UnitNames={"Settler","Worker","Warrior","Scout","Archer","Knight","Rifleman","Spearman","Horseman","Catapult","Medic","Caravan"};
@@ -38,7 +43,7 @@ namespace ParadigmRealm
         public static readonly string[] BuildingNames={"Granary","Library","Walls","Workshop","Market","Barracks","Gardens","Courthouse","Hospital","Temple","Aqueduct","University","Bank","Factory","Sewer system","Colosseum","Harbour","Grand Archive","Sun Gardens","Merchant Exchange","War Academy"};
         public static readonly int[] BuildingCosts={32,40,35,45,45,35,35,55,65,30,60,70,70,100,80,60,45,150,140,180,170};
         public static readonly int[] BuildingTech={TechnologyCatalog.Index("pottery"),2,TechnologyCatalog.Index("masonry"),6,10,6,0,11,9,TechnologyCatalog.Index("mysticism"),3,TechnologyCatalog.Index("education"),TechnologyCatalog.Index("banking"),4,9,TechnologyCatalog.Index("construction"),TechnologyCatalog.Index("sailing"),TechnologyCatalog.Index("writing"),TechnologyCatalog.Index("calendar"),TechnologyCatalog.Index("economics"),TechnologyCatalog.Index("military_science")};
-        public int version=7,seed,turn=1,nextId=1,gold=20,science,research=TechnologyCatalog.Index("toolmaking"),mapType,speed=1,difficulty=1,trait;
+        public int version=8,seed,turn=1,nextId=1,gold=20,science,research=TechnologyCatalog.Index("toolmaking"),mapType,speed=1,difficulty=1,trait;
         public Tile[] tiles; public List<Unit> units=new List<Unit>(); public List<City> cities=new List<City>();
         public List<string> log=new List<string>(); public bool[] tech=new bool[TechnologyCatalog.Count],war=new bool[3],met=new[]{true,false,false},openBorders=new bool[3];
         public Nation[] nations=new[]{new Nation(),new Nation(),new Nation()};
@@ -51,17 +56,21 @@ namespace ParadigmRealm
         public static string CleanName(string value){var s=new string((value??"").Where(c=>!char.IsControl(c)&&c!='<'&&c!='>').ToArray()).Trim();return s.Length==0?"Verdant Union":s.Substring(0,Math.Min(32,s.Length));}
         public void Note(string s){log.Insert(0,"Turn "+turn+": "+s);if(log.Count>150)log.RemoveAt(log.Count-1);}
         public Unit Add(int owner,int type,int x,int y){var u=new Unit{id=nextId++,owner=owner,type=type,x=x,y=y,moves=Moves[type]};units.Add(u);return u;}
-        public static World New(int seed,string civilisationName="Verdant Union",int mapType=0,int speed=1,int difficulty=1,int trait=0)
+        public static World New(int seed,string civilisationName="Verdant Union",int mapType=0,int speed=1,int difficulty=1,int trait=0,int mapSize=1)
         {
-            var w=new World{seed=seed,civilisationName=CleanName(civilisationName),mapType=mapType,speed=speed,difficulty=difficulty,trait=trait,tiles=new Tile[Width*Height]};
+            mapSize=Math.Max(0,Math.Min(MapWidths.Length-1,mapSize));int mw=MapWidths[mapSize],mh=MapHeights[mapSize];
+            var w=new World{seed=seed,civilisationName=CleanName(civilisationName),mapType=mapType,speed=speed,difficulty=difficulty,trait=trait,mapSizeIndex=mapSize,mapWidth=mw,mapHeight=mh,tiles=new Tile[mw*mh]};
+            foreach(var nation in w.nations)nation.known=new bool[mw*mh];
             w.nations[0].trait=trait;w.tech=w.nations[0].tech;var r=new Random(seed);
-            for(int y=0;y<Height;y++)for(int x=0;x<Width;x++){
+            for(int y=0;y<mh;y++)for(int x=0;x<mw;x++){
                 int n=r.Next(100),t=n<45?0:n<68?1:n<85?2:n<94?3:5;
-                if(x==0||y==0||x==Width-1||y==Height-1||(mapType==0&&Math.Sin(x*.2)+Math.Cos(y*.29)*.7< -1.2))t=4;
-                w.tiles[y*Width+x]=new Tile{x=x,y=y,terrain=t,owner=-1};
+                if(x==0||y==0||x==mw-1||y==mh-1||(mapType==0&&Math.Sin(x*.2)+Math.Cos(y*.29)*.7< -1.2))t=4;
+                w.tiles[y*mw+x]=new Tile{x=x,y=y,terrain=t,owner=-1};
             }
             w.GenerateBiomes();
             int[] sx={9,34,31},sy={12,9,23};
+            // Start positions keep the same proportions on every map size; Small is unchanged.
+            if(mw!=DefaultWidth||mh!=DefaultHeight)for(int i=0;i<3;i++){sx[i]=(int)Math.Round(sx[i]*mw/(double)DefaultWidth);sy[i]=(int)Math.Round(sy[i]*mh/(double)DefaultHeight);}
             // Land connections ensure conquest is possible before naval implementation.
             for(int i=0;i<2;i++){int x=sx[i],y=sy[i];while(x!=sx[i+1]||y!=sy[i+1]){w.At(x,y).terrain=0;x+=Math.Sign(sx[i+1]-x);y+=Math.Sign(sy[i+1]-y);}}
             for(int i=0;i<3;i++){
@@ -75,7 +84,15 @@ namespace ParadigmRealm
         }
         public bool VisibleTo(int owner,int x,int y){return HasTech(owner,"satellites")||units.Any(u=>u.owner==owner&&Distance(x,y,u.x,u.y)<=(u.type==3?4:2))||cities.Any(c=>c.owner==owner&&Distance(x,y,c.x,c.y)<=3);}
         public bool Visible(int x,int y){return VisibleTo(0,x,y);}
-        public void Reveal(){for(int owner=0;owner<3;owner++)foreach(var t in tiles)if(VisibleTo(owner,t.x,t.y)){nations[owner].known[t.y*Width+t.x]=true;if(owner==0){t.seen=true;t.rememberedTerrain=t.terrain;t.rememberedResource=t.resource;t.rememberedOwner=t.owner;t.rememberedRoad=t.road;t.rememberedFarm=t.farm;t.rememberedMine=t.mine;t.rememberedFort=t.fort;var city=cities.Find(c=>c.x==t.x&&c.y==t.y);t.rememberedCity=city==null?"":city.name;}}
+        void LearnAround(int owner,int cx,int cy,int radius,HashSet<int> done){for(int y=Math.Max(0,cy-radius);y<=Math.Min(Height-1,cy+radius);y++)for(int x=Math.Max(0,cx-radius);x<=Math.Min(Width-1,cx+radius);x++){int i=y*Width+x;if(done.Add(i))LearnTile(owner,tiles[i]);}}
+        void LearnTile(int owner,Tile t){nations[owner].known[t.y*Width+t.x]=true;if(owner==0){t.seen=true;t.rememberedTerrain=t.terrain;t.rememberedResource=t.resource;t.rememberedOwner=t.owner;t.rememberedRoad=t.road;t.rememberedFarm=t.farm;t.rememberedMine=t.mine;t.rememberedFort=t.fort;var city=cities.Find(c=>c.x==t.x&&c.y==t.y);t.rememberedCity=city==null?"":city.name;}}
+        // Fog is updated only around units and cities, so cost does not grow with map size.
+        public void Reveal(){for(int owner=0;owner<3;owner++){
+                if(HasTech(owner,"satellites")){foreach(var t in tiles)LearnTile(owner,t);continue;}
+                var done=new HashSet<int>();
+                foreach(var u in units)if(u.owner==owner)LearnAround(owner,u.x,u.y,u.type==3?4:2,done);
+                foreach(var c in cities)if(c.owner==owner)LearnAround(owner,c.x,c.y,3,done);
+            }
             for(int i=1;i<3;i++)if(!met[i]&&(units.Any(u=>u.owner==i&&Visible(u.x,u.y))||cities.Any(c=>c.owner==i&&Visible(c.x,c.y)))){met[i]=true;Note("First contact: "+NationName(i)+".");}}
         public bool AtWar(int a,int b){return a>=0&&b>=0&&a<3&&b<3&&a!=b&&(a!=0&&b!=0?rivalWar:war[a==0?b:a]);}
         public bool CanEnter(int owner,Tile t){return t.owner<0||t.owner==owner||AtWar(owner,t.owner)||HasAccess(owner,t.owner);}
@@ -128,7 +145,7 @@ namespace ParadigmRealm
         public int StepCost(Unit u,int x,int y,Tile t){return At(x,y).road&&t.road?1:u.type==3?2:(RoughTerrain(t.terrain)?3:2);}
         bool Capacity(Unit u,int x,int y){if(u.type==1)return true;return units.Count(a=>a.type!=1&&a.id!=u.id&&a.owner==u.owner&&a.x==x&&a.y==y&&(Power[a.type]>0)==(Power[u.type]>0))<(Power[u.type]>0?3:1);}
         public List<Tile> Route(Unit u,int x,int y){var path=new List<Tile>();var goal=At(x,y);if(u==null||goal==null)return path;if(nations[u.owner].known[y*Width+x]&&IsImpassable(u.owner==0?KnownTile(goal).terrain:goal.terrain))return path;int start=u.y*Width+u.x,end=y*Width+x;var dist=Enumerable.Repeat(int.MaxValue,tiles.Length).ToArray();var prev=Enumerable.Repeat(-1,tiles.Length).ToArray();var open=new List<int>{start};dist[start]=0;
-            while(open.Count>0){int current=open.OrderBy(i=>dist[i]).First();open.Remove(current);if(current==end)break;var from=tiles[current];for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var t=At(from.x+dx,from.y+dy);if(t==null||(dx==0&&dy==0))continue;int next=t.y*Width+t.x;bool known=nations[u.owner].known[next];if(known&&IsImpassable(u.owner==0?KnownTile(t).terrain:t.terrain))continue;bool visible=VisibleTo(u.owner,t.x,t.y);if(visible&&next!=end&&(!CanEnter(u.owner,t)||units.Any(a=>a.owner!=u.owner&&a.x==t.x&&a.y==t.y)))continue;if(!Capacity(u,t.x,t.y))continue;int cost=dist[current]+(known?StepCost(u,from.x,from.y,u.owner==0?KnownTile(t):t):2);if(cost>=dist[next])continue;dist[next]=cost;prev[next]=current;if(!open.Contains(next))open.Add(next);}}
+            while(open.Count>0){int current=open[0];foreach(int candidate in open)if(dist[candidate]<dist[current])current=candidate;open.Remove(current);if(current==end)break;var from=tiles[current];for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var t=At(from.x+dx,from.y+dy);if(t==null||(dx==0&&dy==0))continue;int next=t.y*Width+t.x;bool known=nations[u.owner].known[next];if(known&&IsImpassable(u.owner==0?KnownTile(t).terrain:t.terrain))continue;bool visible=VisibleTo(u.owner,t.x,t.y);if(visible&&next!=end&&(!CanEnter(u.owner,t)||units.Any(a=>a.owner!=u.owner&&a.x==t.x&&a.y==t.y)))continue;if(!Capacity(u,t.x,t.y))continue;int cost=dist[current]+(known?StepCost(u,from.x,from.y,u.owner==0?KnownTile(t):t):2);if(cost>=dist[next])continue;dist[next]=cost;prev[next]=current;if(!open.Contains(next))open.Add(next);}}
             if(start==end||prev[end]<0)return path;for(int i=end;i!=start;i=prev[i])path.Add(tiles[i]);path.Reverse();return path;}
         public bool Order(Unit u,int x,int y){if(u==null||result!="")return false;CancelOrder(u);u.fortified=false;if(u.x==x&&u.y==y)return true;if(Route(u,x,y).Count==0)return false;u.destinationX=x;u.destinationY=y;u.hasOrder=true;ContinueOrder(u);return true;}
         public void ContinueOrder(Unit u){while(u.hasOrder&&units.Contains(u)&&result==""){if(u.x==u.destinationX&&u.y==u.destinationY){u.hasOrder=false;break;}if(u.moves==0)break;var p=Route(u,u.destinationX,u.destinationY);if(p.Count==0){u.hasOrder=false;if(u.owner==0)Note("Order stopped: route blocked.");break;}var t=p[0];if(PeaceOwners(u,t.x,t.y).Length>0||!CanEnter(u.owner,t)){u.hasOrder=false;if(u.owner==0)Note("Order stopped at a peaceful border or unit.");break;}if(u.moves<StepCost(u,u.x,u.y,t))break;if(!Move(u,t.x,t.y)){u.hasOrder=false;break;}}}
@@ -190,11 +207,11 @@ namespace ParadigmRealm
         }
         public string Calendar(){int elapsed=turn-1;int year=-4000+Math.Min(elapsed,100)*40+Math.Min(Math.Max(0,elapsed-100),200)*10+Math.Max(0,elapsed-300);return year<0?(-year)+" BCE":(year+1)+" CE";}
         public void CheckVictory(){if(result!="")return;if(HasTech(0,"transcendence")){result="Science victory! Your civilisation has achieved Transcendence.";return;}if(nations.Skip(1).Any(n=>n.tech[TechnologyCatalog.Index("transcendence")])){result="A rival civilisation has achieved a science victory.";return;}if(!units.Any(u=>u.owner==0)&&!cities.Any(c=>c.owner==0))result="Your civilisation has fallen.";else if(!units.Any(u=>u.owner>0)&&!cities.Any(c=>c.owner>0))result="Conquest victory! Earth is united.";}
-        public void UpgradeSave(){if(version==1){civilisationName="Verdant Union";met=new[]{true,false,false};version=2;}if(version==2){var oldTech=tech;tech=new bool[TechnologyCatalog.Count];if(oldTech!=null)Array.Copy(oldTech,tech,Math.Min(6,oldTech.Length));nations=new[]{new Nation(),new Nation(),new Nation()};nations[0].tech=tech;nations[0].gold=gold;nations[0].research=research;if(research>=0&&research<12)nations[0].progress[research]=science;openBorders=new bool[3];foreach(var c in cities){c.buildings=new List<int>();c.queue=new List<int>();}foreach(var t in tiles){t.rememberedTerrain=t.terrain;t.rememberedResource=t.resource;t.rememberedOwner=-1;t.rememberedRoad=t.road;t.rememberedFarm=t.farm;}version=3;RebuildTerritory();Reveal();Note("Save upgraded to foundation alpha 0.2.");}if(version==3){foreach(var c in cities){int oldBuild=c.build,oldProduction=c.production;var oldQueue=c.queue??new List<int>();c.build=-1;c.production=0;c.queue=new List<int>();c.buildingProject=-1;c.buildingProduction=0;c.buildingQueue=new List<int>();foreach(int project in (oldBuild>=0?new[]{oldBuild}:new int[0]).Concat(oldQueue)){bool building=BuildUnit(project)<0;if(building){if(HasBuilding(c,project)||c.buildingProject==project||c.buildingQueue.Contains(project))continue;if(c.buildingProject<0)c.buildingProject=project;else c.buildingQueue.Add(project);}else{if(c.build<0)c.build=project;else c.queue.Add(project);}}if(oldBuild>=0){if(BuildUnit(oldBuild)>=0)c.production=oldProduction;else c.buildingProduction=oldProduction;}}version=4;}
+        public void UpgradeSave(){if(version<8){mapWidth=DefaultWidth;mapHeight=DefaultHeight;mapSizeIndex=1;}if(version==1){civilisationName="Verdant Union";met=new[]{true,false,false};version=2;}if(version==2){var oldTech=tech;tech=new bool[TechnologyCatalog.Count];if(oldTech!=null)Array.Copy(oldTech,tech,Math.Min(6,oldTech.Length));nations=new[]{new Nation(),new Nation(),new Nation()};nations[0].tech=tech;nations[0].gold=gold;nations[0].research=research;if(research>=0&&research<12)nations[0].progress[research]=science;openBorders=new bool[3];foreach(var c in cities){c.buildings=new List<int>();c.queue=new List<int>();}foreach(var t in tiles){t.rememberedTerrain=t.terrain;t.rememberedResource=t.resource;t.rememberedOwner=-1;t.rememberedRoad=t.road;t.rememberedFarm=t.farm;}version=3;RebuildTerritory();Reveal();Note("Save upgraded to foundation alpha 0.2.");}if(version==3){foreach(var c in cities){int oldBuild=c.build,oldProduction=c.production;var oldQueue=c.queue??new List<int>();c.build=-1;c.production=0;c.queue=new List<int>();c.buildingProject=-1;c.buildingProduction=0;c.buildingQueue=new List<int>();foreach(int project in (oldBuild>=0?new[]{oldBuild}:new int[0]).Concat(oldQueue)){bool building=BuildUnit(project)<0;if(building){if(HasBuilding(c,project)||c.buildingProject==project||c.buildingQueue.Contains(project))continue;if(c.buildingProject<0)c.buildingProject=project;else c.buildingQueue.Add(project);}else{if(c.build<0)c.build=project;else c.queue.Add(project);}}if(oldBuild>=0){if(BuildUnit(oldBuild)>=0)c.production=oldProduction;else c.buildingProduction=oldProduction;}}version=4;}
             if(version==4)MigrateTechnologySave();
             if(version==5){UpgradeEmpireSave();version=6;}
-            if(version>=6&&nations!=null&&nations.Length==3&&nations[0]!=null)nations[0].tech=tech;UpgradeEmpireSave();if(version==6){MigrateDiplomacy();version=7;}networks=null;}
-        public bool Valid(){if(!EmpireValid()||!DiplomacyValid())return false;if(version!=7||turn<1||nextId<1||tiles==null||tiles.Length!=Width*Height||units==null||cities==null||log==null||result==null||tech==null||tech.Length!=TechnologyCatalog.Count||met==null||met.Length!=3||war==null||war.Length!=3||openBorders==null||openBorders.Length!=3||nations==null||nations.Length!=3||string.IsNullOrWhiteSpace(civilisationName)||civilisationName.Length>32||gold<0||science<0||research< -1||research>=TechnologyCatalog.Count||speed<0||speed>2||flag<0||flag>2)return false;
+            if(version>=6&&nations!=null&&nations.Length==3&&nations[0]!=null)nations[0].tech=tech;UpgradeEmpireSave();if(version==6){MigrateDiplomacy();version=7;}if(version==7)version=8;networks=null;}
+        public bool Valid(){if(!EmpireValid()||!DiplomacyValid())return false;if(version!=8||mapWidth<16||mapWidth>400||mapHeight<10||mapHeight>300||turn<1||nextId<1||tiles==null||tiles.Length!=Width*Height||units==null||cities==null||log==null||result==null||tech==null||tech.Length!=TechnologyCatalog.Count||met==null||met.Length!=3||war==null||war.Length!=3||openBorders==null||openBorders.Length!=3||nations==null||nations.Length!=3||string.IsNullOrWhiteSpace(civilisationName)||civilisationName.Length>32||gold<0||science<0||research< -1||research>=TechnologyCatalog.Count||speed<0||speed>2||flag<0||flag>2)return false;
             if(nations.Any(n=>n==null||n.tech==null||n.tech.Length!=TechnologyCatalog.Count||n.progress==null||n.progress.Length!=TechnologyCatalog.Count||n.known==null||n.known.Length!=tiles.Length||n.research< -1||n.research>=TechnologyCatalog.Count||n.progress.Any(v=>v<0)||n.tax<0||n.tax>2||n.gold<0))return false;
             for(int i=0;i<tiles.Length;i++){var t=tiles[i];if(t==null||t.x!=i%Width||t.y!=i/Width||t.terrain<0||t.terrain>=TerrainNames.Length||t.rememberedTerrain<0||t.rememberedTerrain>=TerrainNames.Length||t.resource<0||t.resource>5||t.owner< -1||t.owner>2)return false;}
             if(units.Any(u=>u==null||u.type<0||u.type>=UnitNames.Length||u.owner<0||u.owner>2||At(u.x,u.y)==null||u.hp<1||u.hp>10||u.moves<0||u.moves>Moves[u.type]||u.id<1||u.id>=nextId||u.job<0||u.job>4||u.jobTurns<0||u.workerGroup<0||(u.workerGroup>0&&u.type!=1)||(u.hasOrder&&At(u.destinationX,u.destinationY)==null)))return false;

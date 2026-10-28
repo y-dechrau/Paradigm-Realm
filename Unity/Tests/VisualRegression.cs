@@ -30,7 +30,7 @@ class VisualRegression {
   // Previously seen terrain must use remembered state after all observers leave.
   t.seen=true;t.rememberedTerrain=0;w.units.RemoveAll(u=>u.owner==0);w.cities.RemoveAll(a=>a.owner==0);t.terrain=5;
   Call(game,"PrepareTerrainView");var snapshot=(int[])typeof(RealmGame).GetField("terrainSnapshot",flags).GetValue(game);
-  Check(snapshot[t.y*World.Width+t.x]==0,"remembered terrain used outside sight");
+  Check(snapshot[t.y*w.Width+t.x]==0,"remembered terrain used outside sight");
   // Tile-local cache neighbourhoods reproduce the global field, including corners.
   Func<int,float,float,TerrainInk> sample=(id,x,y)=>new TerrainInk(id/21f,.3f,.5f);
   for(int y=0;y<TerrainDemo.Height;y++)for(int x=0;x<TerrainDemo.Width;x++){

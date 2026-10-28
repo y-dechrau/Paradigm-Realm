@@ -3,7 +3,7 @@ using System.Linq;
 namespace ParadigmRealm {
  public static class SettlementChecks {
   static void Check(bool ok,string why){if(!ok)throw new Exception("Settlement: "+why);}
-  static World Flat(){var w=World.New(213);foreach(var t in w.tiles){t.terrain=t.rememberedTerrain=0;t.resource=t.rememberedResource=0;t.seen=true;t.rememberedOwner=t.owner;t.rememberedCity="";t.farm=t.mine=t.fort=t.village=false;for(int owner=0;owner<3;owner++)w.nations[owner].known[t.y*World.Width+t.x]=true;}return w;}
+  static World Flat(){var w=World.New(213);foreach(var t in w.tiles){t.terrain=t.rememberedTerrain=0;t.resource=t.rememberedResource=0;t.seen=true;t.rememberedOwner=t.owner;t.rememberedCity="";t.farm=t.mine=t.fort=t.village=false;for(int owner=0;owner<3;owner++)w.nations[owner].known[t.y*w.Width+t.x]=true;}return w;}
   static void Terrain(World w,int x,int y,int id){w.At(x,y).terrain=w.At(x,y).rememberedTerrain=id;}
   public static void Run(){
    var w=Flat();var settler=w.units.First(u=>u.owner==0&&u.type==0);Terrain(w,settler.x,settler.y,2);var c=w.Found(settler);

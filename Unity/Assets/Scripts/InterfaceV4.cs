@@ -8,10 +8,10 @@ namespace ParadigmRealm
     public partial class RealmGame
     {
         bool loadScreen,researchScreen;
-        string detailsScreen="",loadError="";
+        string detailsScreen="",loadError="",deleteCandidate;
         Vector2 loadScroll,researchScroll,detailsScroll,cityMapScroll,builtScroll,unitQueueScroll,buildingQueueScroll;
         GUIStyle tileLabel;
-        void OpenLoadScreen(){loadScreen=true;loadError="";loadScroll=Vector2.zero;ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
+        void OpenLoadScreen(){loadScreen=true;loadError="";deleteCandidate=null;loadScroll=Vector2.zero;ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
         void DrawLoadScreen()
         {
             GUI.Box(new Rect(250,100,780,600),"");GUI.Label(new Rect(280,125,600,40),"Load game",title);
@@ -19,10 +19,34 @@ namespace ParadigmRealm
             string[] files=new string[0];try{files=Directory.GetFiles(Application.persistentDataPath,"earth-*.json").OrderByDescending(File.GetLastWriteTimeUtc).ToArray();}catch(Exception e){loadError=e.Message;}
             GUILayout.BeginArea(new Rect(280,215,720,365));loadScroll=GUILayout.BeginScrollView(loadScroll);
             if(files.Length==0)GUILayout.Label("No saved games found.",body);
-            foreach(var file in files){string label=Path.GetFileNameWithoutExtension(file)+" — "+File.GetLastWriteTime(file).ToString("dd MMM yyyy HH:mm");
-                if(Button(label)){LoadFile(file);if(status.StartsWith("Could not load"))loadError=status;else{loadScreen=false;pauseMenu=false;GUIUtility.ExitGUI();}}}
+            foreach(var file in files){
+                string shown=Path.GetFileNameWithoutExtension(file);
+                if(deleteCandidate==file){
+                    GUILayout.BeginHorizontal();GUILayout.Label("Delete "+shown+"? This cannot be undone.",body);
+                    if(GUILayout.Button("Yes, delete",button,GUILayout.Width(120),GUILayout.Height(30))){DeleteSaveFile(file);GUIUtility.ExitGUI();}
+                    if(GUILayout.Button("Cancel",button,GUILayout.Width(90),GUILayout.Height(30)))deleteCandidate=null;
+                    GUILayout.EndHorizontal();continue;
+                }
+                string label=shown+" — "+File.GetLastWriteTime(file).ToString("dd MMM yyyy HH:mm");
+                GUILayout.BeginHorizontal();
+                if(Button(label)){LoadFile(file);if(status.StartsWith("Could not load"))loadError=status;else{loadScreen=false;pauseMenu=false;GUIUtility.ExitGUI();}}
+                if(GUILayout.Button("Delete",button,GUILayout.Width(90),GUILayout.Height(30)))deleteCandidate=file;
+                GUILayout.EndHorizontal();
+            }
             GUILayout.EndScrollView();GUILayout.EndArea();GUI.Label(new Rect(280,590,720,55),loadError,small);
             if(GUI.Button(new Rect(780,645,220,35),"Back",button)||(Event.current.type==EventType.KeyDown&&Event.current.keyCode==KeyCode.Escape)){loadScreen=false;GUI.FocusControl(null);GUIUtility.ExitGUI();}
+        }
+        // Deletes one saved game (and its backup copy). Only files in the saves folder named earth-*.json are accepted.
+        void DeleteSaveFile(string file){
+            try{
+                string name=Path.GetFileName(file);
+                if(!name.StartsWith("earth-")||!name.EndsWith(".json"))throw new Exception("Only saved games can be deleted.");
+                if(File.Exists(file))File.Delete(file);
+                if(File.Exists(file+".bak"))File.Delete(file+".bak");
+                if(File.Exists(file+".tmp"))File.Delete(file+".tmp");
+                loadError="Deleted "+Path.GetFileNameWithoutExtension(file)+".";
+            }catch(Exception e){loadError="Could not delete: "+e.Message;}
+            deleteCandidate=null;
         }
         void OpenDetails(string name){detailsScreen=name;researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
         void DrawGameHeader()
@@ -82,7 +106,7 @@ namespace ParadigmRealm
             GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(40,110,800,34),c.name+" — Population "+c.pop,title);
             if(GUI.Button(new Rect(1055,110,180,34),"Back to map",button)){cityScreen=false;GUI.FocusControl(null);GUIUtility.ExitGUI();}
             var yield=world.Yield(c);GUI.Label(new Rect(40,150,1170,30),"Food "+c.food+" ("+yield[0]+"/turn) | Production "+yield[1]+" per line | Science "+yield[2]+" | Happiness "+world.Happiness(c)+" | "+(world.Connected(c)?"Connected":"Isolated")+(c.occupation>0?" | Occupied "+c.occupation+" turns":""),body);
-            PrepareTerrainView();DrawCityTiles(c);DrawBuiltBuildings(c);
+            PrepareTerrainRegion(c.x-6,c.y-6,c.x+6,c.y+6);DrawCityTiles(c);DrawBuiltBuildings(c);
             GUI.SetNextControlName("cityrename");c.name=GUI.TextField(new Rect(490,185,330,30),c.name,32);
             c.focus=GUI.SelectionGrid(new Rect(840,185,390,30),c.focus,new[]{"Balanced","Growth","Production","Science","Commerce"},5);
             if(GUI.Button(new Rect(490,220,180,30),"Citizens / specialists",button)){managedCity=c.id;cityScreen=false;OpenDetails("Citizens");}

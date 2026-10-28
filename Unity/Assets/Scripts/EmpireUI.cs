@@ -68,16 +68,41 @@ public partial class RealmGame {
         foreach(var u in world.units.Where(u=>u.owner==0).ToList())
             if(Button(World.UnitNames[u.type]+" #"+u.id+" | HP "+u.hp+" | "+world.Activity(u)+" | upkeep "+World.Upkeep[u.type])){selected=u.id;cityId=-1;detailsScreen="";cityScreen=false;Center();GUIUtility.ExitGUI();}
     }
+    Texture2D atlasTexture;World atlasWorld;float atlasBuilt;readonly Color[] atlasColours=new Color[64];readonly bool[] atlasColourReady=new bool[64];
+    Color AtlasColour(int id){
+        id=Math.Max(0,Math.Min(atlasColours.Length-1,id));
+        if(!atlasColourReady[id]){var px=terrain[id].GetPixels();float r=0,g=0,b=0;foreach(var c in px){r+=c.r;g+=c.g;b+=c.b;}int n=Math.Max(1,px.Length);atlasColours[id]=new Color(r/n,g/n,b/n,1);atlasColourReady[id]=true;}
+        return atlasColours[id];
+    }
+    // Large worlds draw the known map as one small texture instead of thousands of rectangles.
+    void BuildAtlasTexture(){
+        if(atlasTexture!=null)Destroy(atlasTexture);
+        atlasTexture=new Texture2D(world.Width,world.Height,TextureFormat.RGBA32,false){filterMode=FilterMode.Point,wrapMode=TextureWrapMode.Clamp};
+        var pixels=new Color[world.Width*world.Height];
+        foreach(var source in world.tiles){
+            var t=world.KnownTile(source);var c=new Color(.025f,.04f,.06f,1);
+            if(t.seen){c=AtlasColour(t.terrain);if(t.owner>=0){var n=nations[t.owner];c=new Color(c.r+(n.r-c.r)*.45f,c.g+(n.g-c.g)*.45f,c.b+(n.b-c.b)*.45f,1);}}
+            pixels[(world.Height-1-t.y)*world.Width+t.x]=c;
+        }
+        atlasTexture.SetPixels(pixels);atlasTexture.Apply();atlasWorld=world;atlasBuilt=Time.realtimeSinceStartup;
+    }
     void DrawAtlas(){
         GUILayout.Label("Known world — click a tile to centre the main map. Dark tiles are unexplored.",body);
         GUILayout.Space(490);
-        for(int y=0;y<World.Height;y++)for(int x=0;x<World.Width;x++){
-            var t=world.KnownTile(world.At(x,y));var r=new Rect(x*16,35+y*16,16,16);
-            if(!t.seen){Fill(r,new Color(.025f,.04f,.06f));continue;}
-            GUI.DrawTexture(r,terrain[t.terrain]);if(t.owner>=0)Fill(new Rect(r.x+5,r.y+5,6,6),nations[t.owner]);
+        float cell=Mathf.Min(768f/world.Width,480f/world.Height);
+        var area=new Rect(0,35,world.Width*cell,world.Height*cell);
+        if(world.tiles.Length<=4000){
+            for(int y=0;y<world.Height;y++)for(int x=0;x<world.Width;x++){
+                var t=world.KnownTile(world.At(x,y));var r=new Rect(x*cell,35+y*cell,cell,cell);
+                if(!t.seen){Fill(r,new Color(.025f,.04f,.06f));continue;}
+                GUI.DrawTexture(r,terrain[t.terrain]);if(t.owner>=0)Fill(new Rect(r.x+cell*.31f,r.y+cell*.31f,cell*.38f,cell*.38f),nations[t.owner]);
+            }
+        }else{
+            if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>1f)BuildAtlasTexture();
+            GUI.DrawTexture(area,atlasTexture,ScaleMode.StretchToFill,false);
         }
-        var e=Event.current;if(e.type==EventType.MouseDown&&e.button==0&&new Rect(0,35,768,480).Contains(e.mousePosition)){
-            int x=(int)(e.mousePosition.x/16),y=(int)((e.mousePosition.y-35)/16);
+        var e=Event.current;if(e.type==EventType.MouseDown&&e.button==0&&area.Contains(e.mousePosition)){
+            int x=Math.Max(0,Math.Min(world.Width-1,(int)(e.mousePosition.x/cell))),y=Math.Max(0,Math.Min(world.Height-1,(int)((e.mousePosition.y-35)/cell)));
             mapScroll=new Vector2(x*tilePixels-418,y*tilePixels-304);ClampMapScroll();detailsScreen="";cityScreen=false;e.Use();GUIUtility.ExitGUI();
         }
     }
