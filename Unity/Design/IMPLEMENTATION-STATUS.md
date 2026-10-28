@@ -2,6 +2,15 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Sphere worlds and climate generator (source written 28 Oct 2026; NOT yet tested in Unity)
+
+- Save version is now 9. New field `mapShape`: 0 = flat map with edges (every older save, and the default for `World.New`), 1 = sphere. Version 8 saves load unchanged as flat maps.
+- Sphere maps are 2:1: Tiny 48x24, Small 72x36, Medium 96x48, Large 144x72, Huge 192x96, Massive 320x160. The New Game screen has a Flat / Sphere picker (Sphere is the default there).
+- On a sphere, columns wrap east-west and leaving the top or bottom row re-enters the same row half a world away. Movement, distance, fog, borders, the settlement adviser and ranged attacks all use the wrapped geometry. `World.Distance` is now an instance method.
+- `WorldClimate.cs` generates sphere worlds from 3D noise, temperature and moisture bands, a Whittaker table, rivers that run downhill, lakes, coral, polar ice and coasts. All three civilisations start on the largest landmass.
+- Not done: the on-screen map still draws as a flat rectangle and does not scroll seamlessly across the wrap (the diamond renderer will); no globe view; new procedural art.
+- Verification: `SphereChecks()` in FoundationChecks.cs covers wrap and pole crossing, distance, walking across the seam and a pole, fog equivalence, shared landmass, land share, biome coherence and v8 migration. It was NOT compiled or run here (no C# compiler in the session). The generator algorithm was only prototyped in Python. Unity results are needed.
+
 ## Stage 1: map sizes and save deletion (source written 28 Oct 2026; NOT yet tested in Unity)
 
 - Map size is chosen on the New Game screen: Tiny 32x20, Small 48x30 (default, same as before), Medium 80x50, Large 120x75, Huge 180x110, Massive 320x200. Save version is now 8; version 7 saves load as Small.

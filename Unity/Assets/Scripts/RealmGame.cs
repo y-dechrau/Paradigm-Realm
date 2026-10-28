@@ -60,7 +60,7 @@ namespace ParadigmRealm
 
         void StartGame()
         {
-            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; world=World.New(chosenSeed,proposedName,setupMap,setupSpeed,1,setupTrait,setupSize);ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
+            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; world=World.New(chosenSeed,proposedName,setupMap,setupSpeed,1,setupTrait,setupSize,setupShape);ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
             selected=world.units.First(u=>u.owner==0).id;cityId=-1;
             sideScroll=Vector2.zero;researchScreen=false;detailsScreen="";cityScreen=false;pauseMenu=false;activeSavePath=null;Center();hasSession=true;mainMenu=false;
             guide=true;confirmNew=false;status="Select your Settler, then Found city.";

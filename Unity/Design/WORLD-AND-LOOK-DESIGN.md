@@ -1,6 +1,6 @@
 # Paradigm Realm — spherical world, realistic biomes and new look (design, planned)
 
-Status: **PLANNED. Nothing here is implemented.** Date: 28 October 2026. Extends CORE-DESIGN-16BIT.md and IMPLEMENTATION-PLAN-16BIT.md. Gameplay maths stays integer-only; world generation may use floating point internally because it runs once per new game and is seeded.
+Status: **Parts A and B (sphere topology, climate generator) are written in source but NOT yet tested in Unity; parts C and D (new art, diamond view, globe) are planned and not implemented.** Date: 28 October 2026. Extends CORE-DESIGN-16BIT.md and IMPLEMENTATION-PLAN-16BIT.md. Gameplay maths stays integer-only; world generation may use floating point internally because it runs once per new game and is seeded.
 
 ## Owner requests (28 Oct 2026)
 1. Improve the terrain textures significantly.
@@ -56,7 +56,17 @@ C. Terrain art overhaul (autotiles, height, water, scenery).
 D. Globe view.
 Then the earlier plan resumes: more than three civilisations, rules alignment, combat, technology, victory, interface.
 
-## Open design questions
-1. Art source: procedural generator, owner-supplied art, or both.
-2. Viewing angle: stay top-down square tiles with raised scenery, or move to the gallery's three-quarter view (a much larger rewrite, including hit-testing and the grid feel).
-3. World shape: true sphere (pole crossing) or a cylinder with sealed polar caps, and whether to change to 2:1 map shapes.
+## Decisions (owner, 28 Oct 2026)
+1. Art source: **procedural** pixel-art generator.
+2. Viewing angle: the **three-quarter / diamond (isometric) view** like the gallery. This is a large renderer rewrite (drawing order, hit-testing, wrap-aware scrolling, atlas) and comes after the world logic.
+3. World shape: **true sphere with pole crossing**. 2:1 map shapes were proposed and assumed; the owner has not objected.
+
+## Status by part
+- A. Sphere topology (save version 9, `mapShape` 0 = flat, 1 = sphere): written in source. `At`, `Distance`, `Move`, fog, the settlement scan and the ranged-attack midpoint wrap east-west and cross the poles. Version 8 saves load as flat maps. Sphere sizes: Tiny 48x24, Small 72x36, Medium 96x48, Large 144x72, Huge 192x96, Massive 320x160. The New Game screen has a Flat / Sphere picker, defaulting to Sphere. The current square renderer does NOT yet scroll seamlessly across the wrap; that comes with the new renderer.
+- B. Climate generator (`WorldClimate.cs`): written in source. 3D noise on a unit sphere, land set to about 38 percent of tiles, temperature and moisture bands 0-7 (latitude, altitude, wind belts, distance from sea, rain shadows), smoothed, Whittaker table onto the 21 terrain types, coasts, mangrove, coral, ice caps, lakes in lowlands, rivers running downhill, and all three start sites placed on the largest landmass so land conquest is possible. The algorithm was tuned in a throw-away Python prototype (biome bands, smoothness and land share looked right); the C# was not compiled or run.
+- C. Terrain art overhaul and diamond renderer: planned.
+- D. Globe view: planned.
+
+## Remaining design questions
+1. How tall should hills, mountains and trees be in the diamond view, and how large should one diamond tile be on screen (a first guess is 64x32 pixels)?
+2. Should the flat option stay in the New Game screen once the new renderer exists?

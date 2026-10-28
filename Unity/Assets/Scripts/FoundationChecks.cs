@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace ParadigmRealm
@@ -61,16 +62,68 @@ namespace ParadigmRealm
             dual.ChooseProject(dc,2,false);for(int i=0;i<2;i++)dual.Add(0,2,dc.x,dc.y);dc.production=dual.Cost(2);dc.buildingProduction=dual.Cost(8);dual.Produce(dc,1);
             Require(dc.build==2&&dc.library,"blocked unit stack does not block building construction");
             var old=Flat();var oc=old.Found(old.units.First(v=>v.owner==0&&v.type==0));old.version=3;oc.build=8;oc.production=17;oc.queue=new System.Collections.Generic.List<int>{1,7,1,9};old.UpgradeSave();
-            Require(old.version==8&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
+            Require(old.version==9&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
             old.UpgradeSave();Require(oc.buildingProduction==17&&oc.queue.Count==1,"migration is idempotent");
             var upgrade=Flat();var uc=upgrade.Found(upgrade.units.First(v=>v.owner==0&&v.type==0));var troop=upgrade.units.First(v=>v.owner==0&&v.type==2);upgrade.tech[6]=true;upgrade.gold=100;
             Require(!upgrade.Upgrade(troop),"owned territory alone does not permit upgrades");troop.x=uc.x;troop.y=uc.y;Require(upgrade.Upgrade(troop)&&troop.type==7,"owned city permits eligible upgrade");
             var other=upgrade.units.First(v=>v.owner==0&&v.type==1);int otherMoves=other.moves;upgrade.SkipTurn(troop);Require(troop.moves==0&&other.moves==otherMoves,"skip affects only selected unit");
             Require(World.StackLabel(new[]{new Unit{type=1}})=="Worker"&&World.StackLabel(new[]{new Unit{type=1},new Unit{type=1}})=="Stack"&&World.StackLabel(new[]{new Unit{type=1},new Unit{type=2}})=="","unit label rules");
             MapSizeChecks();
+            SphereChecks();
             ContentChecks.Run();
             var victory=World.New(22);victory.units.RemoveAll(a=>a.owner>0);victory.cities.RemoveAll(a=>a.owner>0);victory.CheckVictory();Require(victory.result.StartsWith("Conquest"),"conquest detected");
             var defeat=World.New(23);defeat.units.RemoveAll(a=>a.owner==0);defeat.CheckVictory();Require(defeat.result.Contains("fallen"),"defeat detected");
+        }
+        static void SphereChecks()
+        {
+            for(int size=0;size<World.SphereWidths.Length;size++){
+                string name=World.MapSizeNames[size];
+                var w=World.New(70+size,"Sphere Test",0,1,1,0,size,1);
+                Require(w.Sphere&&w.Width==World.SphereWidths[size]&&w.Height==World.SphereHeights[size]&&w.Width==2*w.Height&&w.tiles.Length==w.Width*w.Height,name+" sphere is a 2:1 grid");
+                Require(w.Valid(),"new "+name+" sphere is valid");
+                Require(w.cities.Count==2&&w.units.Count(u=>u.owner==0)==3,name+" sphere has the usual starting civilisations and units");
+                Require(w.units.Where(u=>u.owner==0).All(u=>!World.IsImpassable(w.At(u.x,u.y).terrain)),"player starts on passable land on the "+name+" sphere");
+                for(int owner=0;owner<3;owner++)for(int i=0;i<w.tiles.Length;i++)if(w.nations[owner].known[i]!=w.VisibleTo(owner,i%w.Width,i/w.Width))throw new Exception("FAIL: incremental fog differs from full visibility on the "+name+" sphere");
+                // All three civilisations must share one landmass so conquest is possible without ships.
+                var start=w.cities.First(c=>c.owner==1);var reached=new HashSet<int>{start.y*w.Width+start.x};var queue=new Queue<Tile>();queue.Enqueue(w.At(start.x,start.y));
+                while(queue.Count>0){var t=queue.Dequeue();for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=w.At(t.x+dx,t.y+dy);if(n==null||World.IsImpassable(n.terrain)||!reached.Add(n.y*w.Width+n.x))continue;queue.Enqueue(n);}}
+                Require(w.cities.All(c=>reached.Contains(c.y*w.Width+c.x))&&w.units.Where(u=>u.owner==0).All(u=>reached.Contains(u.y*w.Width+u.x)),"all "+name+" sphere starts are connected by land");
+                int land=w.tiles.Count(t=>t.terrain!=4&&t.terrain!=12&&t.terrain!=14);
+                Require(land*100>=w.tiles.Length*28&&land*100<=w.tiles.Length*50,name+" sphere has a believable land share");
+                Require(w.tiles.Count(t=>t.terrain==14)>0&&w.tiles.Any(t=>t.terrain==8||t.terrain==13)&&w.tiles.Any(t=>t.terrain==0)&&w.tiles.Any(t=>t.terrain==1),name+" sphere has polar ice, cold land, grass and forest");
+                int incoherent=0,maxStep=0;
+                for(int i=0;i<w.tiles.Length;i++){
+                    var a=w.tiles[i];
+                    for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){
+                        var b=w.At(a.x+dx,a.y+dy);if(b==null||(dx==0&&dy==0))continue;
+                        maxStep=Math.Max(maxStep,Math.Abs(w.climateTemperature[i]-w.climateTemperature[b.y*w.Width+b.x]));
+                        bool hot=a.terrain==11||a.terrain==3||a.terrain==16,cold=b.terrain==8||b.terrain==13||b.terrain==14;
+                        if(hot&&cold)incoherent++;
+                    }
+                }
+                Require(maxStep<=3,name+" sphere temperature changes gently between neighbours");
+                Require(incoherent*200<=w.tiles.Length,name+" sphere never puts jungle or desert beside tundra or ice");
+                Require(World.New(70+size,"Sphere Test",0,1,1,0,size,1).tiles.Select(t=>t.terrain).SequenceEqual(w.tiles.Select(t=>t.terrain)),name+" sphere is repeatable by seed");
+            }
+            var s=World.New(5,"Sphere",0,1,1,0,1,1);
+            Require(s.At(-1,3)==s.At(s.Width-1,3)&&s.At(s.Width,3)==s.At(0,3),"sphere wraps east-west");
+            Require(s.At(4,-1)==s.At(4+s.Width/2,0)&&s.At(4,s.Height)==s.At(4+s.Width/2,s.Height-1)&&s.At(4,-s.Height-1)==null,"sphere crosses both poles");
+            Require(s.Distance(0,5,s.Width-1,5)==1&&s.Distance(2,5,s.Width-2,5)==4,"distance wraps east-west");
+            Require(s.Distance(4,0,4+s.Width/2,0)==1&&s.Distance(s.Width/4,0,s.Width/4+s.Width/2,3)==4&&s.Distance(4,s.Height-1,4+s.Width/2,s.Height-1)==1,"distance crosses the poles");
+            Require(s.Distance(3,7,12,9)==s.Distance(12,9,3,7),"distance is symmetric");
+            var flat=World.New(5);
+            Require(!flat.Sphere&&flat.At(-1,3)==null&&flat.Distance(0,5,flat.Width-1,5)==flat.Width-1,"flat maps keep hard edges");
+            // Units can walk across the seam and over a pole.
+            s.units.RemoveAll(a=>(a.x==0||a.x==s.Width-1||a.y==0)&&a.owner>0);
+            int w2=s.Width;
+            foreach(var cell in new[]{s.At(0,10),s.At(w2-1,10),s.At(4,0),s.At(4+w2/2,0)}){cell.terrain=0;cell.owner=-1;s.units.RemoveAll(a=>a.x==cell.x&&a.y==cell.y);}
+            var walker=s.Add(0,2,0,10);walker.moves=4;
+            Require(s.Move(walker,-1,10)&&walker.x==w2-1&&walker.y==10,"a unit steps west across the seam");
+            var climber=s.Add(0,2,4,0);climber.moves=4;
+            Require(s.Move(climber,4,-1)&&climber.x==4+w2/2&&climber.y==0,"a unit steps over the north pole");
+            // Saves migrate: version 8 becomes version 9 and stays flat.
+            var old=World.New(8);old.version=8;old.UpgradeSave();
+            Require(old.version==9&&old.mapShape==0&&old.Valid(),"version 8 saves upgrade to flat version 9");
         }
         static void MapSizeChecks()
         {
@@ -87,7 +140,7 @@ namespace ParadigmRealm
             Require(World.New(9).Width==48&&World.New(9).Height==30,"default map stays Small 48 x 30");
             Require(World.New(9,"A",0,1,1,0,1).tiles.Select(t=>t.terrain).SequenceEqual(World.New(9).tiles.Select(t=>t.terrain)),"Small is the default size and repeatable by seed");
             var legacy=World.New(3);legacy.version=7;legacy.mapWidth=0;legacy.mapHeight=0;legacy.UpgradeSave();
-            Require(legacy.Width==48&&legacy.Height==30&&legacy.version==8&&legacy.Valid(),"version 7 saves upgrade to Small version 8");
+            Require(legacy.Width==48&&legacy.Height==30&&legacy.version==9&&legacy.Valid(),"version 7 saves upgrade to Small flat version 9");
         }
     }
 }

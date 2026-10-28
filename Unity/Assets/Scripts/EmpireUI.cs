@@ -48,7 +48,7 @@ public partial class RealmGame {
         if(Button(u.sentry?"Wake sentry":"Sentry until enemy approaches")){bool active=!u.sentry;world.CancelActivity(u);u.sentry=active;}
         if(u.type==11){
             GUILayout.Label("Caravans: reach a different city to establish trade, or contribute 40 production to a friendly wonder.",small);
-            foreach(var c in world.cities.Where(c=>World.Distance(u.x,u.y,c.x,c.y)<=1&&(c.owner==0||world.Visible(c.x,c.y))).ToList()){
+            foreach(var c in world.cities.Where(c=>world.Distance(u.x,u.y,c.x,c.y)<=1&&(c.owner==0||world.Visible(c.x,c.y))).ToList()){
                 string reason=world.TradeReason(u,c);if(Button("Trade with "+c.name)){status=world.DeliverCaravan(u,c)?"Trade route established.":reason;if(!world.units.Contains(u)){selected=-1;GUIUtility.ExitGUI();}}
                 if(c.owner==0&&World.IsWonder(c.buildingProject)&&Button("Supply wonder in "+c.name)){status=world.HelpWonder(u,c)?"40 production supplied.":"Caravan needs movement.";if(!world.units.Contains(u)){selected=-1;GUIUtility.ExitGUI();}}
             }

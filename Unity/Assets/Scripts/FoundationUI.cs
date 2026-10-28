@@ -58,7 +58,7 @@ namespace ParadigmRealm
             if(saveError!="")GUILayout.Label(saveError,small);GUILayout.EndArea();
         }
         string renameText="Verdant Union",seedText="";
-        int setupMap,setupSpeed=1,setupTrait,setupSize=1;
+        int setupMap,setupSpeed=1,setupTrait,setupSize=1,setupShape=1;
         
         void AtomicSave(string path)
         {
@@ -84,7 +84,9 @@ namespace ParadigmRealm
         void DrawSetupOptions()
         {
             GUILayout.BeginArea(new Rect(402,292,470,346));
-            GUILayout.Label("Map size: "+World.MapSizeNames[setupSize]+" ("+World.MapWidths[setupSize]+" x "+World.MapHeights[setupSize]+" tiles)",body);
+            GUILayout.Label("World: "+(setupShape==1?"Sphere (wraps east-west, routes cross the poles)":"Flat map with edges (old style)"),body);
+            setupShape=GUILayout.SelectionGrid(setupShape,new[]{"Flat","Sphere"},2);
+            GUILayout.Label("Map size: "+World.MapSizeNames[setupSize]+" ("+(setupShape==1?World.SphereWidths[setupSize]:World.MapWidths[setupSize])+" x "+(setupShape==1?World.SphereHeights[setupSize]:World.MapHeights[setupSize])+" tiles)",body);
             setupSize=GUILayout.SelectionGrid(setupSize,World.MapSizeNames,6);
             GUILayout.Label("Map shape",body);
             setupMap=GUILayout.SelectionGrid(setupMap,new[]{"Continents","Inland landmass"},2);

@@ -15,7 +15,7 @@ namespace ParadigmRealm {
   public bool FreshWater(int x,int y){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var t=At(x+dx,y+dy);if(t!=null&&(t.terrain==6||t.terrain==7))return true;}return false;}
   // Player reports use remembered information. Rivals conservatively evaluate only
   // currently visible terrain: they have no per-tile memory record in save v6.
-  Tile SettlementTile(int owner,int x,int y){var t=At(x,y);if(t==null)return null;if(owner==0)return t.seen?KnownTile(t):null;return nations[owner].known[y*Width+x]&&VisibleTo(owner,x,y)?t:null;}
+  Tile SettlementTile(int owner,int x,int y){var t=At(x,y);if(t==null)return null;x=t.x;y=t.y;if(owner==0)return t.seen?KnownTile(t):null;return nations[owner].known[y*Width+x]&&VisibleTo(owner,x,y)?t:null;}
   string SiteReason(int owner,int x,int y,bool known){
    if(owner<0||owner>=nations.Length||At(x,y)==null)return "Outside the map.";
    var t=known?SettlementTile(owner,x,y):At(x,y);if(t==null)return "Explore this tile first.";
@@ -69,9 +69,11 @@ namespace ParadigmRealm {
    if(u==null||u.type!=0||!units.Contains(u))return new List<SettlementReport>();
    var reports=new List<SettlementReport>();
    // Local planning is bounded. The adviser can be reopened after moving/exploring.
-   for(int y=Math.Max(0,u.y-12);y<=Math.Min(Height-1,u.y+12);y++)for(int x=Math.Max(0,u.x-12);x<=Math.Min(Width-1,u.x+12);x++){
-    var t=SettlementTile(u.owner,x,y);if(t==null||IsImpassable(t.terrain))continue;
-    var r=AssessSettlement(u.owner,x,y,u.x,u.y);if(r.Suitable&&!r.threat&&(u.owner==0||r.diplomacyWarning==""))reports.Add(r);
+   var scanned=new HashSet<int>();
+   for(int y=u.y-12;y<=u.y+12;y++)for(int x=u.x-12;x<=u.x+12;x++){
+    var cell=At(x,y);if(cell==null||!scanned.Add(cell.y*Width+cell.x))continue;
+    var t=SettlementTile(u.owner,cell.x,cell.y);if(t==null||IsImpassable(t.terrain))continue;
+    var r=AssessSettlement(u.owner,cell.x,cell.y,u.x,u.y);if(r.Suitable&&!r.threat&&(u.owner==0||r.diplomacyWarning==""))reports.Add(r);
    }
    var result=new List<SettlementReport>();
    foreach(var r in reports.OrderByDescending(r=>r.score).ThenBy(r=>r.distance).ThenBy(r=>r.y*Width+r.x).Take(24)){

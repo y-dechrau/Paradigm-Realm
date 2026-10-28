@@ -24,11 +24,11 @@ namespace ParadigmRealm {
    Check(rich.score>poor.score&&rich.food>poor.food&&rich.housing==8,"fertile fresh-water site outranks equally distant barren site");
    var options=w.SettlementOptions(settler);Check(options.Count>0&&options[0].food>=0,"adviser recommends sustainable known food");
    var first=options.Select(r=>r.x+","+r.y).ToArray();Check(first.SequenceEqual(w.SettlementOptions(settler).Select(r=>r.x+","+r.y)),"stable recommendation ties");
-   w.war[1]=true;w.Add(1,2,options[0].x,options[0].y);w.Add(0,3,options[0].x-1,options[0].y);w.Reveal();Check(w.SettlementOptions(settler).All(r=>World.Distance(r.x,r.y,options[0].x,options[0].y)>3),"adviser avoids visible hostile troops");
+   w.war[1]=true;w.Add(1,2,options[0].x,options[0].y);w.Add(0,3,options[0].x-1,options[0].y);w.Reveal();Check(w.SettlementOptions(settler).All(r=>w.Distance(r.x,r.y,options[0].x,options[0].y)>3),"adviser avoids visible hostile troops");
    w=Flat();c=w.cities.First(a=>a.owner==1);c.pop=3;w.nations[1].tech[0]=true;w.nations[1].gold=100;Check(w.ShouldTrainSettler(c),"healthy treasury and food allow expansion");w.nations[1].gold=1;Check(!w.ShouldTrainSettler(c),"poor treasury delays expansion");
    w=Flat();w.Found(w.units.First(u=>u.owner==0&&u.type==0));for(int y=12;y<=18;y++)for(int x=13;x<=19;x++)Terrain(w,x,y,3);Terrain(w,17,15,7);Terrain(w,17,14,0);Terrain(w,17,16,0);
    var ai=w.Add(1,0,15,15);for(int i=0;i<8&&w.units.Contains(ai);i++)w.EndTurn();
-   var colony=w.cities.FirstOrDefault(a=>a.owner==1&&World.Distance(a.x,a.y,15,15)<=4);
+   var colony=w.cities.FirstOrDefault(a=>a.owner==1&&w.Distance(a.x,a.y,15,15)<=4);
    Check(colony!=null&&w.FreshWater(colony.x,colony.y),"AI travels to and founds a fresh-water colony");Check(w.Valid(),"expanded world remains save-valid");
   }
  }
