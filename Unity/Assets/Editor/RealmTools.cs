@@ -22,11 +22,12 @@ public static class RealmTools
     [MenuItem("Paradigm Realm/Run Engine Checks")]
     public static void Checks()
     {
-        FoundationChecks.Run();ContentChecks.Run();EmpireChecks.Run();
+        DiplomacyChecks.Run();FoundationChecks.Run();ContentChecks.Run();EmpireChecks.Run();StrategyChecks.Run();SettlementChecks.Run();
         var world=World.New(42,"Round trip");world.Found(world.units.First(u=>u.owner==0&&u.type==0));
         world.nations[0].tax=2;world.EndTurn();
         var worker=world.units.First(u=>u.owner==0&&u.type==1);worker.moves=4;world.Add(0,1,worker.x,worker.y);world.GroupWorkers(worker);world.tech[TechnologyCatalog.Index("wheel")]=true;world.StartJob(worker,1);
         var city=world.cities.First(c=>c.owner==0);world.tech[0]=true;world.tech[TechnologyCatalog.Index("pottery")]=true;world.ChooseProject(city,1,false);world.QueueBuild(city,1);world.ChooseProject(city,7,false);world.Produce(city,3);
+        world.met[1]=world.met[2]=true;world.gold=100;world.nations[1].gold=100;world.Propose(new DiplomaticOffer{from=1,to=0,kind=TreatyKind.Access});world.Propose(new DiplomaticOffer{from=0,to=2,kind=TreatyKind.Trade,givePerTurn=1});
         var json=JsonUtility.ToJson(world);
         var loaded=JsonUtility.FromJson<World>(json);loaded.UpgradeSave();
         Require(loaded.Valid(),"save round trip validity");

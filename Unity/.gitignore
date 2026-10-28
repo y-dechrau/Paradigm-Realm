@@ -8,3 +8,6 @@
 *.csproj
 *.sln
 *.user
+
+# Hand-authored verification projects.
+!Tests/*.csproj

@@ -111,7 +111,7 @@ namespace ParadigmRealm
                 if(Button("Disband this unit permanently")){world.units.Remove(u);selected=-1;world.CheckVictory();GUIUtility.ExitGUI();}
             }
             GUILayout.Space(10);
-            GUILayout.BeginHorizontal();if(GUILayout.Button("Zoom -"))tilePixels=Mathf.Max(24,tilePixels-4);if(GUILayout.Button("Zoom +"))tilePixels=Mathf.Min(64,tilePixels+4);GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();if(GUILayout.Button("Zoom -"))tilePixels=Mathf.Max(24,tilePixels-8);if(GUILayout.Button("Zoom +"))tilePixels=Mathf.Min(96,tilePixels+8);GUILayout.EndHorizontal();
         }
         bool Powerful(Unit u){return World.Power[u.type]>0;}
         void NavigationInput()
@@ -120,7 +120,7 @@ namespace ParadigmRealm
             var e=Event.current;
             // Consume the wheel before BeginScrollView can turn it into vertical panning.
             if(e.type==EventType.ScrollWheel&&new Rect(24,100,836,608).Contains(e.mousePosition)){
-                float old=tilePixels;tilePixels=Mathf.Clamp(tilePixels-e.delta.y*zoomSensitivity,24,64);
+                float old=tilePixels;tilePixels=Mathf.Clamp(tilePixels-e.delta.y*zoomSensitivity,24,96);
                 var point=e.mousePosition-new Vector2(24,100);
                 mapScroll=(mapScroll+point)*(tilePixels/old)-point;ClampMapScroll();ResetMapGesture();e.Use();
             }

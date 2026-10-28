@@ -1,0 +1,36 @@
+SETTLEMENT STRATEGY — STAGE 2
+
+Changed from Stage 1:
+Assets/Editor/RealmTools.cs
+Assets/Scripts/CityStrategy.cs
+Assets/Scripts/EmpireSystems.cs
+Assets/Scripts/EmpireUI.cs
+Assets/Scripts/InterfaceV4.cs
+Assets/Scripts/RealmGame.cs
+Assets/Scripts/World.cs
+Design/IMPLEMENTATION-STATUS.md
+Documentation/Validation.txt
+START-HERE.txt
+Tests/EngineChecks.csproj
+Tests/README.md
+Tests/Run.cs
+Tests/UnityStubs.cs
+
+Additional files (including preserved repository design notes):
+.gitignore
+ALPHA-0.7-README.md
+Assets/Scripts/SettlementChecks.cs
+Assets/Scripts/SettlementChecks.cs.meta
+Assets/Scripts/SettlementStrategy.cs
+Assets/Scripts/SettlementStrategy.cs.meta
+Assets/Scripts/SettlementUI.cs
+Assets/Scripts/SettlementUI.cs.meta
+Design/From-flint-to-the-stars.html
+Design/MASTER-DESIGN.md
+Design/TEXTURE-MANIFEST.json
+README.md
+TEST-REPORT.md
+Tests/SettlementUIChecks.cs
+Tests/SettlementUIChecks.csproj
+Tests/VERIFICATION.md
+UPDATE-INSTRUCTIONS.txt

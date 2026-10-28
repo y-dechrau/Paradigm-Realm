@@ -5,6 +5,7 @@ namespace ParadigmRealm {
 public partial class RealmGame {
     int managedCity=-1;
     void DrawEmpireEconomy(){
+        GUILayout.Label("Diplomatic payments: +"+world.DiplomaticIncome(0)+" income / -"+world.DiplomaticExpense(0)+" expense per turn (included above). War weariness: -"+world.WarUnhappiness(0)+" happiness/city.",body);
         var n=world.nations[0];GUILayout.Space(12);GUILayout.Label("Government: "+World.Governments[n.government]+(n.revolution>0?" — revolution, "+n.revolution+" turns":""),heading);
         GUILayout.Label("Each government has different support and output. Changing causes two turns of half production/science and reduced happiness.",small);
         for(int i=0;i<World.Governments.Length;i++){
@@ -17,15 +18,15 @@ public partial class RealmGame {
         GUILayout.Label("Trade income: "+world.TradeIncome(0)+" gold/turn",heading);
         foreach(var r in world.tradeRoutes.Where(r=>r.originOwner==0||r.destinationOwner==0)){
             var a=world.cities.Find(c=>c.id==r.origin);var b=world.cities.Find(c=>c.id==r.destination);
-            GUILayout.Label(a.name+" ↔ "+b.name+(world.RouteActive(r)?" — active":" — suspended by war or capture"),body);
+            GUILayout.Label(a.name+" ↔ "+b.name+(world.RouteActive(r)?" — active":" — suspended by war, embargo or capture"),body);
         }
     }
     void DrawEmpireDiplomacy(int other){
-        GUILayout.Label("Relations: "+world.nations[other].relations+" | Gifts improve willingness to share technology.",small);
+        GUILayout.Label("Relations: "+world.Opinion(other,0)+" | Gifts improve willingness to share technology.",small);
         if(!world.war[other]){
             if(Button("Gift 25 gold to "+world.NationName(other)))status=world.GiftGold(other)?"Gift accepted.":"You need 25 gold.";
             foreach(int id in world.AvailableTech().Where(t=>world.nations[other].tech[t]).Take(10))
-                if(Button("Buy "+World.TechNames[id]+" — "+world.TechPrice(id)+" gold"))status=world.BuyTechnology(other,id)?"Technology acquired.":"Requires enough gold and non-negative relations.";
+                if(Button("Buy "+World.TechNames[id]+" — "+world.TechPrice(id)+" gold"))status=world.BuyTechnology(other,id)?"Technology acquired.":"Requires enough gold, non-negative opinion and no embargo.";
         }
         GUILayout.Label(status,small);
     }
@@ -35,11 +36,14 @@ public partial class RealmGame {
         GUILayout.Label("Each specialist replaces one worked tile and still consumes food. Scientists: +3 science; merchants: +3 gold; entertainers: +2 happiness.",body);
         string[] names={"Scientists","Merchants","Entertainers"};int[] values={c.scientists,c.merchants,c.entertainers};
         for(int i=0;i<3;i++){GUILayout.Label(names[i]+": "+values[i],heading);GUILayout.BeginHorizontal();if(GUILayout.Button("- "+names[i]))world.AdjustSpecialist(c,i,-1);if(GUILayout.Button("+ "+names[i]))world.AdjustSpecialist(c,i,1);GUILayout.EndHorizontal();}
+        GUILayout.Label(world.CityEconomyReport(c),body);
+        GUILayout.Label("Automatic workers try to feed the city before following its focus. Science focus adds 2 science and costs up to 2 production. Specialists can still cause a food deficit.",small);
         var v=world.Yield(c);GUILayout.Label("Net food "+v[0]+" | Production "+v[1]+" | Science "+v[2]+" | Happiness "+world.Happiness(c),body);
-        GUILayout.Label("Aqueduct raises growth limit from 6 to 12. Sewer system raises it to 20. Existing large cities are preserved.",small);
+        GUILayout.Label("Early population limit: 8 beside fresh water, otherwise 6. Aqueduct: 12. Sewer: 20. River centres add 1 food; hill centres add 1 production. Existing large cities are preserved.",small);
         if(Button("Return to "+c.name)){detailsScreen="";OpenCity(c);}
     }
     void DrawEmpireUnit(Unit u){
+        if(u.type==0)DrawSettlementUnit(u);
         if(u.type==3&&Button(u.exploring?"Stop auto-exploration":"Auto-explore nearby frontier")){if(u.exploring)world.CancelActivity(u);else world.AutoExplore(u);}
         if(Button(u.sentry?"Wake sentry":"Sentry until enemy approaches")){bool active=!u.sentry;world.CancelActivity(u);u.sentry=active;}
         if(u.type==11){

@@ -41,10 +41,7 @@ namespace ParadigmRealm
             }
         }
         void ApplyResearchYields(City c,ref int food,ref int production,ref int science){
-            int owner=c.owner;var worked=Worked(c);
-            if(HasTech(owner,"chemistry"))food+=worked.Count(t=>t.farm);
-            if(HasTech(owner,"irrigation"))food+=worked.Count(t=>t.farm&&(t.terrain==7||tiles.Any(a=>a.terrain==7&&Distance(a.x,a.y,t.x,t.y)==1)));
-            if(HasTech(owner,"steam"))production+=worked.Count(t=>t.mine);
+            int owner=c.owner;
             if(HasTech(owner,"alphabet")&&c.library)science++;
             int sciencePercent=(HasTech(owner,"printing")?10:0)+(HasTech(owner,"computers")?10:0)+(HasTech(owner,"quantum")?20:0);
             science=science*(100+sciencePercent)/100;
@@ -80,6 +77,8 @@ namespace ParadigmRealm
             for(int g=1;g<Governments.Length;g++)if(TechnologyCatalog.Index(GovernmentTech[g])==id)benefits.Add("Government: "+Governments[g]);
             string key=TechnologyCatalog.Ids[id];
             switch(key){
+                case "writing":benefits.Add("Negotiate research pacts with friends: 25 gold each, +2 base science/city");break;
+                case "laws":benefits.Add("Negotiate defensive alliances with friends; both sides require Code of Laws");break;
                 case "agriculture":benefits.Add("Workers can build farms / pastures");break;
                 case "wheel":benefits.Add("Workers can build roads");break;
                 case "mining":benefits.Add("Workers can build mines");break;

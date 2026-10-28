@@ -1,0 +1,74 @@
+using System;
+using System.Linq;
+namespace ParadigmRealm {
+public partial class World {
+ bool Recurring(DiplomaticOffer o){return o.givePerTurn+o.askPerTurn+o.giveResource+o.askResource>0;}
+ public string OfferProblem(DiplomaticOffer o){
+  if(o==null||!HasContact(o.from,o.to))return "First contact required.";
+  if(result!="")return "The game has ended.";
+  if((int)o.kind<0||(int)o.kind>7||o.duration<5||o.duration>30||o.giveGold<0||o.askGold<0||o.giveGold>10000||o.askGold>10000||o.givePerTurn<0||o.askPerTurn<0||o.givePerTurn>20||o.askPerTurn>20||o.giveResource<0||o.giveResource>5||o.askResource<0||o.askResource>5)return "Invalid deal terms.";
+  bool warNow=AtWar(o.from,o.to);var p=Relation(o.from,o.to);
+  if(warNow&&o.kind!=TreatyKind.Peace)return "Negotiate peace first.";
+  if(!warNow&&o.kind==TreatyKind.Peace)return "Already at peace.";
+  if(Recurring(o)&&o.kind!=TreatyKind.Trade&&o.kind!=TreatyKind.Peace)return "Recurring terms require trade or peace.";
+  if(Embargoed(o.from,o.to)&&(o.kind==TreatyKind.Trade||o.kind==TreatyKind.Research||Recurring(o)))return "An embargo blocks economic cooperation.";
+  int fee=o.kind==TreatyKind.Research?25:0;
+  if(Treasury(o.from)<o.giveGold+fee||Treasury(o.to)<o.askGold+fee)return "Insufficient treasury for upfront terms.";
+  if(o.giveResource>0&&!HasDomesticResource(o.from,o.giveResource)||o.askResource>0&&!HasDomesticResource(o.to,o.askResource))return "Resources must be domestically improved and connected to the capital; imports cannot be exported.";
+  if(o.giveResource>0&&o.giveResource==o.askResource)return "Choose different resources.";
+  if(Recurring(o)&&contracts.Any(c=>SamePair(c.from,c.to,o.from,o.to)))return "End the existing trade contract before replacing it.";
+  if(o.kind==TreatyKind.Trade&&!Recurring(o)&&o.giveGold+o.askGold==0)return "Add a payment or resource to the trade.";
+  if(o.kind==TreatyKind.Access&&HasAccess(o.from,o.to))return "Open borders already active.";
+  if(o.kind==TreatyKind.Friendship&&Friends(o.from,o.to))return "Friendship already active.";
+  if(o.kind==TreatyKind.Alliance){if(Allied(o.from,o.to))return "Alliance already active.";if(!Friends(o.from,o.to)||!HasTech(o.from,"laws")||!HasTech(o.to,"laws"))return "Requires friendship and Code of Laws on both sides.";}
+  if(o.kind==TreatyKind.Research){if(p.researchUntil>turn)return "Research pact already active.";if(!Friends(o.from,o.to)||!HasTech(o.from,"writing")||!HasTech(o.to,"writing"))return "Requires friendship and Writing on both sides; costs 25 gold each.";}
+  if(o.kind==TreatyKind.BorderPromise&&(o.to==p.a?p.promiseAUntil:p.promiseBUntil)>turn)return "Partner already promised to avoid nearby settlement.";
+  if(o.kind==TreatyKind.JointWar){if(!Allied(o.from,o.to))return "Requires an alliance.";if(o.target<0||o.target>2||o.target==o.from||o.target==o.to||!HasContact(o.from,o.target)||!HasContact(o.to,o.target))return "Both sides must know the third civilisation.";foreach(int a in new[]{o.from,o.to})if(!AtWar(a,o.target)&&WarReason(a,o.target)!="")return WarReason(a,o.target);if(AtWar(o.from,o.target)&&AtWar(o.to,o.target))return "Both sides are already at war with the target.";}
+  return "";
+ }
+ int KnownMilitary(int observer,int other){return Math.Max(1,units.Where(u=>u.owner==other&&(other==observer||VisibleTo(observer,u.x,u.y))).Sum(u=>Power[u.type]));}
+ public int DealValue(DiplomaticOffer o){return o.giveGold-o.askGold+(o.givePerTurn-o.askPerTurn)*o.duration*3/4+(o.giveResource>0?(HasResource(o.to,o.giveResource)?12:60):0)-(o.askResource>0?40:0);}
+ public int OfferWillingness(DiplomaticOffer o){int opinion=Opinion(o.to,o.from),value=DealValue(o);if(o.kind==TreatyKind.Trade)return value+Math.Max(0,opinion)/5+(o.to==1?5:0);if(o.kind==TreatyKind.Peace)return (turn-Relation(o.from,o.to).warStarted)*4+warWeariness[o.to]+(KnownMilitary(o.to,o.from)>=KnownMilitary(o.to,o.to)?15:0)+value/3-20;int threshold=o.kind==TreatyKind.Friendship?15:o.kind==TreatyKind.Alliance?35:o.kind==TreatyKind.Research?15:o.kind==TreatyKind.JointWar?40:0;return opinion+Math.Max(-40,Math.Min(40,value/5))-threshold+(o.kind==TreatyKind.Research&&o.to==2?10:0)-(Grievances(o.to,o.from)>=60?40:0);}
+ public string OfferAssessment(DiplomaticOffer o){string problem=OfferProblem(o);return problem!=""?problem:"Acceptance margin "+OfferWillingness(o)+" (0 or higher accepted by AI). Terms are checked again when accepted.";}
+ public DiplomaticOffer Propose(DiplomaticOffer draft){var o=draft.Copy();o.status=2;o.answer=OfferProblem(o);if(o.answer!="")return o;var p=Relation(o.from,o.to);if((o.from==p.a?p.lastA:p.lastB)==turn||offers.Any(x=>x.status==0&&SamePair(x.from,x.to,o.from,o.to))){o.answer="One proposal per turn, with only one pending proposal per pair.";return o;}if(o.from==p.a)p.lastA=turn;else p.lastB=turn;o.id=nextDiplomaticId++;o.created=turn;o.expires=turn+3;o.status=0;offers.Add(o);
+  if(o.to==0){o.answer="Awaiting your response.";DiplomacyEvent(o.from,o.to,"New diplomatic proposal. Respond within three turns.");}
+  else if(OfferWillingness(o)>=0)AcceptOffer(o);
+  else{o.status=2;o.answer="Declined: acceptance margin "+OfferWillingness(o)+".";DiplomacyEvent(o.from,o.to,o.kind+" proposal declined.");if(o.kind==TreatyKind.Trade&&o.from==0){var counter=new DiplomaticOffer{from=o.to,to=0,kind=o.kind,duration=o.duration,giveGold=o.askGold,askGold=o.giveGold-OfferWillingness(o)+5,givePerTurn=o.askPerTurn,askPerTurn=o.givePerTurn,giveResource=o.askResource,askResource=o.giveResource};if(OfferProblem(counter)==""){counter.id=nextDiplomaticId++;counter.created=turn;counter.expires=turn+3;counter.answer="Counteroffer: revised upfront payment.";offers.Add(counter);DiplomacyEvent(o.to,0,"A counteroffer is waiting in your inbox.");}}}
+  offers.RemoveAll(x=>x.status!=0&&x.created<turn-10);return o;
+ }
+ bool AcceptOffer(DiplomaticOffer o){string reason=OfferProblem(o);if(reason!=""){o.status=2;o.answer=reason;return false;}AddDiplomaticGold(o.from,o.askGold-o.giveGold);AddDiplomaticGold(o.to,o.giveGold-o.askGold);var p=Relation(o.from,o.to);int until=turn+o.duration;
+  switch(o.kind){case TreatyKind.Access:p.accessUntil=until;if(o.from==0||o.to==0)openBorders[o.from==0?o.to:o.from]=true;break;case TreatyKind.Friendship:p.friendUntil=until;break;case TreatyKind.Alliance:p.allianceUntil=until;p.friendUntil=Math.Max(p.friendUntil,until);break;case TreatyKind.Research:p.researchUntil=until;AddDiplomaticGold(o.from,-25);AddDiplomaticGold(o.to,-25);break;case TreatyKind.Peace:MakePeace(o.from,o.to);break;case TreatyKind.BorderPromise:if(o.to==p.a)p.promiseAUntil=until;else p.promiseBUntil=until;break;}
+  if(Recurring(o))contracts.Add(new DiplomaticContract{id=nextDiplomaticId++,from=o.from,to=o.to,start=turn,end=until,givePerTurn=o.givePerTurn,askPerTurn=o.askPerTurn,giveResource=o.giveResource,askResource=o.askResource});
+  if(o.kind!=TreatyKind.Trade){ChangeTrust(o.from,o.to,3);ChangeTrust(o.to,o.from,3);}o.status=1;o.answer="Accepted.";DiplomacyEvent(o.from,o.to,o.kind+" agreed.");if(o.kind==TreatyKind.JointWar){if(!AtWar(o.from,o.target))DeclareWar(o.from,o.target);if(!AtWar(o.to,o.target))DeclareWar(o.to,o.target);}return true;
+ }
+ public bool RespondToOffer(int id,bool accept){var o=offers.Find(x=>x.id==id&&x.to==0&&x.status==0);if(o==null||result!="")return false;if(turn>=o.expires){o.status=3;o.answer="Expired.";return false;}if(accept)return AcceptOffer(o);o.status=2;o.answer="Declined by player.";DiplomacyEvent(o.from,o.to,"Proposal declined.");return true;}
+ public string DescribeOffer(DiplomaticOffer o){return NationName(o.from)+" proposes "+o.kind+" to "+NationName(o.to)+" for "+o.duration+" turns. Proposer gives "+o.giveGold+" gold now, "+o.givePerTurn+"/turn, "+ResourceNames[o.giveResource]+" access; recipient gives "+o.askGold+" now, "+o.askPerTurn+"/turn, "+ResourceNames[o.askResource]+" access."+(o.kind==TreatyKind.Alliance?" Alliance includes open borders and automatic defence against an aggressor unless another treaty prevents it.":o.kind==TreatyKind.Research?" Each side also pays 25 gold; +2 science per city each turn.":o.kind==TreatyKind.Peace?" Peace prevents war for 8 turns, independent of trade duration.":o.kind==TreatyKind.BorderPromise?" Recipient promises no new cities within 6 tiles of the proposer's cities; observed violations cause grievances.":o.kind==TreatyKind.JointWar?" BOTH sides declare war on "+(o.target>=0&&o.target<3?NationName(o.target):"a selected target")+".":"")+" Resource trade shares access; it does not remove the supplier's access.";}
+ public bool ContractActive(DiplomaticContract c){return c.start<=turn&&turn<c.end&&!AtWar(c.from,c.to)&&!Embargoed(c.from,c.to)&&(c.giveResource==0||HasDomesticResource(c.from,c.giveResource))&&(c.askResource==0||HasDomesticResource(c.to,c.askResource));}
+ public bool ImportedResource(int owner,int resource){return resource>0&&contracts.Any(c=>ContractActive(c)&&(c.to==owner&&c.giveResource==resource||c.from==owner&&c.askResource==resource));}
+ public int DiplomaticIncome(int owner){return contracts.Where(ContractActive).Sum(c=>c.to==owner?c.givePerTurn:c.from==owner?c.askPerTurn:0);}
+ public int DiplomaticExpense(int owner){return contracts.Where(ContractActive).Sum(c=>c.from==owner?c.givePerTurn:c.to==owner?c.askPerTurn:0);}
+ public int DiplomaticNet(int owner){return DiplomaticIncome(owner)-DiplomaticExpense(owner);}
+ // Budget each payer before incoming money. No cyclic credit or negative treasury creates gold.
+ public void ProcessDiplomacyPayments(){foreach(var c in contracts.ToArray())if(!ContractActive(c)){contracts.Remove(c);DiplomacyEvent(c.from,c.to,"Trade ended: duration, war, embargo or resource connection changed.");}var insolvent=Enumerable.Range(0,3).Where(i=>Treasury(i)<DiplomaticExpense(i)).ToArray();foreach(var c in contracts.ToArray()){int offender=insolvent.Contains(c.from)&&c.givePerTurn>0?c.from:insolvent.Contains(c.to)&&c.askPerTurn>0?c.to:-1;if(offender<0)continue;contracts.Remove(c);int victim=offender==c.from?c.to:c.from;Grieve(victim,offender,victim==1?18:12);ChangeTrust(victim,offender,-10);DiplomacyEvent(c.from,c.to,"Payment default: contract cancelled and trust damaged.");}int[] net=Enumerable.Range(0,3).Select(DiplomaticNet).ToArray();for(int i=0;i<3;i++)AddDiplomaticGold(i,net[i]);}
+ public void AdvanceDiplomacy(){
+  for(int i=0;i<3;i++)warWeariness[i]=Math.Max(0,Math.Min(60,warWeariness[i]+(Enumerable.Range(0,3).Any(j=>AtWar(i,j))?1:-2)));
+  foreach(var p in diplomacy){if(!AtWar(p.a,p.b)){p.grievanceA=Math.Max(0,p.grievanceA-1);p.grievanceB=Math.Max(0,p.grievanceB-1);if(turn%5==0&&Friends(p.a,p.b)){ChangeTrust(p.a,p.b,1);ChangeTrust(p.b,p.a,1);}}if(p.accessUntil>0&&p.accessUntil<=turn){p.accessUntil=0;if(p.a==0)openBorders[p.b]=false;DiplomacyEvent(p.a,p.b,"Open borders expired; units may withdraw.");}if(p.friendUntil>0&&p.friendUntil<=turn){p.friendUntil=0;DiplomacyEvent(p.a,p.b,"Friendship expired.");}if(p.allianceUntil>0&&p.allianceUntil<=turn){p.allianceUntil=0;DiplomacyEvent(p.a,p.b,"Alliance expired.");}if(p.researchUntil>0&&p.researchUntil<=turn){p.researchUntil=0;DiplomacyEvent(p.a,p.b,"Research pact expired.");}if(p.promiseAUntil>0&&p.promiseAUntil<=turn){p.promiseAUntil=0;ChangeTrust(p.b,p.a,5);DiplomacyEvent(p.a,p.b,"Border promise kept: trust +5.");}if(p.promiseBUntil>0&&p.promiseBUntil<=turn){p.promiseBUntil=0;ChangeTrust(p.a,p.b,5);DiplomacyEvent(p.a,p.b,"Border promise kept: trust +5.");}}
+  foreach(var c in contracts.Where(c=>c.end<=turn).ToArray()){contracts.Remove(c);DiplomacyEvent(c.from,c.to,"Trade contract completed.");}
+  foreach(var o in offers.Where(o=>o.status==0&&o.expires<=turn)){o.status=3;o.answer="Expired.";}
+ }
+ public void DiplomacyAI(){var pair=Relation(1,2);if(!pair.contact&&units.Any(u=>u.owner==2&&VisibleTo(1,u.x,u.y))||!pair.contact&&cities.Any(c=>c.owner==2&&VisibleTo(1,c.x,c.y)))pair.contact=true;
+  for(int a=1;a<3;a++){if(turn%5!=a||!cities.Any(c=>c.owner==a))continue;for(int b=0;b<3;b++){if(!HasContact(a,b)||offers.Any(o=>o.status==0&&SamePair(o.from,o.to,a,b)))continue;var p=Relation(a,b);DiplomaticOffer offer=null;
+   if(AtWar(a,b)){if(turn-p.warStarted>=6)offer=new DiplomaticOffer{from=a,to=b,kind=TreatyKind.Peace};}
+   else if(Opinion(a,b)<-20&&!Friends(a,b)&&p.peaceUntil<=turn){if(FormalWarAvailable(a,b)&&KnownMilitary(a,a)>KnownMilitary(a,b)*3/2)DeclareWar(a,b);else Denounce(a,b);}
+   else{if(Treasury(a)>60)SendEmbassy(a,b);var kind=!HasAccess(a,b)?TreatyKind.Access:!Friends(a,b)?TreatyKind.Friendship:!Allied(a,b)&&HasTech(a,"laws")&&HasTech(b,"laws")?TreatyKind.Alliance:TreatyKind.Research;offer=new DiplomaticOffer{from=a,to=b,kind=kind};if(OfferProblem(offer)!=""||OfferWillingness(offer)<0){int resource=Enumerable.Range(1,5).FirstOrDefault(r=>HasDomesticResource(a,r)&&!HasResource(b,r));if(resource>0)offer=new DiplomaticOffer{from=a,to=b,kind=TreatyKind.Trade,giveResource=resource,askPerTurn=1};}}
+   if(offer!=null&&OfferProblem(offer)==""&&OfferWillingness(offer)>=0)Propose(offer);
+  }}
+ }
+ bool DiplomacyValid(){if(diplomacy==null||diplomacy.Count!=3||offers==null||contracts==null||warWeariness==null||warWeariness.Length!=3||warWeariness.Any(x=>x<0||x>60)||nextDiplomaticId<1)return false;
+  var keys=new System.Collections.Generic.HashSet<int>();foreach(var p in diplomacy){if(p==null||p.a<0||p.b>2||p.a>=p.b||!keys.Add(p.a*3+p.b)||p.events==null||p.events.Count>12||p.events.Any(x=>x==null)||Math.Abs((long)p.trustA)>100||Math.Abs((long)p.trustB)>100||p.grievanceA<0||p.grievanceB<0||p.grievanceA>200||p.grievanceB>200||new[]{p.accessUntil,p.friendUntil,p.allianceUntil,p.researchUntil,p.peaceUntil,p.warStarted,p.promiseAUntil,p.promiseBUntil,p.embargoUntil}.Any(x=>x<0)||p.denounceA< -1||p.denounceB< -1)return false;}
+  var ids=new System.Collections.Generic.HashSet<int>();foreach(var o in offers){if(o==null||o.id<1||o.id>=nextDiplomaticId||!ids.Add(o.id)||o.from<0||o.to<0||o.from>2||o.to>2||o.from==o.to||o.status<0||o.status>3||o.created<1||o.expires<=o.created||o.answer==null||(int)o.kind<0||(int)o.kind>7||o.duration<5||o.duration>30||o.giveGold<0||o.askGold<0||o.giveGold>10000||o.askGold>10000||!ValidRecurring(o.givePerTurn,o.askPerTurn,o.giveResource,o.askResource)||o.kind==TreatyKind.JointWar&&(o.target<0||o.target>2||o.target==o.from||o.target==o.to))return false;}
+  keys.Clear();foreach(var c in contracts)if(c==null||c.id<1||c.id>=nextDiplomaticId||!ids.Add(c.id)||c.from<0||c.to<0||c.from>2||c.to>2||c.from==c.to||c.start<1||c.end<=c.start||!keys.Add(Math.Min(c.from,c.to)*3+Math.Max(c.from,c.to))||!ValidRecurring(c.givePerTurn,c.askPerTurn,c.giveResource,c.askResource))return false;return true;
+ }
+ static bool ValidRecurring(int give,int ask,int resource,int requested){return give>=0&&ask>=0&&give<=20&&ask<=20&&resource>=0&&resource<=5&&requested>=0&&requested<=5;}
+}
+}

@@ -37,7 +37,7 @@ namespace ParadigmRealm
             if(GUI.Button(new Rect(1115,15,110,30),"Guide",button)){cityScreen=false;researchScreen=false;detailsScreen="";guide=true;GUIUtility.ExitGUI();}
             if(GUI.Button(new Rect(510,54,140,32),"Research",button)){researchScreen=true;detailsScreen="";ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
             string[] names={"Economy","Diplomacy","Identity","Cities","Chronicle"};
-            for(int i=0;i<names.Length;i++)if(GUI.Button(new Rect(660+i*116,54,110,32),names[i],button))OpenDetails(names[i]);
+            for(int i=0;i<names.Length;i++)if(GUI.Button(new Rect(660+i*116,54,110,32),names[i]+(names[i]=="Diplomacy"&&world.offers.Any(o=>o.to==0&&o.status==0&&o.expires>world.turn)?" ("+world.offers.Count(o=>o.to==0&&o.status==0&&o.expires>world.turn)+")":""),button))OpenDetails(names[i]);
             GUI.enabled=enabled;
         }
         void DrawDetailsScreen()
@@ -51,17 +51,13 @@ namespace ParadigmRealm
                 GUILayout.Label("Low: less tax, +2 happiness. High: more tax, -2 happiness. Government determines free unit upkeep.",body);
                 for(int r=2;r<World.ResourceNames.Length;r++)GUILayout.Label(World.ResourceNames[r]+": "+(world.HasResource(0,r)?"connected":"not connected"),body);
             DrawEmpireEconomy();
+            }else if(detailsScreen=="Settlement adviser"){DrawSettlementAdviser();
             }else if(detailsScreen=="Citizens"){DrawCitizenManagement();
             }else if(detailsScreen=="Identity"){
                 GUI.SetNextControlName("rename");renameText=GUILayout.TextField(renameText,32);if(Button("Apply civilisation name"))world.civilisationName=World.CleanName(renameText);
                 world.flag=GUILayout.SelectionGrid(world.flag,new[]{"Leaf","Star","Sun"},3);
             }else if(detailsScreen=="Diplomacy"){
-                if(!world.met.Skip(1).Any(v=>v))GUILayout.Label("No other civilisations encountered.",body);
-                for(int i=1;i<3;i++)if(world.met[i]){
-                    if(Button(world.NationName(i)+": "+(world.war[i]?"Offer peace":"Declare war"))){if(world.war[i])status=world.OfferPeace(i)?"Peace agreed.":"Peace refused: relations are hostile and their army is stronger.";else{pendingUnit=-2;pendingWars=new[]{i};detailsScreen="";cityScreen=false;GUIUtility.ExitGUI();}}
-                    if(!world.war[i]&&Button(world.NationName(i)+": "+(world.openBorders[i]?"Close borders":"Open borders")))world.SetBorders(i);
-                    DrawEmpireDiplomacy(i);
-                }
+                DrawAdvancedDiplomacy();
             }else if(detailsScreen=="Atlas"){DrawAtlas();
             }else if(detailsScreen=="Military"){DrawMilitaryAdviser();
             }else if(detailsScreen=="Cities"){
@@ -86,9 +82,9 @@ namespace ParadigmRealm
             GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(40,110,800,34),c.name+" — Population "+c.pop,title);
             if(GUI.Button(new Rect(1055,110,180,34),"Back to map",button)){cityScreen=false;GUI.FocusControl(null);GUIUtility.ExitGUI();}
             var yield=world.Yield(c);GUI.Label(new Rect(40,150,1170,30),"Food "+c.food+" ("+yield[0]+"/turn) | Production "+yield[1]+" per line | Science "+yield[2]+" | Happiness "+world.Happiness(c)+" | "+(world.Connected(c)?"Connected":"Isolated")+(c.occupation>0?" | Occupied "+c.occupation+" turns":""),body);
-            DrawCityTiles(c);DrawBuiltBuildings(c);
+            PrepareTerrainView();DrawCityTiles(c);DrawBuiltBuildings(c);
             GUI.SetNextControlName("cityrename");c.name=GUI.TextField(new Rect(490,185,330,30),c.name,32);
-            c.focus=GUI.SelectionGrid(new Rect(840,185,390,30),c.focus,new[]{"Balanced","Growth","Production","Science"},4);
+            c.focus=GUI.SelectionGrid(new Rect(840,185,390,30),c.focus,new[]{"Balanced","Growth","Production","Science","Commerce"},5);
             if(GUI.Button(new Rect(490,220,180,30),"Citizens / specialists",button)){managedCity=c.id;cityScreen=false;OpenDetails("Citizens");}
             GUI.Label(new Rect(680,220,550,42),"Click: select one. Ctrl+left-click: queue. Ctrl+right-click anywhere in a line: remove last. One of each building per city.",small);
             DrawProductionLine(c,false,new Rect(485,270,365,438));
@@ -104,15 +100,15 @@ namespace ParadigmRealm
                 var t=world.At(c.x+dx,c.y+dy);var r=new Rect((dx+radius)*size,(dy+radius)*size,size-2,size-2);if(t==null)continue;
                 bool centre=dx==0&&dy==0,active=worked.Contains(t),influence=t.owner==c.owner;
                 if(!t.seen){Fill(r,new Color(.04f,.07f,.09f));GUI.Label(r,"Unknown",small);continue;}
-                var known=world.KnownTile(t);GUI.DrawTexture(r,TerrainAppearance(known));if(centre)GUI.DrawTexture(new Rect(r.x+16,r.y+4,46,46),cityTexture);
+                var known=world.KnownTile(t);GUI.DrawTexture(r,TerrainAppearance(known));if(centre)DrawCityArt(c,new Rect(r.x+8,r.y-3,62,62));
                 if(!influence)Fill(r,new Color(0,0,0,.6f));
-                if(influence){int[] v=centre?new[]{2,2,0}:active?world.TileYield(t):new[]{0,0,0};
+                if(influence){int[] v=centre?world.CityCentreYield(c):active?world.EffectiveTileYield(c,t):new[]{0,0,0};
                     Fill(new Rect(r.x,r.y+39,r.width,39),new Color(.02f,.04f,.05f,.9f));
                     GUI.Label(new Rect(r.x+3,r.y+39,r.width-4,38),"F "+v[0]+"  P "+v[1]+"\nG "+v[2]+(centre?"  City":active?"  Worked":"  Unworked"),small);
                     Fill(new Rect(r.x,r.y,r.width,2),active||centre?Color.yellow:new Color(.5f,.6f,.5f));
                 }
             }
-            GUI.EndScrollView();GUI.Label(new Rect(40,533,430,44),"F = Food, P = Production, G = Gold. Unworked tiles contribute 0. City bonuses and food consumption are applied to totals above.",small);
+            GUI.EndScrollView();GUI.Label(new Rect(40,533,430,44),world.GrowthStatus(c),small);
         }
         void DrawBuiltBuildings(City c)
         {

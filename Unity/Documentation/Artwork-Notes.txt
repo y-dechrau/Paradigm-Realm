@@ -1,0 +1,42 @@
+ARTWORK SOURCES AND PROCESS
+
+Existing art packs reused:
+Paradigm-Realm-Environment-Tiles-V2.zip
+Paradigm-Realm-16bit-Unit-Designs.zip
+Paradigm-Realm-City-Designs.zip
+Paradigm-Realm-80-Resource-Icons.zip
+Paradigm_Realm_All_Generated_Pictures.zip
+
+Title art: user-supplied image(20261024-183240).png.
+The existing concept sheets are retained as scaled gallery pages. The 21 terrain
+assets use the corresponding existing terrain illustrations, resized with nearest
+neighbour sampling for game use.
+
+New atlas generation used the built-in ImageGen tool, not the API/CLI fallback.
+The generated transparent atlases were sliced into individual 128x128 textures.
+Manual crop boundaries were used where the generated sheet had uneven gutters.
+No image-generation service or subscription is needed to run the game.
+
+PROMPT SET
+1. Production transparent 4x4 atlas matching the prior 16-bit unit/city references:
+   settler, worker, stone warrior, scout; archer, mounted knight, rifleman, spearman;
+   horseman, catapult, medic, trade wagon; wheat, iron, gold, spices. Shaded pixel
+   art, three-quarter view, upper-left lighting, no text, isolated silhouettes.
+2. Production transparent 5x4 city atlas based on the prior Stone Age sheet:
+   five distinct architectural families in Stone, Bronze, Dark and Medieval ages.
+   Hide tents, roundhouses, adobe, stilt huts and turf huts advance to palisades,
+   classical settlements, desert citadels, Asian castles and European fortresses.
+   No labels or borders; miniature shaded pixel art with transparent surroundings.
+3. Production transparent 3x3 scenery atlas: deciduous trees, pines, snowy mountain;
+   wheat farm, mine entrance, stone fort; tent village, brown horse, jungle palms.
+   Consistent isometric-looking pixel art, isolated silhouettes, no labels.
+
+IN-GAME MAPPING
+Unit indices match World.UnitNames exactly (0 through 11).
+Resource indices match World.ResourceNames (1 through 5).
+City rows 0..3 are selected by Bronze Working, Iron Working and Feudalism.
+City columns 0..4 vary deterministically by owner and city ID.
+The original graphics-only release retained gameplay rules. The current update
+keeps its square grid and artwork; see Design/IMPLEMENTATION-STATUS.md for the
+new terrain-rendering and city/AI changes.
+Future technology concepts and realm scenes are gallery references only.

@@ -1,0 +1,57 @@
+PARADIGM REALM — SETTLEMENT STRATEGY, STAGE 2
+For Unity 6000.3.25f1. Includes the graphics overhaul and Stage 1 terrain/city improvements.
+
+INSTALL
+1. Close Unity. Back up your current project and saved games.
+2. Extract this ZIP.
+3. Copy the WHOLE Assets folder into your existing project, merge and replace:
+   C:\Users\Matth\Downloads\Paradigm-Realm-Unity\Paradigm-Realm-Unity
+4. Copy Design and Documentation too if you want the notes beside your project.
+5. Reopen Unity. Run Paradigm Realm > Run Engine Checks and Run Graphics Checks.
+6. Open Paradigm Realm > Terrain Transition Review. Click Render diagnostic map.
+7. Press Play. Load a saved game or start a game. Open a city and try its focuses.
+
+Do not copy just RealmGame.cs: this update includes several new C# files.
+Packages and ProjectSettings are included for opening a separate project copy.
+You do not need to replace these folders in your existing project.
+
+WHAT TO TRY
+- Select a Settler and choose Compare settlement sites.
+- Compare food, production, fresh water, resources, upkeep and unknown surroundings.
+- Click Travel to... to issue an ordinary movement order. Use B to found manually.
+- Hover explored tiles with a Settler selected for benefits and founding blockers.
+- River centres provide 3 food / 2 production; hill centres 2 food / 3 production.
+- Fresh water allows population 8 before an Aqueduct; other sites allow 6.
+- Aqueducts allow 12 and sewers allow 20, with no extra stacking water bonus.
+- Watch rivals seek good colony sites and delay expansion when money is low.
+
+CHANGES TO EXISTING SAVES
+Version 6 saves continue to load; this stage adds no serialized fields; no world regeneration or asset GUID changes.
+Existing terrain, cities, technology and orders are retained on load.
+Existing cities immediately receive their river/hill/fresh-water site benefits.
+Worker allocation follows the improved food-aware rules immediately.
+City food storage is capped at the next population threshold when a turn runs.
+A granary preserves half that threshold after growth. Existing large cities remain.
+The city focus integer now also supports Commerce (4). Keep a backup when trying
+new versions; reverse compatibility with older game builds is not guaranteed.
+
+TESTED HERE
+Foundation, Content, Empire, Strategy and Settlement engine checks passed in .NET.
+Includes movement, combat, queues, research, trade, saves and multi-turn campaigns.
+Runtime code and the new review window compiled against Unity API doubles.
+Additional tests covered UI input, JSON round trips with System.Text.Json doubles,
+renderer cache, rendering without state changes, fog and local tile dependencies.
+Documentation/Terrain-Comparison.png shows old/new CPU renderer output at
+56 pixels per tile. It is not a Unity screenshot and excludes scenery/UI overlays.
+
+UNITY STILL NEEDS TESTING
+Unity is unavailable here. Real Unity compilation, JsonUtility behaviour,
+Play Mode layout, performance and the new Editor window need the checks above.
+
+SCOPE
+This is the second stage, focused on settlement decisions and rival expansion. It retains the square 2D grid,
+existing units, artwork and current victory rules. No naval gameplay is added.
+See Design/IMPLEMENTATION-STATUS.md for implemented work and remaining priorities.
+
+ROLLBACK
+Close Unity and restore the backup project and, if necessary, the backup saves.

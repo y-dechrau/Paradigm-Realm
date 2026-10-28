@@ -1,0 +1,47 @@
+STAGE 2 ADDITIONS
+
+- SettlementChecks: centre yield rules, freshwater/ocean distinction, 6/8/12/20
+  growth caps, city food explanation, movement/Fire founding restrictions,
+  fog-safe geography/resources/ownership, site ranking, deterministic ties,
+  visible threat avoidance, expansion treasury checks and an AI founding a colony.
+- SettlementUIChecks (API doubles): adviser opening, explanatory labels,
+  recommendations without simulation mutation, movement without auto-founding,
+  returning to the map, version 6 save validity and retained travel orders.
+- The existing engine, interaction, JSON/renderer harness suites pass with Stage 2.
+- All original artwork and scene files remain unchanged.
+- Unity itself is unavailable. Actual Unity compile/JsonUtility/Play Mode and
+  display/performance acceptance still need local verification.
+
+VALIDATION — TERRAIN AND CITY STRATEGY, STAGE 1
+
+Passed using .NET 8.0.426:
+- FoundationChecks: movement orders, action cancellation, worker teams, roads,
+  resource connections, dual production, combat, taxes, research and save migration.
+- ContentChecks: technology catalog, active effects and content rules.
+- EmpireChecks: specialists, government, growth caps, rush production, wonders,
+  caravan trade, diplomacy, exploration and three 50-turn campaign simulations.
+- StrategyChecks: production allocation avoids preventable famine, specialists
+  retain their food cost, Commerce favours gold, research tile bonuses, growth
+  blockers and storage cap, AI growth-building priority, post-infrastructure growth,
+  starvation specialist clamp, AI research legality and completed AI farming.
+- All runtime C# plus TerrainReview compiled against local Unity API doubles.
+- UI harness: movement keys, End Turn, modal input guards, both production queues,
+  city and research drawing calls, load-game success and invalid-save preservation.
+- Visual harness: JSON round trip using System.Text.Json doubles, v6 loading,
+  deterministic 12-turn paired simulations, stable cache keys, rendering without
+  simulation changes, unseen/remembered terrain, 1728 tile-edge/corner dependency checks.
+- Original 114 game-art PNG assets plus original contact-sheet PNG are unchanged
+  and decode successfully. Existing .meta GUIDs, Packages and ProjectSettings are
+  byte-identical to the supplied graphics-update ZIP.
+- The CPU before/after image uses the exact old raster algorithm and the actual new
+  TerrainPainter/TerrainPalette code, sampled at normal 56px-per-tile display size.
+  It excludes scenery and UI. Visually inspected after river and lake corrections.
+
+NOT RUN HERE
+Unity Editor compilation, Unity JsonUtility, Play Mode, real window layout and
+frame-time testing. The test doubles are not a replacement for these checks.
+
+ON YOUR PC
+Run Engine Checks and Graphics Checks from the Paradigm Realm menu.
+Render the Terrain Transition Review map; inspect bends, junctions and coastlines.
+Play a campaign: test movement, fog, save/load, city focuses and End Turn.

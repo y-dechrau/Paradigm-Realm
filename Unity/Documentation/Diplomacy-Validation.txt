@@ -1,0 +1,25 @@
+Validation — 28 October 2026
+Compiled with .NET 8 / Roslyn. Unity API doubles used for UI and JSON checks; Unity itself was not run.
+
+--- engine ---
+PASS advanced diplomacy
+PASS Foundation
+PASS Content
+PASS Empire (including 3 x 50 turn campaigns)
+PASS city strategy and terrain invariants
+PASS settlement strategy, fog, AI colony and city bonuses
+
+--- diplomacy ---
+PASS diplomacy composer/inbox confirmation, header notice, v7 full-state round trip, treaty-protected multi-target map attacks and 20-turn deterministic diplomacy (API doubles)
+
+--- harness ---
+PASS JSON round trip (System.Text.Json doubles), v6 loading, renderer cache, no render mutation, unseen/remembered fog, 1728 corner/edge dependency checks
+
+--- settlement ---
+PASS settlement adviser display/input, no simulation mutation, manual founding, persistent travel and v6 round trip (API doubles)
+
+--- ui ---
+PASS: simulated input, two production lanes, research and city drawing calls, unique icons, Load and save failure handling (Unity API doubles)
+
+Asset preservation: 266 existing artwork, scene and metadata files match Stage 2 byte-for-byte.
+Note: the settlement harness retains an older v6 label in its output; its current round trip uses v7. Explicit v6 migration is tested in the other suites.

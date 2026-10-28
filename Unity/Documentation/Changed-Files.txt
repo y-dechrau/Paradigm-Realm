@@ -1,0 +1,36 @@
+TERRAIN AND CITY STRATEGY — STAGE 1
+
+Changed:
+Assets/Editor/RealmTools.cs
+Assets/Scripts/EmpireSystems.cs
+Assets/Scripts/EmpireUI.cs
+Assets/Scripts/InterfaceV4.cs
+Assets/Scripts/RealmGame.cs
+Assets/Scripts/TerrainRendering.cs
+Assets/Scripts/World.cs
+Assets/Scripts/WorldContent.cs
+Documentation/Artwork-Notes.txt
+Documentation/Changed-Files.txt
+START-HERE.txt
+
+Added:
+Assets/Editor/TerrainReview.cs
+Assets/Editor/TerrainReview.cs.meta
+Assets/Scripts/CityStrategy.cs
+Assets/Scripts/CityStrategy.cs.meta
+Assets/Scripts/InfrastructureAI.cs
+Assets/Scripts/InfrastructureAI.cs.meta
+Assets/Scripts/StrategyChecks.cs
+Assets/Scripts/StrategyChecks.cs.meta
+Assets/Scripts/TerrainDemo.cs
+Assets/Scripts/TerrainDemo.cs.meta
+Assets/Scripts/TerrainPainter.cs
+Assets/Scripts/TerrainPainter.cs.meta
+Assets/Scripts/TerrainPalette.cs
+Assets/Scripts/TerrainPalette.cs.meta
+Design/IMPLEMENTATION-STATUS.md
+Documentation/Terrain-Comparison.png
+Documentation/Validation.txt
+
+Tests/ contains reproducible engine and API-double checks.
+Original artwork and GUIDs retained.

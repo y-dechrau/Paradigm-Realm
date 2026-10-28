@@ -1,3 +1,5 @@
+**Latest: Diplomacy Stage 3.** Read [START-HERE-DIPLOMACY.md](START-HERE-DIPLOMACY.md) first. The notes below describe earlier development.
+
 # Paradigm Realm Alpha 0.7 — Empire expansion
 
 This release expands the original Earth game in the direction of classic Civilization II gameplay. It is not a complete Test of Time remake.

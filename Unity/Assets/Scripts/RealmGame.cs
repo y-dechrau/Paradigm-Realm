@@ -12,7 +12,7 @@ namespace ParadigmRealm
         Texture2D[] terrain,people; Texture2D cityTexture; GUIStyle title,heading,body,small,button;
         bool nameSetup; string proposedName="Verdant Union";
         bool guide=false,confirmNew; bool mainMenu=true,hasSession,confirmQuit; GUIStyle menuTitle,menuSubtitle,menuButton; string status="Select your Settler, then Found city.";
-        float tilePixels=32; readonly Color[] nations={new Color(.55f,.86f,.61f),new Color(.9f,.65f,.35f),new Color(.4f,.7f,.88f)};
+        float tilePixels=56; readonly Color[] nations={new Color(.55f,.86f,.61f),new Color(.9f,.65f,.35f),new Color(.4f,.7f,.88f)};
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot(){if(FindFirstObjectByType<RealmGame>()==null)new GameObject("Paradigm Realm").AddComponent<RealmGame>();}
         void Awake(){zoomSensitivity=PlayerPrefs.GetFloat("RealmZoomSensitivity",2f);tooltips=PlayerPrefs.GetInt("RealmTooltips",1)!=0;var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.055f,.09f,.11f);camera.orthographic=true;Application.targetFrameRate=30;world=World.New(Environment.TickCount&int.MaxValue);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
@@ -23,16 +23,17 @@ namespace ParadigmRealm
         bool HasSavedGame(){return File.Exists(SavePath)||NamedSaves().Length>0;}
         string[] NamedSaves(){try{return Directory.GetFiles(Application.persistentDataPath,"earth-named-*.json").OrderByDescending(File.GetLastWriteTimeUtc).ToArray();}catch{return new string[0];}}
         void Load(){var candidates=NamedSaves().Concat(File.Exists(SavePath)?new[]{SavePath}:new string[0]);LoadFile(activeSavePath??candidates.OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault()??SavePath);}
-        void LoadFile(string path){try{var next=JsonUtility.FromJson<World>(File.ReadAllText(path));if(next!=null)next.UpgradeSave();if(next==null||!next.Valid())throw new Exception("Invalid or incompatible save.");world=next;renameText=world.civilisationName;selected=world.units.Where(u=>u.owner==0).Select(u=>u.id).DefaultIfEmpty(-1).First();cityId=-1;cityScreen=false;researchScreen=false;detailsScreen="";pauseMenu=false;loadScreen=false;Center();hasSession=true;mainMenu=false;activeSavePath=Path.GetFileName(path).StartsWith("earth-auto-")?null:path;status="Game loaded.";}catch(Exception e){status="Could not load: "+e.Message;}}
+        void LoadFile(string path){try{var next=JsonUtility.FromJson<World>(File.ReadAllText(path));if(next!=null)next.UpgradeSave();if(next==null||!next.Valid())throw new Exception("Invalid or incompatible save.");world=next;ResetDiplomacyUI();renameText=world.civilisationName;selected=world.units.Where(u=>u.owner==0).Select(u=>u.id).DefaultIfEmpty(-1).First();cityId=-1;cityScreen=false;researchScreen=false;detailsScreen="";pauseMenu=false;loadScreen=false;Center();hasSession=true;mainMenu=false;activeSavePath=Path.GetFileName(path).StartsWith("earth-auto-")?null:path;status="Game loaded.";}catch(Exception e){status="Could not load: "+e.Message;}}
         void NextUnit(){var list=world.units.Where(u=>u.owner==0&&u.moves>0&&!u.fortified&&!u.sentry&&!u.exploring&&!u.hasOrder&&u.job==0).ToList();if(list.Count==0){status="No units with movement. End the turn.";return;}int i=list.FindIndex(u=>u.id==selected);selected=list[(i+1)%list.Count].id;cityId=-1;Center();}
-        void Found(){var c=world.Found(Selected());if(c==null)status="Use a Settler with movement, at least 4 tiles from another city.";else{selected=-1;cityId=c.id;status=c.name+" founded.";}}
+        void Found(){var u=Selected();string reason=world.FoundReason(u);var c=world.Found(u);if(c==null)status=reason;else{selected=-1;cityId=c.id;status=c.name+" founded.";}}
         void EndTurn(){world.EndTurn();AutoSave();status=world.result!=""?world.result:"Turn "+world.turn+". Choose your orders.";}
         void Styles(){if(title!=null)return;title=new GUIStyle(GUI.skin.label){fontSize=26,fontStyle=FontStyle.Bold};heading=new GUIStyle(GUI.skin.label){fontSize=17,fontStyle=FontStyle.Bold};body=new GUIStyle(GUI.skin.label){fontSize=14,wordWrap=true};small=new GUIStyle(body){fontSize=12};button=new GUIStyle(GUI.skin.button){fontSize=13,wordWrap=true};}
         bool Button(string text){return GUILayout.Button(text,button,GUILayout.Height(30));}
         void OnGUI()
         {
-            Styles();float scale=Mathf.Min(Screen.width/1280f,Screen.height/800f);GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-1280*scale)/2,(Screen.height-800*scale)/2,0),Quaternion.identity,new Vector3(scale,scale,1));
+            ApplyVisualSkin();Styles();float scale=Mathf.Min(Screen.width/1280f,Screen.height/800f);GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-1280*scale)/2,(Screen.height-800*scale)/2,0),Quaternion.identity,new Vector3(scale,scale,1));
             GUI.DrawTexture(new Rect(0,0,1280,800),Texture2D.whiteTexture,ScaleMode.StretchToFill,false,0,new Color(.055f,.09f,.11f),0,0);
+            if(artGallery){DrawGallery();return;}
             if(nameSetup){DrawNameSetup();return;}
             if(loadScreen){DrawLoadScreen();return;}
             if(mainMenu){DrawMainMenu();return;}
@@ -59,7 +60,7 @@ namespace ParadigmRealm
 
         void StartGame()
         {
-            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; world=World.New(chosenSeed,proposedName,setupMap,setupSpeed,1,setupTrait);renameText=world.civilisationName;nameSetup=false;
+            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; world=World.New(chosenSeed,proposedName,setupMap,setupSpeed,1,setupTrait);ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
             selected=world.units.First(u=>u.owner==0).id;cityId=-1;
             sideScroll=Vector2.zero;researchScreen=false;detailsScreen="";cityScreen=false;pauseMenu=false;activeSavePath=null;Center();hasSession=true;mainMenu=false;
             guide=true;confirmNew=false;status="Select your Settler, then Found city.";
@@ -82,25 +83,8 @@ namespace ParadigmRealm
                 menuButton=new GUIStyle(button){fontSize=19,fontStyle=FontStyle.Bold};
             }
             // Original pixel landscape, drawn in integer-sized blocks.
-            Fill(new Rect(0,0,1280,800),new Color(.055f,.105f,.15f));
-            for(int i=0;i<58;i++){int x=(i*193+31)%1280,y=(i*79+17)%270;Fill(new Rect(x,y,2,2),new Color(.65f,.73f,.72f));}
-            Fill(new Rect(985,90,56,56),new Color(.85f,.82f,.61f));
-            Fill(new Rect(975,103,76,32),new Color(.85f,.82f,.61f));
-            for(int x=0;x<1280;x+=16){
-                float ridge=370+Mathf.Round((Mathf.Sin(x*.009f)*80+Mathf.Sin(x*.022f)*30)/16)*16;
-                Fill(new Rect(x,ridge,16,800-ridge),new Color(.12f,.22f,.25f));
-                float front=570+Mathf.Round(Mathf.Sin(x*.012f)*42/16)*16;
-                Fill(new Rect(x,front,16,800-front),new Color(.17f,.29f,.25f));
-            }
-            for(int i=0;i<16;i++){
-                float x=i*91-20,y=625+(i%3)*20;
-                Fill(new Rect(x+20,y+26,8,66),new Color(.18f,.22f,.18f));
-                Fill(new Rect(x,y+26,48,26),new Color(.075f,.17f,.15f));
-                Fill(new Rect(x+8,y+10,32,26),new Color(.075f,.17f,.15f));
-                Fill(new Rect(x+16,y,16,20),new Color(.075f,.17f,.15f));
-            }
-            GUI.DrawTexture(new Rect(102,565,128,128),cityTexture);
-            Fill(new Rect(105,696,250,8),new Color(.42f,.39f,.27f));
+            var backdrop=Art("title-world");if(backdrop!=null)GUI.DrawTexture(new Rect(0,0,1280,800),backdrop,ScaleMode.ScaleAndCrop);
+            Fill(new Rect(0,0,1280,800),new Color(.015f,.025f,.04f,.35f));
             Fill(new Rect(390,85,500,637),new Color(.025f,.055f,.07f,.94f));
             Fill(new Rect(390,85,500,3),new Color(.68f,.57f,.35f));
             Fill(new Rect(390,719,500,3),new Color(.68f,.57f,.35f));
@@ -124,7 +108,8 @@ namespace ParadigmRealm
             GUI.enabled=true;
             GUI.Label(new Rect(430,595,420,52),hasSession?"Your current game is paused. Save in-game to keep it after quitting.":HasSavedGame()?"A saved civilisation awaits your return.":"Found a settlement. Shape a civilisation.\nYour story begins on Earth.",menuSubtitle);
             if(status.StartsWith("Could not load"))GUI.Label(new Rect(430,637,420,55),status,small);
-            GUI.Label(new Rect(390,735,500,30),"FOUNDATION ALPHA 0.5  |  EARTH",menuSubtitle);
+            if(GUI.Button(new Rect(465,663,350,36),"ARTWORK GALLERY",button)){artGallery=true;GUIUtility.ExitGUI();}
+            GUI.Label(new Rect(390,735,500,30),"EARTH  |  PIXEL REALMS EDITION",menuSubtitle);
             if(guide)DrawGuide();
             if(confirmNew||confirmQuit){
                 Fill(new Rect(0,0,1280,800),new Color(0,0,0,.82f));
@@ -160,10 +145,9 @@ namespace ParadigmRealm
         void DrawResource(Tile t,Rect rect)
         {
             if(t.resource==0)return;
-            Rect badge=new Rect(rect.x+19,rect.y+1,12,12);Fill(badge,new Color(.08f,.1f,.1f));
-            Color c=t.resource==1?new Color(1,.84f,.24f):t.resource==2?new Color(.75f,.84f,.89f):new Color(1,.65f,.05f);
-            if(t.resource==1){Fill(new Rect(badge.x+5,badge.y+2,2,9),c);Fill(new Rect(badge.x+2,badge.y+3,8,2),c);Fill(new Rect(badge.x+3,badge.y+6,6,2),c);}
-            else {Fill(new Rect(badge.x+2,badge.y+5,8,5),c);Fill(new Rect(badge.x+4,badge.y+3,4,2),c);Fill(new Rect(badge.x+3,badge.y+6,2,2),Color.white);}
+            float size=rect.width*.36f;var badge=new Rect(rect.xMax-size,rect.yMax-size,size,size);
+            Fill(badge,new Color(.025f,.04f,.05f,.72f));DrawArt("resource-"+t.resource.ToString("00"),badge);
+
         }
         void DrawTileTooltip()
         {
@@ -180,6 +164,11 @@ namespace ParadigmRealm
                 if(world.Visible(x,y)){var city=world.cities.Find(c=>c.x==x&&c.y==y);if(city!=null)text+="\n"+city.name+" - "+world.NationName(city.owner);var units=world.units.Where(u=>u.x==x&&u.y==y);foreach(var unit in units.OrderByDescending(a=>a.id==selected).Take(3))text+="\n\n"+world.NationName(unit.owner)+": "+World.UnitNames[unit.type]+" — "+UnitDescription(unit)+"\nStrength "+(World.Power[unit.type]+unit.promotion)+" | Movement "+unit.moves+"/"+World.Moves[unit.type]+"\n"+world.Activity(unit)+" | "+world.Remaining(unit);if(units.Count()>3)text+="\n+ "+(units.Count()-3)+" more units; select to inspect.";}
                 else text+="\nOutside current sight; last-known information"+(string.IsNullOrEmpty(t.rememberedCity)?"":"\nLast seen city: "+t.rememberedCity);
             }
+            var settler=Selected();if(t.seen&&settler!=null&&settler.type==0){
+                var site=world.AssessSettlement(settler.owner,x,y,settler.x,settler.y);
+                if(!site.Suitable)text+="\n\nSettlement: "+site.reason;
+                else{var centre=World.CentreYield(t.terrain);text+="\n\nSettlement: centre "+centre[0]+" food / "+centre[1]+" production; early population limit "+site.housing+(site.freshWater?" (fresh water)":" (no known fresh water)")+". Estimated initial city upkeep "+site.upkeep+" gold/turn.";}
+            }
             string preview=world.CombatPreview(Selected(),x,y);if(preview!="")text+="\n\n"+preview;
             float height=body.CalcHeight(new GUIContent(text),392)+20;
             var box=new Rect(Mathf.Min(mouse.x+18,854),Mathf.Max(4,Mathf.Min(mouse.y+18,790-height)),416,height);
@@ -187,17 +176,31 @@ namespace ParadigmRealm
         }
         void DrawMap()
         {
+            PrepareTerrainView();mapScroll=new Vector2(Mathf.Round(mapScroll.x),Mathf.Round(mapScroll.y));
             GUI.Box(new Rect(18,94,865,637),"");mapScroll=GUI.BeginScrollView(new Rect(24,100,852,624),mapScroll,new Rect(0,0,World.Width*tilePixels,World.Height*tilePixels));
-            foreach(var source in world.tiles){var t=world.KnownTile(source);var rect=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);if(rect.xMax<mapScroll.x||rect.x>mapScroll.x+852||rect.yMax<mapScroll.y||rect.y>mapScroll.y+624)continue;
-                if(!t.seen){GUI.color=new Color(.07f,.12f,.16f);GUI.DrawTexture(rect,Texture2D.whiteTexture);GUI.color=Color.white;continue;}
-                GUI.DrawTexture(rect,TerrainAppearance(t));if(t.owner>=0){var tint=nations[t.owner];tint.a=.22f;Fill(rect,tint);}if(t.farm)for(int i=4;i<29;i+=6)Fill(new Rect(rect.x+i,rect.y+4,2,24),new Color(.8f,.75f,.35f));
-                if(t.village&&world.Visible(t.x,t.y))GUI.Label(new Rect(rect.x+6,rect.y+4,24,20),"?",body);if(t.road)DrawRoad(t,rect);DrawResource(t,rect);if(t.mine)GUI.Label(new Rect(rect.x+1,rect.y+2,22,20),"M",small);if(t.fort)GUI.Label(new Rect(rect.x+1,rect.y+12,22,20),"F",small);
-                
-                bool visible=world.Visible(t.x,t.y);if(!visible)Fill(rect,new Color(0,0,0,.45f));
-                if(!visible&&!string.IsNullOrEmpty(t.rememberedCity))GUI.DrawTexture(rect,cityTexture);var c=world.cities.Find(a=>a.x==t.x&&a.y==t.y&&(a.owner==0||visible));if(c!=null){GUI.DrawTexture(rect,cityTexture);Fill(new Rect(rect.x+10,rect.y+2,12,4),nations[c.owner]);if(c.owner==0)GUI.Label(new Rect(rect.x+1,rect.y,15,20),new[]{"L","*","O"}[world.flag],small);}
-                var stack=world.units.Where(a=>a.x==t.x&&a.y==t.y&&(a.owner==0||visible)).ToList();var u=stack.Find(a=>a.id==selected)??stack.FirstOrDefault();if(u!=null){GUI.DrawTexture(rect,people[u.type]);Fill(new Rect(rect.x+10,rect.y+14,12,8),nations[u.owner]);Fill(new Rect(rect.x+4,rect.y+29,24*u.hp/10f,2),Color.green);if(stack.Count>1)GUI.Label(new Rect(rect.x+22,rect.y-3,20,18),stack.Count.ToString(),small);}
-                if(u!=null&&u.id==selected||c!=null&&c.id==cityId){Fill(new Rect(rect.x,rect.y,tilePixels,2),Color.yellow);Fill(new Rect(rect.x,rect.y+tilePixels-2,tilePixels,2),Color.yellow);Fill(new Rect(rect.x,rect.y,2,tilePixels),Color.yellow);Fill(new Rect(rect.x+tilePixels-2,rect.y,2,tilePixels),Color.yellow);}
-                
+            // Draw terrain before raised scenery. Use remembered tiles, never unseen live state.
+            foreach(var source in world.tiles){var t=world.KnownTile(source);var r=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
+                if(r.xMax<mapScroll.x||r.x>mapScroll.x+852||r.yMax<mapScroll.y||r.y>mapScroll.y+624)continue;
+                if(!t.seen){Fill(r,new Color(.035f,.065f,.085f));continue;}
+                GUI.DrawTexture(r,TerrainAppearance(t));
+            }
+            foreach(var source in world.tiles){var t=world.KnownTile(source);var rect=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
+                if(!t.seen||rect.xMax<mapScroll.x||rect.x>mapScroll.x+852||rect.yMax<mapScroll.y||rect.y>mapScroll.y+tilePixels+624)continue;
+                bool visible=world.Visible(t.x,t.y);var old=GUI.color;if(!visible)GUI.color=new Color(.48f,.51f,.6f,1);
+                DrawLandscape(t,rect);DrawTerritory(t,rect);
+                if(!visible&&!string.IsNullOrEmpty(t.rememberedCity))GUI.DrawTexture(rect,cityTexture,ScaleMode.ScaleToFit,true);
+                GUI.color=old;
+                var c=world.cities.Find(a=>a.x==t.x&&a.y==t.y&&(a.owner==0||visible));
+                if(c!=null){DrawCityArt(c,new Rect(rect.x-rect.width*.08f,rect.y-rect.height*.3f,rect.width*1.16f,rect.height*1.3f));Fill(new Rect(rect.x+rect.width*.35f,rect.y+2,rect.width*.3f,3),nations[c.owner]);}
+            }
+            foreach(var source in world.tiles){var t=world.KnownTile(source);var rect=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
+                if(rect.xMax<mapScroll.x||rect.x>mapScroll.x+852||rect.yMax<mapScroll.y||rect.y>mapScroll.y+624)continue;
+                if(!t.seen){Fill(rect,new Color(.035f,.065f,.085f));continue;}
+                bool visible=world.Visible(t.x,t.y);if(!visible)Fill(rect,new Color(.015f,.025f,.055f,.4f));DrawResource(t,rect);
+                var stack=world.units.Where(a=>a.x==t.x&&a.y==t.y&&(a.owner==0||visible)).ToList();var u=stack.Find(a=>a.id==selected)??stack.FirstOrDefault();
+                if(u!=null)DrawUnitArt(u,rect,stack.Count);
+                var c=world.cities.Find(a=>a.x==t.x&&a.y==t.y&&(a.owner==0||visible));
+                if((u!=null&&u.id==selected)||(c!=null&&c.id==cityId))DrawSelection(rect);
             }
             DrawUnitLabels();
             var chosen=Selected();if(chosen!=null&&chosen.hasOrder){
@@ -239,13 +242,17 @@ namespace ParadigmRealm
         }
         void DrawWarPrompt()
         {
-            Fill(new Rect(0,0,1280,800),new Color(0,0,0,.8f));GUI.Box(new Rect(390,260,500,240),"");
-            GUILayout.BeginArea(new Rect(415,280,450,200));GUILayout.Label("Declare war?",heading);
+            Fill(new Rect(0,0,1280,800),new Color(0,0,0,.8f));GUI.Box(new Rect(340,200,600,390),"");
+            GUILayout.BeginArea(new Rect(365,220,550,345));GUILayout.Label("Declare war?",heading);
             GUILayout.Label("This attack will declare war on "+string.Join(" and ",pendingWars.Select(i=>world.NationName(i)).ToArray())+". Proceed?",body);
+            string blocked=string.Join(" ",pendingWars.Where(i=>!world.AtWar(0,i)).Select(i=>world.WarReason(0,i)).Where(r=>r!="").ToArray());
+            GUILayout.Label(blocked!=""?blocked:"War ends trade and access; defensive allies may join. Surprise war causes 45 grievances, formal war 25.",body);
+            bool prior=GUI.enabled;GUI.enabled=prior&&blocked=="";
             if(Button(pendingUnit==-2?"Yes — declare war":"Yes — declare war and attack")){
-                bool attack=pendingUnit>=0;var u=world.units.Find(a=>a.id==pendingUnit);foreach(int owner in pendingWars)world.SetWar(owner,true);
+                bool attack=pendingUnit>=0;var u=world.units.Find(a=>a.id==pendingUnit);foreach(int owner in pendingWars)if(!world.AtWar(0,owner))world.SetWar(owner,true);
                 pendingUnit=-1;status=!attack?"War declared.":OrderTeam(u,pendingX,pendingY)?"War declared. Attack order issued.":"Attack order could not proceed.";
             }
+            GUI.enabled=prior;
             if(Button("No — cancel attack")){pendingUnit=-1;status="Attack cancelled. Peace maintained.";}
             GUILayout.EndArea();
         }
@@ -286,8 +293,8 @@ namespace ParadigmRealm
                 t.Apply();terrain[i]=t;}
             LoadTerrainArt();
             people=new Texture2D[World.UnitNames.Length];for(int i=0;i<World.UnitNames.Length;i++){var t=Texture(Color.clear);Paint(t,5,5,6,7,new Color(.15f,.2f,.2f));Paint(t,6,2,4,4,new Color(.92f,.8f,.59f));Paint(t,5,11,2,3,new Color(.75f,.68f,.5f));Paint(t,9,11,2,3,new Color(.75f,.68f,.5f));if(i==0){Paint(t,4,1,8,2,new Color(.7f,.5f,.25f));Paint(t,2,6,3,5,new Color(.6f,.4f,.2f));}else{Paint(t,12,3,1,10,Color.gray);if(i==1)Paint(t,10,3,5,2,Color.gray);if(i==4)Paint(t,13,4,1,6,new Color(.6f,.35f,.2f));if(i==6)Paint(t,11,5,3,2,Color.black);}if(i==11){for(int yy=0;yy<16;yy++)for(int xx=0;xx<16;xx++)t.SetPixel(xx,yy,Color.clear);Paint(t,2,6,12,6,new Color(.6f,.37f,.18f));Paint(t,3,3,10,5,new Color(.9f,.82f,.6f));Paint(t,3,12,3,3,new Color(.16f,.17f,.16f));Paint(t,10,12,3,3,new Color(.16f,.17f,.16f));Paint(t,4,4,8,1,new Color(1,.94f,.75f));}t.Apply();people[i]=t;}
-            cityTexture=Texture(Color.clear);Paint(cityTexture,2,7,12,7,new Color(.83f,.76f,.58f));Paint(cityTexture,1,5,14,3,new Color(.5f,.3f,.2f));Paint(cityTexture,6,10,3,4,new Color(.2f,.22f,.19f));Paint(cityTexture,3,1,2,6,new Color(.8f,.8f,.65f));cityTexture.Apply();
+            cityTexture=Texture(Color.clear);Paint(cityTexture,2,7,12,7,new Color(.83f,.76f,.58f));Paint(cityTexture,1,5,14,3,new Color(.5f,.3f,.2f));Paint(cityTexture,6,10,3,4,new Color(.2f,.22f,.19f));Paint(cityTexture,3,1,2,6,new Color(.8f,.8f,.65f));cityTexture.Apply();LoadVisualArt();
         }
-        void OnDestroy(){ClearTerrainComposites();if(terrain!=null)foreach(var t in terrain)if(t!=null&&!loadedTerrain.Contains(t))Destroy(t);if(people!=null)foreach(var t in people)Destroy(t);if(cityTexture!=null)Destroy(cityTexture);}
+        void OnDestroy(){ReleaseVisuals();ClearTerrainComposites();if(terrain!=null)foreach(var t in terrain)if(t!=null&&!loadedTerrain.Contains(t))Destroy(t);if(people!=null)foreach(var t in people)if(t!=null&&!visualArt.ContainsValue(t))Destroy(t);if(cityTexture!=null&&!visualArt.ContainsValue(cityTexture))Destroy(cityTexture);}
     }
 }
