@@ -113,7 +113,26 @@ namespace ParadigmRealm
             for(int i=0;i<3;i++){w.At(sx[i]-1,sy[i]).resource=1;w.At(sx[i]+2,sy[i]).resource=4;w.At(sx[i],sy[i]-2).terrain=2;w.At(sx[i],sy[i]-2).resource=2;}
             w.SeedVillages();w.RebuildTerritory();w.Reveal();w.Note("Found a city, choose production and research. F1 opens the guide.");return w;
         }
-        public bool VisibleTo(int owner,int x,int y){return HasTech(owner,"satellites")||units.Any(u=>u.owner==owner&&Distance(x,y,u.x,u.y)<=(u.type==3?4:2))||cities.Any(c=>c.owner==owner&&Distance(x,y,c.x,c.y)<=3);}
+        [NonSerialized] bool[] visibleMask; [NonSerialized] bool visibleMaskOn;
+        // The screen asks "is this tile visible to the player?" thousands of times per frame. For the length of one
+        // draw the answer is read from a mask built once from the player's units and cities. Call End before changing the world.
+        public void BeginVisibilityCache()
+        {
+            int n=tiles.Length;
+            if(visibleMask==null||visibleMask.Length!=n)visibleMask=new bool[n];else Array.Clear(visibleMask,0,n);
+            if(HasTech(0,"satellites")){for(int i=0;i<n;i++)visibleMask[i]=true;}
+            else{
+                foreach(var u in units)if(u.owner==0)MarkVisible(u.x,u.y,u.type==3?4:2);
+                foreach(var c in cities)if(c.owner==0)MarkVisible(c.x,c.y,3);
+            }
+            visibleMaskOn=true;
+        }
+        public void EndVisibilityCache(){visibleMaskOn=false;}
+        void MarkVisible(int cx,int cy,int radius){for(int y=cy-radius;y<=cy+radius;y++)for(int x=cx-radius;x<=cx+radius;x++){var t=At(x,y);if(t!=null)visibleMask[t.y*Width+t.x]=true;}}
+        public bool VisibleTo(int owner,int x,int y){
+            if(visibleMaskOn&&owner==0){var cell=At(x,y);if(cell!=null)return visibleMask[cell.y*Width+cell.x];}
+            return HasTech(owner,"satellites")||units.Any(u=>u.owner==owner&&Distance(x,y,u.x,u.y)<=(u.type==3?4:2))||cities.Any(c=>c.owner==owner&&Distance(x,y,c.x,c.y)<=3);
+        }
         public bool Visible(int x,int y){return VisibleTo(0,x,y);}
         void LearnAround(int owner,int cx,int cy,int radius,HashSet<int> done){for(int y=cy-radius;y<=cy+radius;y++)for(int x=cx-radius;x<=cx+radius;x++){var t=At(x,y);if(t==null)continue;if(done.Add(t.y*Width+t.x))LearnTile(owner,t);}}
         void LearnTile(int owner,Tile t){nations[owner].known[t.y*Width+t.x]=true;if(owner==0){t.seen=true;t.rememberedTerrain=t.terrain;t.rememberedResource=t.resource;t.rememberedOwner=t.owner;t.rememberedRoad=t.road;t.rememberedFarm=t.farm;t.rememberedMine=t.mine;t.rememberedFort=t.fort;var city=cities.Find(c=>c.x==t.x&&c.y==t.y);t.rememberedCity=city==null?"":city.name;}}
@@ -127,7 +146,24 @@ namespace ParadigmRealm
             for(int i=1;i<3;i++)if(!met[i]&&(units.Any(u=>u.owner==i&&Visible(u.x,u.y))||cities.Any(c=>c.owner==i&&Visible(c.x,c.y)))){met[i]=true;Note("First contact: "+NationName(i)+".");}}
         public bool AtWar(int a,int b){return a>=0&&b>=0&&a<3&&b<3&&a!=b&&(a!=0&&b!=0?rivalWar:war[a==0?b:a]);}
         public bool CanEnter(int owner,Tile t){return t.owner<0||t.owner==owner||AtWar(owner,t.owner)||HasAccess(owner,t.owner);}
-        public void RebuildTerritory(){foreach(var t in tiles){var c=cities.Where(a=>Distance(t.x,t.y,a.x,a.y)<=Math.Min(4,2+a.age/25)).OrderBy(a=>Distance(t.x,t.y,a.x,a.y)).ThenBy(a=>a.id).FirstOrDefault();t.owner=c==null?-1:c.owner;}networks=null;}
+        public void RebuildTerritory()
+        {
+            // Each city claims the tiles inside its own radius; the nearest city wins, then the lower id.
+            int n=tiles.Length;var best=new int[n];var bestId=new int[n];
+            for(int k=0;k<n;k++){tiles[k].owner=-1;best[k]=int.MaxValue;}
+            foreach(var c in cities)
+            {
+                int radius=Math.Min(4,2+c.age/25);
+                for(int y=c.y-radius;y<=c.y+radius;y++)for(int x=c.x-radius;x<=c.x+radius;x++)
+                {
+                    var t=At(x,y);if(t==null)continue;
+                    int d=Distance(t.x,t.y,c.x,c.y);if(d>radius)continue;
+                    int index=t.y*Width+t.x;
+                    if(d<best[index]||(d==best[index]&&c.id<bestId[index])){best[index]=d;bestId[index]=c.id;t.owner=c.owner;}
+                }
+            }
+            networks=null;
+        }
         HashSet<int> Network(int owner){
             if(networks==null)networks=new HashSet<int>[3];if(networks[owner]!=null)return networks[owner];
             var set=new HashSet<int>();var capital=cities.Where(c=>c.owner==owner).OrderBy(c=>c.id).FirstOrDefault();if(capital==null){networks[owner]=set;return set;}
@@ -135,10 +171,15 @@ namespace ParadigmRealm
             while(q.Count>0){var t=q.Dequeue();for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=At(t.x+dx,t.y+dy);if(n==null||!n.road||n.owner!=owner||units.Any(u=>u.x==n.x&&u.y==n.y&&AtWar(owner,u.owner)))continue;if(set.Add(n.y*Width+n.x))q.Enqueue(n);}}
             networks[owner]=set;return set;
         }
-        public bool HasDomesticResource(int owner,int resource){if(resource==0)return true;return tiles.Any(t=>t.owner==owner&&t.resource==resource&&Network(owner).Contains(t.y*Width+t.x)&&(resource==2||resource==3?t.mine:t.farm));}
+        public bool HasDomesticResource(int owner,int resource){if(resource==0)return true;foreach(int index in Network(owner)){var t=tiles[index];if(t.owner==owner&&t.resource==resource&&(resource==2||resource==3?t.mine:t.farm))return true;}return false;}
         public bool HasResource(int owner,int resource){return HasDomesticResource(owner,resource)||ImportedResource(owner,resource);}
         public bool Connected(City c){return Network(c.owner).Contains(c.y*Width+c.x);}
         public Tile KnownTile(Tile t){if(t==null||!t.seen||Visible(t.x,t.y))return t;return new Tile{x=t.x,y=t.y,seen=true,terrain=t.rememberedTerrain,resource=t.rememberedResource,owner=t.rememberedOwner,road=t.rememberedRoad,farm=t.rememberedFarm,mine=t.rememberedMine,fort=t.rememberedFort,rememberedCity=t.rememberedCity};}
+        // Allocation-free variants for the draw loop and pathfinding.
+        public void CopyKnown(Tile t,Tile dest){dest.x=t.x;dest.y=t.y;dest.seen=true;dest.terrain=t.rememberedTerrain;dest.resource=t.rememberedResource;dest.owner=t.rememberedOwner;dest.road=t.rememberedRoad;dest.farm=t.rememberedFarm;dest.mine=t.rememberedMine;dest.fort=t.rememberedFort;dest.village=false;dest.rememberedCity=t.rememberedCity;}
+        public Tile KnownTileInto(Tile t,Tile dest){if(t==null||!t.seen||Visible(t.x,t.y))return t;CopyKnown(t,dest);return dest;}
+        public int KnownTerrain(Tile t){return !t.seen||Visible(t.x,t.y)?t.terrain:t.rememberedTerrain;}
+        public int KnownOwner(Tile t){return t.seen&&!Visible(t.x,t.y)?t.rememberedOwner:t.owner;}
         public bool RoadConnects(Tile t,int dx,int dy){var n=KnownTile(At(t.x+dx,t.y+dy));return t.road&&n!=null&&n.seen&&n.road;}
         public int[] TileYield(Tile t){int[] f={3,2,1,1,1,0,2,3,1,2,0,3,2,1,0,0,2,0,1,2,2},p={1,2,3,1,0,2,0,1,1,1,1,2,0,2,0,1,1,3,1,2,1};return new[]{f[t.terrain]+(t.farm?2:0)+(t.resource==1?2:0),p[t.terrain]+(t.mine?2:0)+(t.resource==2?2:0),t.resource==3?2:0};}
         public bool HasBuilding(City c,int b){return b==7?c.granary:b==8?c.library:b==9?c.walls:c.buildings.Contains(b);}
@@ -175,9 +216,50 @@ namespace ParadigmRealm
         public int[] PeaceOwners(Unit u,int x,int y){if(u==null||!VisibleTo(u.owner,x,y))return new int[0];var owners=units.Where(a=>a.x==x&&a.y==y).Select(a=>a.owner).Concat(cities.Where(a=>a.x==x&&a.y==y).Select(a=>a.owner));var t=At(x,y);if(t!=null&&t.owner>=0&&!CanEnter(u.owner,t))owners=owners.Concat(new[]{t.owner});return owners.Where(a=>a!=u.owner&&!AtWar(u.owner,a)).Distinct().ToArray();}
         public int StepCost(Unit u,int x,int y,Tile t){return At(x,y).road&&t.road?1:u.type==3?2:(RoughTerrain(t.terrain)?3:2);}
         bool Capacity(Unit u,int x,int y){if(u.type==1)return true;return units.Count(a=>a.type!=1&&a.id!=u.id&&a.owner==u.owner&&a.x==x&&a.y==y&&(Power[a.type]>0)==(Power[u.type]>0))<(Power[u.type]>0?3:1);}
-        public List<Tile> Route(Unit u,int x,int y){var path=new List<Tile>();var goal=At(x,y);if(u==null||goal==null)return path;if(nations[u.owner].known[y*Width+x]&&IsImpassable(u.owner==0?KnownTile(goal).terrain:goal.terrain))return path;int start=u.y*Width+u.x,end=y*Width+x;var dist=Enumerable.Repeat(int.MaxValue,tiles.Length).ToArray();var prev=Enumerable.Repeat(-1,tiles.Length).ToArray();var open=new List<int>{start};dist[start]=0;
-            while(open.Count>0){int current=open[0];foreach(int candidate in open)if(dist[candidate]<dist[current])current=candidate;open.Remove(current);if(current==end)break;var from=tiles[current];for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var t=At(from.x+dx,from.y+dy);if(t==null||(dx==0&&dy==0))continue;int next=t.y*Width+t.x;bool known=nations[u.owner].known[next];if(known&&IsImpassable(u.owner==0?KnownTile(t).terrain:t.terrain))continue;bool visible=VisibleTo(u.owner,t.x,t.y);if(visible&&next!=end&&(!CanEnter(u.owner,t)||units.Any(a=>a.owner!=u.owner&&a.x==t.x&&a.y==t.y)))continue;if(!Capacity(u,t.x,t.y))continue;int cost=dist[current]+(known?StepCost(u,from.x,from.y,u.owner==0?KnownTile(t):t):2);if(cost>=dist[next])continue;dist[next]=cost;prev[next]=current;if(!open.Contains(next))open.Add(next);}}
-            if(start==end||prev[end]<0)return path;for(int i=end;i!=start;i=prev[i])path.Add(tiles[i]);path.Reverse();return path;}
+        [NonSerialized] int[] routeDist,routePrev,routeSeq; [NonSerialized] Tile routeScratch;
+        static void HeapPush(List<long> h,long v){h.Add(v);int i=h.Count-1;while(i>0){int p=(i-1)/2;if(h[p]<=h[i])break;long tmp=h[p];h[p]=h[i];h[i]=tmp;i=p;}}
+        static long HeapPop(List<long> h){long top=h[0];int last=h.Count-1;h[0]=h[last];h.RemoveAt(last);int i=0,n=h.Count;while(true){int l=2*i+1,r=l+1,m=i;if(l<n&&h[l]<h[m])m=l;if(r<n&&h[r]<h[m])m=r;if(m==i)break;long tmp=h[m];h[m]=h[i];h[i]=tmp;i=m;}return top;}
+        // Cheapest route by movement cost. Candidates are taken in (cost, discovery order), which matches the original
+        // list-scan search exactly, but with a heap and reusable arrays so cost no longer grows with the size of the map.
+        public List<Tile> Route(Unit u,int x,int y)
+        {
+            var path=new List<Tile>();var goal=At(x,y);if(u==null||goal==null)return path;
+            x=goal.x;y=goal.y;
+            if(nations[u.owner].known[y*Width+x]&&IsImpassable(u.owner==0?KnownTerrain(goal):goal.terrain))return path;
+            int n=tiles.Length,start=u.y*Width+u.x,end=y*Width+x;
+            if(routeDist==null||routeDist.Length!=n){routeDist=new int[n];routePrev=new int[n];routeSeq=new int[n];for(int k=0;k<n;k++){routeDist[k]=int.MaxValue;routePrev[k]=-1;routeSeq[k]=-1;}}
+            if(routeScratch==null)routeScratch=new Tile();
+            var dist=routeDist;var prev=routePrev;var seqOf=routeSeq;var touched=new List<int>();var seqNode=new List<int>();var heap=new List<long>();
+            try
+            {
+                dist[start]=0;seqOf[start]=0;seqNode.Add(start);touched.Add(start);HeapPush(heap,0L);
+                while(heap.Count>0)
+                {
+                    long key=HeapPop(heap);int current=seqNode[(int)(key&0xFFFFFFFFL)];
+                    if((int)(key>>32)!=dist[current])continue;
+                    if(current==end)break;
+                    var from=tiles[current];
+                    for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++)
+                    {
+                        var t=At(from.x+dx,from.y+dy);if(t==null||(dx==0&&dy==0))continue;
+                        int next=t.y*Width+t.x;bool known=nations[u.owner].known[next];
+                        Tile seenTile=t;if(known&&u.owner==0)seenTile=KnownTileInto(t,routeScratch);
+                        if(known&&IsImpassable(seenTile.terrain))continue;
+                        bool visible=VisibleTo(u.owner,t.x,t.y);
+                        if(visible&&next!=end&&(!CanEnter(u.owner,t)||units.Any(a=>a.owner!=u.owner&&a.x==t.x&&a.y==t.y)))continue;
+                        if(!Capacity(u,t.x,t.y))continue;
+                        int cost=dist[current]+(known?StepCost(u,from.x,from.y,seenTile):2);
+                        if(cost>=dist[next])continue;
+                        dist[next]=cost;prev[next]=current;
+                        if(seqOf[next]<0){seqOf[next]=seqNode.Count;seqNode.Add(next);touched.Add(next);}
+                        HeapPush(heap,((long)cost<<32)|(long)seqOf[next]);
+                    }
+                }
+                if(start!=end&&prev[end]>=0){for(int i=end;i!=start;i=prev[i])path.Add(tiles[i]);path.Reverse();}
+            }
+            finally{foreach(int index in touched){dist[index]=int.MaxValue;prev[index]=-1;seqOf[index]=-1;}}
+            return path;
+        }
         public bool Order(Unit u,int x,int y){if(u==null||result!="")return false;CancelOrder(u);u.fortified=false;if(u.x==x&&u.y==y)return true;if(Route(u,x,y).Count==0)return false;u.destinationX=x;u.destinationY=y;u.hasOrder=true;ContinueOrder(u);return true;}
         public void ContinueOrder(Unit u){while(u.hasOrder&&units.Contains(u)&&result==""){if(u.x==u.destinationX&&u.y==u.destinationY){u.hasOrder=false;break;}if(u.moves==0)break;var p=Route(u,u.destinationX,u.destinationY);if(p.Count==0){u.hasOrder=false;if(u.owner==0)Note("Order stopped: route blocked.");break;}var t=p[0];if(PeaceOwners(u,t.x,t.y).Length>0||!CanEnter(u.owner,t)){u.hasOrder=false;if(u.owner==0)Note("Order stopped at a peaceful border or unit.");break;}if(u.moves<StepCost(u,u.x,u.y,t))break;if(!Move(u,t.x,t.y)){u.hasOrder=false;break;}}}
         int Strength(Unit u,Unit enemy,bool defending){int s=Power[u.type]+u.promotion;if(u.type==7&&(enemy.type==5||enemy.type==8))s+=5;if(defending){var t=At(u.x,u.y);if(RoughTerrain(t.terrain))s+=2;if(t.fort)s+=2;if(u.fortified)s+=2;if(cities.Any(c=>c.x==u.x&&c.y==u.y&&c.walls))s+=3;}if(nations[u.owner].arrears>0)s=Math.Max(1,s-2);return Math.Max(1,s);}

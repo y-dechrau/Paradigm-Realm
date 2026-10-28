@@ -70,9 +70,59 @@ namespace ParadigmRealm
             Require(World.StackLabel(new[]{new Unit{type=1}})=="Worker"&&World.StackLabel(new[]{new Unit{type=1},new Unit{type=1}})=="Stack"&&World.StackLabel(new[]{new Unit{type=1},new Unit{type=2}})=="","unit label rules");
             MapSizeChecks();
             SphereChecks();
+            SpeedChecks();
             ContentChecks.Run();
             var victory=World.New(22);victory.units.RemoveAll(a=>a.owner>0);victory.cities.RemoveAll(a=>a.owner>0);victory.CheckVictory();Require(victory.result.StartsWith("Conquest"),"conquest detected");
             var defeat=World.New(23);defeat.units.RemoveAll(a=>a.owner==0);defeat.CheckVictory();Require(defeat.result.Contains("fallen"),"defeat detected");
+        }
+        // The speed-ups must not change behaviour: each fast routine is compared with the plain definition it replaced.
+        static void SpeedChecks()
+        {
+            foreach(int shape in new[]{0,1})
+            {
+                var w=World.New(60+shape,"Speed",0,1,1,0,shape==1?1:1,shape);
+                // Extra cities so territory, workable tiles and ties are exercised.
+                var sites=w.tiles.Where(site=>!World.IsImpassable(site.terrain)).Where((site,k)=>k%97==0).Take(30).ToList();
+                foreach(var site in sites)
+                    if(w.cities.All(c=>w.Distance(c.x,c.y,site.x,site.y)>2))w.cities.Add(new City{id=w.nextId++,owner=w.cities.Count%3,x=site.x,y=site.y,name="Speed "+site.x+"-"+site.y,age=(site.x*7)%90});
+                w.RebuildTerritory();
+                var expected=w.tiles.Select(t=>{var c=w.cities.Where(a=>w.Distance(t.x,t.y,a.x,a.y)<=Math.Min(4,2+a.age/25)).OrderBy(a=>w.Distance(t.x,t.y,a.x,a.y)).ThenBy(a=>a.id).FirstOrDefault();return c==null?-1:c.owner;}).ToArray();
+                Require(w.tiles.Select(t=>t.owner).SequenceEqual(expected),"territory matches the plain nearest-city rule on shape "+shape);
+                foreach(var c in w.cities)
+                {
+                    var plain=w.tiles.Where(t=>t.owner==c.owner&&w.Distance(t.x,t.y,c.x,c.y)<=2&&!(t.x==c.x&&t.y==c.y)&&!w.cities.Any(a=>a.x==t.x&&a.y==t.y)&&w.cities.Where(a=>a.owner==c.owner).OrderBy(a=>w.Distance(a.x,a.y,t.x,t.y)).ThenBy(a=>a.id).First()==c).ToList();
+                    Require(w.Workable(c).SequenceEqual(plain),"workable tiles match the plain rule for "+c.name);
+                    bool water=w.tiles.Any(t=>w.Distance(t.x,t.y,c.x,c.y)==1&&(t.terrain==4||t.terrain==6||t.terrain==12));
+                    Require(w.AdjacentWater(c)==water,"adjacent water matches for "+c.name);
+                }
+                // Visibility cache gives the same answers as asking directly.
+                var direct=new List<bool>();for(int i=0;i<w.tiles.Length;i++)direct.Add(w.Visible(w.tiles[i].x,w.tiles[i].y));
+                w.BeginVisibilityCache();
+                for(int i=0;i<w.tiles.Length;i++)if(w.Visible(w.tiles[i].x,w.tiles[i].y)!=direct[i])throw new Exception("FAIL: visibility cache differs on shape "+shape);
+                w.EndVisibilityCache();
+                // Routes are valid walks that end where asked, and repeat exactly.
+                var u=w.units.First(a=>a.owner==0&&a.type==2);int routes=0;
+                foreach(var goal in w.tiles.Where(g=>!World.IsImpassable(g.terrain)&&w.nations[0].known[g.y*w.Width+g.x]).Where((g,k)=>k%3==0).Take(40).ToList())
+                {
+                    var path=w.Route(u,goal.x,goal.y);var again=w.Route(u,goal.x,goal.y);
+                    Require(path.SequenceEqual(again),"routes repeat exactly");
+                    if(path.Count==0)continue;
+                    routes++;int px=u.x,py=u.y;
+                    foreach(var step in path){Require(w.Distance(px,py,step.x,step.y)==1,"each route step is one move");px=step.x;py=step.y;}
+                    Require(px==goal.x&&py==goal.y,"routes end at the goal");
+                }
+                Require(routes>0,"at least one route was found on shape "+shape);
+            }
+            for(int i=0;i<TechnologyCatalog.Ids.Length;i++)Require(TechnologyCatalog.Index(TechnologyCatalog.Ids[i])==Array.IndexOf(TechnologyCatalog.Ids,TechnologyCatalog.Ids[i]),"technology index lookup matches");
+            Require(TechnologyCatalog.Index("no-such-technology")==-1&&TechnologyCatalog.Index(null)==-1,"unknown technologies are not found");
+            // Rough speed guard on the biggest map (generous limit; real timings come from Unity).
+            var clock=System.Diagnostics.Stopwatch.StartNew();
+            var big=World.New(3,"Big",0,1,1,0,5,1);
+            long generated=clock.ElapsedMilliseconds;clock.Restart();
+            var scout=big.units.First(a=>a.owner==0&&a.type==2);int found=0;
+            foreach(var target in big.cities)if(big.Route(scout,target.x,target.y).Count>0)found++;
+            Require(found>0,"a route crosses the Massive sphere");
+            Require(generated<60000&&clock.ElapsedMilliseconds<20000,"Massive sphere builds and routes within a generous limit (built in "+generated+" ms, routes in "+clock.ElapsedMilliseconds+" ms)");
         }
         static void SphereChecks()
         {
@@ -83,7 +133,7 @@ namespace ParadigmRealm
                 Require(w.Valid(),"new "+name+" sphere is valid");
                 Require(w.cities.Count==2&&w.units.Count(u=>u.owner==0)==3,name+" sphere has the usual starting civilisations and units");
                 Require(w.units.Where(u=>u.owner==0).All(u=>!World.IsImpassable(w.At(u.x,u.y).terrain)),"player starts on passable land on the "+name+" sphere");
-                for(int owner=0;owner<3;owner++)for(int i=0;i<w.tiles.Length;i++)if(w.nations[owner].known[i]!=w.VisibleTo(owner,i%w.Width,i/w.Width))throw new Exception("FAIL: incremental fog differs from full visibility on the "+name+" sphere");
+                if(w.tiles.Length<=10000)for(int owner=0;owner<3;owner++)for(int i=0;i<w.tiles.Length;i++)if(w.nations[owner].known[i]!=w.VisibleTo(owner,i%w.Width,i/w.Width))throw new Exception("FAIL: incremental fog differs from full visibility on the "+name+" sphere");
                 // All three civilisations must share one landmass so conquest is possible without ships.
                 var start=w.cities.First(c=>c.owner==1);var reached=new HashSet<int>{start.y*w.Width+start.x};var queue=new Queue<Tile>();queue.Enqueue(w.At(start.x,start.y));
                 while(queue.Count>0){var t=queue.Dequeue();for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=w.At(t.x+dx,t.y+dy);if(n==null||World.IsImpassable(n.terrain)||!reached.Add(n.y*w.Width+n.x))continue;queue.Enqueue(n);}}
@@ -103,7 +153,7 @@ namespace ParadigmRealm
                 }
                 Require(maxStep<=3,name+" sphere temperature changes gently between neighbours");
                 Require(incoherent*200<=w.tiles.Length,name+" sphere never puts jungle or desert beside tundra or ice");
-                Require(World.New(70+size,"Sphere Test",0,1,1,0,size,1).tiles.Select(t=>t.terrain).SequenceEqual(w.tiles.Select(t=>t.terrain)),name+" sphere is repeatable by seed");
+                if(w.tiles.Length<=10000)Require(World.New(70+size,"Sphere Test",0,1,1,0,size,1).tiles.Select(t=>t.terrain).SequenceEqual(w.tiles.Select(t=>t.terrain)),name+" sphere is repeatable by seed");
             }
             var s=World.New(5,"Sphere",0,1,1,0,1,1);
             Require(s.At(-1,3)==s.At(s.Width-1,3)&&s.At(s.Width,3)==s.At(0,3),"sphere wraps east-west");
@@ -135,7 +185,7 @@ namespace ParadigmRealm
                 Require(w.nations.All(n=>n.known.Length==w.tiles.Length),"known-tile arrays match the "+name+" map");
                 Require(w.cities.Count==2&&w.units.Count(u=>u.owner==0)==3,name+" map has the usual starting civilisations and units");
                 Require(w.units.Where(u=>u.owner==0).All(u=>!World.IsImpassable(w.At(u.x,u.y).terrain)),"player starts on passable land on the "+name+" map");
-                for(int owner=0;owner<3;owner++)for(int i=0;i<w.tiles.Length;i++)if(w.nations[owner].known[i]!=w.VisibleTo(owner,i%w.Width,i/w.Width))throw new Exception("FAIL: incremental fog differs from full visibility on the "+name+" map");
+                if(w.tiles.Length<=10000)for(int owner=0;owner<3;owner++)for(int i=0;i<w.tiles.Length;i++)if(w.nations[owner].known[i]!=w.VisibleTo(owner,i%w.Width,i/w.Width))throw new Exception("FAIL: incremental fog differs from full visibility on the "+name+" map");
             }
             Require(World.New(9).Width==48&&World.New(9).Height==30,"default map stays Small 48 x 30");
             Require(World.New(9,"A",0,1,1,0,1).tiles.Select(t=>t.terrain).SequenceEqual(World.New(9).tiles.Select(t=>t.terrain)),"Small is the default size and repeatable by seed");

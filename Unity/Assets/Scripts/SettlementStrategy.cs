@@ -34,6 +34,7 @@ namespace ParadigmRealm {
    }
    return "";
   }
+  int UnknownAround(int owner,Tile centre){int count=0;for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){var a=At(centre.x+dx,centre.y+dy);if(a!=null&&Distance(centre.x,centre.y,a.x,a.y)<=2&&!nations[owner].known[a.y*Width+a.x])count++;}return count;}
   public string FoundReason(Unit u){
    if(result!="")return "The game has ended.";
    if(u==null||!units.Contains(u)||u.type!=0)return "Select a Settler.";
@@ -106,8 +107,13 @@ namespace ParadigmRealm {
     Order(u,r.x,r.y);if(u.x==r.x&&u.y==r.y)Found(u);return;
    }
    // No known legal site: explore a safe, reachable local frontier rather than stall.
-   var frontier=tiles.Where(t=>Distance(u.x,u.y,t.x,t.y)>0&&Distance(u.x,u.y,t.x,t.y)<=4&&SettlementTile(u.owner,t.x,t.y)!=null&&!IsImpassable(t.terrain)&&CanEnter(u.owner,t)&&!SettlementThreat(u.owner,t.x,t.y))
-    .Select(t=>new{Tile=t,Unknown=tiles.Count(a=>Distance(t.x,t.y,a.x,a.y)<=2&&!nations[u.owner].known[a.y*Width+a.x])}).Where(a=>a.Unknown>0)
+   var frontierTiles=new List<Tile>();var frontierSeen=new HashSet<int>();
+   for(int fy=u.y-4;fy<=u.y+4;fy++)for(int fx=u.x-4;fx<=u.x+4;fx++){
+    var ft=At(fx,fy);if(ft==null||!frontierSeen.Add(ft.y*Width+ft.x))continue;
+    int fd=Distance(u.x,u.y,ft.x,ft.y);
+    if(fd>0&&fd<=4&&SettlementTile(u.owner,ft.x,ft.y)!=null&&!IsImpassable(ft.terrain)&&CanEnter(u.owner,ft)&&!SettlementThreat(u.owner,ft.x,ft.y))frontierTiles.Add(ft);
+   }
+   var frontier=frontierTiles.Select(t=>new{Tile=t,Unknown=UnknownAround(u.owner,t)}).Where(a=>a.Unknown>0)
     .OrderByDescending(a=>a.Unknown).ThenBy(a=>Distance(u.x,u.y,a.Tile.x,a.Tile.y)).ThenBy(a=>a.Tile.y*Width+a.Tile.x);
    foreach(var candidate in frontier.Take(8)){var route=Route(u,candidate.Tile.x,candidate.Tile.y);if(route.Count>0&&SafeSettlerPath(u,route)){Order(u,candidate.Tile.x,candidate.Tile.y);return;}}
   }

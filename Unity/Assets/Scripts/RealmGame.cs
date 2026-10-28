@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -31,6 +32,7 @@ namespace ParadigmRealm
         bool Button(string text){return GUILayout.Button(text,button,GUILayout.Height(30));}
         void OnGUI()
         {
+            if(world!=null)world.EndVisibilityCache();compositeBudgetOn=false;
             ApplyVisualSkin();Styles();float scale=Mathf.Min(Screen.width/1280f,Screen.height/800f);GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-1280*scale)/2,(Screen.height-800*scale)/2,0),Quaternion.identity,new Vector3(scale,scale,1));
             GUI.DrawTexture(new Rect(0,0,1280,800),Texture2D.whiteTexture,ScaleMode.StretchToFill,false,0,new Color(.055f,.09f,.11f),0,0);
             if(artGallery){DrawGallery();return;}
@@ -137,16 +139,28 @@ namespace ParadigmRealm
         void DrawRoad(Tile t,Rect rect)
         {
             Color edge=new Color(.27f,.2f,.12f),sand=new Color(.82f,.68f,.43f);
-            float half=rect.width/2;
-            for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++)if((dx!=0||dy!=0)&&world.RoadConnects(t,dx,dy))
-                for(int step=0;step<=half;step+=2){float x=rect.x+half+dx*step,y=rect.y+half+dy*step;Fill(new Rect(x-2,y-2,4,4),edge);Fill(new Rect(x-1,y-1,2,2),sand);}
-            Fill(new Rect(rect.x+half-2,rect.y+half-2,4,4),sand);
+            float half=rect.width/2,cx=rect.x+half,cy=rect.y+half;int reach=(int)(half/2)*2;
+            // Straight arms are one long strip each; diagonal arms are short chains of squares. Colours are set once per layer.
+            var old=GUI.color;
+            for(int layer=0;layer<2;layer++){
+                GUI.color=layer==0?edge:sand;float pad=layer==0?2:1;
+                for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++)if((dx!=0||dy!=0)&&world.RoadConnects(t,dx,dy)){
+                    if(dx==0||dy==0){
+                        float x0=dx<0?cx-reach-pad:cx-pad,y0=dy<0?cy-reach-pad:cy-pad;
+                        float w=dx==0?pad*2:reach+pad*2,h=dy==0?pad*2:reach+pad*2;
+                        GUI.DrawTexture(new Rect(x0,y0,w,h),Texture2D.whiteTexture);
+                    }else for(int step=0;step<=half;step+=3){GUI.DrawTexture(new Rect(cx+dx*step-pad,cy+dy*step-pad,pad*2,pad*2),Texture2D.whiteTexture);}
+                }
+            }
+            Fill(new Rect(cx-2,cy-2,4,4),sand);
+            GUI.color=old;
         }
+        static readonly string[] ResourceArtNames={"resource-00","resource-01","resource-02","resource-03","resource-04","resource-05"};
         void DrawResource(Tile t,Rect rect)
         {
             if(t.resource==0)return;
             float size=rect.width*.36f;var badge=new Rect(rect.xMax-size,rect.yMax-size,size,size);
-            Fill(badge,new Color(.025f,.04f,.05f,.72f));DrawArt("resource-"+t.resource.ToString("00"),badge);
+            Fill(badge,new Color(.025f,.04f,.05f,.72f));DrawArt(ResourceArtNames[Math.Max(0,Math.Min(5,t.resource))],badge);
 
         }
         void DrawTileTooltip()
@@ -176,30 +190,54 @@ namespace ParadigmRealm
         }
         void DrawMap()
         {
-            PrepareTerrainView();mapScroll=new Vector2(Mathf.Round(mapScroll.x),Mathf.Round(mapScroll.y));
+            // Pictures are only painted on Repaint events; Layout and mouse events skip all the drawing work.
+            bool repaint=Event.current.type==EventType.Repaint;
+            mapScroll=new Vector2(Mathf.Round(mapScroll.x),Mathf.Round(mapScroll.y));
+            if(repaint){world.BeginVisibilityCache();PrepareTerrainView();}
             GUI.Box(new Rect(18,94,865,637),"");mapScroll=GUI.BeginScrollView(new Rect(24,100,852,624),mapScroll,new Rect(0,0,world.Width*tilePixels,world.Height*tilePixels));
+            if(repaint)DrawMapContents();
+            GUI.EndScrollView();
+            world.EndVisibilityCache();
+            HandleMapInput();
+            if(dragging){var m=Event.current.mousePosition;GUI.Label(new Rect(m.x+15,m.y+12,220,30),"Release to issue destination",body);}
+        }
+        void DrawMapContents()
+        {
+            compositeBudgetOn=true;compositeClock.Reset();compositeClock.Start();
+            int mapWidth=world.Width;viewTiles.Clear();viewVisible.Clear();int pooled=0;
+            // Work out what the player knows about each visible tile once, instead of once per drawing pass.
+            foreach(var source in TilesInView()){
+                bool seenNow=world.Visible(source.x,source.y);Tile known=source;
+                if(source.seen&&!seenNow){if(pooled==knownPool.Count)knownPool.Add(new Tile());known=knownPool[pooled++];world.CopyKnown(source,known);}
+                viewTiles.Add(known);viewVisible.Add(seenNow);
+            }
+            viewStacks.Clear();
+            foreach(var unit in world.units){List<Unit> stackAt;int cell=unit.y*mapWidth+unit.x;if(!viewStacks.TryGetValue(cell,out stackAt)){stackAt=new List<Unit>(2);viewStacks[cell]=stackAt;}stackAt.Add(unit);}
+            viewCities.Clear();foreach(var city in world.cities)viewCities[city.y*mapWidth+city.x]=city;
+            float right=mapScroll.x+852,bottom=mapScroll.y+624;
             // Draw terrain before raised scenery. Use remembered tiles, never unseen live state.
-            foreach(var source in TilesInView()){var t=world.KnownTile(source);var r=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
-                if(r.xMax<mapScroll.x||r.x>mapScroll.x+852||r.yMax<mapScroll.y||r.y>mapScroll.y+624)continue;
+            for(int n=0;n<viewTiles.Count;n++){var t=viewTiles[n];var r=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
+                if(r.xMax<mapScroll.x||r.x>right||r.yMax<mapScroll.y||r.y>bottom)continue;
                 if(!t.seen){Fill(r,new Color(.035f,.065f,.085f));continue;}
                 GUI.DrawTexture(r,TerrainAppearance(t));
             }
-            foreach(var source in TilesInView()){var t=world.KnownTile(source);var rect=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
-                if(!t.seen||rect.xMax<mapScroll.x||rect.x>mapScroll.x+852||rect.yMax<mapScroll.y||rect.y>mapScroll.y+tilePixels+624)continue;
-                bool visible=world.Visible(t.x,t.y);var old=GUI.color;if(!visible)GUI.color=new Color(.48f,.51f,.6f,1);
+            for(int n=0;n<viewTiles.Count;n++){var t=viewTiles[n];var rect=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
+                if(!t.seen||rect.xMax<mapScroll.x||rect.x>right||rect.yMax<mapScroll.y||rect.y>mapScroll.y+tilePixels+624)continue;
+                bool visible=viewVisible[n];var old=GUI.color;if(!visible)GUI.color=new Color(.48f,.51f,.6f,1);
                 DrawLandscape(t,rect);DrawTerritory(t,rect);
                 if(!visible&&!string.IsNullOrEmpty(t.rememberedCity))GUI.DrawTexture(rect,cityTexture,ScaleMode.ScaleToFit,true);
                 GUI.color=old;
-                var c=world.cities.Find(a=>a.x==t.x&&a.y==t.y&&(a.owner==0||visible));
-                if(c!=null){DrawCityArt(c,new Rect(rect.x-rect.width*.08f,rect.y-rect.height*.3f,rect.width*1.16f,rect.height*1.3f));Fill(new Rect(rect.x+rect.width*.35f,rect.y+2,rect.width*.3f,3),nations[c.owner]);}
+                City c;if(viewCities.TryGetValue(t.y*mapWidth+t.x,out c)&&(c.owner==0||visible)){DrawCityArt(c,new Rect(rect.x-rect.width*.08f,rect.y-rect.height*.3f,rect.width*1.16f,rect.height*1.3f));Fill(new Rect(rect.x+rect.width*.35f,rect.y+2,rect.width*.3f,3),nations[c.owner]);}
             }
-            foreach(var source in TilesInView()){var t=world.KnownTile(source);var rect=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
-                if(rect.xMax<mapScroll.x||rect.x>mapScroll.x+852||rect.yMax<mapScroll.y||rect.y>mapScroll.y+624)continue;
+            for(int n=0;n<viewTiles.Count;n++){var t=viewTiles[n];var rect=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
+                if(rect.xMax<mapScroll.x||rect.x>right||rect.yMax<mapScroll.y||rect.y>bottom)continue;
                 if(!t.seen){Fill(rect,new Color(.035f,.065f,.085f));continue;}
-                bool visible=world.Visible(t.x,t.y);if(!visible)Fill(rect,new Color(.015f,.025f,.055f,.4f));DrawResource(t,rect);
-                var stack=world.units.Where(a=>a.x==t.x&&a.y==t.y&&(a.owner==0||visible)).ToList();var u=stack.Find(a=>a.id==selected)??stack.FirstOrDefault();
-                if(u!=null)DrawUnitArt(u,rect,stack.Count);
-                var c=world.cities.Find(a=>a.x==t.x&&a.y==t.y&&(a.owner==0||visible));
+                bool visible=viewVisible[n];if(!visible)Fill(rect,new Color(.015f,.025f,.055f,.4f));DrawResource(t,rect);
+                int cell=t.y*mapWidth+t.x;Unit first=null,picked=null;int count=0;List<Unit> stackAt;
+                if(viewStacks.TryGetValue(cell,out stackAt))foreach(var a in stackAt){if(!(a.owner==0||visible))continue;count++;if(first==null)first=a;if(a.id==selected)picked=a;}
+                var u=picked??first;
+                if(u!=null)DrawUnitArt(u,rect,count);
+                City c;viewCities.TryGetValue(cell,out c);if(c!=null&&!(c.owner==0||visible))c=null;
                 if((u!=null&&u.id==selected)||(c!=null&&c.id==cityId))DrawSelection(rect);
             }
             DrawUnitLabels();
@@ -207,9 +245,7 @@ namespace ParadigmRealm
                 var marker=new Rect(chosen.destinationX*tilePixels+6,chosen.destinationY*tilePixels+6,20,20);
                 Fill(marker,new Color(1,.8f,0,.55f));GUI.Label(marker,"X",small);
             }
-            GUI.EndScrollView();
-            HandleMapInput();
-            if(dragging){var m=Event.current.mousePosition;GUI.Label(new Rect(m.x+15,m.y+12,220,30),"Release to issue destination",body);}
+            compositeBudgetOn=false;
         }
         void HandleMapInput()
         {

@@ -2,6 +2,15 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Performance pass 1 (source written 28 Oct 2026; NOT yet measured in Unity)
+
+Cause found by reading the code (no profiler data yet): every frame the map drew each tile three times, rebuilt a text key and an array for every tile's terrain picture, asked a slow visibility question per tile, and painted any new tile's 64 x 64 picture pixel by pixel in one go. City yields scanned the whole map. Changes:
+- Map drawing: pictures are drawn on Repaint events only; the player's visibility is computed once per frame; each tile's remembered view, unit stack and city are looked up once, not per pass; roads use a few strips instead of hundreds of small squares.
+- Terrain pictures: flat ground with the same type all round now shares one picture per type (pixel-identical to before). Other tiles are cached with a number key (no text). New tile pictures are built within a 6 ms per-frame budget; tiles still waiting show the plain supplied texture for a moment, then switch. Tiles with no river nearby skip the river search.
+- Rules code: city workable tiles, adjacent water, resource checks, territory rebuild and the settler frontier search look only near the cities instead of scanning every tile. Pathfinding uses a heap and reusable arrays (same routes as before). Technology lookups use a dictionary.
+- Not done: the Known World screen, AI turn processing and autosave have not been profiled. The 64 x 64 art size is unchanged. The new diamond renderer will replace much of the drawing code.
+- Verification: `SpeedChecks()` compares territory, workable tiles, adjacent water and the visibility cache with the plain definitions they replaced, checks routes are valid and repeatable on flat and sphere maps, and times a Massive sphere. It was NOT compiled or run here. No frame times have been measured; Unity feedback is needed.
+
 ## Sphere worlds and climate generator (source written 28 Oct 2026; NOT yet tested in Unity)
 
 - Save version is now 9. New field `mapShape`: 0 = flat map with edges (every older save, and the default for `World.New`), 1 = sphere. Version 8 saves load unchanged as flat maps.

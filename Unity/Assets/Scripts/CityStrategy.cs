@@ -13,7 +13,21 @@ namespace ParadigmRealm {
    return v;
   }
   bool NearRiver(Tile t){for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){var a=At(t.x+x,t.y+y);if(a!=null&&a.terrain==7)return true;}return false;}
-  public List<Tile> Workable(City c){return tiles.Where(t=>t.owner==c.owner&&Distance(t.x,t.y,c.x,c.y)<=2&&!(t.x==c.x&&t.y==c.y)&&!cities.Any(a=>a.x==t.x&&a.y==t.y)&&cities.Where(a=>a.owner==c.owner).OrderBy(a=>Distance(a.x,a.y,t.x,t.y)).ThenBy(a=>a.id).First()==c).ToList();}
+  public List<Tile> Workable(City c){
+   // Only the 5x5 block around the city can qualify, so nothing scans the whole map.
+   var result=new List<Tile>();
+   for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){
+    if(dx==0&&dy==0)continue;var t=At(c.x+dx,c.y+dy);if(t==null||t.owner!=c.owner)continue;
+    if(Distance(t.x,t.y,c.x,c.y)>2||result.Contains(t))continue;
+    bool occupied=false;foreach(var other in cities)if(other.x==t.x&&other.y==t.y){occupied=true;break;}
+    if(occupied)continue;
+    City nearest=null;int nearestDistance=int.MaxValue;
+    foreach(var other in cities){if(other.owner!=c.owner)continue;int d=Distance(other.x,other.y,t.x,t.y);if(nearest==null||d<nearestDistance||(d==nearestDistance&&other.id<nearest.id)){nearest=other;nearestDistance=d;}}
+    if(nearest==c)result.Add(t);
+   }
+   result.Sort((p,q)=>(p.y*Width+p.x).CompareTo(q.y*Width+q.x));
+   return result;
+  }
   static int FocusScore(int focus,int[] v){return focus==1?v[0]*4+v[1]+v[2]:focus==2?v[1]*4+v[0]+v[2]:focus==4?v[2]*6+v[0]+v[1]:v[0]*2+v[1]+v[2];}
   public List<Tile> Worked(City c){
    var candidates=Workable(c).Select(t=>new{Tile=t,V=EffectiveTileYield(c,t)}).OrderByDescending(t=>FocusScore(c.focus,t.V)).ThenBy(t=>t.Tile.y*Width+t.Tile.x).ToList();

@@ -22,7 +22,24 @@ namespace ParadigmRealm
         static float Level(int t){return t==5||t==15?1:t==2||t==17?.45f:0;}
         static int Ground(int t){return t==7?0:t;}
         // Palette is sampled from the project's supplied textures, never generated art.
-        public static TerrainInk Pixel(float wx,float wy,int seed,Func<int,int,int> terrain,Func<int,float,float,TerrainInk> sample)
+        public static int GroundOf(int terrainId){return Ground(terrainId);}
+        // Flat ground (not hills or mountains) whose whole neighbourhood is the same type looks identical on every tile.
+        public static bool Raised(int ground){return Level(ground)>0;}
+        static TerrainInk Quantise(TerrainInk colour){return new TerrainInk((float)Math.Round(Clamp(colour.r)*31)/31,(float)Math.Round(Clamp(colour.g)*31)/31,(float)Math.Round(Clamp(colour.b)*31)/31);}
+        // Same result as Pixel when the tile and all eight neighbours are one ground type with no river, without the blending work.
+        public static TerrainInk PixelUniform(float wx,float wy,int seed,int ground,Func<int,float,float,TerrainInk> sample)
+        {
+            TerrainInk colour=sample(ground,wx,wy);
+            if(Level(ground)>0)
+            {
+                float light=(Noise(wx*3,wy*3,seed+51)-.5f)*.06f;
+                colour=TerrainInk.Mix(colour,light>=0?new TerrainInk(.85f,.83f,.65f):new TerrainInk(.14f,.21f,.22f),Math.Abs(light));
+            }
+            return Quantise(colour);
+        }
+        public static TerrainInk Pixel(float wx,float wy,int seed,Func<int,int,int> terrain,Func<int,float,float,TerrainInk> sample){return Pixel(wx,wy,seed,terrain,sample,true);}
+        // riversPossible=false lets the caller skip the river search when no river tile is within one tile.
+        public static TerrainInk Pixel(float wx,float wy,int seed,Func<int,int,int> terrain,Func<int,float,float,TerrainInk> sample,bool riversPossible)
         {
             // A shared warped coordinate field produces organic boundaries without
             // choosing a different edge shape on either side of a tile seam.
@@ -66,6 +83,7 @@ namespace ParadigmRealm
             // as connected centre-to-centre channels over grass, including mouths.
             float river=10;int tx=(int)Math.Floor(wx),ty=(int)Math.Floor(wy);
             // A continuous meander field is shared across boundaries too.
+            if(riversPossible){
             float rx=wx+(Noise(wx*2.3f,wy*2.3f,seed+113)-.5f)*.13f;
             float ry=wy+(Noise(wx*2.3f+7,wy*2.3f,seed+131)-.5f)*.13f;
             for(int yy=ty-1;yy<=ty+1;yy++)for(int xx=tx-1;xx<=tx+1;xx++){
@@ -92,6 +110,7 @@ namespace ParadigmRealm
                         river=Math.Min(river,Segment(rx,ry,xx+.5f,yy+.5f,xx+.5f+dx*.5f,yy+.5f+dy*.5f));
                     }
                 }
+            }
             }
             float channel=.085f+(Noise(wx*4,wy*4,seed+97)-.5f)*.035f;
             if(river<channel+.045f&&water<.55f){

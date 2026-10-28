@@ -41,7 +41,7 @@ namespace ParadigmRealm {
   void DrawTerritory(Tile t,Rect r){
    if(t.owner<0)return;Color ink=nations[t.owner];ink.a=.7f;float w=Mathf.Max(1,r.width/40);
    int[] dx={-1,1,0,0},dy={0,0,-1,1};
-   for(int i=0;i<4;i++){var adjacent=world.At(t.x+dx[i],t.y+dy[i]);if(adjacent!=null&&adjacent.seen&&world.KnownTile(adjacent).owner==t.owner)continue;
+   for(int i=0;i<4;i++){var adjacent=world.At(t.x+dx[i],t.y+dy[i]);if(adjacent!=null&&adjacent.seen&&world.KnownOwner(adjacent)==t.owner)continue;
     var edge=i==0?new Rect(r.x,r.y,w,r.height):i==1?new Rect(r.xMax-w,r.y,w,r.height):i==2?new Rect(r.x,r.y,r.width,w):new Rect(r.x,r.yMax-w,r.width,w);Fill(edge,ink);
    }
   }
