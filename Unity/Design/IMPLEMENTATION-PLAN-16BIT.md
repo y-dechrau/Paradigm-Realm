@@ -1,6 +1,6 @@
 # Paradigm Realm — implementation plan for the 16-bit core design (planned)
 
-Status: **PLAN ONLY. No stage below is implemented.** Date: 28 October 2026. Companion to CORE-DESIGN-16BIT.md. Findings about the current code come from reading it, not from running it in Unity; Unity has never compiled this project.
+Status: **PLAN ONLY. No stage below is implemented.** Date: 28 October 2026. Companion to CORE-DESIGN-16BIT.md. Findings about the current code come from reading it. On 28 October 2026 the owner reported that the project opens in Unity with no compile errors and the Earth scene works; performance and large-map behaviour are untested.
 
 Rule for every stage: bump the save version with a migration, update the matching harness in Unity/Tests, update IMPLEMENTATION-STATUS.md, commit and push, and say plainly what was and was not verified.
 
@@ -34,8 +34,8 @@ Small stays the default so existing saves and behaviour are unchanged. A Custom 
 
 ## Stages
 
-### Stage 0 — Get it compiling and running in Unity
-Owner opens the Unity folder, reports compile errors and Console output. Fix them. Nothing else starts until there is a known-good baseline.
+### Stage 0 — Get it compiling and running in Unity (done, owner-reported 28 Oct 2026)
+The owner opened the Unity folder in Unity 6000.3.25f1: no compile errors, Earth scene working. This is the baseline for later stages.
 
 ### Stage 1 — Variable map size foundation (save v8)
 - Make width and height saved fields of `World` instead of constants. Old saves load as 48 x 30.

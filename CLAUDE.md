@@ -17,7 +17,7 @@ Canonical repository: https://github.com/y-dechrau/Paradigm-Realm (the lower-cas
 - Latest release: Diplomacy Stage 3 (save version 7; versions 1-6 migrate).
 - Implemented: foundation systems (124 technologies, 11 units, 9 buildings, cities, borders, upkeep, fog, AI), Stage 2 settlement adviser, Stage 3 diplomacy.
 - Not implemented: naval play, aircraft, espionage, barbarians, world congress, city-states, vassalage, multiplayer.
-- **Unity itself has never been run on this code.** Only the standalone harnesses have passed. Never describe harness or API-double results as Unity playtesting. Real compilation, Play Mode, UI layout, JsonUtility saves, performance and balance are untested until the owner reports results from Unity.
+- **Unity check (28 Oct 2026, owner-reported):** the project opens in Unity 6000.3.25f1 with no compile errors, and the owner reports the Earth scene works in Play Mode. Engine Checks output, save/load, performance, balance and large maps are not yet verified. Never describe harness or API-double results as Unity playtesting.
 
 ## Working rules
 
