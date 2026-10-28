@@ -1,0 +1,75 @@
+# Paradigm Realm — implementation plan for the 16-bit core design (planned)
+
+Status: **PLAN ONLY. No stage below is implemented.** Date: 28 October 2026. Companion to CORE-DESIGN-16BIT.md. Findings about the current code come from reading it, not from running it in Unity; Unity has never compiled this project.
+
+Rule for every stage: bump the save version with a migration, update the matching harness in Unity/Tests, update IMPLEMENTATION-STATUS.md, commit and push, and say plainly what was and was not verified.
+
+## Decisions
+
+- The draft balance numbers in CORE-DESIGN-16BIT.md are accepted as the starting point, to be tuned in play.
+- Map size must range from small to massively expansive, chosen when starting a new game.
+- Earth first; realms and portals later.
+
+## Map size options (proposed)
+
+| Size | Grid (W x H) | Tiles | Civilisations |
+|---|---|---|---|
+| Tiny | 32 x 20 | 640 | 2 |
+| Small (current) | 48 x 30 | 1,440 | 3 |
+| Medium | 80 x 50 | 4,000 | 4 |
+| Large | 120 x 75 | 9,000 | 6 |
+| Huge | 180 x 110 | 19,800 | 10 |
+| Massive | 320 x 200 | 64,000 | 16 |
+
+Small stays the default so existing saves and behaviour are unchanged. A Custom option (width and height within set limits) can come after the presets work. Civilisation count should follow map size but be adjustable.
+
+## What the current code does that blocks large maps
+
+1. **Fixed map size.** `World.Width=48, Height=30` are compile-time constants used in about 35 places across 13 files. Saves are only valid if the tile count equals 48 x 30.
+2. **Fixed three civilisations.** `nations` is created with exactly 3 entries, loops use `owner<3`, and diplomacy assumes the three pairs.
+3. **No drawing cull.** The map renderer loops over every tile every frame, drawing with IMGUI.
+4. **Per-tile texture cache.** Each tile gets its own 64x64 RGBA32 composite texture (about 16 KB) keyed by seed and position. Small is about 24 MB if every tile is seen, but Massive would be about 1 GB in the worst case. This must change.
+5. **Fog is recomputed for every tile.** `Reveal()` loops over all tiles for each of 3 owners. This will not scale to Massive.
+6. **AI and turn processing** scan whole maps and all cities; budgets are unmeasured.
+
+## Stages
+
+### Stage 0 — Get it compiling and running in Unity
+Owner opens the Unity folder, reports compile errors and Console output. Fix them. Nothing else starts until there is a known-good baseline.
+
+### Stage 1 — Variable map size foundation (save v8)
+- Make width and height saved fields of `World` instead of constants. Old saves load as 48 x 30.
+- Parameterise terrain generation and starting positions; keep land connected and starts fair at every size.
+- Size `nations[].known` and all per-tile arrays from the saved size.
+- New Game screen: map size picker.
+- Camera limits, zoom range and a minimap that scale with map size.
+- Draw only visible tiles; replace the per-tile texture cache with a small cache of shared terrain textures or an atlas with deterministic variation.
+- Make fog update incrementally, only around units and cities that moved or were created.
+- Harness: size round trip at every preset, v7 to v8 migration, determinism by seed, performance smoke test on Massive.
+
+### Stage 2 — Variable civilisation count (save v9)
+Dynamic `nations`, diplomacy pairs for every pair of civilisations, AI and contact rules at 2 to 16, UI lists that scroll. Start positions spread by map size.
+
+### Stage 3 — Rules alignment: economy and cities (save v10)
+Growth formula, production costs, buying, tax and science split, upkeep, happiness model, experience. Replace the existing formulas one at a time with a harness check each. Map the 21 existing terrain types onto the simple Food/Shield/Trade table through base yield plus modifiers so artwork and names stay.
+
+### Stage 4 — Combat rules
+Deterministic damage formula with exact preview, stack limit of 3, best-defender rule, ranged without retaliation, defence bonuses. Rescale the current Power table (currently 0-13) to the new strengths.
+
+### Stage 5 — Technology compression (save v11)
+Map the 124 technologies to about 36 keystone technologies in 6 eras. Migrate known technologies and in-progress research. Add era advancement and the one-of-three edict choice.
+
+### Stage 6 — Victory
+Conquest by capitals, Transcendence in three stages, Concord. One status screen with three bars.
+
+### Stage 7 — Interface
+Three-panel city screen with Governor presets, the victory status screen, a clearer New Game screen.
+
+### Stage 8 — AI and balance
+Headless multi-turn runs at each map size to check pacing targets and turn time; tune numbers.
+
+## Risks
+
+- Stage 1 touches the most code and is where Unity-only problems (IMGUI speed, memory, layout) are most likely. It needs real Unity feedback.
+- Changing saves four times needs careful migration tests; keep a backup of the owner's saves.
+- Massive maps with 16 civilisations may need simpler AI behaviour per turn. Budget to be set after measuring in Unity.
