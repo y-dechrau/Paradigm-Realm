@@ -1,6 +1,6 @@
 **Latest: Diplomacy Stage 3.** Read [START-HERE-DIPLOMACY.md](START-HERE-DIPLOMACY.md) first. The notes below describe earlier development.
 
-# Current release: Settlement Strategy — Stage 2
+# Previous release: Settlement Strategy — Stage 2
 
 The current project includes the Pixel Realms artwork overhaul and terrain,
 city management and AI improvements, plus site bonuses and a settlement adviser. Use Unity **6000.3.25f1**.
@@ -13,11 +13,11 @@ Engine and API-double checks passed outside Unity. Actual Unity compilation and
 Play Mode for this updated release remain unverified. Original artwork and save
 loading are preserved; see the release notes for gameplay changes.
 
-Earlier notes below are retained for history. The instructions above take priority.
+Earlier notes below are retained for history. The Diplomacy Stage 3 instructions above take priority.
 
 ---
 
-# Current release: Alpha 0.7
+# Earlier release: Alpha 0.7
 
 Read **ALPHA-0.7-README.md** for the current feature list, controls, installation and limitations. The sections below document the earlier foundation.
 

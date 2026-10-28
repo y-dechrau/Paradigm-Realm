@@ -22,8 +22,8 @@ class SettlementUIChecks {
   Check(Get<string>(game,"detailsScreen")==""&&Get<int>(game,"selected")==u.id,"travel returns to selected unit on map");
   Check(w.cities.Count==cityCount&&w.units.Contains(u),"travel never automatically founds a player city");
   Check(u.hasOrder||u.x==chosen.x&&u.y==chosen.y,"travel uses ordinary persistent movement orders");
-  var loaded=JsonUtility.FromJson<World>(JsonUtility.ToJson(w));loaded.UpgradeSave();Check(loaded.Valid(),"v6 save remains valid after adviser order");
+  var loaded=JsonUtility.FromJson<World>(JsonUtility.ToJson(w));loaded.UpgradeSave();Check(loaded.Valid(),"v7 save remains valid after adviser order");
   var restored=loaded.units.First(a=>a.id==u.id);Check(restored.destinationX==u.destinationX&&restored.destinationY==u.destinationY&&restored.hasOrder==u.hasOrder,"movement plan survives save load");
-  Console.WriteLine("PASS settlement adviser display/input, no simulation mutation, manual founding, persistent travel and v6 round trip (API doubles)");
+  Console.WriteLine("PASS settlement adviser display/input, no simulation mutation, manual founding, persistent travel and v7 round trip (API doubles)");
  }
 }

@@ -22,4 +22,3 @@ PASS settlement adviser display/input, no simulation mutation, manual founding, 
 PASS: simulated input, two production lanes, research and city drawing calls, unique icons, Load and save failure handling (Unity API doubles)
 
 Asset preservation: 266 existing artwork, scene and metadata files match Stage 2 byte-for-byte.
-Note: the settlement harness retains an older v6 label in its output; its current round trip uses v7. Explicit v6 migration is tested in the other suites.
