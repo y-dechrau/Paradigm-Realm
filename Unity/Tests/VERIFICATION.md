@@ -13,7 +13,7 @@
   - Connected iron access and road disconnection.
   - Construction queue advancement and duplicate-building rejection.
   - Tax/happiness trade-off.
-  - Experience consumption on promotion.
+  - Ranks from victories (replaced manual experience promotion in Stage 3; see EmpireChecks.StageThreeUnits).
   - Peace prevents combat; confirmed war allows it.
   - Separate progress retained when switching technology.
   - State validity after every turn of a 45-turn campaign.

@@ -1,43 +1,127 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 namespace ParadigmRealm {
  public partial class RealmGame {
   readonly Dictionary<string,Texture2D> visualArt=new Dictionary<string,Texture2D>();
   readonly List<Texture2D> themeTextures=new List<Texture2D>();
   GUISkin visualSkin; bool artGallery; int galleryIndex,loadedGallery=-1; string[] galleryNames; Texture2D galleryImage;
+  // Light theme: soft blue-grey panels with rounded corners, dark slate text, one blue accent.
+  static readonly Color UiBackground=new Color(.84f,.88f,.91f),UiPanel=new Color(.965f,.972f,.978f,.98f),UiPanelEdge=new Color(.68f,.75f,.81f),
+   UiButton=new Color(.91f,.94f,.965f),UiButtonHover=new Color(.84f,.91f,.97f),UiButtonActive=new Color(.74f,.85f,.95f),UiAccent=new Color(.27f,.52f,.8f),
+   UiText=new Color(.13f,.18f,.23f),UiLabelBack=new Color(.98f,.98f,.96f,.9f),UiDim=new Color(.1f,.14f,.18f,.42f),UiTrough=new Color(.8f,.85f,.89f);
+  // Processed copies of the supplied unit pictures (the files themselves are untouched); null falls back to the original.
+  Texture2D[] unitSprites;
+  // Leader portraits (Resources/Leaders, scaled copies of the owner's leader art). An age-specific picture
+  // "leader-NN-eE" (E = 0 Dawn ... 5 Dimensional), dressed for that age, is used when it exists; otherwise "leader-NN".
+  readonly Dictionary<int,Texture2D> portraits=new Dictionary<int,Texture2D>();
+  Texture2D Portrait(int i,int era=-1){
+   if(i<0||i>=CivilisationCatalog.PortraitCount)return null;Texture2D t;
+   if(era>=0){int key=1000+i*10+era;if(!portraits.TryGetValue(key,out t)){t=Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00")+"-e"+era);portraits[key]=t;}if(t!=null)return t;}
+   if(!portraits.TryGetValue(i,out t)){t=Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00"));portraits[i]=t;}return t;
+  }
+  // Civilisations waiting for portrait art join the game as soon as their picture is in Resources/Leaders.
+  void EnableCivilisationsWithArt(){for(int i=0;i<CivilisationCatalog.Count;i++)if(CivilisationCatalog.AwaitingArt[i]&&Portrait(CivilisationCatalog.Portraits[i])!=null){CivilisationCatalog.Enabled[i]=true;CivilisationCatalog.AwaitingArt[i]=false;}}
   Texture2D Art(string name){Texture2D t;if(!visualArt.TryGetValue(name,out t)){t=Resources.Load<Texture2D>("Visuals/"+name);visualArt[name]=t;}return t;}
   void LoadVisualArt(){
-   for(int i=0;i<people.Length;i++){var t=Art("unit-"+i.ToString("00"));if(t!=null){Destroy(people[i]);people[i]=t;}}
+   unitSprites=new Texture2D[people.Length];
+   for(int i=0;i<people.Length;i++){var t=Art("unit-"+i.ToString("00"));if(t!=null){Destroy(people[i]);people[i]=t;}
+    try{unitSprites[i]=PixelTexture(PixelArt.UnitSprite(ReadArtPixels(people[i]),people[i].width,people[i].height));}catch(Exception){unitSprites[i]=null;}}
+   // Vessels are drawn by the pixel-art generator (no supplied art); the same picture serves the build list.
+   for(int i=World.BoatUnit;i<=World.WarGalleyUnit&&i<people.Length;i++){unitSprites[i]=PixelTexture(PixelArt.ShipSprite(i-World.BoatUnit));people[i]=unitSprites[i];}
+   EnableCivilisationsWithArt();
    var city=Art("city-0-0");if(city!=null){Destroy(cityTexture);cityTexture=city;}
    var names=Resources.Load<TextAsset>("Visuals/gallery-names");galleryNames=names==null?new string[0]:names.text.Split(new[]{'\n'},StringSplitOptions.RemoveEmptyEntries);
   }
-  Texture2D PanelTexture(Color centre,Color edge){
-   var t=new Texture2D(16,16,TextureFormat.RGBA32,false){filterMode=FilterMode.Point,wrapMode=TextureWrapMode.Clamp};
-   for(int y=0;y<16;y++)for(int x=0;x<16;x++)t.SetPixel(x,y,x==0||y==0||x==15||y==15?edge:centre);
+  // Copies a texture's pixels through the GPU, so the supplied art needs no Read/Write import setting and stays unchanged.
+  // Returns top-down 0xAARRGGBB, the layout PixelArt uses.
+  uint[] ReadArtPixels(Texture2D src){
+   var rt=RenderTexture.GetTemporary(src.width,src.height,0,RenderTextureFormat.ARGB32,RenderTextureReadWrite.sRGB);
+   var previous=RenderTexture.active;Graphics.Blit(src,rt);RenderTexture.active=rt;
+   var copy=new Texture2D(src.width,src.height,TextureFormat.RGBA32,false);copy.ReadPixels(new Rect(0,0,src.width,src.height),0,0);copy.Apply();
+   RenderTexture.active=previous;RenderTexture.ReleaseTemporary(rt);
+   var px=copy.GetPixels32();Destroy(copy);var result=new uint[src.width*src.height];
+   for(int y=0;y<src.height;y++)for(int x=0;x<src.width;x++){var c=px[(src.height-1-y)*src.width+x];result[y*src.width+x]=((uint)c.a<<24)|((uint)c.r<<16)|((uint)c.g<<8)|c.b;}
+   return result;
+  }
+  // 16 x 16 nine-slice panel with 4 px rounded corners, a 1 px edge and, for buttons, a gentle top-to-bottom shine.
+  Texture2D PanelTexture(Color centre,Color edge,bool shine=false){
+   var t=new Texture2D(16,16,TextureFormat.RGBA32,false){filterMode=FilterMode.Bilinear,wrapMode=TextureWrapMode.Clamp};
+   for(int y=0;y<16;y++)for(int x=0;x<16;x++){
+    float cx=x<4?3.5f-x:x>11?x-11.5f:0,cy=y<4?3.5f-y:y>11?y-11.5f:0,d=Mathf.Sqrt(cx*cx+cy*cy);
+    Color c;if(d>3.9f)c=Color.clear;else if(d>2.9f||(cx==0&&(y==0||y==15))||(cy==0&&(x==0||x==15)))c=edge;
+    else{c=centre;if(shine)c=Color.Lerp(centre*.97f,Color.Lerp(centre,Color.white,.35f),y/15f);c.a=centre.a;}
+    t.SetPixel(x,y,c);}
    t.Apply();themeTextures.Add(t);return t;
   }
   void ApplyVisualSkin(){
    if(visualSkin==null){
     visualSkin=Instantiate(GUI.skin);
-    var panel=PanelTexture(new Color(.045f,.075f,.085f,.98f),new Color(.48f,.43f,.29f));
-    var normal=PanelTexture(new Color(.11f,.18f,.19f),new Color(.44f,.41f,.28f));
-    var hover=PanelTexture(new Color(.19f,.28f,.27f),new Color(.85f,.71f,.42f));
-    var active=PanelTexture(new Color(.31f,.29f,.17f),new Color(1,.84f,.5f));
-    visualSkin.box.normal.background=panel;visualSkin.box.border=new RectOffset(2,2,2,2);
+    var panel=PanelTexture(UiPanel,UiPanelEdge);
+    var normal=PanelTexture(UiButton,UiPanelEdge,true);
+    var hover=PanelTexture(UiButtonHover,Color.Lerp(UiPanelEdge,UiAccent,.6f),true);
+    var active=PanelTexture(UiButtonActive,UiAccent,true);
+    visualSkin.box.normal.background=panel;visualSkin.box.border=new RectOffset(5,5,5,5);visualSkin.box.normal.textColor=UiText;
     foreach(var s in new[]{visualSkin.button,visualSkin.textField,visualSkin.textArea}){
      s.normal.background=normal;s.hover.background=hover;s.active.background=active;s.focused.background=hover;
      s.onNormal.background=active;s.onHover.background=hover;s.onActive.background=active;
-     s.border=new RectOffset(2,2,2,2);s.normal.textColor=new Color(.93f,.9f,.78f);s.hover.textColor=Color.white;s.active.textColor=Color.white;s.fontSize=14;
+     s.border=new RectOffset(5,5,5,5);s.fontSize=14;
+     foreach(var state in new[]{s.normal,s.hover,s.active,s.focused,s.onNormal,s.onHover,s.onActive})state.textColor=UiText;
     }
-    visualSkin.label.normal.textColor=new Color(.9f,.91f,.83f);
+    foreach(var s in new[]{visualSkin.label,visualSkin.toggle})foreach(var state in new[]{s.normal,s.hover,s.active,s.onNormal,s.onHover,s.onActive})state.textColor=UiText;
+    // Scrollbars and sliders: pale troughs with rounded blue-grey thumbs instead of Unity's default dark ones.
+    var trough=PanelTexture(UiTrough,UiTrough);var thumb=PanelTexture(new Color(.6f,.68f,.76f),new Color(.5f,.58f,.67f));var thumbHover=PanelTexture(Color.Lerp(new Color(.6f,.68f,.76f),UiAccent,.5f),UiAccent);
+    foreach(var s in new[]{visualSkin.verticalScrollbar,visualSkin.horizontalScrollbar,visualSkin.horizontalSlider,visualSkin.verticalSlider}){s.normal.background=trough;s.border=new RectOffset(5,5,5,5);}
+    foreach(var s in new[]{visualSkin.verticalScrollbarThumb,visualSkin.horizontalScrollbarThumb,visualSkin.horizontalSliderThumb,visualSkin.verticalSliderThumb}){s.normal.background=thumb;s.hover.background=thumbHover;s.active.background=thumbHover;s.border=new RectOffset(5,5,5,5);}
    }
    GUI.skin=visualSkin;
   }
   void DrawArt(string name,Rect r){var t=Art(name);if(t!=null)GUI.DrawTexture(r,t,ScaleMode.ScaleToFit,true);}
   int CityVisualEra(int owner){return world.HasTech(owner,"feudalism")?3:world.HasTech(owner,"iron")?2:world.HasTech(owner,"bronze")?1:0;}
   Texture2D CityArt(City c){return Art("city-"+CityVisualEra(c.owner)+"-"+((c.owner*2+c.id)%5))??cityTexture;}
-  void DrawCityArt(City c,Rect r){GUI.DrawTexture(r,CityArt(c),ScaleMode.ScaleToFit,true);}
+  // Cities grow on the map (owner request): the settlement is built from its age, size and buildings (PixelArt.Settlement).
+  // The supplied city pictures (CityArt) stay in the project but are no longer drawn on the map.
+  readonly Dictionary<long,Texture2D> settlementTextures=new Dictionary<long,Texture2D>();
+  int SettlementFlags(City c){
+   int f=0;if(c.walls)f|=PixelArt.FlagWalls;
+   bool capital=c.owner>=0&&c.owner<world.nations.Length&&world.nations[c.owner].capital==c.id;
+   if(capital&&c.pop>=4||c.walls&&c.pop>=8)f|=PixelArt.FlagCastle;
+   if(world.HasBuilding(c,36))f|=PixelArt.FlagTemple;if(world.HasBuilding(c,31))f|=PixelArt.FlagMarket;
+   if(c.granary)f|=PixelArt.FlagGranary;if(c.library)f|=PixelArt.FlagLibrary;return f;
+  }
+  Texture2D SettlementTexture(int style,int pop,int flags,int variant){
+   long key=((long)style<<24)|((long)Math.Min(16,pop)<<16)|((long)flags<<4)|(long)(variant&7);Texture2D tex;
+   if(!settlementTextures.TryGetValue(key,out tex)){tex=PixelTexture(PixelArt.Settlement(style,pop,flags,variant));settlementTextures[key]=tex;}
+   return tex;
+  }
+  void DrawCityArt(City c,Rect r){GUI.DrawTexture(r,SettlementTexture(CityVisualEra(c.owner),c.pop,SettlementFlags(c),c.id),ScaleMode.ScaleToFit,true);}
+  // Outlying farmsteads: from size 5, one neighbouring land tile of the city's own territory per two citizens (up to 8)
+  // gets a few houses, chosen in a fixed order per city so they do not jump about.
+  readonly Dictionary<int,City> suburbCells=new Dictionary<int,City>();
+  static readonly int[] SuburbDx={-1,0,1,1,1,0,-1,-1},SuburbDy={-1,-1,-1,0,1,1,1,0};
+  readonly Dictionary<int,City> portCells=new Dictionary<int,City>();
+  void BuildSuburbs(){
+   suburbCells.Clear();portCells.Clear();
+   foreach(var c in world.cities){var p=world.PortTile(c);if(p!=null&&!(p.x==c.x&&p.y==c.y))portCells[p.y*world.Width+p.x]=c;}
+   foreach(var c in world.cities){
+    int want=Math.Min(8,Math.Max(0,(c.pop-3)/2));if(want==0)continue;
+    var order=Enumerable.Range(0,8).OrderBy(k=>(k*7+c.id*3)%8).ToList();
+    foreach(int k in order){if(want==0)break;var t=world.At(c.x+SuburbDx[k],c.y+SuburbDy[k]);if(t==null)continue;int cell=t.y*world.Width+t.x;
+     if(t.owner!=c.owner||suburbCells.ContainsKey(cell)||portCells.ContainsKey(cell)||World.Barren(t.terrain)||t.terrain==1||t.terrain==11||t.terrain==13||t.terrain==17||t.terrain==19||world.cities.Any(o=>o.x==t.x&&o.y==t.y))continue;
+     suburbCells[cell]=c;want--;}
+   }
+  }
+  // City name plates under each settlement: a light rounded plate with a strip in the owner's colour (owner request).
+  readonly List<string> isoCityNames=new List<string>();readonly List<Vector2> isoCityPos=new List<Vector2>();readonly List<Color> isoCityInk=new List<Color>();
+  GUIStyle cityNameStyle;
+  void DrawCityName(string name,Vector2 topCentre,Color ink){
+   if(cityNameStyle==null)cityNameStyle=new GUIStyle(small){fontSize=11,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter,wordWrap=false};
+   float w=Mathf.Max(40,name.Length*7+14),h=17;var r=new Rect(topCentre.x-w/2,topCentre.y,w,h);
+   Fill(new Rect(r.x+1,r.y+2,r.width,r.height),new Color(0,0,0,.25f));Fill(r,UiLabelBack);Fill(new Rect(r.x,r.yMax-3,r.width,3),ink);
+   GUI.Label(new Rect(r.x,r.y-1,r.width,r.height-1),name,cityNameStyle);
+  }
+  Texture2D HamletTexture(City c,int x,int y){return IsoPicture(6,CityVisualEra(c.owner),(x*5+y*3)&7);}
   void DrawTerritory(Tile t,Rect r){
    if(t.owner<0)return;Color ink=nations[t.owner];ink.a=.7f;float w=Mathf.Max(1,r.width/40);
    int[] dx={-1,1,0,0},dy={0,0,-1,1};
@@ -52,12 +136,25 @@ namespace ParadigmRealm {
    if(t.mine)DrawArt("mine",r);if(t.fort)DrawArt("fort",r);
    if(t.village&&world.Visible(t.x,t.y))DrawArt("village",r);
   }
+  // r is the unit's box on the tile. The figure is drawn 1.6 times its width (64 px at the default zoom, so pixels stay
+  // whole), standing on a soft ground shadow inside a ring in its owner's colour.
   void DrawUnitArt(Unit u,Rect r,int count){
-   GUI.DrawTexture(new Rect(r.x+r.width*.08f,r.y-r.height*.16f,r.width*.84f,r.height*1.12f),people[u.type],ScaleMode.ScaleToFit,true);
-   float h=Mathf.Max(3,r.width*.06f);Fill(new Rect(r.x+r.width*.12f,r.yMax-h-1,r.width*.76f,h),new Color(.03f,.04f,.04f,.95f));
-   Fill(new Rect(r.x+r.width*.12f,r.yMax-h-1,r.width*.76f*u.hp/10f,h),u.hp>5?new Color(.37f,.78f,.45f):new Color(.92f,.45f,.27f));
-   Fill(new Rect(r.x+2,r.y+2,Mathf.Max(4,r.width*.1f),Mathf.Max(4,r.width*.1f)),nations[u.owner]);
-   if(count>1){Fill(new Rect(r.xMax-18,r.y,18,18),new Color(.03f,.05f,.06f,.9f));GUI.Label(new Rect(r.xMax-16,r.y-1,22,18),count.ToString(),small);}
+   float size=r.width*1.6f;var feet=new Vector2(r.center.x,r.yMax);
+   var baseRect=new Rect(feet.x-size*.3f,feet.y-size*.09f,size*.6f,size*.225f);
+   GUI.DrawTexture(baseRect,IsoPicture(4,8,0));var old=GUI.color;GUI.color=nations[u.owner];GUI.DrawTexture(baseRect,IsoPicture(4,7,0));GUI.color=old;
+   var art=unitSprites!=null&&unitSprites[u.type]!=null?unitSprites[u.type]:people[u.type];
+   GUI.DrawTexture(new Rect(feet.x-size/2,feet.y-size*62f/64f,size,size),art,ScaleMode.ScaleToFit,true);
+   // Health shows above the head, and only when the unit is hurt, so the map stays clean.
+   if(u.hp<10){float h=Mathf.Max(3,r.width*.07f),bar=r.width*.8f,by=feet.y-size*60f/64f-h;
+    Fill(new Rect(feet.x-bar/2-1,by-1,bar+2,h+2),new Color(.08f,.1f,.12f,.85f));
+    Fill(new Rect(feet.x-bar/2,by,bar*u.hp/10f,h),u.hp>5?new Color(.37f,.8f,.47f):new Color(.95f,.47f,.28f));}
+   if(count>1){var badge=new Rect(feet.x+size*.22f,feet.y-size*.92f,18,18);Fill(badge,UiLabelBack);GUI.Label(new Rect(badge.x+3,badge.y,22,18),count.ToString(),small);}
+  }
+  // While dragging a unit to a destination: a dotted gold line from the unit to the pointer, with a ring at the end.
+  void DrawOrderLine(Vector2 from,Vector2 to){
+   float length=(to-from).magnitude;if(length<4)return;var dir=(to-from)/length;
+   for(float d=6;d<length-6;d+=9){var p=from+dir*d;Fill(new Rect(p.x-2.5f,p.y-2.5f,5,5),new Color(.1f,.08f,.04f,.75f));Fill(new Rect(p.x-1.5f,p.y-1.5f,3,3),new Color(1f,.84f,.3f));}
+   Fill(new Rect(to.x-7,to.y-7,14,2),new Color(1f,.84f,.3f));Fill(new Rect(to.x-7,to.y+5,14,2),new Color(1f,.84f,.3f));Fill(new Rect(to.x-7,to.y-7,2,14),new Color(1f,.84f,.3f));Fill(new Rect(to.x+5,to.y-7,2,14),new Color(1f,.84f,.3f));
   }
   void DrawSelection(Rect r){
    Color c=new Color(1,.87f,.48f);float l=r.width*.25f;
@@ -65,7 +162,7 @@ namespace ParadigmRealm {
    foreach(float x in new[]{r.x,r.xMax-2})foreach(float y in new[]{r.y,r.yMax-l})Fill(new Rect(x,y,2,l),c);
   }
   void DrawGallery(){
-   Fill(new Rect(0,0,1280,800),new Color(.025f,.04f,.05f));GUI.Label(new Rect(35,20,900,35),"THE ART OF PARADIGM REALM",title);
+   Fill(new Rect(0,0,1280,800),UiBackground);GUI.Label(new Rect(35,20,900,35),"THE ART OF PARADIGM REALM",title);
    if(galleryNames.Length==0){artGallery=false;return;}
    galleryIndex=(galleryIndex+galleryNames.Length)%galleryNames.Length;
    if(loadedGallery!=galleryIndex){if(galleryImage!=null)Resources.UnloadAsset(galleryImage);galleryImage=Resources.Load<Texture2D>("Visuals/Gallery/"+galleryIndex.ToString("000"));loadedGallery=galleryIndex;}
@@ -75,6 +172,6 @@ namespace ParadigmRealm {
    if(GUI.Button(new Rect(230,740,180,38),"Next",button))galleryIndex++;
    if(GUI.Button(new Rect(1045,740,200,38),"Back to menu",button)){artGallery=false;if(galleryImage!=null)Resources.UnloadAsset(galleryImage);galleryImage=null;loadedGallery=-1;}
   }
-  void ReleaseVisuals(){foreach(var t in themeTextures)Destroy(t);if(visualSkin!=null)Destroy(visualSkin);if(galleryImage!=null)Resources.UnloadAsset(galleryImage);}
+  void ReleaseVisuals(){if(unitSprites!=null)foreach(var t in unitSprites)if(t!=null)Destroy(t);foreach(var t in themeTextures)Destroy(t);if(visualSkin!=null)Destroy(visualSkin);if(galleryImage!=null)Resources.UnloadAsset(galleryImage);}
  }
 }

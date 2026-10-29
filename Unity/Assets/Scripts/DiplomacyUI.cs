@@ -23,8 +23,15 @@ public partial class RealmGame {
   var known=Enumerable.Range(1,world.civCount-1).Where(i=>world.met[i]).ToArray();if(known.Length==0){GUILayout.Label("Explore to meet other civilisations.",body);return;}
   for(int row=0;row<known.Length;row+=4){GUILayout.BeginHorizontal();foreach(int other in known.Skip(row).Take(4))if(Button(world.NationName(other)))diplomacyPartner=other;GUILayout.EndHorizontal();}if(!world.met[diplomacyPartner])diplomacyPartner=known[0];int partner=diplomacyPartner;var p=world.Relation(0,partner);
   GUILayout.Label(world.NationName(partner)+" — "+(world.AtWar(0,partner)?"WAR":world.Allied(0,partner)?"ALLIED":world.Friends(0,partner)?"FRIENDS":"PEACE"),heading);
+  // Both leaders face each other, dressed for their own age, with the other civilisation's greeting.
+  {var pn=world.nations[partner];var me=world.nations[0];var mine=Portrait(me.portrait,world.Era(0));var theirs=Portrait(pn.portrait,world.Era(partner));
+   GUILayout.BeginHorizontal();
+   if(mine!=null)GUILayout.Label(mine,GUILayout.Width(120),GUILayout.Height(160));
+   GUILayout.Label("\n"+world.Greeting(partner)+"\n\n"+(string.IsNullOrEmpty(pn.leader)?"":"Led by "+pn.leader+".  ")+(pn.traits!=null&&pn.traits.Any(t=>t>=0)?CivilisationCatalog.TraitLine(pn.traits):""),body,GUILayout.Width(560));
+   if(theirs!=null)GUILayout.Label(theirs,GUILayout.Width(120),GUILayout.Height(160));
+   GUILayout.EndHorizontal();}
   GUILayout.Label(world.Personality(partner),small);GUILayout.Label(world.RelationshipBreakdown(partner,0),body);
-  GUILayout.Label("War weariness: "+world.warWeariness[0]+"; your cities lose "+world.WarUnhappiness(0)+" happiness. Peace recovers 2 weariness/turn.",small);
+  GUILayout.Label("War weariness: "+world.warWeariness[0]+"; your cities lose "+world.WarUnhappiness(0)+" content citizens. Peace recovers 2 weariness/turn.",small);
   GUILayout.Label("Turns remaining — Borders "+Math.Max(0,p.accessUntil-world.turn)+" | Friendship "+Math.Max(0,p.friendUntil-world.turn)+" | Alliance "+Math.Max(0,p.allianceUntil-world.turn)+" | Research "+Math.Max(0,p.researchUntil-world.turn)+" | Truce "+Math.Max(0,p.peaceUntil-world.turn)+" | Embargo "+Math.Max(0,p.embargoUntil-world.turn),body);
   GUILayout.Label("Border promises — You: "+Math.Max(0,p.promiseAUntil-world.turn)+" turns; partner: "+Math.Max(0,p.promiseBUntil-world.turn)+" turns.",small);
   foreach(var c in world.contracts.Where(c=>c.from==0&&c.to==partner||c.to==0&&c.from==partner))GUILayout.Label("Trade #"+c.id+": "+(c.end-world.turn)+" turns remaining; "+(world.ContractActive(c)?"active":"suspended; ends at next payment check")+". "+world.NationName(c.from)+" supplies "+c.givePerTurn+" gold/turn and "+World.ResourceNames[c.giveResource]+"; "+world.NationName(c.to)+" supplies "+c.askPerTurn+" and "+World.ResourceNames[c.askResource]+".",body);

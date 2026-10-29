@@ -5,15 +5,15 @@ namespace ParadigmRealm {
 public partial class RealmGame {
     int managedCity=-1;
     void DrawEmpireEconomy(){
-        GUILayout.Label("Diplomatic payments: +"+world.DiplomaticIncome(0)+" income / -"+world.DiplomaticExpense(0)+" expense per turn (included above). War weariness: -"+world.WarUnhappiness(0)+" happiness/city.",body);
+        GUILayout.Label("Diplomatic payments: +"+world.DiplomaticIncome(0)+" income / -"+world.DiplomaticExpense(0)+" expense per turn (included above). War weariness: -"+world.WarUnhappiness(0)+" content/city.",body);
         var n=world.nations[0];GUILayout.Space(12);GUILayout.Label("Government: "+World.Governments[n.government]+(n.revolution>0?" — revolution, "+n.revolution+" turns":""),heading);
-        GUILayout.Label("Each government has different support and output. Changing causes two turns of half production/science and reduced happiness.",small);
+        GUILayout.Label("Each government has different support and output. Changing causes two turns of half production/science and 2 fewer content citizens per city.",small);
         for(int i=0;i<World.Governments.Length;i++){
             bool old=GUI.enabled;GUI.enabled=old&&world.result==""&&i!=n.government&&n.revolution==0&&(i==0||world.HasTech(0,World.GovernmentTech[i]));
             if(Button("Adopt "+World.Governments[i]))world.ChangeGovernment(0,i);GUI.enabled=old;
             GUILayout.Label(World.GovernmentEffects[i]+(i>0?" | Requires "+World.TechNames[TechnologyCatalog.Index(World.GovernmentTech[i])]:""),small);
         }
-        GUILayout.Label("Luxury spending: costs 1 gold/city for each level; +2 happiness/level",heading);
+        GUILayout.Label("Luxury spending: costs 1 gold/city for each level; +2 content/level",heading);
         n.luxury=GUILayout.SelectionGrid(n.luxury,new[]{"None","1 gold/city","2 gold/city"},3);
         GUILayout.Label("Trade income: "+world.TradeIncome(0)+" gold/turn",heading);
         foreach(var r in world.tradeRoutes.Where(r=>r.originOwner==0||r.destinationOwner==0)){
@@ -33,18 +33,18 @@ public partial class RealmGame {
     void DrawCitizenManagement(){
         var c=world.cities.Find(a=>a.id==managedCity&&a.owner==0);if(c==null){GUILayout.Label("Select a city first.",body);return;}
         GUILayout.Label(c.name+" — population "+c.pop+" / growth limit "+world.GrowthLimit(c),heading);
-        GUILayout.Label("Each specialist replaces one worked tile and still consumes food. Scientists: +3 science; merchants: +3 gold; entertainers: +2 happiness.",body);
+        GUILayout.Label("Each specialist replaces one worked tile and still consumes food. Scientists: +3 science; merchants: +3 gold; entertainers: +2 content citizens.",body);
         string[] names={"Scientists","Merchants","Entertainers"};int[] values={c.scientists,c.merchants,c.entertainers};
         for(int i=0;i<3;i++){GUILayout.Label(names[i]+": "+values[i],heading);GUILayout.BeginHorizontal();if(GUILayout.Button("- "+names[i]))world.AdjustSpecialist(c,i,-1);if(GUILayout.Button("+ "+names[i]))world.AdjustSpecialist(c,i,1);GUILayout.EndHorizontal();}
         GUILayout.Label(world.CityEconomyReport(c),body);
         GUILayout.Label("Automatic workers try to feed the city before following its focus. Science focus adds 2 science and costs up to 2 production. Specialists can still cause a food deficit.",small);
-        var v=world.Yield(c);GUILayout.Label("Net food "+v[0]+" | Production "+v[1]+" | Science "+v[2]+" | Happiness "+world.Happiness(c),body);
+        var v=world.Yield(c);GUILayout.Label("Net food "+v[0]+" | Production "+v[1]+" | Science "+v[2]+" | Content "+world.ContentCitizens(c)+" / Unhappy "+world.UnhappyCitizens(c)+(world.Disorder(c)?" | DISORDER":""),body);
         GUILayout.Label("Early population limit: 8 beside fresh water, otherwise 6. Aqueduct: 12. Sewer: 20. River centres add 1 food; hill centres add 1 production. Existing large cities are preserved.",small);
         if(Button("Return to "+c.name)){detailsScreen="";OpenCity(c);}
     }
     void DrawEmpireUnit(Unit u){
         if(u.type==0)DrawSettlementUnit(u);
-        if(u.type==3&&Button(u.exploring?"Stop auto-exploration":"Auto-explore nearby frontier")){if(u.exploring)world.CancelActivity(u);else world.AutoExplore(u);}
+        if(World.CanExplore(u.type)&&Button(u.exploring?"Stop auto-exploration":"Auto-explore nearby frontier")){if(u.exploring)world.CancelActivity(u);else world.AutoExplore(u);}
         if(Button(u.sentry?"Wake sentry":"Sentry until enemy approaches")){bool active=!u.sentry;world.CancelActivity(u);u.sentry=active;}
         if(u.type==11){
             GUILayout.Label("Caravans: reach a different city to establish trade, or contribute 40 production to a friendly wonder.",small);
@@ -64,9 +64,9 @@ public partial class RealmGame {
         }
     }
     void DrawMilitaryAdviser(){
-        GUILayout.Label("Select a unit to centre the map. Upkeep depends on government support.",body);
+        GUILayout.Label("Select a unit to centre the map. Each city supports "+World.FreeUnitsPerCity+" units free, plus your government's support; every unit beyond that costs 1 gold per turn.",body);
         foreach(var u in world.units.Where(u=>u.owner==0).ToList())
-            if(Button(World.UnitNames[u.type]+" #"+u.id+" | HP "+u.hp+" | "+world.Activity(u)+" | upkeep "+World.Upkeep[u.type])){selected=u.id;cityId=-1;detailsScreen="";cityScreen=false;Center();GUIUtility.ExitGUI();}
+            if(Button(World.UnitNames[u.type]+" #"+u.id+" | HP "+u.hp+" | "+world.Activity(u))){selected=u.id;cityId=-1;detailsScreen="";cityScreen=false;Center();GUIUtility.ExitGUI();}
     }
     Texture2D atlasTexture,globeTexture;Color[] atlasPixels;bool globeMode=true;float globeLon,globeLat,globeDrawnLon=-99,globeDrawnLat=-99;int globeDrawnAtlas;World atlasWorld;float atlasBuilt;readonly Color[] atlasColours=new Color[64];readonly bool[] atlasColourReady=new bool[64];
     Color AtlasColour(int id){
@@ -87,16 +87,29 @@ public partial class RealmGame {
         atlasTexture.SetPixels(pixels);atlasTexture.Apply();atlasPixels=pixels;globeDrawnAtlas++;atlasWorld=world;atlasBuilt=Time.realtimeSinceStartup;
     }
     // Orthographic globe drawn from the same known-world colours as the flat atlas. Drag to spin, buttons nudge.
-    void DrawGlobe(){
+    void DrawGlobe(){DrawGlobeAt(new Rect(160,40,420,420),true);}
+    // Zooming the main map all the way out shows the whole sphere once the civilisation knows the world is round (owner request).
+    bool globeZoom;
+    int WrapColumn(int x){int w=world.Width;return ((x%w)+w)%w;}
+    bool GlobeZoomAllowed(){return world!=null&&world.Sphere&&world.HasTech(0,"astronomy");}
+    void EnterGlobeZoom(int x,int y){globeZoom=true;globeLon=(x+.5f)/world.Width*Mathf.PI*2-Mathf.PI;globeLat=-(0.5f-(y+.5f)/world.Height)*Mathf.PI*.8f;}
+    void DrawGlobeZoom(){
+        GUI.Box(new Rect(18,94,865,637),"");Fill(new Rect(24,100,852,624),new Color(.03f,.05f,.09f));
+        DrawGlobeAt(new Rect(150,112,600,600),false);
+        GUI.Label(new Rect(32,108,300,60),"The known world. Drag to spin; click a place, or zoom in, to return to the map.",small);
+    }
+    void DrawGlobeAt(Rect area,bool controls){
         if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>1f)BuildAtlasTexture();
-        const int D=420;int W=world.Width,H=world.Height;var area=new Rect(160,40,D,D);
+        const int D=420;int W=world.Width,H=world.Height;
         var e=Event.current;
-        if(e.type==EventType.MouseDrag&&e.button==0&&area.Contains(e.mousePosition)){globeLon-=e.delta.x*0.012f;globeLat=Mathf.Clamp(globeLat+e.delta.y*0.012f,-1.2f,1.2f);e.Use();}
+        if(e.type==EventType.MouseDrag&&e.button==0&&area.Contains(e.mousePosition)){globeLon-=e.delta.x*0.012f*D/area.width;globeLat=Mathf.Clamp(globeLat+e.delta.y*0.012f*D/area.height,-1.2f,1.2f);globeDragged=true;e.Use();}
+        if(controls){
         if(GUI.Button(new Rect(20,200,110,28),"Rotate west"))globeLon-=0.4f;
         if(GUI.Button(new Rect(20,236,110,28),"Rotate east"))globeLon+=0.4f;
         if(GUI.Button(new Rect(20,272,110,28),"Tilt north"))globeLat=Mathf.Clamp(globeLat-0.3f,-1.2f,1.2f);
         if(GUI.Button(new Rect(20,308,110,28),"Tilt south"))globeLat=Mathf.Clamp(globeLat+0.3f,-1.2f,1.2f);
         if(GUI.Button(new Rect(20,344,110,28),"Face my units")){var u=Selected();if(u!=null){globeLon=(u.x+.5f)/W*Mathf.PI*2-Mathf.PI;globeLat=-(0.5f-(u.y+.5f)/H)*Mathf.PI;}}
+        }
         if(globeTexture==null){globeTexture=new Texture2D(D,D,TextureFormat.RGBA32,false){filterMode=FilterMode.Bilinear,wrapMode=TextureWrapMode.Clamp};globeDrawnLon=-99;}
         if(globeDrawnLon!=globeLon||globeDrawnLat!=globeLat||globeDrawnAtlas!=globeBuiltAtlas){
             var px=new Color[D*D];float R=D/2f,sinT=Mathf.Sin(globeLat),cosT=Mathf.Cos(globeLat);
@@ -115,21 +128,22 @@ public partial class RealmGame {
             globeTexture.SetPixels(px);globeTexture.Apply();globeDrawnLon=globeLon;globeDrawnLat=globeLat;globeBuiltAtlas=globeDrawnAtlas;
         }
         GUI.DrawTexture(area,globeTexture,ScaleMode.StretchToFill,true);
-        GUI.Label(new Rect(20,380,140,60),"Drag the globe to spin it. Click land to centre the main map.",small);
-        if(e.type==EventType.MouseDown&&e.button==0&&area.Contains(e.mousePosition)){
-            float R=D/2f,nx=(e.mousePosition.x-area.x-R)/R,ny=(R-(e.mousePosition.y-area.y))/R,r2=nx*nx+ny*ny;
+        if(controls)GUI.Label(new Rect(20,380,140,60),"Drag the globe to spin it. Click land to centre the main map.",small);
+        if(e.type==EventType.MouseDown&&e.button==0&&area.Contains(e.mousePosition)){globeDragged=false;e.Use();}
+        if(e.type==EventType.MouseUp&&e.button==0&&area.Contains(e.mousePosition)&&!globeDragged){
+            float R=area.width/2f,nx=(e.mousePosition.x-area.x-R)/R,ny=(R-(e.mousePosition.y-area.y))/R,r2=nx*nx+ny*ny;
             if(r2<=1){
                 float nz=Mathf.Sqrt(1-r2),sinT=Mathf.Sin(globeLat),cosT=Mathf.Cos(globeLat);
                 float y2=ny*cosT+nz*sinT,z2=nz*cosT-ny*sinT;
                 float lat=Mathf.Asin(Mathf.Clamp(y2,-1,1)),lon=Mathf.Atan2(nx,z2)+globeLon;
                 float u01=lon/(Mathf.PI*2)+.5f;u01-=Mathf.Floor(u01);
                 int tx=Mathf.Min(W-1,(int)(u01*W)),ty=Mathf.Clamp((int)((.5f-lat/Mathf.PI)*H),0,H-1);
-                if(diamondView)FocusTile(tx,ty);else{mapScroll=new Vector2(tx*tilePixels-418,ty*tilePixels-304);ClampMapScroll();}
+                FocusTile(tx,ty);globeZoom=false;
                 detailsScreen="";cityScreen=false;e.Use();GUIUtility.ExitGUI();
             }
         }
     }
-    int globeBuiltAtlas=-1;
+    int globeBuiltAtlas=-1;bool globeDragged;
     void DrawAtlas(){
         GUILayout.Label("Known world — click a tile to centre the main map. Dark tiles are unexplored.",body);
         GUILayout.Space(490);
@@ -151,7 +165,7 @@ public partial class RealmGame {
         }
         var e=Event.current;if(e.type==EventType.MouseDown&&e.button==0&&area.Contains(e.mousePosition)){
             int x=Math.Max(0,Math.Min(world.Width-1,(int)(e.mousePosition.x/cell))),y=Math.Max(0,Math.Min(world.Height-1,(int)((e.mousePosition.y-35)/cell)));
-            if(diamondView)FocusTile(x,y);else{mapScroll=new Vector2(x*tilePixels-418,y*tilePixels-304);ClampMapScroll();}detailsScreen="";cityScreen=false;e.Use();GUIUtility.ExitGUI();
+            if(diamondView)FocusTile(x,y);else FocusTile(x,y);detailsScreen="";cityScreen=false;e.Use();GUIUtility.ExitGUI();
         }
     }
     void DrawEmpireGlyph(Rect r,int id){

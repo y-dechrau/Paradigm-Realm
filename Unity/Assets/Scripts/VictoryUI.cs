@@ -16,7 +16,7 @@ namespace ParadigmRealm
             {
                 GUILayout.Space(12);GUILayout.Label(names[i],heading);
                 var r=GUILayoutUtility.GetRect(900,26);
-                Fill(r,new Color(.03f,.05f,.06f));Fill(new Rect(r.x+2,r.y+2,(r.width-4)*Mathf.Clamp01(progress[i]),r.height-4),colours[i]);
+                Fill(r,UiTrough);Fill(new Rect(r.x+2,r.y+2,(r.width-4)*Mathf.Clamp01(progress[i]),r.height-4),colours[i]);
                 GUI.Label(r,Mathf.RoundToInt(progress[i]*100)+"%",small);
                 GUILayout.Label(lines[i],body);
             }

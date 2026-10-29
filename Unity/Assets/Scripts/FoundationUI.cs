@@ -13,7 +13,8 @@ namespace ParadigmRealm
         string toastText="",saveName="",saveError="",activeSavePath;
         Vector2 cityScroll,saveScroll;
         void ResetMapGesture(){dragUnit=-1;dragging=false;mapPointerDown=false;}
-        void ClampMapScroll(){mapScroll.x=Mathf.Clamp(mapScroll.x,0,Mathf.Max(0,world.Width*tilePixels-836));mapScroll.y=Mathf.Clamp(mapScroll.y,0,Mathf.Max(0,world.Height*tilePixels-608));}
+        // On a sphere the classic view pans east or west for ever: the scroll position wraps round the world width (owner request).
+        void ClampMapScroll(){if(world.Sphere){float wpx=world.Width*tilePixels;mapScroll.x=((mapScroll.x%wpx)+wpx)%wpx;mapScroll.y=Mathf.Clamp(mapScroll.y,0,Mathf.Max(0,world.Height*tilePixels-608));return;}mapScroll.x=Mathf.Clamp(mapScroll.x,0,Mathf.Max(0,world.Width*tilePixels-836));mapScroll.y=Mathf.Clamp(mapScroll.y,0,Mathf.Max(0,world.Height*tilePixels-608));}
         void OpenCity(City c){cityId=c.id;selected=-1;cityScreen=true;cityScroll=Vector2.zero;cityMapScroll=new Vector2(Mathf.Max(0,(Math.Min(4,2+c.age/25)*2+1)*40-207),Mathf.Max(0,(Math.Min(4,2+c.age/25)*2+1)*40-147));builtScroll=Vector2.zero;unitQueueScroll=Vector2.zero;buildingQueueScroll=Vector2.zero;researchScreen=false;detailsScreen="";GUI.FocusControl(null);ResetMapGesture();GUIUtility.ExitGUI();}
         bool OrderTeam(Unit u,int x,int y){var team=world.WorkerTeam(u).ToList();bool ok=false;foreach(var member in team)ok=world.Order(member,x,y)||ok;status=ok?"Order issued. Travel continues each turn; new orders replace it.":"Cannot reach that destination.";return ok;}
         string UnitDescription(Unit u){return new[]{"Founds new cities","Builds roads and improvements","Basic close-combat infantry","Explores distant territory","Ranged infantry","Armoured mounted troops","Gunpowder infantry","Counters mounted troops","Fast mounted troops","Siege artillery","Helps nearby units heal","Establishes trade routes and supplies wonders"}[u.type];}
@@ -33,7 +34,7 @@ namespace ParadigmRealm
         void DrawSaveToast(){float remaining=toastUntil-Time.realtimeSinceStartup;if(remaining<=0)return;var old=GUI.color;GUI.color=new Color(1,1,1,Mathf.Clamp01(remaining));GUI.Box(new Rect(490,745,300,42),toastText);GUI.color=old;}
         string NamedSavePath(){var safe=new string(saveName.Where(c=>char.IsLetterOrDigit(c)||c==' '||c=='-'||c=='_').ToArray()).Trim();return safe.Length==0?null:Path.Combine(Application.persistentDataPath,"earth-named-"+safe+".json");}
         void PersistSettings(){PlayerPrefs.SetFloat("RealmZoomSensitivity",zoomSensitivity);PlayerPrefs.SetInt("RealmTooltips",tooltips?1:0);PlayerPrefs.Save();}
-        void DrawPauseMenu(){Fill(new Rect(0,0,1280,800),new Color(0,0,0,.7f));
+        void DrawPauseMenu(){Fill(new Rect(0,0,1280,800),UiDim);
             if(pauseQuit){GUI.Box(new Rect(420,280,440,220),"");GUILayout.BeginArea(new Rect(450,300,380,180));GUILayout.Label("Are you sure?",heading);GUILayout.Label("Quit Paradigm Realm? Unsaved progress will be lost.",body);if(Button("Yes"))QuitGame();if(Button("No"))pauseQuit=false;GUILayout.EndArea();return;}
             if(saveAsScreen){DrawSaveAs();return;}
             if(settingsScreen){GUI.Box(new Rect(410,230,460,330),"");GUILayout.BeginArea(new Rect(440,250,400,280));GUILayout.Label("Settings",heading);GUILayout.Label("Mouse-wheel zoom sensitivity",body);zoomSensitivity=GUILayout.HorizontalSlider(zoomSensitivity,.5f,5f);tooltips=GUILayout.Toggle(tooltips,"Show map and unit tooltips");GUILayout.Label("Settings are saved on this computer.",small);if(Button("Back")){PersistSettings();settingsScreen=false;}GUILayout.EndArea();return;}
@@ -81,44 +82,55 @@ namespace ParadigmRealm
                 status="No valid autosave available.";
             }catch(Exception e){status="Could not load autosave: "+e.Message;}
         }
+        static readonly string[] SpeedTexts={"Quick: research and building cost half as much.","Standard pacing.","Long: research and building cost half as much again."};
         void DrawSetupOptions()
         {
-            GUILayout.BeginArea(new Rect(402,292,470,346));
-            GUILayout.Label("World: "+(setupShape==1?"Sphere (wraps east-west, routes cross the poles)":"Flat map with edges (old style)"),body);
-            setupShape=GUILayout.SelectionGrid(setupShape,new[]{"Flat","Sphere"},2);
-            GUILayout.Label("Map size: "+World.MapSizeNames[setupSize]+" ("+(setupShape==1?World.SphereWidths[setupSize]:World.MapWidths[setupSize])+" x "+(setupShape==1?World.SphereHeights[setupSize]:World.MapHeights[setupSize])+" tiles)",body);
-            setupSize=GUILayout.SelectionGrid(setupSize,World.MapSizeNames,6);
-            GUILayout.Label("Map shape",body);
-            setupMap=GUILayout.SelectionGrid(setupMap,new[]{"Continents","Inland landmass"},2);
-            GUILayout.Label("Game speed: research and construction",body);
+            GUILayout.BeginArea(new Rect(200,133,400,485));
+            GUILayout.Label("Your game",heading);
+            GUILayout.Label("Playing as "+(setupCiv<CivilisationCatalog.Count?CivilisationCatalog.Names[setupCiv]:proposedName)+": "+CivilisationCatalog.TraitLine(setupCiv<CivilisationCatalog.Count?CivilisationCatalog.Traits[setupCiv]:new[]{customTraitA,customTraitB}),small);
+            GUILayout.Space(10);GUILayout.Label("Game speed",heading);
             setupSpeed=GUILayout.SelectionGrid(setupSpeed,new[]{"Quick","Standard","Long"},3);
-            GUILayout.Label("Trait",body);
-            setupTrait=GUILayout.SelectionGrid(setupTrait,new[]{"Balanced","Builders +1 production","Scholars +1 science","Traders +1 gold/city"},2);
-            GUILayout.Label("Seed (optional number for repeatable worlds)",body);seedText=GUILayout.TextField(seedText,11);
+            GUILayout.Label(SpeedTexts[Mathf.Clamp(setupSpeed,0,2)],small);
+            GUILayout.Space(10);GUILayout.Label("Seed (optional)",heading);seedText=GUILayout.TextField(seedText,11);
+            GUILayout.Label("The same number and settings make the same world again.",small);
+            GUILayout.EndArea();
+            GUILayout.BeginArea(new Rect(680,133,400,485));
+            GUILayout.Label("Your world",heading);
+            GUILayout.Label("Shape",body);setupShape=GUILayout.SelectionGrid(setupShape,new[]{"Flat","Sphere"},2);
+            GUILayout.Label(setupShape==1?"A globe: travel wraps east to west and routes can cross the poles.":"A flat map with edges, as in older versions.",small);
+            GUILayout.Space(6);GUILayout.Label("Size",body);setupSize=GUILayout.SelectionGrid(setupSize,World.MapSizeNames,3);
+            GUILayout.Label((setupShape==1?World.SphereWidths[setupSize]:World.MapWidths[setupSize])+" x "+(setupShape==1?World.SphereHeights[setupSize]:World.MapHeights[setupSize])+" tiles. Bigger worlds take longer turns.",small);
+            GUILayout.Space(6);GUILayout.Label("Land",body);setupMap=GUILayout.SelectionGrid(setupMap,World.LandTypeNames,3);GUILayout.Label(World.LandTypeTexts[setupMap],small);
             int maxCivs=World.MaxCivsBySize[setupSize];if(setupCivs>maxCivs)setupCivs=maxCivs;if(setupCivs<2)setupCivs=2;
-            GUILayout.BeginHorizontal();GUILayout.Label("Civilisations: "+setupCivs+" (max "+maxCivs+" on this size)",body,GUILayout.Width(250));setupCivs=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupCivs,2,maxCivs));GUILayout.EndHorizontal();
+            GUILayout.Space(6);GUILayout.Label("Civilisations: "+setupCivs+" (you and "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+"; up to "+maxCivs+" on this size)",body);
+            setupCivs=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupCivs,2,maxCivs));
             GUILayout.EndArea();
         }
-        void DrawFoundationPanel(Unit u)
+        string SetupSummary(){return (setupCiv<CivilisationCatalog.Count?CivilisationCatalog.Names[setupCiv]+" ("+CivilisationCatalog.Leaders[setupCiv]+")":(string.IsNullOrWhiteSpace(proposedName)?"Your civilisation":proposedName.Trim()))+" on a "+World.MapSizeNames[setupSize].ToLower()+" "+(setupShape==1?"sphere":"flat map")+" with "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+", "+new[]{"quick","standard","long"}[Mathf.Clamp(setupSpeed,0,2)]+" speed.";}        void DrawFoundationPanel(Unit u)
         {
             if(u!=null){
                 DrawEmpireUnit(u);
-                GUILayout.Label("Upkeep "+World.Upkeep[u.type]+" gold | Experience "+u.experience+" | Rank "+u.promotion,small);
+                GUILayout.Label("Upkeep 1 gold beyond free support | "+World.RankText(u),small);
                 GUILayout.Label("Activity: "+world.Activity(u)+" | "+world.Remaining(u),body);
                 if(u.type==1){GUILayout.Label("Worker team: "+world.WorkerTeam(u).Count,small);
                     if(u.workerGroup>0){if(Button("Ungroup workers (stop current work)")){world.UngroupWorkers(u);status="Workers ungrouped; current work cancelled.";}}
                     if(world.units.Count(a=>a.owner==u.owner&&a.type==1&&a.x==u.x&&a.y==u.y)>1&&Button("Group all workers here (restart work)")){world.GroupWorkers(u);status="Workers grouped. Choose their shared activity.";}}
                 if((u.job>0||u.hasOrder||u.fortified)&&Button("Cancel activity / route [X]")){world.CancelActivity(u);status="Activity and route cancelled.";}
                 if(Button(u.fortified?"Wake unit":"Fortify / heal")){bool fortify=!u.fortified;world.CancelActivity(u);foreach(var member in world.WorkerTeam(u))member.fortified=fortify;}
-                if(u.experience>=(u.promotion+1)*5&&u.promotion<3&&Button("Promote (+1 combat strength)"))world.Promote(u);
+                
                 int target=world.UpgradeTarget(u);if(target>=0&&Button("Upgrade to "+World.UnitNames[target]+" ("+((World.UnitCosts[target]-World.UnitCosts[u.type])*2)+" gold)"))status=world.Upgrade(u)?"Unit upgraded.":"Requires technology, connected resources, gold, movement and a city owned by your civilisation.";
                 if(Powerful(u)&&Button("Pillage enemy improvement"))status=world.Pillage(u)?"Enemy infrastructure pillaged.":"Requires movement and an improved enemy tile at war.";
-                if(u.type==4||u.type==9)foreach(var e in world.RangedTargets(u)){if(Button("Fire at "+World.UnitNames[e.type]+" ["+e.x+","+e.y+"]"))status=world.Ranged(u,e.id)?"Ranged attack resolved.":"No movement or line of sight blocked.";}
+                if(u.type==4||u.type==9)foreach(var e in world.RangedTargets(u)){if(Button("Fire at "+World.UnitNames[e.type]+" ["+e.x+","+e.y+"]"))status=world.Ranged(u,e.id)?"Ranged attack resolved.":"No movement or line of sight blocked.";GUILayout.Label(world.RangedPreview(u,e),small);}
                 if(Button("Disband this unit permanently")){world.units.Remove(u);selected=-1;world.CheckVictory();GUIUtility.ExitGUI();}
             }
             GUILayout.Space(10);
-            GUILayout.BeginHorizontal();if(GUILayout.Button("Zoom -")){if(diamondView)IsoZoom(-1);else tilePixels=Mathf.Max(24,tilePixels-8);}if(GUILayout.Button("Zoom +")){if(diamondView)IsoZoom(1);else tilePixels=Mathf.Min(96,tilePixels+8);}GUILayout.EndHorizontal();
-            if(GUILayout.Button(diamondView?"View: diamond (V)":"View: square (V)"))ToggleView();
+            GUILayout.BeginHorizontal();if(GUILayout.Button("Zoom -")){if(diamondView)IsoZoom(-1);else ClassicZoom(-8);}if(GUILayout.Button("Zoom +")){if(diamondView)IsoZoom(1);else ClassicZoom(8);}GUILayout.EndHorizontal();
+            if(GUILayout.Button(diamondView?"View: pixel art (V)":"View: classic textures (V)"))ToggleView();
+        }
+        void ClassicZoom(int step){
+            if(globeZoom){if(step>0)globeZoom=false;return;}
+            if(step<0&&tilePixels<=24&&GlobeZoomAllowed()){EnterGlobeZoom(WrapColumn((int)((mapScroll.x+418)/tilePixels)),Mathf.Clamp((int)((mapScroll.y+304)/tilePixels),0,world.Height-1));return;}
+            tilePixels=Mathf.Clamp(tilePixels+step,24,96);ClampMapScroll();
         }
         bool Powerful(Unit u){return World.Power[u.type]>0;}
         void NavigationInput()
@@ -127,6 +139,7 @@ namespace ParadigmRealm
             var e=Event.current;
             // Consume the wheel before BeginScrollView can turn it into vertical panning.
             if(e.type==EventType.ScrollWheel&&diamondView&&new Rect(24,100,836,608).Contains(e.mousePosition)){IsoZoom(e.delta.y>0?-1:1);ResetMapGesture();e.Use();}
+            else if(e.type==EventType.ScrollWheel&&new Rect(24,100,836,608).Contains(e.mousePosition)&&(globeZoom||e.delta.y>0&&tilePixels<=24&&GlobeZoomAllowed())){ClassicZoom(e.delta.y>0?-8:8);ResetMapGesture();e.Use();}
             else if(e.type==EventType.ScrollWheel&&new Rect(24,100,836,608).Contains(e.mousePosition)){
                 float old=tilePixels;tilePixels=Mathf.Clamp(tilePixels-e.delta.y*zoomSensitivity,24,96);
                 var point=e.mousePosition-new Vector2(24,100);

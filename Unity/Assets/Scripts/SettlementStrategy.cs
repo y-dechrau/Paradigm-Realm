@@ -10,7 +10,9 @@ namespace ParadigmRealm {
   public bool Suitable {get{return reason=="";}}
  }
  public partial class World {
-  public static int[] CentreYield(int terrain){return new[]{terrain==7?3:2,terrain==2?3:2,0};}
+  // The centre always has a road; it also gives 3 base Trade so every new city makes some science and gold. Measured in
+  // Stage 5: with this, AI civilisations complete the Dawn around turn 40, the design's target.
+  public static int[] CentreYield(int terrain){return new[]{terrain==7?3:2,terrain==2?3:2,TerrainTrade[terrain]+(RoadTrade(terrain)?1:0)+3};}
   public int[] CityCentreYield(City c){return CentreYield(At(c.x,c.y).terrain);}
   public bool FreshWater(int x,int y){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var t=At(x+dx,y+dy);if(t!=null&&(t.terrain==6||t.terrain==7))return true;}return false;}
   // Player reports use remembered information. Rivals conservatively evaluate only
@@ -20,6 +22,7 @@ namespace ParadigmRealm {
    if(owner<0||owner>=nations.Length||At(x,y)==null)return "Outside the map.";
    var t=known?SettlementTile(owner,x,y):At(x,y);if(t==null)return "Explore this tile first.";
    if(IsImpassable(t.terrain))return "Cities require passable land.";
+   if(t.terrain==14||t.terrain==15)return "Nothing grows on the polar ice; a city cannot survive here.";
    if((t.terrain==8||t.terrain==13)&&!HasTech(owner,"fire"))return "Research Fire before settling cold terrain.";
    if(t.owner>=0&&t.owner!=owner)return "Cannot found a city in another civilisation's territory.";
    if((!known||VisibleTo(owner,x,y))&&units.Any(u=>u.owner!=owner&&u.x==x&&u.y==y))return "The site is occupied by another civilisation.";
@@ -87,7 +90,7 @@ namespace ParadigmRealm {
   public string SettlementSummary(SettlementReport r){
    if(!r.Suitable)return r.reason;
    return "Site ("+r.x+", "+r.y+") | early population limit "+r.housing+(r.freshWater?" — fresh water":" — no known fresh water")+
-    "\nPotential at 3 citizens: net food "+r.food+", production "+r.production+", tile gold "+r.gold+". Uses the best 3 known tiles; excludes future improvements, buildings and policies."+
+    "\nPotential at 3 citizens: net food "+r.food+", production "+r.production+", tile trade "+r.gold+". Uses the best 3 known tiles; excludes future improvements, buildings and policies."+
     "\nKnown nearby resources: "+(r.resources.Count==0?"none":string.Join(", ",r.resources.Select(i=>ResourceNames[i])))+
     ". Initial city upkeep about "+r.upkeep+" gold/turn. Road connections still require workers."+
     "\n"+r.knownTiles+" tiles assessed; "+r.unknownTiles+" unexplored. "+(r.threat?"Enemy troops nearby!":"No currently visible military threat at this site.")+"\n"+r.diplomacyWarning;
@@ -97,13 +100,14 @@ namespace ParadigmRealm {
   }
   void PlanAISettlement(Unit u){
    if(u.moves<=0)return;
+   if(AtSea(u))return; // aboard a galley: the galley decides where it lands
    if(u.hasOrder){
     var r=AssessSettlement(u.owner,u.destinationX,u.destinationY,u.x,u.y);
     if(r.Suitable&&!r.threat&&r.diplomacyWarning==""&&SafeSettlerPath(u,Route(u,u.destinationX,u.destinationY))){ContinueOrder(u);if(u.x==r.x&&u.y==r.y)Found(u);if(u.hasOrder||!units.Contains(u))return;}
     else CancelOrder(u);
    }
    var options=SettlementOptions(u,1);if(options.Count>0){
-    var r=options[0];if(r.x==u.x&&r.y==u.y){Found(u);return;}
+    FerryWanted.Remove(u.owner);var r=options[0];if(r.x==u.x&&r.y==u.y){Found(u);return;}
     Order(u,r.x,r.y);if(u.x==r.x&&u.y==r.y)Found(u);return;
    }
    // No known legal site: explore a safe, reachable local frontier rather than stall.
@@ -116,6 +120,8 @@ namespace ParadigmRealm {
    var frontier=frontierTiles.Select(t=>new{Tile=t,Unknown=UnknownAround(u.owner,t)}).Where(a=>a.Unknown>0)
     .OrderByDescending(a=>a.Unknown).ThenBy(a=>Distance(u.x,u.y,a.Tile.x,a.Tile.y)).ThenBy(a=>a.Tile.y*Width+a.Tile.x);
    foreach(var candidate in frontier.Take(8)){var route=Route(u,candidate.Tile.x,candidate.Tile.y);if(route.Count>0&&SafeSettlerPath(u,route)){Order(u,candidate.Tile.x,candidate.Tile.y);return;}}
+   // Nowhere left to settle or explore on foot: wait on the shore for a galley.
+   SettlerAwaitsFerry(u);
   }
  }
 }

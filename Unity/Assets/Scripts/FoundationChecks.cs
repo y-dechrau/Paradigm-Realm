@@ -17,15 +17,15 @@ namespace ParadigmRealm
             w.EndTurn();w.EndTurn();Require(u.x==x+6&&u.y==y&&!u.hasOrder,"queued route completes over turns");
             w.Order(u,x,y);w.Order(u,x+6,y+2);Require(u.destinationY==y+2,"new order replaces old");
             var c=w.Found(w.units.First(a=>a.owner==0&&a.type==0));Require(c!=null,"founding");
-            w.tech[0]=true;var worker=w.units.First(a=>a.owner==0&&a.type==1);
+            w.tech[TechnologyCatalog.Index("agriculture")]=true;var worker=w.units.First(a=>a.owner==0&&a.type==1);
             Require(w.StartJob(worker,1),"worker can start road");w.EndTurn();Require(!w.At(worker.x,worker.y).road,"road not instant");w.EndTurn();Require(w.At(worker.x,worker.y).road&&worker.job==0,"job finishes after two turns");
-            w.tech[6]=true;var ore=w.At(c.x+1,c.y);ore.resource=2;ore.mine=true;ore.road=true;w.RebuildTerritory();
+            w.tech[TechnologyCatalog.Index("bronze")]=true;var ore=w.At(c.x+1,c.y);ore.resource=2;ore.mine=true;ore.road=true;w.RebuildTerritory();
             Require(w.HasResource(0,2),"improved road-connected iron");ore.road=false;w.RebuildTerritory();Require(!w.HasResource(0,2),"cut road removes access");
-            c.build=-1;Require(w.QueueBuild(c,7)&&w.QueueBuild(c,2),"queue accepts valid projects");Require(!w.QueueBuild(c,7),"duplicate building rejected");c.buildingProduction=w.Cost(7);w.EndTurn();Require(c.granary&&c.build==2,"completion advances queue");
-            c.pop=8;w.nations[0].tax=0;int low=w.Happiness(c),lowTax=w.Budget(0)[0];w.nations[0].tax=2;Require(w.Happiness(c)==low-4&&w.Budget(0)[0]>lowTax,"taxes trade happiness for revenue");
-            u.experience=5;Require(w.Promote(u)&&u.promotion==1&&u.experience==0,"promotion consumes experience");
+            c.build=-1;c.production=0;Require(w.QueueBuild(c,7)&&w.QueueBuild(c,2),"queue accepts valid projects");Require(!w.QueueBuild(c,7),"duplicate building rejected");c.buildingProduction=w.Cost(7);w.EndTurn();Require(c.granary&&c.build==2,"completion advances queue");
+            c.pop=5;w.SetScienceRate(0,60);int low=w.ContentSlots(c),lowTax=w.Budget(0)[0];w.SetScienceRate(0,30);Require(w.ContentSlots(c)==low-2&&w.Budget(0)[0]>lowTax,"taxes trade happiness for revenue");
+            w.Victory(u);Require(u.promotion==0,"one victory is not a rank");w.Victory(u);Require(u.promotion==1,"two victories make a Veteran");u.victories=0;u.promotion=0;
             var neutral=w.Add(1,2,u.x,u.y+1);w.Reveal();u.moves=World.Moves[u.type];Require(!w.Move(u,neutral.x,neutral.y),"peace blocks combat");Require(w.SetWar(1,true),"contact enables declaration");Require(w.Move(u,neutral.x,neutral.y)&&neutral.hp<10,"war enables combat");
-            var research=World.New(81);research.tech[TechnologyCatalog.Index("toolmaking")]=true;int fire=TechnologyCatalog.Index("fire"),hunting=TechnologyCatalog.Index("hunting");research.SelectResearch(fire);research.science=12;research.SelectResearch(hunting);research.science=7;research.SelectResearch(fire);Require(research.science==12&&research.nations[0].progress[hunting]==7,"switching preserves individual research progress");
+            var research=World.New(81);research.tech[TechnologyCatalog.Index("toolmaking")]=true;int fire=TechnologyCatalog.Index("agriculture"),hunting=TechnologyCatalog.Index("archery");research.SelectResearch(fire);research.science=12;research.SelectResearch(hunting);research.science=7;research.SelectResearch(fire);Require(research.science==12&&research.nations[0].progress[hunting]==7,"switching preserves individual research progress");
             var campaign=World.New(91);campaign.Found(campaign.units.First(a=>a.owner==0&&a.type==0));
             for(int i=0;i<45&&campaign.result=="";i++){campaign.EndTurn();Require(campaign.Valid(),"campaign state valid after turn "+campaign.turn);}
             campaign.units[0].type=99;Require(!campaign.Valid(),"malformed unit rejected");
@@ -62,9 +62,9 @@ namespace ParadigmRealm
             dual.ChooseProject(dc,2,false);for(int i=0;i<2;i++)dual.Add(0,2,dc.x,dc.y);dc.production=dual.Cost(2);dc.buildingProduction=dual.Cost(8);dual.Produce(dc,1);
             Require(dc.build==2&&dc.library,"blocked unit stack does not block building construction");
             var old=Flat();var oc=old.Found(old.units.First(v=>v.owner==0&&v.type==0));old.version=3;oc.build=8;oc.production=17;oc.queue=new System.Collections.Generic.List<int>{1,7,1,9};old.UpgradeSave();
-            Require(old.version==10&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
+            Require(old.version==18&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
             old.UpgradeSave();Require(oc.buildingProduction==17&&oc.queue.Count==1,"migration is idempotent");
-            var upgrade=Flat();var uc=upgrade.Found(upgrade.units.First(v=>v.owner==0&&v.type==0));var troop=upgrade.units.First(v=>v.owner==0&&v.type==2);upgrade.tech[6]=true;upgrade.gold=100;
+            var upgrade=Flat();var uc=upgrade.Found(upgrade.units.First(v=>v.owner==0&&v.type==0));var troop=upgrade.units.First(v=>v.owner==0&&v.type==2);upgrade.tech[TechnologyCatalog.Index("bronze")]=true;upgrade.gold=100;
             Require(!upgrade.Upgrade(troop),"owned territory alone does not permit upgrades");troop.x=uc.x;troop.y=uc.y;Require(upgrade.Upgrade(troop)&&troop.type==7,"owned city permits eligible upgrade");
             var other=upgrade.units.First(v=>v.owner==0&&v.type==1);int otherMoves=other.moves;upgrade.SkipTurn(troop);Require(troop.moves==0&&other.moves==otherMoves,"skip affects only selected unit");
             Require(World.StackLabel(new[]{new Unit{type=1}})=="Worker"&&World.StackLabel(new[]{new Unit{type=1},new Unit{type=1}})=="Stack"&&World.StackLabel(new[]{new Unit{type=1},new Unit{type=2}})=="","unit label rules");
@@ -129,24 +129,56 @@ namespace ParadigmRealm
         }
         static void PixelChecks()
         {
-            int[] none={-1,-1,-1,-1};
+            // Settlements grow with the city: more built-up pixels as population rises, walls and a castle only when flagged.
+            Func<PixelCanvas,int> filled=cv=>{int n=0;for(int i=0;i<cv.p.Length;i++)if((cv.p[i]>>24)!=0)n++;return n;};
+            for(int style=0;style<4;style++)
+            {
+                int small=filled(PixelArt.Settlement(style,1,0,0)),large=filled(PixelArt.Settlement(style,10,0,0)),walled=filled(PixelArt.Settlement(style,10,PixelArt.FlagWalls,0));
+                Require(small>0&&large>small&&walled>large,"settlement in age "+style+" grows with size and gains walls ("+small+", "+large+", "+walled+")");
+                Require(filled(PixelArt.Settlement(style,10,PixelArt.FlagWalls|PixelArt.FlagCastle,0))>walled,"castle adds to a walled settlement in age "+style);
+                Require(filled(PixelArt.Hamlet(style,1))>0,"farmsteads drawn in age "+style);
+            }
+            // Organic, level terrain (owner request 29 Oct 2026): every terrain composes to a full, deterministic, opaque tile.
             for(int t=0;t<21;t++){
-                var a=PixelArt.Compose(t,0,none,0,0);var b=PixelArt.Compose(t,0,none,0,0);
-                Require(a.w==PixelArt.CW&&a.h==PixelArt.CH,"terrain "+t+" composite has the expected size");
-                bool same=true;for(int i=0;i<a.p.Length;i++)if(a.p[i]!=b.p[i]){same=false;break;}
-                Require(same,"terrain "+t+" art is deterministic");
-                int opaque=0;foreach(uint c in a.p)if((c>>24)>0)opaque++;
-                Require(opaque>400,"terrain "+t+" composite is not empty");
+                var n9=Enumerable.Repeat(t,9).ToArray();
+                var a=PixelArt.Compose(n9,5,7,0,0);var b=PixelArt.Compose(n9,5,7,0,0);
+                Require(a.w==PixelArt.CW&&a.h==PixelArt.CH&&PixelArt.CH==PixelArt.TH,"terrain "+t+" composite is exactly one level tile");
+                Require(a.p.SequenceEqual(b.p),"terrain "+t+" art is deterministic");
+                Require(a.p.All(c=>(c>>24)==255),"terrain "+t+" composite is fully opaque (no step, no gap)");
+                Require(PixelArt.Height(t)==0,"no terrain is raised: "+t);
                 var sp=PixelArt.Sprite(t,1);Require(sp==null||(sp.w==PixelArt.SW&&sp.h==PixelArt.SH),"terrain "+t+" sprite size");
             }
-            Require(PixelArt.NeighbourCode(0,1,-1)==-1&&PixelArt.NeighbourCode(0,1,4)==4,"neighbour codes for unknown and water");
+            // Borders meander: grassland with desert to the east blends in near the east edge, unevenly from row to row, and the
+            // west half is untouched.
+            int[] grass=Enumerable.Repeat(0,9).ToArray(),eastDesert=(int[])grass.Clone();eastDesert[2]=eastDesert[5]=eastDesert[8]=3;
+            // Measured at ten map positions, since at any one position the noise may push the border away from this tile.
+            var reach=new List<int>();bool westUntouched=true;int touched=0;
+            for(int wx=0;wx<10;wx++){var pureAt=PixelArt.Compose(grass,wx,7,0,0);var mixedAt=PixelArt.Compose(eastDesert,wx,7,0,0);bool any=false;
+                for(int y=0;y<PixelArt.TH;y++){int first=PixelArt.TW;for(int x=0;x<PixelArt.TW;x++)if(mixedAt.Get(x,y)!=pureAt.Get(x,y)){if(x<20)westUntouched=false;first=Math.Min(first,x);}if(first<PixelArt.TW){reach.Add(first);any=true;}}if(any)touched++;}
+            Require(touched>=5&&westUntouched,"neighbouring desert blends into the east of the tile only, at most positions");
+            Require(reach.Distinct().Count()>10,"the border wanders from row to row instead of a straight line");
+            var pure=PixelArt.Compose(grass,5,7,0,0);
+            // Coasts: sea to the north changes only the northern part of a land tile (lip and meander), never the south.
+            int[] northSea=(int[])grass.Clone();northSea[0]=northSea[1]=northSea[2]=4;var coast=PixelArt.Compose(northSea,5,7,0,0);
+            bool southSame=true,northChanged=false;for(int x=0;x<PixelArt.TW;x++){for(int y=34;y<PixelArt.TH;y++)if(coast.Get(x,y)!=pure.Get(x,y))southSame=false;for(int y=0;y<14;y++)if(coast.Get(x,y)!=pure.Get(x,y))northChanged=true;}
+            Require(southSame&&northChanged,"a northern coast shapes only the north of the tile");
+            var clouds=PixelArt.CloudShadows();Require(clouds.w==128&&clouds.p.Any(c=>(c>>24)>0)&&clouds.p.Any(c=>(c>>24)==0),"cloud shadows have clear sky and shade");
             Require(PixelArt.Farm(0).w==PixelArt.TW&&PixelArt.Road(5).w==PixelArt.TW,"farm and road overlays are tile sized");
-            // The diamond screen mapping must invert exactly: tile centres map back to the same lattice point.
-            float tw=64,th=32;
-            for(int i=-3;i<=3;i++)for(int j=-3;j<=3;j++){
-                float dx=(i-j)*tw/2,dy=(i+j)*th/2,u=dx/(tw/2),v=dy/(th/2);
-                Require((int)Math.Round((u+v)/2)==i&&(int)Math.Round((v-u)/2)==j,"diamond pick round trip "+i+","+j);
+            // The horizontal screen mapping must invert exactly at every zoom: tile centres and points just inside a tile's
+            // corners map back to that tile, and rows stay level (same j gives the same screen y whatever i is).
+            foreach(double tw in new[]{32.0,48,64,96,128})for(int i=-3;i<=3;i++)for(int j=-3;j<=3;j++){
+                double sx,sy;PixelArt.ScreenOf(i+10,j+5,10.25,5.5,tw,out sx,out sy);double th=tw*PixelArt.TH/PixelArt.TW;
+                foreach(var corner in new[]{new[]{0.0,0.0},new[]{-.45,-.45},new[]{.45,.45},new[]{-.45,.45}}){
+                    int pi,pj;PixelArt.PickOf(sx+corner[0]*tw,sy+corner[1]*th,10.25,5.5,tw,out pi,out pj);
+                    Require(pi==i+10&&pj==j+5,"horizontal pick round trip "+i+","+j+" at zoom "+tw);
+                }
+                double sx2,sy2;PixelArt.ScreenOf(i+11,j+5,10.25,5.5,tw,out sx2,out sy2);Require(sy2==sy&&sx2-sx==tw,"rows are level and columns evenly spaced");
             }
+            // Unit sprites: processed copies are 64 x 64 with an outline and keep their feet on the bottom rows.
+            var src=new uint[32*32];for(int y=4;y<32;y++)for(int x=10;x<22;x++)src[y*32+x]=PixelArt.Rgb(180,120,80);
+            var unit=PixelArt.UnitSprite(src,32,32);Require(unit.w==64&&unit.h==64,"unit sprite size");
+            bool outlined=false,feet=false;for(int x=0;x<64;x++){if(unit.Get(x,62)==PixelArt.Rgb(20,18,24))outlined=true;if((unit.Get(x,61)>>24)!=0)feet=true;}
+            Require(outlined&&feet,"unit sprite is outlined and stands on the bottom of its box");
         }
         static void CivChecks()
         {
@@ -168,7 +200,7 @@ namespace ParadigmRealm
             var clamped=World.New(5,"Clamp",0,1,1,0,0,1,16);
             Require(clamped.civCount==World.MaxCivsBySize[0],"requests above the size limit are clamped");
             var old=World.New(6,"Old",0,1,1,0,1,0,3);old.version=9;old.rivalWar=true;foreach(var p in old.diplomacy)p.atWar=false;old.UpgradeSave();
-            Require(old.version==10&&old.civCount==3&&old.AtWar(1,2)&&!old.AtWar(0,1)&&old.Valid(),"version 9 saves upgrade with the old rival war flag preserved");
+            Require(old.version==18&&old.civCount==3&&old.AtWar(1,2)&&!old.AtWar(0,1)&&old.Valid(),"version 9 saves upgrade with the old rival war flag preserved");
             var peace=World.New(7,"Peace",0,1,1,0,1,0,3);peace.version=9;peace.rivalWar=false;peace.UpgradeSave();
             Require(!peace.AtWar(1,2)&&peace.Valid(),"version 9 peace between rivals preserved");
         }
@@ -207,7 +239,7 @@ namespace ParadigmRealm
                 while(queue.Count>0){var t=queue.Dequeue();for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=w.At(t.x+dx,t.y+dy);if(n==null||World.IsImpassable(n.terrain)||!reached.Add(n.y*w.Width+n.x))continue;queue.Enqueue(n);}}
                 Require(w.cities.All(c=>reached.Contains(c.y*w.Width+c.x))&&w.units.Where(u=>u.owner==0).All(u=>reached.Contains(u.y*w.Width+u.x)),"all "+name+" sphere starts are connected by land");
                 int land=w.tiles.Count(t=>t.terrain!=4&&t.terrain!=12&&t.terrain!=14);
-                Require(land*100>=w.tiles.Length*28&&land*100<=w.tiles.Length*50,name+" sphere has a believable land share");
+                Require(land*100>=w.tiles.Length*28&&land*100<=w.tiles.Length*50,name+" sphere has a believable land share ("+(land*100/w.tiles.Length)+"%)");
                 Require(w.tiles.Count(t=>t.terrain==14)>0&&w.tiles.Any(t=>t.terrain==8||t.terrain==13)&&w.tiles.Any(t=>t.terrain==0)&&w.tiles.Any(t=>t.terrain==1),name+" sphere has polar ice, cold land, grass and forest");
                 int incoherent=0,maxStep=0;
                 for(int i=0;i<w.tiles.Length;i++){
@@ -241,7 +273,7 @@ namespace ParadigmRealm
             Require(s.Move(climber,4,-1)&&climber.x==4+w2/2&&climber.y==0,"a unit steps over the north pole");
             // Saves migrate: version 8 becomes version 9 and stays flat.
             var old=World.New(8);old.version=8;old.UpgradeSave();
-            Require(old.version==10&&old.mapShape==0&&old.Valid(),"version 8 saves upgrade to flat version 10");
+            Require(old.version==18&&old.mapShape==0&&old.Valid(),"version 8 saves upgrade to flat version 18");
         }
         static void MapSizeChecks()
         {
@@ -258,7 +290,7 @@ namespace ParadigmRealm
             Require(World.New(9).Width==48&&World.New(9).Height==30,"default map stays Small 48 x 30");
             Require(World.New(9,"A",0,1,1,0,1).tiles.Select(t=>t.terrain).SequenceEqual(World.New(9).tiles.Select(t=>t.terrain)),"Small is the default size and repeatable by seed");
             var legacy=World.New(3);legacy.version=7;legacy.mapWidth=0;legacy.mapHeight=0;legacy.UpgradeSave();
-            Require(legacy.Width==48&&legacy.Height==30&&legacy.version==10&&legacy.Valid(),"version 7 saves upgrade to Small flat version 10");
+            Require(legacy.Width==48&&legacy.Height==30&&legacy.version==18&&legacy.Valid(),"version 7 saves upgrade to Small flat version 18");
         }
     }
 }

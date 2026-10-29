@@ -11,3 +11,6 @@
 
 # Hand-authored verification projects.
 !Tests/*.csproj
+
+# Harness build output.
+Tests/bin/

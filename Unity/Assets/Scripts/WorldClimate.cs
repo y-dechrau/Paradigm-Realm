@@ -87,10 +87,51 @@ namespace ParadigmRealm
         }
 
         // Fills tiles (already allocated with coordinates) with terrain for one seed variant.
+        double pangaeaX,pangaeaY,pangaeaZ;
+        public static readonly string[] LandTypeNames={"Continents","One landmass","Archipelago","Small continents","Inland seas"};
+        public static readonly string[] LandTypeTexts={"A few large continents with open oceans between them.","A single great landmass surrounded by ocean.","Many islands; most of the world is sea. Ships matter early, and neighbours may be far apart.","Several mid-sized continents.","More land, broken by lakes and enclosed inland seas."};
+        // Water bodies too small to be ocean become lakes (used for the lakes-and-inland-seas land type).
+        void SmallSeasToLakes(int limit)
+        {
+            int n=tiles.Length;var seen=new bool[n];
+            for(int i=0;i<n;i++){if(seen[i]||tiles[i].terrain!=4)continue;var part=new List<int>();var q=new Queue<int>();q.Enqueue(i);seen[i]=true;
+                while(q.Count>0){int k=q.Dequeue();part.Add(k);foreach(int j in SphereNeighbours(k))if(!seen[j]&&tiles[j].terrain==4){seen[j]=true;q.Enqueue(j);}}
+                if(part.Count<limit)foreach(int k in part)tiles[k].terrain=6;}
+        }
+        // Realistic neighbours (Whittaker biome model): neighbouring land tiles may differ by at most one temperature step
+        // (polar, cold, temperate, hot) and dry land may not touch wet land. Where they clash, the hotter tile is cooled one step
+        // (desert to steppe, jungle to forest, grassland to tundra next to ice) and dry tiles are moistened one step (desert to
+        // savanna, steppe and wasteland to grassland). Water, rivers, mountains, volcanoes and rocky coasts are neutral.
+        public static int TemperatureClass(int t){switch(t){case 14:case 15:return 0;case 8:case 13:return 1;case 3:case 16:case 11:case 19:return 3;case 0:case 1:case 2:case 9:case 10:case 20:return 2;default:return -1;}}
+        public static int MoistureClass(int t){switch(t){case 3:case 10:case 20:return 0;case 9:case 11:case 19:return 2;case 0:case 1:case 2:case 8:case 13:case 16:return 1;default:return -1;}}
+        static int Cooler(int t){switch(t){case 3:return 20;case 16:return 0;case 11:case 19:return 1;case 1:return 13;case 0:case 2:case 9:case 10:case 20:return 8;default:return t;}}
+        static int Wetter(int t){switch(t){case 3:return 16;case 10:case 20:return 0;default:return t;}}
+        public int HarmoniseBiomes()
+        {
+            int changes=0;
+            for(int pass=0;pass<8;pass++)
+            {
+                bool any=false;
+                foreach(var t in tiles)
+                {
+                    int tc=TemperatureClass(t.terrain),wc=MoistureClass(t.terrain);if(tc<0)continue;
+                    for(int dy=-1;dy<=1&&tc>=0;dy++)for(int dx=-1;dx<=1;dx++)
+                    {
+                        if(dx==0&&dy==0)continue;var n=At(t.x+dx,t.y+dy);if(n==null)continue;int nc=TemperatureClass(n.terrain),nw=MoistureClass(n.terrain);
+                        if(nc>=0&&tc-nc>=2){int to=Cooler(t.terrain);if(to!=t.terrain){t.terrain=to;changes++;any=true;}break;}
+                        if(nw>=0&&wc==0&&nw==2){int to=Wetter(t.terrain);if(to!=t.terrain){t.terrain=to;changes++;any=true;}break;}
+                    }
+                }
+                if(!any)break;
+            }
+            return changes;
+        }
+        public bool BiomeClash(Tile a,Tile b){int ta=TemperatureClass(a.terrain),tb=TemperatureClass(b.terrain),wa=MoistureClass(a.terrain),wb=MoistureClass(b.terrain);return ta>=0&&tb>=0&&Math.Abs(ta-tb)>=2||wa>=0&&wb>=0&&Math.Abs(wa-wb)>=2;}
         void BuildClimateWorld(int s)
         {
             int W=Width,H=Height,n=W*H;
             var elev=new double[n];var ridge=new double[n];var lat=new double[H];
+            {var pr=new Random(s^0x2a);double a=pr.NextDouble()*Math.PI*2,b=(pr.NextDouble()-.5)*.8;pangaeaX=Math.Cos(b)*Math.Cos(a);pangaeaY=Math.Sin(b);pangaeaZ=Math.Cos(b)*Math.Sin(a);}
             for(int y=0;y<H;y++)
             {
                 lat[y]=Math.PI*(0.5-(y+.5)/H);
@@ -98,13 +139,18 @@ namespace ParadigmRealm
                 {
                     double lon=2*Math.PI*(x+.5)/W,cl=Math.Cos(lat[y]);
                     double px=cl*Math.Cos(lon),py=Math.Sin(lat[y]),pz=cl*Math.Sin(lon);
-                    double c=Fbm(s,px*1.4+7,py*1.4+7,pz*1.4+7,2),d=Fbm(s+17,px*4+3,py*4+3,pz*4+3,4);
-                    elev[y*W+x]=c*.62+d*.38-.10*Math.Pow(Math.Abs(Math.Sin(lat[y])),4);
+                    // Land types (New Game): 0 continents, 1 one landmass, 2 archipelago, 3 small continents, 4 lakes and inland seas.
+                    double broad=mapType==3?2.6:1.4;
+                    double c=Fbm(s,px*broad+7,py*broad+7,pz*broad+7,2),d=Fbm(s+17,px*4+3,py*4+3,pz*4+3,4);
+                    double e=c*.62+d*.38;
+                    if(mapType==1){double dot=px*pangaeaX+py*pangaeaY+pz*pangaeaZ;e=e*.55+Math.Max(0,dot)*.45;}
+                    if(mapType==2)e=c*.28+Fbm(s+71,px*7+5,py*7+5,pz*7+5,3)*.72;
+                    elev[y*W+x]=e-.10*Math.Pow(Math.Abs(Math.Sin(lat[y])),4);
                     ridge[y*W+x]=1-Math.Abs(2*Fbm(s+31,px*5+1,py*5+1,pz*5+1,3)-1);
                 }
             }
             var sorted=(double[])elev.Clone();Array.Sort(sorted);
-            double sea=sorted[(int)(n*.62)],top=sorted[n-1];
+            double sea=sorted[(int)(n*(mapType==2?.78:mapType==3?.64:mapType==4?.47:mapType==1?.6:.62))],top=sorted[n-1];
             var land=new bool[n];var hn=new double[n];
             for(int i=0;i<n;i++){land[i]=elev[i]>sea;hn[i]=land[i]?(elev[i]-sea)/(top-sea):0;}
             elevation=elev;
@@ -166,7 +212,7 @@ namespace ParadigmRealm
             // Coasts: low ground beside the sea becomes rocky shoreline where hills are near, mangrove in the wet tropics.
             for(int i=0;i<n;i++)
             {
-                var t=tiles[i];if(IsImpassable(t.terrain))continue;
+                var t=tiles[i];if(Barren(t.terrain))continue;
                 bool coast=false,highNear=false;
                 foreach(int j in SphereNeighbours(i)){int tj=tiles[j].terrain;if(tj==4||tj==12||tj==14)coast=true;if(tj==2||tj==5||tj==17)highNear=true;}
                 if(!coast)continue;
@@ -189,7 +235,7 @@ namespace ParadigmRealm
         {
             int n=tiles.Length,wanted=Math.Max(2,land.Count(l=>l)/170);
             var candidates=new List<int>();
-            for(int i=0;i<n;i++)if(land[i]&&dist[i]>=3&&hn[i]<.3&&!IsImpassable(tiles[i].terrain)&&tb[i]>=2)candidates.Add(i);
+            for(int i=0;i<n;i++)if(land[i]&&dist[i]>=3&&hn[i]<.3&&!Barren(tiles[i].terrain)&&tb[i]>=2)candidates.Add(i);
             candidates.Sort((a,b)=>{int c=Lattice(s+43,a%Width,a/Width,3).CompareTo(Lattice(s+43,b%Width,b/Width,3));return c!=0?c:a.CompareTo(b);});
             int made=0;
             foreach(int i in candidates)
@@ -199,7 +245,7 @@ namespace ParadigmRealm
                 tiles[i].terrain=6;made++;
                 if(Lattice(s+47,i%Width,i/Width,4)>.5)
                 {
-                    foreach(int j in SphereNeighbours(i)){if(land[j]&&!IsImpassable(tiles[j].terrain)&&tiles[j].terrain!=7){tiles[j].terrain=6;break;}}
+                    foreach(int j in SphereNeighbours(i)){if(land[j]&&!Barren(tiles[j].terrain)&&tiles[j].terrain!=7){tiles[j].terrain=6;break;}}
                 }
             }
         }
@@ -238,12 +284,12 @@ namespace ParadigmRealm
             int n=tiles.Length;var seen=new bool[n];var result=new List<List<int>>();
             for(int i=0;i<n;i++)
             {
-                if(seen[i]||IsImpassable(tiles[i].terrain))continue;
+                if(seen[i]||Barren(tiles[i].terrain))continue;
                 var group=new List<int>();var q=new Queue<int>();q.Enqueue(i);seen[i]=true;
                 while(q.Count>0)
                 {
                     int c=q.Dequeue();group.Add(c);
-                    foreach(int j in SphereNeighbours(c))if(!seen[j]&&!IsImpassable(tiles[j].terrain)){seen[j]=true;q.Enqueue(j);}
+                    foreach(int j in SphereNeighbours(c))if(!seen[j]&&!Barren(tiles[j].terrain)){seen[j]=true;q.Enqueue(j);}
                 }
                 result.Add(group);
             }
@@ -253,7 +299,7 @@ namespace ParadigmRealm
         int SiteScore(int i)
         {
             int score=0;var t=tiles[i];
-            if(IsImpassable(t.terrain)||t.terrain==2||t.terrain==17)return -1;
+            if(Barren(t.terrain)||t.terrain==2||t.terrain==17)return -1;
             for(int dy=-3;dy<=3;dy++)for(int dx=-3;dx<=3;dx++)
             {
                 var n=At(t.x+dx,t.y+dy);if(n==null)continue;
@@ -310,7 +356,7 @@ namespace ParadigmRealm
             for(int attempt=0;attempt<8;attempt++)
             {
                 int s=seed*7919+attempt*104729+12345;
-                BuildClimateWorld(s);
+                BuildClimateWorld(s);if(mapType==4)SmallSeasToLakes(Math.Max(6,tiles.Length/60));
                 if(ChooseSphereStarts(sx,sy,attempt==7))return;
             }
         }

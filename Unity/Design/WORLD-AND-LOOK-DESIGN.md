@@ -58,14 +58,16 @@ Then the earlier plan resumes: more than three civilisations, rules alignment, c
 
 ## Decisions (owner, 28 Oct 2026)
 1. Art source: **procedural** pixel-art generator.
-2. Viewing angle: the **three-quarter / diamond (isometric) view** like the gallery. This is a large renderer rewrite (drawing order, hit-testing, wrap-aware scrolling, atlas) and comes after the world logic.
+2. Viewing angle: originally the **three-quarter / diamond (isometric) view**. **Changed 29 Oct 2026:** the owner asked for the map to run horizontally, not diagonally, and then (same day) chose to keep the 3D look: land raised above water with bank faces, in horizontal rows. Later the same evening the owner asked again for no step at all between land and sea and for far more natural blending; the current renderer is level everywhere, with domain-warped organic borders (see IMPLEMENTATION-STATUS.md). The renderer is now a horizontal three-quarter view (64 x 48 tiles in level rows, land 8 px above water, raised scenery). See IMPLEMENTATION-STATUS.md.
 3. World shape: **true sphere with pole crossing**. 2:1 map shapes were proposed and assumed; the owner has not objected.
 
 ## Status by part
 - A. Sphere topology (save version 9, `mapShape` 0 = flat, 1 = sphere): written in source. `At`, `Distance`, `Move`, fog, the settlement scan and the ranged-attack midpoint wrap east-west and cross the poles. Version 8 saves load as flat maps. Sphere sizes: Tiny 48x24, Small 72x36, Medium 96x48, Large 144x72, Huge 192x96, Massive 320x160. The New Game screen has a Flat / Sphere picker, defaulting to Sphere. The current square renderer does NOT yet scroll seamlessly across the wrap; that comes with the new renderer.
 - B. Climate generator (`WorldClimate.cs`): written in source. 3D noise on a unit sphere, land set to about 38 percent of tiles, temperature and moisture bands 0-7 (latitude, altitude, wind belts, distance from sea, rain shadows), smoothed, Whittaker table onto the 21 terrain types, coasts, mangrove, coral, ice caps, lakes in lowlands, rivers running downhill, and all three start sites placed on the largest landmass so land conquest is possible. The algorithm was tuned in a throw-away Python prototype (biome bands, smoothness and land share looked right); the C# was not compiled or run.
-- C. Terrain art overhaul and diamond renderer: planned.
-- D. Globe view: planned.
+- C. Terrain art overhaul and renderer: implemented (horizontal level view with organic blending; see IMPLEMENTATION-STATUS.md).
+- D. Globe view: implemented on the Known World screen, and (save version 17) as the furthest map zoom on a sphere once Mysticism/astronomy is known.
+- Poles (save version 17): ice sheet and glacier are passable at a whole move per step with 1 hit point lost per turn; they cannot be settled or improved.
+- Biome neighbours (save version 17): a Whittaker-class pass after generation removes hot-beside-cold and dry-beside-wet contacts on every land type.
 
 ## Remaining design questions
 1. How tall should hills, mountains and trees be in the diamond view, and how large should one diamond tile be on screen (a first guess is 64x32 pixels)?

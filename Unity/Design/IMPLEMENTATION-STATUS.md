@@ -2,6 +2,248 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner request: invasions by sea (29 Oct 2026, no save change)
+- A rival at war with a civilisation whose city lies on other land (`NavalAI.InvasionTarget`: known city tile, on a landmass none of the rival's cities stand on, nearest a connected port) builds a Galley at a connected port.
+- Landmasses ignore polar ice: a crossing over the pole is possible but is not treated as a road for an army.
+- Spare troops (never a city's last defender), with no enemy to fight on their own land, march to the galley and board.
+- The galley sails when two are aboard, or when no more are coming. It lands them on coastal land within 2 tiles of the target city, or attacks straight into the city from the deck when it is next to it. It then goes home for the next wave.
+- Troops ashore follow the usual attack AI. A rival soldier at sea that is not on a galley steps ashore.
+- Harness (`NavalAIChecks`, real turns): the overseas city is chosen as the target, the rival chooses to build a Galley, and the troops are carried across and land beside the enemy city.
+- **Not seen in the simulations:** the generator puts every start on the largest landmass, so in 150-turn games the player could always be reached on foot and rivals attacked by land. Overseas targets appear only once someone settles another island, which those runs did not produce. The landing is covered by the harness scenario only.
+- **Not done:** War Galleys do not escort invasion galleys; no shore bombardment.
+
+## Owner request: naval AI (29 Oct 2026, no save change)
+Rivals now use the sea (`NavalAI.cs`), with only what they know:
+- **Research:** Sailing and Engineering are wanted once a city's borders reach the sea.
+- **Ports:** coastal-reach cities put a port high on their list, and workers give the road tiles to an unlinked port a large bonus.
+- **Boats:** one per civilisation, counting any being built, explores the seas.
+- **War Galleys:** at war, one per linked port (two when enemy ships are seen). They hunt enemy ships within 8 tiles and otherwise return to guard their port.
+- **Galleys:** when a settler has no site and nothing left to explore on foot, it waits on the shore and the civilisation builds one Galley. The settler boards; the galley sails to the nearest coastal land within 15 tiles that the rival has seen, is legal to settle and has room. The settler lands there and plans its city as usual.
+- **Limits:** ships skip the general 14-unit cap, but not when the treasury is empty.
+- **Land routes:** routes for land units no longer cross water (a unit boards a ship only when the ship is its destination), so armies on attack orders no longer get carried off by passing boats. A rival's land unit found at sea steps ashore.
+- **Harness** (`EmpireChecks.NavalAIChecks`, played through real turns):
+  - a rival ferries a settler from a full island to another island and founds a city there;
+  - a rival War Galley attacks an enemy boat at war;
+  - a rival worker builds the road that links its port.
+- **Simulations** (6 games of 150 turns on Archipelago and Continents, 3 rivals): every rival built one boat; Galleys appeared where a ferry was needed; no land units left stranded at sea; state stayed valid. With war declared at turn 70, rivals built 5-12 War Galleys. These were measured with the .NET harness, not Unity play.
+- Invasions by sea: see the section above.
+
+## Owner requests: ships, ports, villages, hidden resources, camera, raised mountains (29 Oct 2026, save version 18)
+- **Mountains:** raised peaks again (`PixelArt.MountainSprite`), drawn as clusters of 4-5 peaks in three variants.
+  - Each peak has a jagged silhouette from ridged noise, a lit north-west face and a shaded south-east face split by a wandering crest, gullies, and snow reaching down the gullies.
+  - The foot dithers into the ground, which stays rock and foothill relief without snow.
+  - Volcanoes stay relief in the ground.
+- **Camera:** ground tiles are 64 x 40 instead of 64 x 48. The ground is more foreshortened, so trees, mountains, towns and units stand taller against it: a more third-person view. The city screen's land view uses the same shape.
+- **Hidden resources:** a resource is not shown, not named in tooltips and gives nothing until its owner knows the technology for it (`World.ResourceTech`). Fish, crabs, kelp and oysters are known from the start.
+
+  | Resource | Technology |
+  |---|---|
+  | Wheat | Agriculture |
+  | Iron | Iron Working |
+  | Gold | Bronze Working (mining) |
+  | Horses | Horseback Riding |
+  | Spices | Currency |
+  | Whales, pearls, seals, tuna, sponges | Sailing |
+  | Offshore oil | Refining |
+
+- **City names:** a name plate with the city's size sits under every settlement in both map views, in the owner's colour.
+- **Tribal villages:**
+  - The first visitor still gets a gift.
+  - Any civilisation whose unit occupies a village gets the land within 4 tiles revealed, and the village's allegiance (`Tile.villageOwner`); a small flag in the owner's colour marks it.
+  - An allied village pays 2 gold a turn while it lies inside its civilisation's borders or within 4 tiles of them.
+  - Another civilisation can win it over by occupying it.
+- **Boats, ships and ports** (`Naval.cs`):
+
+  | Unit | Technology | Attack / Defence / Moves | Cost | Needs | Carries |
+  |---|---|---|---|---|---|
+  | Boat | Sailing | 0 / 1 / 6 | 20 | City beside the sea or a lake | 1 land unit; keeps to water next to land |
+  | Galley | Engineering | 0 / 2 / 8 | 40 | Connected port | 3 land units |
+  | War Galley | Engineering | 3 / 2 / 8 | 45 | Connected port | Fights ships |
+
+  - **Port** (Engineering, 60 shields): needs the city's borders to reach the sea. It stands in the city if the city is on the coast, otherwise on the nearest coastal land tile of the city's territory within 3 tiles.
+  - A port away from the city works only while a chain of road tiles joins them and no enemy unit at war stands on that road or on the port. The link is rechecked after every move and every turn, and the owner is told when it breaks or returns.
+  - A connected port gives +2 gold a turn, +1 food on worked sea-resource tiles, and lets the city build Galleys and War Galleys, which launch beside the port.
+  - Land units board a ship with room by moving onto it, travel with it and step off onto land. Units left at sea when their ship sinks are lost.
+  - Ships move 2 points per water tile. Auto-explore works for ships.
+  - The pixel view draws the ship on its tile rather than its cargo, a jetty with a crane and warehouse on the port tile, and a red "!" on your port while it is cut off.
+- **Save version 18:** cities get no port and unconnected status; existing villages are unallied.
+- **Harness:**
+  - `EmpireChecks.NavalChecks`: boat and port requirements, port placement, road link, enemy and broken-road cut-off and return, launching, boarding, carrying, sinking with cargo, land units kept off open sea, lakeside boats.
+  - Village checks: joining, revealing, tax in and out of reach, being won over.
+  - The hidden-gold check in `StrategyChecks`.
+  - The auto-screenshot run adds `6c-harbour`.
+- **Checked:** all harnesses, RealmTools.Checks and GraphicsChecks pass; Windows build and screenshot run with no exceptions; screenshots reviewed. **Not yet played by hand.** Ships, ports and villages have not been tried in a real game.
+
+## Owner request: cities that grow on the map (29 Oct 2026, no save change)
+- A city is drawn from small buildings (`PixelArt.Settlement`) instead of one fixed picture. The supplied `Visuals/city-*.png` pictures stay in the project but are no longer drawn on the map, city screen or classic view.
+- **Population:** 2 + size houses (up to 18), spreading wider as the city grows.
+- **Age** (Stone Tools, Bronze, Iron, Feudalism, as before) sets the building style:
+  - Stone Age: thatched round huts.
+  - Bronze Age: mud-brick blocks.
+  - Classical: whitewashed houses with terracotta roofs.
+  - Medieval onwards: timber houses with red and blue roofs and chimney smoke.
+- **Walls** appear only once the Walls building exists. They are a ring with a gate and towers, in the age's material: wooden palisade with watchtowers, mud brick, dressed stone, then castle stone with blue spires.
+- **Seat of power** for the capital from size 4, and for any walled city from size 8: a chief's longhouse, a stepped mud-brick palace, a columned palace, then a castle keep with towers.
+- **Buildings shown once built:**
+  - Temple: standing stones, ziggurat, columned temple, then church with spire.
+  - Market: striped stalls.
+  - Granary: silo, then barn.
+  - Library: domed hall.
+- **Farmsteads:** from size 5, one neighbouring land tile of the city's own territory per two citizens (up to 8) gets two or three houses, in a fixed order per city. Not on forest, jungle, mangrove, volcano, mountains, water or ice. Pixel view only; the classic textures view shows only the city tile.
+- Harness: `FoundationChecks.PixelChecks` confirms that settlements grow with size, gain walls and a castle only when flagged, and that farmsteads draw in every age. The auto-screenshot run adds `6b-grown-city`.
+- Checked: town preview across all ages and sizes, all harnesses, RealmTools.Checks and GraphicsChecks, Windows build and screenshots with no exceptions. Not yet played by hand.
+
+## Owner request: look like the gallery kingdom maps (29 Oct 2026, no save change)
+Compared against the gallery's coastal kingdom, fantasy realm and enchanted forest maps:
+- **Water:** brighter royal blue with more small white wave marks; turquoise shallows along every shore.
+- **Coasts:** mostly grey rock with a cliff face where the sea lies to the south and a rocky rim elsewhere; sandy beaches in places and along deserts and savanna. The "rocky coastline" terrain is green turf with pale rock breaking through instead of bare grey stone; its boulders are paler and fewer.
+- **Grass and trees:** richer yellow-green grass. Forests are denser, mixing dark conifers and round broadleaf trees with a little autumn colour, and spread further so neighbouring forest tiles join up. Open grassland has small groves and lone trees: eight variants placed differently so no pattern repeats, and none on farms, roads or cities.
+- **Farms:** fenced plots of golden wheat beside a green crop plot, instead of stripes.
+- **Borders:** a glowing line in the owner's colour that wanders gently, with a soft halo, instead of a thin straight line.
+- **Start sites (sphere worlds):** the start clearing is round and only softens harsh ground (desert, tundra, bog, wasteland, jungle, rocky coast, mangrove), so capitals no longer sit in a square of plain grass. This changes newly generated worlds only.
+- Checked: pixel previews, all harnesses, RealmTools.Checks and GraphicsChecks pass, Windows build and auto-screenshot run with no exceptions. Not yet played by hand.
+- Not attempted: buildings, towers, ships, bridges and waterfalls on the map as in the gallery pictures (those need new art), and drifting clouds at the map edge.
+
+## Owner request: organic mountains and volcanoes (29 Oct 2026, no save change)
+- **Mountains** are no longer a peak sprite standing on the tile. They are relief in the ground, like hills. The height is a massif centred on each mountain tile plus ridged noise (1 - |2n - 1|, the usual technique for sharp crests and valleys), sampled on rotated axes so no grid shows. The relief fades in from the range's edge, is hill-shaded and is coloured by height: brown foothills, grey rock, then snow above a wandering snow line, blue-grey in shadow.
+- **Volcanoes** are a cone in the ground with concave flanks, a summit crater of glowing lava, radial gullies, two lava streams that cool from orange to dark red, dark basalt, and a lighter south flank facing the viewer.
+- **Hills:** stronger relief (shading x4.8 instead of x3.4), brighter crests and darker hollows.
+- Fixed: the relief light came from the south-east, which made raised ground read as hollows; it now comes from the north-west as intended.
+- Checked: pixel preview of a test patch, all harnesses pass, RealmTools.Checks and GraphicsChecks pass, Windows build and auto-screenshot run with no exceptions. Not yet played by hand.
+
+## Owner requests, 29 Oct 2026 late (save version 17; in the 0.27 folder)
+Implemented in source and checked by the .NET harness; see "Verification" at the end of this section for what ran in Unity.
+- **Civilisations:** Crystal Dominion and Sylvan Court are set aside (still in the catalogue for old saves, never offered or given to rivals). Five new civilisations: Northmarch Kingdom (King Halvard; Seafaring, Industrious), Sunspire Emirate (Emir Rashid; Mercantile, Scholarly), Lionmarch Kingdom (King Aldous; Spiritual, Militaristic), Jade Dynasty (Empress Mei; Monumental, Scholarly) and Serpent League (High King Itzel; Agrarian, Militaristic). The first three use unused portraits from the owner's set. **Jade Dynasty and Serpent League have no portrait yet** and stay hidden until `Assets/Resources/Leaders/leader-15.png` and `leader-16.png` exist (they switch on by themselves). 13 civilisations are offered now; no two share a trait pair.
+- **First contact** opens the Diplomacy screen by itself. Diplomacy shows both leaders side by side, with a greeting from the other leader that depends on relations (war, alliance, friendship, first meeting).
+- **Leader clothing by age:** the loader looks for `Leaders/leader-NN-eE.png` (E = era 0 Dawn to 5 Dimensional) and falls back to the single portrait. **No era portraits exist yet**; they need new art (stone age hides and furs, classical robes, and so on).
+- **Land types** on the New Game screen: Continents, One landmass, Archipelago (78% sea), Small continents, Inland seas (more land; small seas become lakes). Flat maps support them too.
+- **Realistic biome neighbours** (Whittaker temperature and moisture classes): after generation, any land tile two temperature steps hotter than a neighbour is cooled one step, and dry ground beside wet ground is moistened, repeated until settled. No hot desert or jungle touches tundra or ice; no desert touches jungle or bog. Water, rivers, mountains and rocky coast are neutral.
+- **Poles:** ice sheet and glacier can now be crossed, but each step takes a unit's whole move, units standing on ice lose 1 hit point a turn instead of healing, and nothing can be founded or improved there.
+- **Ten sea resources** (placed by realistic zone: warm reefs, cold coasts, open ocean, lakes): Fish, Whales, Pearls, Crabs, Kelp, Oysters, Seals, Tuna, Sponges, Offshore oil (+3 shields once Refining is known). Each has its own pixel icon, shows on the map and in the city view, and the tile tooltip lists its yield.
+- **Terrain art:** hills are drawn as shaded relief on their own biome ground instead of a separate sprite, so they sit in the grassland; desert has no cacti.
+- **Orders:** dragging from a unit draws a dotted line to the cursor (both views). An order to a tile that cannot be entered (another civilisation's unit or border at peace, a full stack) goes to the nearest reachable tile beside it; a path blocked only by units waits and resumes; an order ends only when there is no way at all.
+- **Auto-explore** now searches outward over known land for the nearest tile beside unexplored ground and follows a proper route there, so it no longer sticks in dead ends; it ends when nothing reachable is left.
+- **Classic textures view** pans east and west for ever on sphere worlds.
+- **Globe zoom:** on a sphere, once Mysticism (which includes astronomy) is known, zooming out past the smallest map size shows the known world as a globe; drag spins it, a click or zooming in returns to the map there.
+- **Save version 17:** no data changes; the version marks the new resources, land types and passable poles.
+- Harness additions: civilisation catalogue (17 entries, offered set, set-aside and art-less civilisations never used, art switching one on), first-contact queue and greetings, passable poles (cost, attrition, no founding), every land type valid with no biome clashes, sea resources only on water with yields, astronomy alias, order rerouting round a wall, beside an occupied tile and through a temporary jam, auto-explore coverage.
+- Fixed while testing: once ice became passable, the coastline pass treated sea ice as land and turned polar ice into rocky coast (Small sphere 53% land instead of about 38%). World generation now uses `Barren` (water, peaks or ice) where it used `IsImpassable`.
+- **Verification (29 Oct 2026, Unity 6000.3.25f1 batch mode):** all five .NET harnesses pass; RealmTools.Checks and GraphicsChecks pass; Windows build succeeded; the auto-screenshot run finished with no exceptions. Screenshots reviewed: New Game land types, first-contact Diplomacy (both portraits and greeting), city land view with resources, revealed map with sea-resource icons, globe zoom, classic view across the wrap line. The "Inland seas" label shortening came after that build and was only harness-compiled. Not yet played by hand: drag line, rerouting and auto-explore were checked by the harness only. Known limits: no portraits for Jade Dynasty and Serpent League, no era portraits, the classic view has a texture seam at the wrap line on large maps, and archipelago worlds may keep civilisations apart until ships.
+
+## Owner requests, 29 Oct 2026 evening (save version 16; in the 0.27 folder)
+- **Organic, level terrain.** Land and sea are on one level again everywhere, rocky coast included (the bank faces are gone). Each pixel looks up the terrain at its own position pushed sideways by smooth world-space noise (domain warping, the "noise-driven transition zone" approach used for tile-map terrain transitions), so coasts and biome borders meander across tile edges instead of following the grid; textures are sampled in world coordinates so they run seamlessly from tile to tile; near a border the two terrains dither into each other; shores get a wet-sand (or rock, or ice) lip, foam that moves with the water animation, and a band of lighter shallows. Rivers bend in an S between tile centre and edge and still join. Soft cloud shadows drift slowly across the map. Known limit: on sphere worlds the texture has a seam along the east-west wrap line.
+- **Research screen:** every technology that can be researched now has a Research button on its card with the turns it will take; locked technologies only offer Inspect, and the details panel shows no research button for them.
+- **City screen:** the build lists show only units and buildings the civilisation's known technology allows and that are not already built (completed wonders and finished Transcendence stages disappear); other limits such as size or resources still show as reasons. The land view is now a continuous slice of the pixel-art map (blended ground, scenery, roads, the city), with land beyond the city's reach dimmed; worked tiles carry small pips (green food, orange shields, gold trade), locked tiles a blue marker, hover shows a soft outline and a one-line description, click locks or releases.
+- **Auto-explore** is available for every combat unit as well as Scouts; it stops when an enemy comes near.
+- **12 civilisations** (`Civilisations.cs`), each with a leader portrait and two of twelve traits; every trait belongs to exactly two civilisations and no two share a pair (the two-traits-per-leader model of classic 4X games). Azure Crown (Seafaring, Mercantile), Oasis Sultanate (Mercantile, Agrarian), Sylvan Court (Agrarian, Spiritual), Holy Imperium (Spiritual, Monumental), Sahel Empire (Monumental, Diplomatic), Hellenic League (Diplomatic, Scholarly), Crystal Dominion (Scholarly, Stalwart), Frostpeak Realm (Stalwart, Industrious), Aurelian Republic (Industrious, Expansionist), Lutetian Empire (Militaristic, Horse Lords), Rising Isles (Militaristic, Seafaring), Steppe Horde (Horse Lords, Expansionist). Names, leaders and pairings are my proposal.
+- **Traits:** Seafaring +1 food on worked water; Mercantile +2 gold per city; Agrarian +1 food per city; Spiritual +1 content per city; Monumental wonders and Transcendence stages a fifth cheaper; Diplomatic Concord in 15 turns; Scholarly +1 science per city; Stalwart +1 defence inside your borders; Industrious +1 production per city; Militaristic new military units are Veterans; Horse Lords Horsemen and Knights +1 attack; Expansionist Settlers a third cheaper.
+- **Custom civilisation:** name, leader name, any of the 15 portraits, and any two different traits from the twelve.
+- **New Game screen:** page 1 chooses the civilisation (12 portrait cards and Custom, with leader and traits, or the custom fields); page 2 is the world and game settings with a summary. Rivals take premade civilisations the player did not choose (seeded); beyond twelve they get stock names and two seeded traits. The Diplomacy and Identity screens show leader portraits, leaders and traits.
+- **Leader art:** the owner's 15 portraits (`Paradigm-Realm-16bit-Leaders.zip`) are used as the characters: 300 x 400 copies in `Assets/Resources/Leaders/leader-00..14.png`, full-size originals untouched in `Documentation/Leader-Originals`. Generated variants (mirrored, recoloured robes) were tried and rejected: the recolour bled into skin, gold trim and sea. New characters need new art.
+- **Save version 16:** the old single trait (Builders, Scholars, Traders) becomes Industrious, Scholarly or Mercantile for the player; existing rivals keep their names and get no traits, so a game in progress does not change.
+- Harness: `FoundationChecks.PixelChecks` rewritten (level, opaque, deterministic tiles; borders blend in and wander; coasts shape only their side; cloud sheet), `EmpireChecks.CivilisationChecks` (catalogue structure, premade and custom set-up, rivals without repeats and with named cities, all twelve trait rules, version 15 conversion, tech-filtered build lists, auto-explore for combat units).
+
+## Stage 7: interface (save version 15; source written 29 Oct 2026, in the 0.27 folder)
+- **City screen in three panels**, as in the design. Left: the 5 x 5 tile ring the city can work (it used to grow to 9 x 9 and show tiles that could never be worked); each tile shows Food/Shields/Trade and whether it is the city, locked, worked or free. Middle: rename, Food/Shields/Trade totals with the science and gold split, a growth bar with the growth report, a content/unhappy bar with a disorder warning, citizens and specialists, and the list of buildings. Right: the build queue, with a Units / Buildings switch; the top of each line lists the next three items with cost and the turns until each is done.
+- **Governor** along the bottom: Balanced, Growth (food), Build (shields), Science, Commerce (gold). These are the existing city focus settings; Commerce is kept alongside the design's four.
+- **Tile locks:** click a tile to lock a citizen on it, click again to release. Locked tiles are always worked, even over the Governor's choice and even when the city is short of food; the Governor fills the remaining citizens. Locks are capped at the number of working citizens. Saved per city.
+- **Specialists:** citizens with no tile left to work become entertainers automatically each turn. One click turns an entertainer into a scientist or a tax collector (the old "merchant", +3 gold) and back, and one more makes a worker an entertainer. The separate Citizens screen still exists.
+- **Deviation from the design:** the design describes a single build queue of up to three items. The game keeps its two production lines (units and buildings, each getting full production) and its 8-item queues, which were earlier owner features; the screen shows three items per line.
+- **New Game screen:** two columns. "Your civilisation": name, trait (with what each does) and game speed (with what it changes), seed. "Your world": shape, size (with tile count), land type and number of civilisations (you and N rivals, with the size's limit). A one-line summary above the start button.
+- **Save version 15:** cities gain a list of locked tiles; older saves start with none.
+- Harness: `EmpireChecks.StageSevenCity` (lock over the Governor, lock cap, both locks kept over a better tile, release, ring limit, lock kept when hungry, automatic entertainers, one-click conversions and refusal, version 14 conversion, invalid lock rejected); the UI program checks the three panels are drawn. All engine suites and API-double UI harnesses pass outside Unity.
+
+## Stage 6: victory (save version 14; source written 29 Oct 2026, in the 0.27 folder)
+- **Conquest:** hold every rival capital, or eliminate every rival. A capital is the first city a civilisation founds (saved per civilisation). Rivals can win the same way: one holding every other capital, yours included, ends the game in defeat. Eliminating everyone still wins.
+- **Transcendence:** three projects in the building line, stage 1/2/3 at 300/400/500 shields, needing Computing and a city of size 8 or more. Stages go in order in one city; each activates over 10 turns; the third activation wins. Losing the project city (capture, or any loss of control) resets the whole project. Projects cannot be bought with gold and cost no upkeep. Rivals you have met trigger a warning when they complete a stage.
+- **Researching the Transcendence technology no longer wins.** It now halves activation to 5 turns (my proposal, so the keystone still does something).
+- **Concord** unchanged (20 turns of friendship or alliance with every surviving rival).
+- **Victory screen:** three bars. Conquest counts rivals conquered; Transcendence shows stage, shields or activation turns left, plus the leading rival's status; Concord as before.
+- **AI** builds Transcendence first in its project city, or its most productive city of size 8 or more, and only there.
+- **Save version 14:** older saves record each civilisation's lowest-numbered city it still holds as its capital, and start with an empty project. A save that already knew the Transcendence technology does not win on load.
+- **Fix found while testing:** an AI choosing an edict after the game had ended (for example a conquest earlier in the same turn) would have retried forever. It now stops.
+- **Measured pacing (outside Unity, 4 seeds, 300 turns):** a rival still wins by Transcendence at turns 140-153, because rivals reach Computing around turn 95-100 (in the design it is a Modern-age technology, roughly turn 170+) and their best cities reach size 20 and build each stage in about 5 turns. The rules match the design; the speed of research and production is the Stage 8 balance task.
+- Harness: `EmpireChecks.StageSixVictory` (capitals recorded and fixed, conquest by capitals with rivals still alive, rival conquest defeat, conquest by elimination, project costs and no upkeep, Computing and size gates, stage order, no rush, 10-turn activation, same-city rule, bar progress, loss on losing the city, 5-turn activation with the technology, three-stage win, rival defeat, AI choice, version 13 conversion, three bars) and the edict retry guard in `ContentChecks`. All engine suites and API-double UI harnesses pass outside Unity; Engine Checks pass inside Unity.
+
+## Stage 5: technology compression, eras and edicts (save version 13; source written 29 Oct 2026, in the 0.27 folder)
+- **36 keystone technologies in 6 eras** (`TechnologyCatalog.cs`). Dawn: Stone Tools (known at start), Agriculture, Archery, Bronze Working, The Wheel, Writing. Classical: Currency, Code of Laws, Mathematics, Mysticism, Sailing, Philosophy. Medieval: Engineering, Feudalism, Education, Banking, Printing Press, Military Science. Industrial: Industry, Electricity, Rifling, Chemistry, Medicine, Flight. Modern: Computing, Satellites, Nuclear Fission, Robotics, Genetic Engineering, Globalisation. Dimensional: Nanotechnology, Quantum Computing, Longevity Medicine, Fusion Power, Mind Uploading, Transcendence. All eight design milestones are keystones. The list and grouping are my proposal.
+- **Every one of the 124 earlier technologies is folded into exactly one keystone** (for example Fire, Hunting and Cordage into Stone Tools; Steam and Railways into Industry; Calendar and Astronomy into Mysticism). Earlier ids still resolve, so every existing unlock and effect keeps working. A keystone's card lists the effects and original design unlocks of everything folded into it. The earlier tree is kept in `LegacyTechnologyCatalog.cs` only to convert old saves.
+- **Costs** follow the design: 20 x era^2 + 5 x era x position (Dawn 25-50 up to Dimensional 750-900), times the game-speed multiplier, and a fifth cheaper once two civilisations you have met know it.
+- **Settlers, Warriors and Scouts are available from turn 1** (Stone Tools), as in the design's turn-1 description. Settlers used to need Agriculture.
+- **Eras and edicts** (`Edicts.cs`): knowing 4 of an era's 6 keystones completes it and offers 1 of 3 permanent edicts. The design names none; mine (proposal): Dawn: Common Granaries (+1 food/city), Stone Masons (+1 production), Sky Watchers (+1 science). Classical: Coinage (+2 gold), Civic Festivals (+1 content), Academies (science rate up to 80%, the design's post-edict cap). Medieval: Standing Army (+1 defence), Guild Charters (+2 production), Royal Charters (+2 science). Industrial: Rail Network (+3 production), Free Press (+1 content, +1 science), Conscription (new units are Veterans). Modern: Global Markets (+4 gold), Research Grants (+4 science), Welfare State (+2 content). Dimensional: Planetary Grid (+5 production), Open Knowledge (+5 science), Harmony (+3 content). The player chooses on the Research screen (a note announces each new age); the AI chooses content when unhappy, gold in deficit, otherwise science.
+- **Bridging rule retired:** the +2 Trade per citizen from Stage 3 is gone; the city centre gives 3 base Trade instead of 2. Measured outside Unity (4 seeds, AI civilisations, 170 turns): Dawn complete around turn 40 (target 40), Classical 59 (target 80), Medieval 82 (125), Industrial 99 (170). Rivals research Transcendence, which currently wins at once, around turns 135-146 (with the old bridging rule: turns 93-96; design target about 230). Stage 6 (Transcendence as a three-stage project) will push this back; the remaining speed-up is Stage 8 tuning.
+- **Save version 13.** Version 12 saves convert: a keystone is known if any technology folded into it was known (plus its prerequisites), progress on unknown keystones is the sum of their folded technologies' progress (kept short of completion), research moves to the matching keystone, and every civilisation gets empty edict slots to fill for eras already complete. Saves from version 1 upward still migrate step by step (the version 4 to 5 step now reads the earlier catalogue).
+- Harness: `ContentChecks` rewritten (36 keystones in 6 x 6, all 124 earlier ids folded and resolving, milestones, cost formula and range, no prerequisite from a later era, turn-1 units, the one-fifth discount, era completion at 4 of 6, edict choice, permanence and effect, Academies 80% cap, AI edicts, version 12 and version 4 conversion, all earlier content checks). All engine suites and API-double UI harnesses pass outside Unity.
+
+## Unity verification, 29 Oct 2026 (run by Claude on Matt's PC with Unity 6000.3.25f1 in batch mode, on the 0.24 copy)
+- The whole project compiles in Unity with no errors (everything through Stage 4 and the new look).
+- **Run Engine Checks** passes inside Unity, including Unity JsonUtility save round trip and migration up to save version 12.
+- **Run Graphics Checks** passes: 114 art assets.
+- A Windows player was built (`RealmTools.BuildWindowsBatch`) and run with `-autoShot`, which starts seed 421, founds the capital and saves screenshots. It ran with no exceptions in the player log. Screenshots are in `Documentation/Unity-Screenshots-2026-10-29`: horizontal map with level water, processed units on shadows and team rings, city screen and economy screen in the light theme.
+- Fixed after the first screenshots: unit name labels covered the units' feet, shadow and ring (units now stand higher; health shows above the head only when hurt), and scrollbars and sliders were still Unity's dark default (now light).
+- Not verified: interactive play (clicking, dragging, ending turns, save/load through the menus), performance on large maps, and combat balance in real wars. Matt's own editor project (`Desktop/Paradigm-Realm-main/Unity`) was not touched and does not contain this work yet.
+- Dev aids added: `AutoShot.cs` (runs only with the `-autoShot <folder>` argument; writes BMP files because the project has no screenshot or image-encoding modules) and `RealmTools.BuildWindowsBatch` (batch build with `-buildPath`).
+
+## Stage 4: combat rules (source written 29 Oct 2026; compiled and engine-checked in Unity, not yet played)
+- Units have separate Attack / Defence (health 10). Design table: Spearman 1/2, Horseman 3/1, Archer 2/1. Scaled to match (my proposal): Warrior 1/1, Scout 1/1, Knight 4/2, Rifleman 5/4, Catapult 4/1; non-combat units defend at 1.
+- Damage each side deals = max(1, 3 + own strength - enemy strength), both at once; ranged units (Archer, Catapult) take no retaliation, whether firing or attacking in melee. One exchange per attack, no randomness.
+- Defence bonuses are added points: mountains and volcanic +3, hills +2, forest/jungle/arctic forest/mangrove +1, river +1, fortified +1, fort +1, walls +2; Spearman +2 against Knights and Horsemen. Rank adds to both values. Unpaid upkeep costs 1 point. (Old: percentage-like Power 0-13 with +2/+3 bonuses.)
+- Only the best defender on a tile fights (highest defence, then health), and only it can die. Ranged fire now also hits the best defender on the target tile. Stack limit 3 military units per tile (unchanged).
+- Horsemen ignore the forest slowdown. The exact preview ("You deal 2 (enemy health 10 to 8), you take 4 ...") uses the same function as the attack, and is shown in the map tooltip and under each Fire button.
+- AI builds by Attack + Defence. Diplomatic military strength uses Attack + Defence.
+- No new saved fields; save version stays 12.
+- Harness: `EmpireChecks.StageFourCombat` (formula, design table, each defence bonus, the Spearman > Horseman > Archer > Spearman triangle, preview equals result, best defender only, no retaliation for ranged, walls, Horseman forest cost, stack limit). Pacing unchanged at 100 turns, but no AI rivals went to war in the six test games, so combat balance is untested by play.
+
+## Look: horizontal map, level water, defined units, light interface (source written 29 Oct 2026; compiled and screenshotted in a Unity build, not yet played)
+Owner request (29 Oct 2026): the map must run horizontally, not diagonally; water level with land with no step except rocky coastline; more defined units with a 3D look that stays 16-bit; a more ergonomic, smoother, lighter interface.
+- **Map:** the diamond view is now a horizontal three-quarter view. Tiles are 64 x 48 rectangles in level rows (five zoom steps), drawn back row to front row so trees, hills, mountains and cities stand up over the row behind. Picking, panning, wrap-around on sphere worlds, selection and labels follow the new grid. The file is still `IsoRenderer.cs` so Unity references stay intact. The V key still switches to the classic textured view, which was already horizontal.
+- **Water and banks (revised the same day at the owner's request: "3D look, horizontal rows"):** land stands 8 px above water. Wherever water lies in front (south) of land, a bank face shows below the raised surface: soil under grass, sand under desert, rock under rocky and mountain ground, ice under snow. Raised land shades the water at its foot, shores have shallows and irregular animated foam, west banks catch the light and east banks darken. Units, cities, roads, borders and selection sit on the raised surface; clicks pick the raised land first. (An earlier version that day had water level with land and only rocky coastline raised; the owner asked for the 3D look back.)
+- **Units:** the supplied unit pictures are not changed. As the game loads, a copy of each is read through the GPU (no import-setting change), reduced to a crisp 64 x 64 sprite, given a top-left rim light, bottom-right shade and dark outline, and drawn 1:1 at the default zoom on a ground shadow inside a ring in the owner's colour, with a health bar below. If processing fails the original picture is used.
+- **Interface:** light theme: blue-grey background, near-white panels and buttons with rounded corners and a soft shine, dark slate text, blue accent on hover and press; lighter modal dimming, light tooltips, labels and badges; softer map fog colour. Hard-coded dark backgrounds behind text were changed so nothing is dark-on-dark.
+- Screenshots from a Unity build are in `Documentation/Unity-Screenshots-2026-10-29` (5-world shows the whole revealed map with banks; 6-coast-close a polar ice bank). `Documentation/Unit-Sprites-Preview.png` compares units before (top) and after (bottom).
+- Harness: horizontal pick round trip at every zoom, level rows, land raised and water level, a bank face on every land type with water to the south and none with land to the south, water sitting Elev lower in its composite, unit sprite size, outline and footing. UI stand-ins extended (RenderTexture, Graphics.Blit, ReadPixels, Color.Lerp, Rect.center).
+
+## Stage 3 slice 5: healing, victories and ranks (save version 12; source written 29 Oct 2026; NOT yet compiled or run in Unity)
+Stage 3 of the 16-bit plan is now complete in source. None of it has run in Unity.
+- Healing per turn, for units that did not move or are fortified: 1 in the open, 2 fortified, 3 in your own city, full with a Barracks in that city (design). Hospital (+2 in its city) and an adjacent Medic (+2) are kept on top. The old +1 for being inside your borders is gone.
+- Ranks are earned automatically from victories: 2 make a Veteran (+1 strength), 5 an Elite (+2). A victory is killing the enemy unit in melee (attacking or defending) or with a ranged attack. The manual Promote button and experience points are retired (the field stays in saves, unused). The old system allowed three promotions (+3); Elite (+2) is now the top.
+- Barracks and the War Academy wonder used to give new units 5 experience, worth exactly one promotion; they now train Veterans. A village "experience" reward now gives a victory.
+- Save version 12 adds `victories`. Version 11 saves: ranks above Elite cap at Elite, unspent experience of 5 or more becomes Veteran, and victories are set to match the rank.
+- UI: unit panel shows "Rank Veteran | Victories 3 (next rank at 5)"; map tooltip shows the rank beside strength; Barracks, War Academy and village texts updated.
+- Measured outside Unity (6 seeds, three civilisations, passive test player): pacing unchanged from slice 4 (100 turns: 35.3 technologies, 11.3 cities, average size 12.6). Few units earn ranks in these runs because there is little fighting; balance of ranks needs real games.
+- Harness: `EmpireChecks.StageThreeUnits` (each healing rate, Hospital, Medic, Barracks full heal and Veteran training, rank thresholds, top rank, a melee kill counts, v11 migration, invalid ranks rejected); the Foundation promotion check now uses victories. All engine suites and API-double UI harnesses pass outside Unity.
+
+## Stage 3 slice 4: content and unhappy citizens, disorder (source written 29 Oct 2026; NOT yet compiled or run in Unity)
+- Working citizens (population minus specialists) are content up to the city's content slots; the rest are unhappy. Slots = 4 + happiness buildings and other bonuses + 2 per entertainer. A city is in **disorder** when unhappy outnumber content: no production, no gold (including Market and road-connection income) and no growth. Science continues; the design only names production and tax.
+- The existing modifiers become content slots at their old values: Temple +2, Gardens +2, Colosseum +3, Sun Gardens wonder +2, Monarchy +1, luxury +2 per level, Longevity +2, connected Spices +2; war weariness, revolution, Democracy's overseas wars, occupation -3 and unpaid upkeep -1 remove slots. Tax is now +/-1 slot (60% science is low tax, 30% or less is high tax), as in the design (was +/-2 happiness).
+- The old score (5 - population / 2 + bonuses) is gone. `Happiness(c)` now returns content minus unhappy, so every existing "below zero" check (AI entertainers, AI luxury, growth) means disorder. Disorder used to halve production and science; it now stops production and gold.
+- UI: city header and city list show "Content X / Unhappy Y" and DISORDER; the growth report puts disorder first. Building, government, luxury, entertainer and war-weariness text says "content citizens" instead of "happiness".
+- No new saved fields; save version stays 11.
+- Measured outside Unity (6 seeds, three civilisations), against 0.23: 50 turns 13.3 technologies, 11.3 cities, average size 5.6 (0.23: 12.2, 11.2, 4.5); 100 turns 35.3 technologies, 11.3 cities, average size 12.6, no city in disorder (0.23: 33.1, 11.3, 10.9). Gold keeps building up: about 1,889 per civilisation at turn 100 against 612.
+- Harness: `EmpireChecks.StageThreeHappiness` (4 base slots, content up to slots, ties are not disorder, disorder stops production, gold and Market income, growth report, entertainer +2 slots, Temple +2 slots, specialists neither content nor unhappy); tax and war-weariness checks now compare content slots. All engine suites and API-double UI harnesses pass outside Unity. Nothing has run in Unity.
+
+## Stage 3 slice 3: Trade and the science rate (save version 11; source written 29 Oct 2026; NOT yet compiled or run in Unity)
+- Tiles now yield Food / Production / **Trade** (the third yield used to be gold from gold deposits only). Trade: Ocean, Lake and Coral reef 2; River, Rocky coastline and Mangrove 1; other land 0. A road adds 1 on open flat land (Grassland, Desert, Savanna, Dry steppe; the design's "plains" map onto Savanna and Steppe). A gold deposit adds 2.
+- City centre: its own terrain Trade, +1 for the automatic road on open land, plus 2 base Trade (my addition, so every city makes some science and gold).
+- **Bridging rule, not in the design:** each citizen adds 2 Trade (`World.CitizenTrade`). Measured outside Unity (6 seeds x 50 turns, three civilisations), design tile Trade alone gave 1.7 technologies and 3 cities per game against 12.2 and 11.2 under the old rules: grassland cities made 1 science, nobody reached Agriculture, so nobody trained Settlers. With 1 Trade per citizen it was 6.6 and 5.3; with 2 it is 13.3 and 11.3. Remove or reduce this once Stage 5 compresses the technology tree to the design's cheaper costs.
+- Science rate: 0-60% in steps of 10 (Economy screen, Science -10% / +10%), default 50%. Each city's Trade x rate / 100, rounded down, becomes science and the rest becomes gold, so nothing is lost. The 80% cap after an edict waits for edicts (Stage 5). The old per-population tax income is gone.
+- 60% science counts as Low tax, 30% or less as High tax, otherwise Normal (now +1 / -1 content slot; see slice 4).
+- Library is now +2 science (was +4) and Market +2 gold (was +3), as in the design. University, Bank and Factory keep their old effects.
+- AI moves its science rate between 30% (in deficit) and 60% (comfortable surplus).
+- Save version 11 adds `scienceRate`. Version 10 saves migrate Low / Normal / High tax to 60% / 50% / 30%. Earlier versions migrate through 10 as before.
+- Measured pacing gap still open: average gold after 50 turns is about 318 per civilisation, against 106 before (partly the cheaper upkeep from slice 2). Expect to tune upkeep or the default rate after playing.
+- UI: city screen tiles show F / P / T; the city header and economy report show Trade, Science and Gold; map tooltips show Trade and road Trade. Harness: `EmpireChecks.StageThreeTrade` (terrain and road Trade, centre Trade, bridging rule, rate clamping, the split at every rate, Library, Market, happiness mapping, v10 migration, invalid rates rejected). All engine suites and API-double UI harnesses pass outside Unity. Nothing has run in Unity.
+
+## Stage 3 slice 2: production costs, Settler population and upkeep (source written 29 Oct 2026; NOT yet compiled or run in Unity)
+- Unit costs follow CORE-DESIGN-16BIT.md: Warrior 10 (was 18), Worker 20, Spearman 20 (was 24), Archer 20 (was 28), Horseman 25 (was 36), Catapult 40 (was 45), Settler 30 (was 36). Scout, Knight, Rifleman, Medic and Caravan are not in the design table and keep their old costs. Game speed multipliers still apply.
+- A Settler now needs city size 2 and removes 1 population when it is trained. The AI already waited for size 2.
+- Buildings sit in tiers of 40, 60 and 80 shields. 40: Granary, Library, Walls, Barracks, Gardens, Temple, Harbour. 60: Workshop, Market, Courthouse, Hospital, Aqueduct, Colosseum. 80: University, Bank, Factory, Sewer system. The tier choices are a proposal for Matt to confirm.
+- Wonders cost 100 + 50 x era. Until the technology compression (Stage 5) the 14 catalogue eras are folded onto 6 (`1 + era x 6 / 14`), giving Grand Archive 150 (was 150), Sun Gardens 150 (was 140), Merchant Exchange 200 (was 180) and War Academy 250 (was 170).
+- Upkeep: each city supports 3 units free, plus the government's existing support; every further unit costs 1 gold (per-unit upkeep of 1-4 is gone). 40-tier buildings and wonders are free; 60 and 80 tier buildings cost 1 gold each (previously every building cost 1, and the Library 1 more). City upkeep (1 + population / 4 + distance) is not in the design and is unchanged.
+- No new saved fields, so the save version stays 10. Projects already in progress keep their stored shields and may finish sooner at the lower costs.
+- Harness: `EmpireChecks.StageThreeEconomy` (each cost, tiers, wonder formula, Settler size gate and population cost, free unit support, building upkeep). All engine suites and the API-double UI harnesses pass outside Unity. The UI harness stand-ins (`Tests/UnityStubs.cs`) were extended for calls added by the globe, diamond view and victory screen. Nothing has run in Unity.
+- Still to align in Stage 3 after slice 3: the happiness model (content and unhappy citizens, disorder), and healing and experience.
+
 ## Victory screen, Concord victory and first rules alignment (source written 29 Oct 2026; NOT yet compiled or run in Unity)
 - `Victory.cs` / `VictoryUI.cs`: new "Victory" button in the header opens one screen with three bars (Conquest, Transcendence, Concord). Concord is a new win: friendship or alliance with every surviving rival for 20 consecutive turns (a lapsed treaty or an unmet rival resets it). The count is a new saved field `concordTurns` (defaults to 0, so older saves load unchanged).
 - Rules alignment from CORE-DESIGN-16BIT.md, first two items only: growth now needs 10 + 4 x population food (was 12 + 6 x population), and buying costs 2 gold per remaining shield, doubled when nothing has been built yet (was 3 per shield). The tax split, upkeep, happiness, experience and cost tables are NOT yet aligned; Stage 3 is partly done.

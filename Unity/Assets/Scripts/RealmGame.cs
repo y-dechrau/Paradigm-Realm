@@ -16,9 +16,9 @@ namespace ParadigmRealm
         float tilePixels=56; readonly Color[] nations={new Color(.55f,.86f,.61f),new Color(.9f,.65f,.35f),new Color(.4f,.7f,.88f),new Color(.9f,.4f,.4f),new Color(.78f,.6f,.92f),new Color(.95f,.88f,.4f),new Color(.4f,.85f,.8f),new Color(.9f,.55f,.75f),new Color(.7f,.75f,.4f),new Color(.95f,.75f,.55f),new Color(.55f,.6f,.95f),new Color(.6f,.9f,.5f),new Color(.85f,.85f,.85f),new Color(.75f,.5f,.4f),new Color(.4f,.55f,.55f),new Color(.95f,.5f,.2f)};
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot(){if(FindFirstObjectByType<RealmGame>()==null)new GameObject("Paradigm Realm").AddComponent<RealmGame>();}
-        void Awake(){zoomSensitivity=PlayerPrefs.GetFloat("RealmZoomSensitivity",2f);tooltips=PlayerPrefs.GetInt("RealmTooltips",1)!=0;var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.055f,.09f,.11f);camera.orthographic=true;Application.targetFrameRate=30;world=World.New(Environment.TickCount&int.MaxValue);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
+        void Awake(){zoomSensitivity=PlayerPrefs.GetFloat("RealmZoomSensitivity",2f);tooltips=PlayerPrefs.GetInt("RealmTooltips",1)!=0;var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=UiBackground;camera.orthographic=true;Application.targetFrameRate=30;world=World.New(Environment.TickCount&int.MaxValue);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
         Unit Selected(){return world.units.Find(u=>u.owner==0&&u.id==selected);}
-        void Center(){var u=Selected();if(u!=null&&diamondView){FocusTile(u.x,u.y);return;}if(u!=null)mapScroll=new Vector2(Mathf.Max(0,u.x*tilePixels-350),Mathf.Max(0,u.y*tilePixels-250));}
+        void Center(){var u=Selected();if(u!=null&&diamondView){FocusTile(u.x,u.y);return;}if(u!=null)FocusTile(u.x,u.y);}
         string SavePath {get{return Path.Combine(Application.persistentDataPath,"earth-save.json");}}
         void Save(){SaveTo(activeSavePath??SavePath);}
         bool HasSavedGame(){return File.Exists(SavePath)||NamedSaves().Length>0;}
@@ -34,7 +34,7 @@ namespace ParadigmRealm
         {
             if(world!=null)world.EndVisibilityCache();compositeBudgetOn=false;
             ApplyVisualSkin();Styles();float scale=Mathf.Min(Screen.width/1280f,Screen.height/800f);GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-1280*scale)/2,(Screen.height-800*scale)/2,0),Quaternion.identity,new Vector3(scale,scale,1));
-            GUI.DrawTexture(new Rect(0,0,1280,800),Texture2D.whiteTexture,ScaleMode.StretchToFill,false,0,new Color(.055f,.09f,.11f),0,0);
+            GUI.DrawTexture(new Rect(0,0,1280,800),Texture2D.whiteTexture,ScaleMode.StretchToFill,false,0,UiBackground,0,0);
             if(artGallery){DrawGallery();return;}
             if(nameSetup){DrawNameSetup();return;}
             if(loadScreen){DrawLoadScreen();return;}
@@ -52,6 +52,8 @@ namespace ParadigmRealm
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1&&world.result=="";if(GUI.Button(new Rect(912,744,130,38),"Next unit [Tab]",button))NextUnit();if(GUI.Button(new Rect(1055,744,195,38),"END TURN [Enter]",button))EndTurn();GUI.enabled=true;
             if(tooltips&&!guide&&!confirmNew&&pendingUnit==-1)DrawTileTooltip();
             if(guide)DrawGuide();if(confirmNew){GUI.Box(new Rect(420,270,440,190),"");GUILayout.BeginArea(new Rect(445,290,390,145));GUILayout.Label("Start a new world?",heading);GUILayout.Label("Save first if you want to keep your current game.",body);if(Button("Start new game")){confirmNew=false;nameSetup=true;GUIUtility.ExitGUI();}if(Button("Cancel"))confirmNew=false;GUILayout.EndArea();}
+            // Meeting a civilisation opens Diplomacy with them straight away, one meeting at a time.
+            if(world.newContacts!=null&&world.newContacts.Count>0&&world.result==""&&pendingUnit==-1&&!cityScreen&&!researchScreen){int met=world.newContacts[0];world.newContacts.RemoveAt(0);if(met>0&&met<world.civCount){diplomacyPartner=met;OpenDetails("Diplomacy");status="First contact: "+world.NationName(met)+".";}}
             if(pendingUnit!=-1){DrawWarPrompt();return;}
             DrawSaveToast();
         }
@@ -62,7 +64,7 @@ namespace ParadigmRealm
 
         void StartGame()
         {
-            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; world=World.New(chosenSeed,proposedName,setupMap,setupSpeed,1,setupTrait,setupSize,setupShape,setupCivs);ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
+            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; bool custom=setupCiv>=CivilisationCatalog.Count;world=World.New(chosenSeed,custom?proposedName:CivilisationCatalog.Names[setupCiv],setupMap,setupSpeed,1,0,setupSize,setupShape,setupCivs,custom?-1:setupCiv,customLeader,customPortrait,customTraitA,customTraitB);setupPage=0;ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
             selected=world.units.First(u=>u.owner==0).id;cityId=-1;
             sideScroll=Vector2.zero;researchScreen=false;detailsScreen="";cityScreen=false;pauseMenu=false;activeSavePath=null;Center();hasSession=true;mainMenu=false;
             guide=true;confirmNew=false;status="Select your Settler, then Found city.";
@@ -79,15 +81,15 @@ namespace ParadigmRealm
         {
             if(menuTitle==null){
                 menuTitle=new GUIStyle(title){fontSize=62,alignment=TextAnchor.MiddleCenter};
-                menuTitle.normal.textColor=new Color(.93f,.83f,.58f);
+                menuTitle.normal.textColor=new Color(.16f,.29f,.45f);
                 menuSubtitle=new GUIStyle(body){fontSize=16,alignment=TextAnchor.MiddleCenter};
-                menuSubtitle.normal.textColor=new Color(.7f,.79f,.73f);
+                menuSubtitle.normal.textColor=new Color(.27f,.35f,.43f);
                 menuButton=new GUIStyle(button){fontSize=19,fontStyle=FontStyle.Bold};
             }
             // Original pixel landscape, drawn in integer-sized blocks.
             var backdrop=Art("title-world");if(backdrop!=null)GUI.DrawTexture(new Rect(0,0,1280,800),backdrop,ScaleMode.ScaleAndCrop);
-            Fill(new Rect(0,0,1280,800),new Color(.015f,.025f,.04f,.35f));
-            Fill(new Rect(390,85,500,637),new Color(.025f,.055f,.07f,.94f));
+            Fill(new Rect(0,0,1280,800),new Color(.95f,.97f,1f,.12f));
+            Fill(new Rect(390,85,500,637),new Color(UiPanel.r,UiPanel.g,UiPanel.b,.93f));
             Fill(new Rect(390,85,500,3),new Color(.68f,.57f,.35f));
             Fill(new Rect(390,719,500,3),new Color(.68f,.57f,.35f));
             GUI.Label(new Rect(390,110,500,78),"PARADIGM",menuTitle);
@@ -114,7 +116,7 @@ namespace ParadigmRealm
             GUI.Label(new Rect(390,735,500,30),"EARTH  |  PIXEL REALMS EDITION",menuSubtitle);
             if(guide)DrawGuide();
             if(confirmNew||confirmQuit){
-                Fill(new Rect(0,0,1280,800),new Color(0,0,0,.82f));
+                Fill(new Rect(0,0,1280,800),UiDim);
                 GUI.Box(new Rect(390,275,500,230),"");
                 GUI.Label(new Rect(420,295,440,35),confirmQuit?"Quit Paradigm Realm?":"Start a new civilisation?",heading);
                 GUI.Label(new Rect(420,340,440,55),"Unsaved progress will be lost. Cancel and use Save in the game to keep your progress.",body);
@@ -124,17 +126,66 @@ namespace ParadigmRealm
                 if(GUI.Button(new Rect(650,422,210,44),"Cancel",button)){confirmNew=false;confirmQuit=false;GUIUtility.ExitGUI();}
             }
         }
+        // Stage 7: a clearer New Game screen. Two columns (your civilisation, your world), each choice explained, and a one-line
+        // summary of the game about to start.
+        // Two pages: choose a civilisation (12 premade or custom), then the world.
+        int setupPage,setupCiv,customPortrait=7,customTraitA=6,customTraitB=8;string customLeader="";
+        GUIStyle cardLabel;
+        // Step through the portraits that exist (pictures still to be supplied are skipped).
+        int NextPortrait(int from,int step){for(int k=1;k<=CivilisationCatalog.PortraitCount;k++){int i=((from+step*k)%CivilisationCatalog.PortraitCount+CivilisationCatalog.PortraitCount)%CivilisationCatalog.PortraitCount;if(Portrait(i)!=null)return i;}return from;}
+        bool CustomValid(){return setupCiv<CivilisationCatalog.Count||(!string.IsNullOrWhiteSpace(proposedName)&&customTraitA!=customTraitB);}
         void DrawNameSetup()
         {
-            GUI.Box(new Rect(370,85,540,630),"");
-            GUI.Label(new Rect(402,110,470,45),"Name your civilisation",title);
-            GUI.Label(new Rect(402,162,470,40),"What will your people be known as?",body);
-            proposedName=GUI.TextField(new Rect(402,210,470,42),proposedName,32);
-            GUI.Label(new Rect(402,260,470,35),"Name and flag can be changed during play.",small);
-            DrawSetupOptions();GUI.enabled=!string.IsNullOrWhiteSpace(proposedName);
-            if(GUI.Button(new Rect(402,640,225,45),"Begin civilisation",button)){StartGame();GUIUtility.ExitGUI();}
-            GUI.enabled=true;
-            if(GUI.Button(new Rect(647,640,225,45),"Back",button)){nameSetup=false;GUIUtility.ExitGUI();}
+            GUI.Box(new Rect(160,60,960,680),"");
+            if(setupPage==0){DrawCivilisationChoice();return;}
+            GUI.Label(new Rect(190,74,900,44),"New game — the world",title);
+            GUI.Box(new Rect(185,125,430,500),"");GUI.Box(new Rect(665,125,430,500),"");
+            DrawSetupOptions();
+            GUI.Label(new Rect(185,636,910,40),SetupSummary(),body);
+            if(GUI.Button(new Rect(185,680,450,46),"Begin civilisation",button)){StartGame();GUIUtility.ExitGUI();}
+            if(GUI.Button(new Rect(645,680,450,46),"Back: civilisation",button)){setupPage=0;GUIUtility.ExitGUI();}
+        }
+        void DrawCivilisationChoice()
+        {
+            if(cardLabel==null)cardLabel=new GUIStyle(small){alignment=TextAnchor.UpperCenter,wordWrap=true};
+            GUI.Label(new Rect(190,74,900,44),"Choose your civilisation",title);
+            var e=Event.current;
+            // Every offered civilisation, then Custom, eight to a row.
+            var cards=CivilisationCatalog.Offered().Concat(new[]{CivilisationCatalog.Count}).ToList();
+            if(setupCiv<CivilisationCatalog.Count&&!CivilisationCatalog.Enabled[setupCiv])setupCiv=cards[0];
+            for(int k=0;k<cards.Count;k++)
+            {
+                int i=cards[k],col=k%8,row=k/8;var r=new Rect(185+col*114,124+row*206,108,200);
+                if(setupCiv==i)Fill(new Rect(r.x-4,r.y-4,r.width+8,r.height+8),UiAccent);
+                GUI.Box(r,"");
+                var tex=Portrait(i<CivilisationCatalog.Count?CivilisationCatalog.Portraits[i]:customPortrait);
+                if(tex!=null)GUI.DrawTexture(new Rect(r.x+4,r.y+4,100,155),tex,ScaleMode.ScaleAndCrop);
+                GUI.Label(new Rect(r.x+3,r.y+161,102,38),i<CivilisationCatalog.Count?CivilisationCatalog.Names[i]:"Custom civilisation",cardLabel);
+                if(e.type==EventType.MouseDown&&e.button==0&&r.Contains(e.mousePosition)){setupCiv=i;if(i<CivilisationCatalog.Count)proposedName=CivilisationCatalog.Names[i];e.Use();}
+            }
+            if(setupCiv<CivilisationCatalog.Count)
+            {
+                GUI.Label(new Rect(185,544,910,30),CivilisationCatalog.Names[setupCiv]+" — led by "+CivilisationCatalog.Leaders[setupCiv],heading);
+                var traits=CivilisationCatalog.Traits[setupCiv];
+                for(int k=0;k<2;k++)GUI.Label(new Rect(185,578+k*28,910,26),CivilisationCatalog.TraitNames[traits[k]]+" — "+CivilisationCatalog.TraitTexts[traits[k]],body);
+                GUI.Label(new Rect(185,638,910,24),"Rivals are drawn from the other civilisations, each with its own leader and traits.",small);
+            }
+            else
+            {
+                GUI.Label(new Rect(185,532,260,20),"Civilisation name",small);GUI.SetNextControlName("customname");proposedName=GUI.TextField(new Rect(185,552,260,28),proposedName,32);
+                GUI.Label(new Rect(455,532,260,20),"Leader",small);customLeader=GUI.TextField(new Rect(455,552,260,28),customLeader,32);
+                GUI.Label(new Rect(725,532,370,20),"Portrait: "+CivilisationCatalog.PortraitTitles[customPortrait],small);
+                if(GUI.Button(new Rect(725,552,44,28),"<",button))customPortrait=NextPortrait(customPortrait,-1);
+                GUI.Label(new Rect(775,556,70,24),(customPortrait+1)+" / "+CivilisationCatalog.PortraitCount,body);
+                if(GUI.Button(new Rect(845,552,44,28),">",button))customPortrait=NextPortrait(customPortrait,1);
+                GUI.Label(new Rect(185,584,455,20),"First trait",small);customTraitA=GUI.SelectionGrid(new Rect(185,603,450,69),customTraitA,CivilisationCatalog.TraitNames,4);
+                GUI.Label(new Rect(645,584,450,20),"Second trait",small);customTraitB=GUI.SelectionGrid(new Rect(645,603,450,69),customTraitB,CivilisationCatalog.TraitNames,4);
+                GUI.Label(new Rect(185,673,910,20),customTraitA==customTraitB?"Choose two different traits.":CivilisationCatalog.TraitLine(new[]{customTraitA,customTraitB}),small);
+            }
+            bool enabled=GUI.enabled;GUI.enabled=enabled&&CustomValid();
+            if(GUI.Button(new Rect(185,696,450,38),"Next: choose the world",button)){setupPage=1;GUIUtility.ExitGUI();}
+            GUI.enabled=enabled;
+            if(GUI.Button(new Rect(645,696,450,38),"Back",button)){nameSetup=false;setupPage=0;GUIUtility.ExitGUI();}
         }
         void DrawRoad(Tile t,Rect rect)
         {
@@ -158,9 +209,11 @@ namespace ParadigmRealm
         static readonly string[] ResourceArtNames={"resource-00","resource-01","resource-02","resource-03","resource-04","resource-05"};
         void DrawResource(Tile t,Rect rect)
         {
-            if(t.resource==0)return;
+            if(t.resource<=0||!world.ResourceKnown(0,t.resource))return;
             float size=rect.width*.36f;var badge=new Rect(rect.xMax-size,rect.yMax-size,size,size);
-            Fill(badge,new Color(.025f,.04f,.05f,.72f));DrawArt(ResourceArtNames[Math.Max(0,Math.Min(5,t.resource))],badge);
+            Fill(badge,new Color(1,1,1,.5f));
+            if(World.IsSeaResource(t.resource)){var icon=IsoPicture(5,t.resource,0);if(icon!=null)GUI.DrawTexture(badge,icon);}
+            else DrawArt(ResourceArtNames[Math.Max(0,Math.Min(5,t.resource))],badge);
 
         }
         void DrawTileTooltip()
@@ -170,12 +223,12 @@ namespace ParadigmRealm
             int x,y;if(!MapTileAt(mouse,out x,out y))return;
             var t=world.KnownTile(world.At(x,y));if(t==null)return;
             string text="Unexplored territory";
-            if(t.seen){var v=world.TileYield(t);text=World.TerrainNames[t.terrain]+"  ("+x+", "+y+")";
+            if(t.seen){var v=world.TileYield(t);if(t.resource>0&&!world.ResourceKnown(0,t.resource)){v[0]-=World.ResourceFood[t.resource];v[1]-=World.ResourceShields[t.resource];v[2]-=World.ResourceTrade[t.resource];}text=World.TerrainNames[t.terrain]+"  ("+x+", "+y+")";
                 text+="\n"+(t.owner<0?"Unclaimed":world.met[t.owner]?world.NationName(t.owner):"Unknown territory");text+="\n"+(World.IsImpassable(t.terrain)?"Impassable to land units":"Movement: "+(World.RoughTerrain(t.terrain)?3:2));
-                text+="\nFood "+v[0]+" | Production "+v[1]+" | Gold "+v[2];
-                if(t.resource>0)text+="\nResource: "+World.ResourceNames[t.resource]+" (bonus when worked)";
-                if(t.road)text+="\nRoad: 1 movement between connected roads";if(t.farm)text+="\nFarm / pasture: +2 food";if(t.mine)text+="\nMine: +2 production";if(t.fort)text+="\nFort: +2 defence";
-                if(world.Visible(x,y)){var city=world.cities.Find(c=>c.x==x&&c.y==y);if(city!=null)text+="\n"+city.name+" - "+world.NationName(city.owner);var units=world.units.Where(u=>u.x==x&&u.y==y);foreach(var unit in units.OrderByDescending(a=>a.id==selected).Take(3))text+="\n\n"+world.NationName(unit.owner)+": "+World.UnitNames[unit.type]+" — "+UnitDescription(unit)+"\nStrength "+(World.Power[unit.type]+unit.promotion)+" | Movement "+unit.moves+"/"+World.Moves[unit.type]+"\n"+world.Activity(unit)+" | "+world.Remaining(unit);if(units.Count()>3)text+="\n+ "+(units.Count()-3)+" more units; select to inspect.";}
+                text+="\nFood "+v[0]+" | Production "+v[1]+" | Trade "+v[2];
+                if(t.resource>0&&world.ResourceKnown(0,t.resource))text+="\nResource: "+World.ResourceNames[t.resource]+" (+"+World.ResourceFood[t.resource]+" food, +"+World.ResourceShields[t.resource]+" shields, +"+World.ResourceTrade[t.resource]+" trade when worked"+(t.resource==15?"; +3 shields more with Chemistry":"")+")";
+                if(t.road)text+="\nRoad: 1 movement between connected roads"+(World.RoadTrade(t.terrain)?"; +1 trade":"");if(t.farm)text+="\nFarm / pasture: +2 food";if(t.mine)text+="\nMine: +2 production";if(t.fort)text+="\nFort: +2 defence";
+                if(world.Visible(x,y)){var city=world.cities.Find(c=>c.x==x&&c.y==y);if(city!=null)text+="\n"+city.name+" - "+world.NationName(city.owner);var units=world.units.Where(u=>u.x==x&&u.y==y);foreach(var unit in units.OrderByDescending(a=>a.id==selected).Take(3))text+="\n\n"+world.NationName(unit.owner)+": "+World.UnitNames[unit.type]+" — "+UnitDescription(unit)+"\nAttack "+(World.Attack[unit.type]+unit.promotion)+" / Defence "+(World.Defence[unit.type]+unit.promotion)+" ("+World.RankNames[Math.Max(0,Math.Min(2,unit.promotion))]+") | Health "+unit.hp+"/10 | Movement "+unit.moves+"/"+World.Moves[unit.type]+"\n"+world.Activity(unit)+" | "+world.Remaining(unit);if(units.Count()>3)text+="\n+ "+(units.Count()-3)+" more units; select to inspect.";}
                 else text+="\nOutside current sight; last-known information"+(string.IsNullOrEmpty(t.rememberedCity)?"":"\nLast seen city: "+t.rememberedCity);
             }
             var settler=Selected();if(t.seen&&settler!=null&&settler.type==0){
@@ -186,21 +239,25 @@ namespace ParadigmRealm
             string preview=world.CombatPreview(Selected(),x,y);if(preview!="")text+="\n\n"+preview;
             float height=body.CalcHeight(new GUIContent(text),392)+20;
             var box=new Rect(Mathf.Min(mouse.x+18,854),Mathf.Max(4,Mathf.Min(mouse.y+18,790-height)),416,height);
-            Fill(box,new Color(.025f,.04f,.045f,.98f));GUI.Box(box,"");GUI.Label(new Rect(box.x+10,box.y+8,396,height-16),text,body);
+            Fill(box,UiPanel);GUI.Box(box,"");GUI.Label(new Rect(box.x+10,box.y+8,396,height-16),text,body);
         }
         void DrawMap()
         {
             // Pictures are only painted on Repaint events; Layout and mouse events skip all the drawing work.
+            if(globeZoom){DrawGlobeZoom();return;}
             if(diamondView){DrawIsoMap();return;}
             bool repaint=Event.current.type==EventType.Repaint;
             mapScroll=new Vector2(Mathf.Round(mapScroll.x),Mathf.Round(mapScroll.y));
             if(repaint){world.BeginVisibilityCache();PrepareTerrainView();}
-            GUI.Box(new Rect(18,94,865,637),"");mapScroll=GUI.BeginScrollView(new Rect(24,100,852,624),mapScroll,new Rect(0,0,world.Width*tilePixels,world.Height*tilePixels));
-            if(repaint)DrawMapContents();
+            // A sphere gets one extra screen of content to the east, filled with the western edge of the world again, so panning
+            // past the date line shows the same land coming round; ClampMapScroll then wraps the position back.
+            float worldPixels=world.Width*tilePixels;if(world.Sphere)ClampMapScroll();
+            GUI.Box(new Rect(18,94,865,637),"");mapScroll=GUI.BeginScrollView(new Rect(24,100,852,624),mapScroll,new Rect(0,0,worldPixels+(world.Sphere?852:0),world.Height*tilePixels));
+            if(repaint){DrawMapContents();if(world.Sphere&&mapScroll.x+852>worldPixels){var keep=mapScroll;GUI.BeginGroup(new Rect(worldPixels,0,852,world.Height*tilePixels));mapScroll.x-=worldPixels;PrepareTerrainView();DrawMapContents();mapScroll=keep;GUI.EndGroup();}}
             GUI.EndScrollView();
             world.EndVisibilityCache();
             HandleMapInput();
-            if(dragging){var m=Event.current.mousePosition;GUI.Label(new Rect(m.x+15,m.y+12,220,30),"Release to issue destination",body);}
+            if(dragging){var m=Event.current.mousePosition;var u=world.units.Find(a=>a.id==dragUnit);if(u!=null)DrawOrderLine(new Vector2(24+u.x*tilePixels+tilePixels/2-mapScroll.x,100+u.y*tilePixels+tilePixels/2-mapScroll.y),m);GUI.Label(new Rect(m.x+15,m.y+12,220,30),"Release to issue destination",body);}
         }
         void DrawMapContents()
         {
@@ -219,7 +276,7 @@ namespace ParadigmRealm
             // Draw terrain before raised scenery. Use remembered tiles, never unseen live state.
             for(int n=0;n<viewTiles.Count;n++){var t=viewTiles[n];var r=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
                 if(r.xMax<mapScroll.x||r.x>right||r.yMax<mapScroll.y||r.y>bottom)continue;
-                if(!t.seen){Fill(r,new Color(.035f,.065f,.085f));continue;}
+                if(!t.seen){Fill(r,new Color(.2f,.25f,.31f));continue;}
                 GUI.DrawTexture(r,TerrainAppearance(t));
             }
             for(int n=0;n<viewTiles.Count;n++){var t=viewTiles[n];var rect=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
@@ -232,16 +289,18 @@ namespace ParadigmRealm
             }
             for(int n=0;n<viewTiles.Count;n++){var t=viewTiles[n];var rect=new Rect(t.x*tilePixels,t.y*tilePixels,tilePixels,tilePixels);
                 if(rect.xMax<mapScroll.x||rect.x>right||rect.yMax<mapScroll.y||rect.y>bottom)continue;
-                if(!t.seen){Fill(rect,new Color(.035f,.065f,.085f));continue;}
+                if(!t.seen){Fill(rect,new Color(.2f,.25f,.31f));continue;}
                 bool visible=viewVisible[n];if(!visible)Fill(rect,new Color(.015f,.025f,.055f,.4f));DrawResource(t,rect);
                 int cell=t.y*mapWidth+t.x;Unit first=null,picked=null;int count=0;List<Unit> stackAt;
                 if(viewStacks.TryGetValue(cell,out stackAt))foreach(var a in stackAt){if(!(a.owner==0||visible))continue;count++;if(first==null)first=a;if(a.id==selected)picked=a;}
                 var u=picked??first;
-                if(u!=null)DrawUnitArt(u,rect,count);
+                if(u!=null)DrawUnitArt(u,new Rect(rect.x+rect.width*.1875f,rect.y+rect.height*.08f,rect.width*.625f,rect.height*.625f),count);
                 City c;viewCities.TryGetValue(cell,out c);if(c!=null&&!(c.owner==0||visible))c=null;
                 if((u!=null&&u.id==selected)||(c!=null&&c.id==cityId))DrawSelection(rect);
             }
             DrawUnitLabels();
+            foreach(var city in world.cities){if(!(city.owner==0||world.Visible(city.x,city.y)))continue;float cx=city.x*tilePixels+tilePixels/2f,cy=city.y*tilePixels+tilePixels*.82f;
+                if(cx<mapScroll.x-80||cx>right+80||cy<mapScroll.y-20||cy>bottom)continue;DrawCityName(city.name+"  "+city.pop,new Vector2(cx,cy),nations[city.owner]);}
             var chosen=Selected();if(chosen!=null&&chosen.hasOrder){
                 var marker=new Rect(chosen.destinationX*tilePixels+6,chosen.destinationY*tilePixels+6,20,20);
                 Fill(marker,new Color(1,.8f,0,.55f));GUI.Label(marker,"X",small);
@@ -279,7 +338,7 @@ namespace ParadigmRealm
         }
         void DrawWarPrompt()
         {
-            Fill(new Rect(0,0,1280,800),new Color(0,0,0,.8f));GUI.Box(new Rect(340,200,600,390),"");
+            Fill(new Rect(0,0,1280,800),UiDim);GUI.Box(new Rect(340,200,600,390),"");
             GUILayout.BeginArea(new Rect(365,220,550,345));GUILayout.Label("Declare war?",heading);
             GUILayout.Label("This attack will declare war on "+string.Join(" and ",pendingWars.Select(i=>world.NationName(i)).ToArray())+". Proceed?",body);
             string blocked=string.Join(" ",pendingWars.Where(i=>!world.AtWar(0,i)).Select(i=>world.WarReason(0,i)).Where(r=>r!="").ToArray());
@@ -313,8 +372,8 @@ namespace ParadigmRealm
 
         void DrawGuide()
         {
-            Fill(new Rect(0,0,1280,800),new Color(0,0,0,.8f));GUI.Box(new Rect(330,150,620,485),"");GUILayout.BeginArea(new Rect(358,175,564,435));GUILayout.Label("Welcome to Paradigm Realm",title);
-            logScroll=GUILayout.BeginScrollView(logScroll);GUILayout.Label("1. Found a city with your Settler. Double-click your city to open its screen. Units and buildings have separate simultaneous production lines. Click once for a single project; Ctrl+left-click appends, Ctrl+right-click removes the last item from that line. Each building type may exist once per city.\n\n2. Drag units to destinations. Orders continue each turn. Peaceful borders and attacks require permission or a war confirmation. Three troops plus one civilian/support fit per tile, with any number of workers.\n\n3. Workers build roads in 2 turns at home, 3 outside your borders (4 on hills). Farms, mines and forts take 3 worker-turns. Group workers on one tile to share construction; each contributes one work per turn. Research Agriculture for farms, Mining for mines, and The Wheel for roads. Connect improved resources to your capital by owned roads.\n\n4. Open Economy to set taxes and inspect upkeep. Low happiness reduces output and blocks growth. New projects have costs and locked-requirement explanations.\n\n5. Archers and catapults can fire at visible enemies using their panel. Infantry capture cities. Promotions and upgrades are available when eligible.\n\nWASD / middle drag pan. Mouse wheel zooms at the pointer. Zoom buttons also change scale. X cancels the selected unit or worker team activity / route. Escape opens the game menu; Ctrl+S quick saves. Research opens the technology tree from the top bar. Upgrades require an owned city. Arrows move the selected unit; Tab selects an idle unit. B founds a city. Enter (including keypad Enter) ends a turn. Space skips only the selected unit. F1 opens help. Manual saves keep a backup; three autosaves rotate.\n\nFoundation alpha: Earth, 3 civilisations, 124 technologies across 14 eras. The research screen distinguishes active effects from planned content. Naval units, aircraft and realms remain planned. See Design/MASTER-DESIGN.md for the full specification.",body);
+            Fill(new Rect(0,0,1280,800),UiDim);GUI.Box(new Rect(330,150,620,485),"");GUILayout.BeginArea(new Rect(358,175,564,435));GUILayout.Label("Welcome to Paradigm Realm",title);
+            logScroll=GUILayout.BeginScrollView(logScroll);GUILayout.Label("1. Found a city with your Settler. Double-click your city to open its screen. Units and buildings have separate simultaneous production lines. Click once for a single project; Ctrl+left-click appends, Ctrl+right-click removes the last item from that line. Each building type may exist once per city.\n\n2. Drag units to destinations. Orders continue each turn. Peaceful borders and attacks require permission or a war confirmation. Three troops plus one civilian/support fit per tile, with any number of workers.\n\n3. Workers build roads in 2 turns at home, 3 outside your borders (4 on hills). Farms, mines and forts take 3 worker-turns. Group workers on one tile to share construction; each contributes one work per turn. Research Agriculture for farms, Mining for mines, and The Wheel for roads. Connect improved resources to your capital by owned roads.\n\n4. Open Economy to set taxes and inspect upkeep. A city in disorder (more unhappy than content citizens) makes no production or gold and cannot grow. New projects have costs and locked-requirement explanations.\n\n5. Archers and catapults can fire at visible enemies using their panel. Infantry capture cities. Promotions and upgrades are available when eligible.\n\nWASD / middle drag pan. Mouse wheel zooms at the pointer. Zoom buttons also change scale. X cancels the selected unit or worker team activity / route. Escape opens the game menu; Ctrl+S quick saves. Research opens the technology tree from the top bar. Upgrades require an owned city. Arrows move the selected unit; Tab selects an idle unit. B founds a city. Enter (including keypad Enter) ends a turn. Space skips only the selected unit. F1 opens help. Manual saves keep a backup; three autosaves rotate.\n\nFoundation alpha: Earth, 3 civilisations, 124 technologies across 14 eras. The research screen distinguishes active effects from planned content. Naval units, aircraft and realms remain planned. See Design/MASTER-DESIGN.md for the full specification.",body);
             GUILayout.EndScrollView();GUILayout.FlexibleSpace();if(Button(mainMenu?"Back to menu":"Begin your story")){guide=false;GUIUtility.ExitGUI();}GUILayout.EndArea();
         }
         static void Fill(Rect r,Color c){var old=GUI.color;GUI.color=c;GUI.DrawTexture(r,Texture2D.whiteTexture);GUI.color=old;}

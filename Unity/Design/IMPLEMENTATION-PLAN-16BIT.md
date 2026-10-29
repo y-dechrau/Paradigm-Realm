@@ -51,19 +51,20 @@ Done in source: variable size and v8 migration, scaled starts and terrain featur
 ### Stage 2 — Variable civilisation count (save v10) — source written 29 Oct 2026, awaiting Unity testing
 Dynamic `nations`, diplomacy pairs for every pair of civilisations, AI and contact rules at 2 to 16, UI lists that scroll. Start positions spread by map size.
 
-### Stage 3 — Rules alignment: economy and cities (save v10)
+### Stage 3 — Rules alignment: economy and cities (save v12) — complete in source 29 Oct 2026, awaiting Unity testing
+Done in source: growth formula, buying, production costs and building tiers, Settler population cost, unit and building upkeep, Trade yield with the science-rate split (save v11, with a bridging +2 Trade per citizen until Stage 5), content/unhappy citizens with disorder, healing rates, and Veteran/Elite ranks from victories (save v12). Open tuning item: gold builds up about three times faster than before.
 Growth formula, production costs, buying, tax and science split, upkeep, happiness model, experience. Replace the existing formulas one at a time with a harness check each. Map the 21 existing terrain types onto the simple Food/Shield/Trade table through base yield plus modifiers so artwork and names stay.
 
-### Stage 4 — Combat rules
+### Stage 4 — Combat rules — complete in source 29 Oct 2026, awaiting Unity testing (no AI wars occurred in test runs, so balance is unplayed)
 Deterministic damage formula with exact preview, stack limit of 3, best-defender rule, ranged without retaliation, defence bonuses. Rescale the current Power table (currently 0-13) to the new strengths.
 
-### Stage 5 — Technology compression (save v11)
+### Stage 5 — Technology compression (save v13) — complete in source 29 Oct 2026 (36 keystones, eras, edicts; later eras still run ahead of the pacing targets)
 Map the 124 technologies to about 36 keystone technologies in 6 eras. Migrate known technologies and in-progress research. Add era advancement and the one-of-three edict choice.
 
-### Stage 6 — Victory
+### Stage 6 — Victory (save v14) — complete in source 29 Oct 2026 (rivals still win around turn 145; pacing is Stage 8)
 Conquest by capitals, Transcendence in three stages, Concord. One status screen with three bars.
 
-### Stage 7 — Interface
+### Stage 7 — Interface (save v15) — complete in source 29 Oct 2026 (three-panel city screen, Governor, tile locks, clearer New Game screen; two production lines kept)
 Three-panel city screen with Governor presets, the victory status screen, a clearer New Game screen.
 
 ### Stage 8 — AI and balance

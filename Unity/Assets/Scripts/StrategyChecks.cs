@@ -10,7 +10,7 @@ namespace ParadigmRealm {
    var food=w.At(c.x+1,c.y);food.terrain=0;food.farm=true;food.mine=false;
    Check(w.Worked(c).Contains(food)&&w.Yield(c)[0]>=0,"production focus feeds citizens when feasible");
    c.scientists=3;Check(w.Yield(c)[0]<0&&w.GrowthStatus(c).Contains("shortage"),"specialist trade-off is visible");
-   c.scientists=0;c.focus=4;var gold=w.At(c.x-1,c.y);gold.resource=3;Check(w.Worked(c).Contains(gold),"commerce values gold while feeding city");
+   c.scientists=0;c.focus=4;var gold=w.At(c.x-1,c.y);gold.resource=3;w.nations[c.owner].tech[TechnologyCatalog.Index("bronze")]=false;int hidden=w.EffectiveTileYield(c,gold)[2];w.nations[c.owner].tech[TechnologyCatalog.Index("bronze")]=true;Check(w.EffectiveTileYield(c,gold)[2]==hidden+World.ResourceTrade[3]&&!w.ResourceKnown(-1,0)==false,"gold gives nothing until Bronze Working (mining) is known");Check(w.Worked(c).Contains(gold),"commerce values gold while feeding city");
    int before=w.EffectiveTileYield(c,food)[0];w.tech[TechnologyCatalog.Index("chemistry")]=true;
    Check(w.EffectiveTileYield(c,food)[0]==before+1,"technology food counted in tile allocation");
    c.pop=6;Check(w.GrowthStatus(c).Contains("Aqueduct"),"growth blocker names remedy");
