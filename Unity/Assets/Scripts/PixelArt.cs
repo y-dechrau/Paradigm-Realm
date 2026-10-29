@@ -248,28 +248,41 @@ namespace ParadigmRealm
             else if(kind==19){foreach(var q in Spots(s,13,25,11,4.5))Broadleaf(cv,q[0],q[1],4,MangroveTree);}
             Outline(cv,Rgb(14,22,20));return cv;
         }
+        static double Bump(double x,double c,double w,double h){double d=Math.Abs(x-c);return d>=w?0.0:h*(.5+.5*Math.Cos(Math.PI*d/w));}
+        static readonly uint[] Earth={Rgb(70,52,34),Rgb(98,74,46),Rgb(128,98,60),Rgb(156,124,78)};
+        static readonly uint[] Shrub=Ramp(20,56,34,30,78,42,46,104,50,70,130,58,104,156,70);
+        // Rolling ridge: two layers of smooth bumps, lit left slopes, shaded right slopes, earth banks, boulders and shrubs.
         static PixelCanvas HillsSprite(int variant)
         {
             var cv=new PixelCanvas(SW,SH);int s=variant*7;
-            double[][] mounds={new[]{AX+1.0,12,18,AY+6.0},new[]{AX-11.0,9,13,AY+9.0},new[]{AX+12.0,9,14,AY+9.0}};
-            for(int k=0;k<3;k++)
+            int[] bases={AY+6,AY+10};double[] darks={.9,1.0};
+            double[][][] layers={new[]{new[]{AX+1.0,17,19},new[]{AX-13.0,11,11},new[]{AX+16.0,10,12}},new[]{new[]{AX-7.0,12,9},new[]{AX+9.0,12,8}}};
+            for(int li=0;li<2;li++)
             {
-                double cx=mounds[k][0],w=mounds[k][1],h=mounds[k][2];int bas=(int)mounds[k][3];
-                for(int x=(int)(cx-w);x<(int)(cx+w);x++)
+                int bas=bases[li];double dark=darks[li];var bumps=layers[li];int layer=li;
+                Func<int,double> H=xx=>{double sum=0;foreach(var b in bumps)sum+=Bump(xx,b[0],b[1],b[2]);return sum+(VNoise(xx/3.2,layer*9,s)-.5)*1.6;};
+                for(int x=AX-24;x<=AX+24;x++)
                 {
-                    double u=(x+.5-cx)/w;if(Math.Abs(u)>=1)continue;
-                    double top=bas-h*Math.Pow(1-u*u,.5)+(Hsh(x,k,s)-.5)*1.0;
+                    double top=bas-H(x);if(bas-top<1.2)continue;
+                    double sl=(H(x+1)-H(x-1))/2.0;
                     for(int y=(int)top;y<=bas;y++)
                     {
-                        double ny=(y-top)/(h+1.0);uint c=Lit(Grass,u,-.55+ny*.9,x,y,-.02);
-                        if(y<top+1.6&&u<.3)c=Grass[4];
-                        if(ny>.82&&Hsh(x>>1,y,s+3)>.5)c=Shade(Rgb(120,100,70),.7+ny*.3);
+                        double u=(y-top)/Math.Max(1.0,bas-top);
+                        double v=.52+Math.Max(-.3,Math.Min(.3,sl*.45))-.28*u+(Bay(x,y)-.5)*.3;
+                        uint c=RampPick(Grass,v*dark);
+                        if(y<top+1.5)c=sl>=-.15?Grass[4]:Grass[3];
+                        else if(u>.72&&sl<.4)
+                        {
+                            c=Earth[Math.Min(3,(int)((1-u)*8+Hsh(x>>1,y>>1,s+3)*1.4))];
+                            if(Hsh(x,y,s+8)>.9)c=Shade(c,.8);
+                        }
                         cv.Over(x,y,c);
                     }
                 }
             }
-            foreach(var q in Spots(variant*5+3,3,14,4,9))Disk(cv,q[0],q[1]+6,2.2,1.9,RockBrown,0);
-            Outline(cv,Rgb(18,26,16));return cv;
+            foreach(var q in Spots(variant*5+3,3,16,4,9))Disk(cv,(int)q[0],(int)q[1]+AY/10+1,2.2,1.8,Shrub,0);
+            foreach(var q in Spots(variant*5+9,2,16,4,12))Disk(cv,q[0],q[1]+7,3.2,2.3,RockBrown,0);
+            Outline(cv,Rgb(22,44,24));return cv;
         }
         static readonly uint[] MountRock={Rgb(48,46,56),Rgb(76,72,80),Rgb(108,100,102),Rgb(140,128,120),Rgb(176,162,146)};
         static PixelCanvas MountainSprite(int variant)
