@@ -101,6 +101,7 @@ namespace ParadigmRealm
                 if((t==0||t==2||t==7)&&Hsh(x,y,s+21)>.994)col=Flowers[(int)(Hsh(x,y,s+22)*4)%4];
                 if((t==0||t==2||t==7)&&x>0&&Hsh(x-1,y,s+5)>.955&&h<=.955&&Hsh(x,y,s+23)>.5)col=r[1];
             }
+            if(t==18){double st=VNoise(x/2.4,y/1.6,s+31);if(st>.6)col=Hsh(x,y,s+32)>.3?Rock[3]:Rock[4];else if(st>.54)col=Rock[0];else if(Hsh(x,y,s+33)>.9)col=Sand[2];}
             if(t==17&&Hsh(x>>1,y,s+7)>.93&&VNoise(x/3.0,y/2.0,s+8)>.55)col=Rgb(236,120,40);
             if(t==10){double w=VNoise(x/6.0,y/3.0,s+11);if(w>.5&&Math.Abs(w-.55)<.02)col=Shade(col,.6);}
             if((t==14||t==15||t==13||t==8)&&h>.97)col=Rgb(255,255,255);
@@ -230,10 +231,10 @@ namespace ParadigmRealm
         static PixelCanvas ForestSprite(int kind,int variant)
         {
             var cv=new PixelCanvas(SW,SH);int s=variant*31+kind;
-            if(kind==13){foreach(var q in Spots(s,13,23,10,5))Pine(cv,q[0],q[1]+2,true,.62+Hsh((int)q[0],(int)q[1],1)*.3,Tree1);}
+            if(kind==13){foreach(var q in Spots(s,24,27,12,3.6))Pine(cv,q[0],q[1]+2,true,.6+Hsh((int)q[0],(int)q[1],1)*.3,Tree1);}
             else if(kind==1)
             {
-                foreach(var q in Spots(s,13,23,10,5))
+                foreach(var q in Spots(s,24,27,12,3.6))
                 {
                     double h=Hsh((int)q[0],(int)q[1],2);
                     if(h<.55)Pine(cv,q[0],q[1]+2,false,.62+h*.5,h<.35?Tree0:Tree1);
@@ -242,9 +243,9 @@ namespace ParadigmRealm
             }
             else if(kind==11)
             {
-                int i=0;foreach(var q in Spots(s,10,23,10,6)){if(i%3==0)Palm(cv,q[0],q[1],Jungle);else Broadleaf(cv,q[0],q[1]+1,5,JungleTree);i++;}
+                int i=0;foreach(var q in Spots(s,17,27,12,4.5)){if(i%3==0)Palm(cv,q[0],q[1],Jungle);else Broadleaf(cv,q[0],q[1]+1,5,JungleTree);i++;}
             }
-            else if(kind==19){foreach(var q in Spots(s,8,22,9,7))Broadleaf(cv,q[0],q[1],4,MangroveTree);}
+            else if(kind==19){foreach(var q in Spots(s,13,25,11,4.5))Broadleaf(cv,q[0],q[1],4,MangroveTree);}
             Outline(cv,Rgb(14,22,20));return cv;
         }
         static PixelCanvas HillsSprite(int variant)
@@ -274,7 +275,7 @@ namespace ParadigmRealm
         static PixelCanvas MountainSprite(int variant)
         {
             var cv=new PixelCanvas(SW,SH);int s=variant*13;double snowline=.5;
-            var peaks=new[]{new[]{AX-10.0,AY+7.0,24+(int)(Hsh(variant,1,2)*5),15.0},new[]{AX+11.0,AY+8.0,21+(int)(Hsh(variant,2,2)*5),14.0},new[]{AX+1.0,AY+11.0,34.0,15.0}};
+            var peaks=new[]{new[]{AX-12.0,AY+7.0,30+(int)(Hsh(variant,1,2)*6),17.0},new[]{AX+13.0,AY+8.0,27+(int)(Hsh(variant,2,2)*6),16.0},new[]{AX+1.0,AY+11.0,40.0,19.0}};
             for(int pi=0;pi<3;pi++)
             {
                 double px=peaks[pi][0],py=peaks[pi][1],h=peaks[pi][2],w=peaks[pi][3];int top=(int)(py-h);
@@ -330,11 +331,33 @@ namespace ParadigmRealm
             }
             Outline(cv,Rgb(40,70,110));return cv;
         }
+        static readonly uint[] RockPal={Rgb(44,42,50),Rgb(74,70,76),Rgb(106,100,100),Rgb(140,130,122),Rgb(176,164,148)};
+        static void RockForm(PixelCanvas cv,double x,double y,double w,double h,int seed)
+        {
+            Func<int,double> j=k=>Hsh(k,seed,7)-.5;
+            var pts=new[]{P(x-w,y),P(x-w*.9+j(1)*2,y-h*.4),P(x-w*.55+j(2)*2,y-h*.75),P(x-w*.2+j(3),y-h),P(x+w*.1,y-h*.8+j(4)*2),P(x+w*.35,y-h*.95),P(x+w*.8+j(5)*2,y-h*.45),P(x+w,y),P(x+w*.4,y+2),P(x-w*.5,y+2)};
+            double ridge=x-w*.1+j(6)*w*.4;
+            Poly(cv,pts,(X,Y)=>
+            {
+                double side=(X-ridge)/w;
+                double v=(side<0?.7:.26)+.2*(1-(y-Y)/Math.Max(1.0,h))+(Bay(X,Y)-.5)*.3;
+                if((Y+seed)%3==0&&Hsh(X,Y,seed)>.35)v-=.2;
+                if(Hsh(X,Y>>1,seed+1)>.92)v+=.28;
+                if(Math.Abs(X-ridge)<1)v-=.2;
+                return RampPick(RockPal,v);
+            });
+        }
         static PixelCanvas RocksSprite(int variant)
         {
-            var cv=new PixelCanvas(SW,SH);
-            foreach(var q in Spots(variant*3+1,4,20,8,10))Disk(cv,q[0],q[1]-3,6,5,Rock,0);
-            Outline(cv,Ink);return cv;
+            var cv=new PixelCanvas(SW,SH);int s=variant*3+1;int i=0;
+            foreach(var q in Spots(s,10,26,10,5))
+            {
+                double d=1.0-Math.Abs(q[0]-AX)/30.0;
+                double w=3+Hsh(i,s,1)*4+d*3,h=5+Hsh(i,s,2)*7+d*6;
+                RockForm(cv,q[0],q[1]+3,w,h,s+i);i++;
+            }
+            foreach(var q in Spots(s+9,16,27,12,2.5)){cv.Over((int)q[0],(int)q[1]+3,RockPal[3]);cv.Over((int)q[0]+1,(int)q[1]+3,RockPal[1]);}
+            Outline(cv,Rgb(20,20,26));return cv;
         }
         static PixelCanvas BogSprite(int variant)
         {
