@@ -20,6 +20,8 @@ namespace ParadigmRealm
         readonly Dictionary<int,Texture2D> isoShown=new Dictionary<int,Texture2D>();
         readonly List<int> isoLabelCells=new List<int>();
         readonly int[] isoNb=new int[4];
+        readonly List<Tile> isoResTiles=new List<Tile>();
+        readonly List<Vector2> isoResPos=new List<Vector2>();
 
         Texture2D PixelTexture(PixelCanvas cv)
         {
@@ -171,7 +173,7 @@ namespace ParadigmRealm
             int iLo=(int)Math.Floor(camI+minI)-1,iHi=(int)Math.Ceiling(camI+maxI)+1,jLo=(int)Math.Floor(camJ+minJ)-1,jHi=(int)Math.Ceiling(camJ+maxJ)+1;
             if(!world.Sphere){iLo=Math.Max(iLo,0);iHi=Math.Min(iHi,width-1);}
             jLo=Math.Max(jLo,0);jHi=Math.Min(jHi,world.Height-1);
-            int pooled=0;isoLabelCells.Clear();
+            int pooled=0;isoLabelCells.Clear();isoResTiles.Clear();isoResPos.Clear();
             for(int diag=iLo+jLo;diag<=iHi+jHi;diag++)for(int j=jLo;j<=jHi;j++)
             {
                 int i=diag-j;if(i<iLo||i>iHi)continue;
@@ -211,13 +213,15 @@ namespace ParadigmRealm
                 if(!visible&&!string.IsNullOrEmpty(t.rememberedCity))GUI.DrawTexture(new Rect(sx-24*s,gy-40*s,48*s,48*s),cityTexture,ScaleMode.ScaleToFit,true);
                 GUI.color=old;
                 int cell=t.y*width+t.x;City c;viewCities.TryGetValue(cell,out c);if(c!=null&&!(c.owner==0||visible))c=null;
-                if(t.resource>0)DrawResource(t,new Rect(sx-16*s,gy-16*s,32*s,32*s));
+                if(t.resource>0){isoResTiles.Add(t);isoResPos.Add(new Vector2(sx,gy));}
                 if(c!=null){DrawCityArt(c,new Rect(sx-32*s,gy-50*s,64*s,64*s));Fill(new Rect(sx-10*s,gy+14*s,20*s,3),nations[c.owner]);}
                 Unit first=null,picked=null;int count=0;List<Unit> stackAt;
                 if(viewStacks.TryGetValue(cell,out stackAt))foreach(var a in stackAt){if(!(a.owner==0||visible))continue;count++;if(first==null)first=a;if(a.id==selected)picked=a;}
                 var shown=picked??first;
                 if(shown!=null){DrawUnitArt(shown,new Rect(sx-20*s,gy-26*s,40*s,40*s),count);isoLabelCells.Add(cell);}
             }
+            // Resource badges go on after every tile so the tiles in front can never cover them.
+            for(int n=0;n<isoResTiles.Count;n++){var p=isoResPos[n];DrawResource(isoResTiles[n],new Rect(p.x-36*s,p.y+15*s-61*s,61*s,61*s));}
             DrawIsoOverlay(s);
             compositeBudgetOn=false;
         }

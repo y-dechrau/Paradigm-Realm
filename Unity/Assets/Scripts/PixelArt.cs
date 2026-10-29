@@ -50,10 +50,10 @@ namespace ParadigmRealm
         {return new[]{Rgb(a,b,c),Rgb(d,e,f),Rgb(g,h,i),Rgb(j,k,l),Rgb(m,n,o)};}
 
         // ---------- palettes ----------
-        static readonly uint[] Grass=Ramp(38,84,52,54,112,58,80,142,64,112,172,74,148,198,92);
-        static readonly uint[] ForestGround=Ramp(24,58,40,34,78,46,46,98,52,62,118,58,84,138,66);
+        static readonly uint[] Grass=Ramp(34,86,46,52,120,52,78,150,56,112,176,64,160,200,84);
+        static readonly uint[] ForestGround=Ramp(22,62,36,32,84,42,46,108,48,66,130,54,96,152,64);
         static readonly uint[] Sand=Ramp(168,132,76,196,162,98,222,190,124,238,212,152,248,228,178);
-        static readonly uint[] Water=Ramp(18,48,96,26,72,128,36,98,152,52,126,172,104,172,204);
+        static readonly uint[] Water=Ramp(12,52,128,16,72,160,22,96,186,40,128,214,130,204,244);
         static readonly uint[] Lake=Ramp(20,70,100,28,96,124,40,122,142,66,150,160,116,186,182);
         static readonly uint[] Rock=Ramp(66,62,70,92,86,92,120,112,112,150,140,130,180,170,156);
         static readonly uint[] Mount=Ramp(84,78,64,110,102,80,134,124,96,158,146,112,184,170,130);
@@ -79,26 +79,35 @@ namespace ParadigmRealm
             var r=TerrainRamp[t];int s=t*131+variant*17;
             if(t==4||t==12||t==6)
             {
-                double n=.55*VNoise(x/6.0,y/3.0,s)+.45*Hsh(x>>1,y,s+3);
-                double v=.18+n*.52+(Bay(x,y)-.5)*.2;
+                double n=.6*VNoise(x/7.0,y/3.5,s)+.4*VNoise(x/2.5,y/1.5,s+3);
+                double v=.2+n*.5+(Bay(x,y)-.5)*.14;
                 uint c=RampPick(r,v);
-                int wave=(x*3+y*7+frame*10)%40;
-                if(wave<3&&Hsh(x,y>>1,s+9)>.55)c=r[4];
-                if((x*5+y*3+frame*14)%131==0)c=Rgb(235,246,250);
+                // curved ripple dashes drifting with the frame
+                int ph=(x+y*2+frame*3)%24;
+                double wv=VNoise((x+frame*2)/9.0,y/2.0,s+9);
+                if(ph<4&&wv>.5&&Hsh(x>>2,y,s+4)>.45)c=(ph>0&&ph<3)?r[3]:r[4];
+                else if(ph>=4&&ph<6&&wv>.55&&Hsh(x>>2,y,s+4)>.45)c=r[0];
+                if(Hsh(x+frame*3,y,s+11)>.992)c=Rgb(235,248,252);
                 return c;
             }
-            double q=.5*VNoise(x/5.0,y/2.5,s)+.3*VNoise(x/2.2,y/1.2,s+1)+.2*Hsh(x,y,s+2);
-            double val=q+(Bay(x,y)-.5)*.34;
+            double q=.45*VNoise(x/4.0,y/2.0,s)+.3*VNoise(x/1.8,y/1.0,s+1)+.25*Hsh(x,y,s+2);
+            double val=q+(Bay(x,y)-.5)*.30;
             if(t==3)val=.55*val+.45*(.5+.5*Math.Sin((x+y*2)*.45+VNoise(x/8.0,y/4.0,s)*4));
             uint col=RampPick(r,val);
             double h=Hsh(x,y,s+5);
-            if((t==0||t==2||t==7||t==16||t==20||t==1||t==11||t==19||t==9)&&h>.965)col=h>.985?r[4]:r[0];
+            if(t==0||t==2||t==7||t==16||t==20||t==1||t==11||t==19||t==9)
+            {
+                if(h>.955)col=h>.978?r[4]:r[0];
+                if((t==0||t==2||t==7)&&Hsh(x,y,s+21)>.994)col=Flowers[(int)(Hsh(x,y,s+22)*4)%4];
+                if((t==0||t==2||t==7)&&x>0&&Hsh(x-1,y,s+5)>.955&&h<=.955&&Hsh(x,y,s+23)>.5)col=r[1];
+            }
             if(t==17&&Hsh(x>>1,y,s+7)>.93&&VNoise(x/3.0,y/2.0,s+8)>.55)col=Rgb(236,120,40);
             if(t==10){double w=VNoise(x/6.0,y/3.0,s+11);if(w>.5&&Math.Abs(w-.55)<.02)col=Shade(col,.6);}
             if((t==14||t==15||t==13||t==8)&&h>.97)col=Rgb(255,255,255);
             if(t==9&&VNoise(x/5.0,y/3.0,s+12)>.68)col=MixC(Bog[4],Water[2],.4);
             return col;
         }
+        static readonly uint[] Flowers={Rgb(240,226,96),Rgb(246,246,240),Rgb(230,130,170),Rgb(150,140,230)};
         static readonly Dictionary<int,PixelCanvas> baseCache=new Dictionary<int,PixelCanvas>();
         public static PixelCanvas BaseTex(int t,int variant,int frame)
         {
@@ -166,23 +175,42 @@ namespace ParadigmRealm
             }
             pts.Sort((a,b)=>a[1].CompareTo(b[1]));return pts;
         }
-        static void Broadleaf(PixelCanvas cv,double x,double y,uint[] r,double sz)
+        static readonly uint[] Tree0=Ramp(24,58,34,36,84,42,52,112,48,78,140,54,120,170,70);
+        static readonly uint[] Tree1=Ramp(20,52,40,30,76,50,44,102,58,66,128,62,104,156,76);
+        static readonly uint[] Tree2=Ramp(60,60,28,92,86,34,128,112,40,168,136,48,212,160,60);
+        static readonly uint[] Tree3=Ramp(70,44,24,112,62,28,160,86,30,204,118,36,236,160,60);
+        static readonly uint[] JungleTree=Ramp(16,52,36,26,84,48,40,116,54,62,146,60,110,176,80);
+        static readonly uint[] MangroveTree=Ramp(30,66,52,44,92,62,62,116,66,88,140,74,128,170,96);
+        static readonly uint[] RockBrown=Ramp(60,54,50,88,80,70,118,106,90,148,134,112,178,162,134);
+        static void Broadleaf(PixelCanvas cv,double x,double y,double sz,uint[] p)
         {
-            RectFill(cv,(int)x-1,(int)y-1,(int)x+1,(int)y+3,Rgb(70,46,30));
-            Disk(cv,x,y-sz*.9,sz,sz*.85,r,0);
-            Disk(cv,x-sz*.35,y-sz*1.3,sz*.55,sz*.45,r,.18);
+            RectFill(cv,(int)x,(int)y-2,(int)x+2,(int)y+1,Rgb(64,42,28));
+            double cx=x+1,cy=y-sz*1.1;
+            Disk(cv,cx,cy,sz,sz*.85,p,0);
+            double[][] lobes={new[]{-.45,-.35,.62},new[]{.4,-.1,.5},new[]{-.1,-.65,.5}};
+            for(int k=0;k<3;k++)Disk(cv,cx+lobes[k][0]*sz,cy+lobes[k][1]*sz,sz*lobes[k][2],sz*lobes[k][2]*.85,p,.08+.06*k);
+            for(int k=0;k<4;k++){int px=(int)(cx-sz*.7+Hsh((int)x,k,3)*sz*1.2),py=(int)(cy-sz*.8+Hsh(k,(int)y,4)*sz*.9);cv.Over(px,py,p[4]);}
         }
-        static void Pine(PixelCanvas cv,double x,double y,uint[] r,bool snow,double sz)
+        static void Pine(PixelCanvas cv,double xd,double yd,bool snow,double sz,uint[] p)
         {
-            RectFill(cv,(int)x,(int)y-1,(int)x+1,(int)y+2,Rgb(60,40,28));
-            double[] widths={7*sz,5.5*sz,4*sz},tops={-9*sz,-15*sz,-20*sz};
-            for(int k=0;k<3;k++)
+            int x=(int)xd,y=(int)yd;
+            RectFill(cv,x,y-2,x+2,y+1,Rgb(58,38,26));
+            int H=(int)(17*sz);double th=H/3.0;
+            for(int row=0;row<H;row++)
             {
-                double w=widths[k],top=tops[k],bas=y-(k*5.5*sz);
-                var pts=new[]{P(x-w,bas+1),P(x+w,bas+1),P(x,bas+top*.55-4*sz)};
-                double cx=x,cw=w;
-                Poly(cv,pts,(X,Y)=>Lit(r,(X-cx)/cw,.3,X,Y,-.05));
-                if(snow)Poly(cv,new[]{P(x-w*.55,bas-3*sz),P(x+w*.3,bas-3*sz),P(x,bas+top*.55-4*sz)},(X,Y)=>Rgb(236,244,248));
+                int k=(int)(row/th);double rr=row-k*th;
+                double w=1.0+(rr/th)*(2.4+k*1.3)*sz*1.25+(rr>=th-1?.6:0);
+                int yy=y-H+row-1;
+                for(int dx=-(int)w-1;dx<(int)w+2;dx++)
+                {
+                    double e=Math.Abs(dx)-w+(Hsh(dx,yy,k+3)-.5)*.9;if(e>0)continue;
+                    double side=dx/Math.Max(1.0,w);
+                    double v=.55+.5*(-side)-.25*(rr/th)+(Bay(x+dx,yy)-.5)*.25;
+                    if(rr>=th-1.2)v-=.25;
+                    uint c=RampPick(p,v);
+                    if(snow&&(rr<th*.55||(Hsh(dx,yy,9)>.6&&side<.4)))c=side<.2?Rgb(232,242,248):Rgb(190,208,224);
+                    cv.Over(x+1+dx,yy,c);
+                }
             }
         }
         static void Palm(PixelCanvas cv,double x,double y,uint[] r)
@@ -202,56 +230,74 @@ namespace ParadigmRealm
         static PixelCanvas ForestSprite(int kind,int variant)
         {
             var cv=new PixelCanvas(SW,SH);int s=variant*31+kind;
-            if(kind==13){foreach(var q in Spots(s,7,22,9,7))Pine(cv,q[0],q[1],ForestGround,true,.9);}
+            if(kind==13){foreach(var q in Spots(s,13,23,10,5))Pine(cv,q[0],q[1]+2,true,.62+Hsh((int)q[0],(int)q[1],1)*.3,Tree1);}
             else if(kind==1)
             {
-                var r=Ramp(30,70,44,44,100,54,66,130,60,96,160,70,140,190,84);
-                foreach(var q in Spots(s,7,22,9,8))Broadleaf(cv,q[0],q[1],r,6.5);
+                foreach(var q in Spots(s,13,23,10,5))
+                {
+                    double h=Hsh((int)q[0],(int)q[1],2);
+                    if(h<.55)Pine(cv,q[0],q[1]+2,false,.62+h*.5,h<.35?Tree0:Tree1);
+                    else Broadleaf(cv,q[0],q[1]+1,4+h*2,h<.8?Tree0:(h<.92?Tree2:Tree3));
+                }
             }
             else if(kind==11)
             {
-                int i=0;foreach(var q in Spots(s,7,22,9,8)){if(i%2==0)Palm(cv,q[0],q[1],Jungle);else Broadleaf(cv,q[0],q[1],Jungle,8);i++;}
+                int i=0;foreach(var q in Spots(s,10,23,10,6)){if(i%3==0)Palm(cv,q[0],q[1],Jungle);else Broadleaf(cv,q[0],q[1]+1,5,JungleTree);i++;}
             }
-            else if(kind==19){foreach(var q in Spots(s,6,20,8,8))Broadleaf(cv,q[0],q[1],Mangrove,5);}
-            Outline(cv,Ink);return cv;
+            else if(kind==19){foreach(var q in Spots(s,8,22,9,7))Broadleaf(cv,q[0],q[1],4,MangroveTree);}
+            Outline(cv,Rgb(14,22,20));return cv;
         }
         static PixelCanvas HillsSprite(int variant)
         {
-            var cv=new PixelCanvas(SW,SH);
-            double[][] mounds={new[]{AX-8.0,22,15},new[]{AX+9.0,24,19},new[]{(double)AX,18,11}};
-            foreach(var m in mounds)
+            var cv=new PixelCanvas(SW,SH);int s=variant*7;
+            double[][] mounds={new[]{AX-8.0,21,14},new[]{AX+10.0,22,18},new[]{(double)AX,16,11}};
+            for(int k=0;k<3;k++)
             {
-                double cx=m[0],w=m[1],h=m[2];
+                double cx=mounds[k][0],w=mounds[k][1],h=mounds[k][2];
                 for(int x=(int)(cx-w);x<(int)(cx+w);x++)
                 {
                     double u=(x+.5-cx)/w;if(Math.Abs(u)>=1)continue;
-                    double top=AY+7-h*Math.Pow(1-u*u,.8);
-                    for(int y=(int)top;y<AY+9;y++){double ny=(y-top)/(h+2);cv.Over(x,y,Lit(Grass,u,-.6+ny*.8,x,y,-.02));}
-                }
-            }
-            Outline(cv,Ink);return cv;
-        }
-        static readonly uint[] MountRock={Rgb(58,56,64),Rgb(84,80,88),Rgb(112,104,106),Rgb(142,130,122),Rgb(172,160,144)};
-        static PixelCanvas MountainSprite(int variant)
-        {
-            var cv=new PixelCanvas(SW,SH);int s=variant*13;double snowline=.52;
-            var peaks=new[]{new[]{AX-9.0,AY+6.0,26+(int)(Hsh(variant,1,2)*5),15.0},new[]{AX+10.0,AY+7.0,22+(int)(Hsh(variant,2,2)*5),14.0},new[]{AX+1.0,AY+10.0,34.0,13.0}};
-            foreach(var pk in peaks)
-            {
-                double px=pk[0],py=pk[1],h=pk[2],w=pk[3];int top=(int)(py-h);
-                for(int y=top;y<=(int)py;y++)
-                {
-                    double f=(y-top)/h,half=w*f;
-                    for(int x=(int)(px-half);x<=(int)(px+half);x++)
+                    double top=AY+7-h*Math.Pow(1-u*u,.8)+(Hsh(x,k,s)-.5)*1.2;
+                    for(int y=(int)top;y<AY+9;y++)
                     {
-                        double side=(x-px)/Math.Max(1.0,half);uint c;
-                        if(f<=snowline*.9+Hsh(x,y,s)*.06&&(side<.55||f<.3))c=side<.1?Rgb(240,246,250):Rgb(196,212,226);
-                        else{double v=.5+.5*(-side*.9)-.08*f+(Bay(x,y)-.5)*.3;c=RampPick(MountRock,v+(side<-.3?.1:0));}
+                        double ny=(y-top)/(h+2);uint c=Lit(Grass,u,-.6+ny*.8,x,y,-.02);
+                        if(y<top+1.6&&u<.3)c=Grass[4];
+                        if(ny>.62&&Hsh(x>>1,y,s+3)>.45)c=Shade(Rgb(120,100,70),.75+ny*.3);
                         cv.Over(x,y,c);
                     }
                 }
             }
-            Outline(cv,Ink);return cv;
+            foreach(var q in Spots(variant*5+3,4,20,6,9))Disk(cv,q[0],q[1]+1,2.4,2,RockBrown,0);
+            Outline(cv,Rgb(18,26,16));return cv;
+        }
+        static readonly uint[] MountRock={Rgb(48,46,56),Rgb(76,72,80),Rgb(108,100,102),Rgb(140,128,120),Rgb(176,162,146)};
+        static PixelCanvas MountainSprite(int variant)
+        {
+            var cv=new PixelCanvas(SW,SH);int s=variant*13;double snowline=.5;
+            var peaks=new[]{new[]{AX-10.0,AY+7.0,24+(int)(Hsh(variant,1,2)*5),15.0},new[]{AX+11.0,AY+8.0,21+(int)(Hsh(variant,2,2)*5),14.0},new[]{AX+1.0,AY+11.0,34.0,15.0}};
+            for(int pi=0;pi<3;pi++)
+            {
+                double px=peaks[pi][0],py=peaks[pi][1],h=peaks[pi][2],w=peaks[pi][3];int top=(int)(py-h);
+                for(int y=top;y<=(int)py;y++)
+                {
+                    double f=(y-top)/h,half=w*f*(.85+.3*Hsh(y,pi,s));
+                    for(int x=(int)(px-half);x<=(int)(px+half);x++)
+                    {
+                        double side=(x-px)/Math.Max(1.0,half);
+                        double ridge=.12*Math.Sin(y*.9+pi*2)+(Hsh(y>>1,pi,s+4)-.5)*.25;
+                        bool litFace=side<ridge;uint c;
+                        if(f<=snowline*.9+Hsh(x,y,s)*.07&&(side<.6||f<.3))c=litFace?Rgb(244,250,252):Rgb(178,198,220);
+                        else
+                        {
+                            double v=(litFace?.62:.28)-.12*f+(Bay(x,y)-.5)*.34;
+                            if((y+pi*3)%5==0&&Hsh(x,y,6)>.35)v-=.18;
+                            c=RampPick(MountRock,v);
+                        }
+                        cv.Over(x,y,c);
+                    }
+                }
+            }
+            Outline(cv,Rgb(20,20,28));return cv;
         }
         static readonly uint[] VolcanoRock={Rgb(36,30,34),Rgb(58,46,46),Rgb(84,64,56),Rgb(112,84,68),Rgb(140,104,80)};
         static PixelCanvas VolcanoSprite(int variant)
@@ -304,6 +350,7 @@ namespace ParadigmRealm
         static PixelCanvas AcaciaSprite(int variant)
         {
             var cv=new PixelCanvas(SW,SH);int x=AX+(variant%3-1)*8,y=AY+2;
+            foreach(var q in Spots(variant*13+7,6,22,9,6)){int tx=(int)q[0],ty=(int)q[1];for(int k=0;k<3;k++)RectFill(cv,tx+k-1,ty-3-k%2,tx+k,ty,Rgb(214,186,84));cv.Over(tx,ty-4,Rgb(240,220,120));}
             RectFill(cv,x,y-12,x+2,y,Rgb(110,84,56));
             for(int dx=-8;dx<=8;dx+=4)Disk(cv,x+1+dx,y-14+Math.Abs(dx)/4,5,2.6,AcaciaRamp,0);
             Outline(cv,Ink);return cv;
@@ -361,14 +408,19 @@ namespace ParadigmRealm
         {
             switch(t){case 3:return 1;case 5:case 10:case 17:case 18:return 2;case 8:case 13:case 14:case 15:return 3;default:return 0;}
         }
-        static readonly uint[][] SkirtColours={new[]{Rgb(88,62,40),Rgb(112,80,50),Rgb(136,98,62)},new[]{Rgb(176,138,84),Rgb(204,168,104),Rgb(226,192,128)},new[]{Rgb(70,66,72),Rgb(98,92,98),Rgb(128,120,120)},new[]{Rgb(150,184,206),Rgb(184,212,230),Rgb(214,232,244)}};
+        static readonly uint[][] SkirtColours={new[]{Rgb(70,62,62),Rgb(104,92,84),Rgb(136,120,104)},new[]{Rgb(176,138,84),Rgb(204,168,104),Rgb(226,192,128)},new[]{Rgb(58,54,62),Rgb(90,84,90),Rgb(124,116,116)},new[]{Rgb(130,170,200),Rgb(176,206,228),Rgb(216,234,246)}};
         static readonly uint[] Lip={Rgb(112,172,74),Rgb(62,118,58),Rgb(112,172,74),Rgb(238,212,152),0,Rgb(150,140,130),0,Rgb(112,172,74),Rgb(184,194,180),Rgb(98,108,60),Rgb(148,130,104),Rgb(50,126,56),0,Rgb(210,222,224),Rgb(230,242,248),Rgb(210,230,244),Rgb(222,198,104),Rgb(88,64,50),Rgb(150,140,130),Rgb(84,132,72),Rgb(196,198,112)};
         static uint SkirtPixel(int t,bool left,int x,int y,int ytop)
         {
             var r=SkirtColours[SkirtFamily(t)];int d=y-ytop;
-            if(d<2)return Shade(Lip[t]==0?r[2]:Lip[t],left?.92:.7);
-            uint baseC=left?r[1]:r[0];double v=.9+.2*(Hsh(x,y>>2,t)-.5);uint c=Shade(baseC,v);
-            if((x/3)%5==0&&Hsh(x,y,3)>.5)c=Shade(c,.85);
+            if(d<2)return Shade(Lip[t]==0?r[2]:Lip[t],left?.95:.72);
+            uint baseC=left?r[2]:r[1];
+            double v=.82+.3*Hsh(x>>1,0,t+5)+.12*Hsh(x,y>>1,t+1);
+            uint c=Shade(baseC,v);
+            if(d==2)c=Shade(c,.7);
+            if(Hsh(x,y>>1,t+9)>.86)c=Shade(c,.62);
+            if(Hsh(x,y,t+11)>.93)c=Shade(c,1.25);
+            if(d>=Elev-1)c=Shade(c,.8);
             return c;
         }
         static double EdgeE(int dir,int px,int py)
@@ -446,7 +498,7 @@ namespace ParadigmRealm
                     if(!Inside(x,y))continue;
                     double e=EdgeE(d,x,y);
                     if(!IsWater(t)&&n==4&&e>.9)cv.Set(x,y+y0,Shade(cv.Get(x,y+y0),1.25));
-                    if(IsWater(t)&&n==99&&(d==0||d==3)&&e>.86&&((x+frame*2+y)%6)<4)cv.Set(x,y+y0,e>.93?Rgb(226,240,244):Rgb(170,210,224));
+                    if(IsWater(t)&&n==99&&(d==0||d==3)&&e>.7&&((x+frame*2+y+(e>.8?1:0))%7)<5)cv.Set(x,y+y0,e>.84?Rgb(244,250,252):Rgb(176,220,240));
                 }
             }
             if(!IsWater(t))

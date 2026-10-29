@@ -7,6 +7,7 @@
 - `IsoRenderer.cs`: diamond renderer (back-to-front), camera in lattice coordinates that wraps east-west on sphere worlds, picking (raised surface first), five zoom steps, selection/destination/stack-label overlay, per-frame paint budget and texture cache.
 - The old square renderer is kept; press V or use the "View" button to switch. Diamond is the default.
 - WASD / middle-drag pan, wheel and Zoom buttons change diamond zoom. The Known World screen shows a rotating globe on sphere worlds (drag to spin; click land to centre the map).
+- Art pass 2 (29 Oct 2026): redone toward the gallery look: saturated deep-blue animated water with ripple dashes and thick shoreline foam, mottled grass with flowers, dense forests of tiered pines and round trees, jagged snow-capped mountains, rocky cliff faces. Resource badges are now drawn after all tiles so they are no longer half covered.
 - Harness: `PixelChecks` (size, determinism, non-empty, pick round trip). These only prove the maths; nothing here has been compiled or looked at in Unity. Art quality and performance are unverified.
 
 ## Performance pass 1 (source written 28 Oct 2026; NOT yet measured in Unity)
