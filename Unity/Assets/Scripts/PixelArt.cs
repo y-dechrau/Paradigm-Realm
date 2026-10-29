@@ -251,47 +251,49 @@ namespace ParadigmRealm
         static PixelCanvas HillsSprite(int variant)
         {
             var cv=new PixelCanvas(SW,SH);int s=variant*7;
-            double[][] mounds={new[]{AX-8.0,21,14},new[]{AX+10.0,22,18},new[]{(double)AX,16,11}};
+            double[][] mounds={new[]{AX+1.0,12,18,AY+6.0},new[]{AX-11.0,9,13,AY+9.0},new[]{AX+12.0,9,14,AY+9.0}};
             for(int k=0;k<3;k++)
             {
-                double cx=mounds[k][0],w=mounds[k][1],h=mounds[k][2];
+                double cx=mounds[k][0],w=mounds[k][1],h=mounds[k][2];int bas=(int)mounds[k][3];
                 for(int x=(int)(cx-w);x<(int)(cx+w);x++)
                 {
                     double u=(x+.5-cx)/w;if(Math.Abs(u)>=1)continue;
-                    double top=AY+7-h*Math.Pow(1-u*u,.8)+(Hsh(x,k,s)-.5)*1.2;
-                    for(int y=(int)top;y<AY+9;y++)
+                    double top=bas-h*Math.Pow(1-u*u,.5)+(Hsh(x,k,s)-.5)*1.0;
+                    for(int y=(int)top;y<=bas;y++)
                     {
-                        double ny=(y-top)/(h+2);uint c=Lit(Grass,u,-.6+ny*.8,x,y,-.02);
+                        double ny=(y-top)/(h+1.0);uint c=Lit(Grass,u,-.55+ny*.9,x,y,-.02);
                         if(y<top+1.6&&u<.3)c=Grass[4];
-                        if(ny>.62&&Hsh(x>>1,y,s+3)>.45)c=Shade(Rgb(120,100,70),.75+ny*.3);
+                        if(ny>.82&&Hsh(x>>1,y,s+3)>.5)c=Shade(Rgb(120,100,70),.7+ny*.3);
                         cv.Over(x,y,c);
                     }
                 }
             }
-            foreach(var q in Spots(variant*5+3,4,20,6,9))Disk(cv,q[0],q[1]+1,2.4,2,RockBrown,0);
+            foreach(var q in Spots(variant*5+3,3,14,4,9))Disk(cv,q[0],q[1]+6,2.2,1.9,RockBrown,0);
             Outline(cv,Rgb(18,26,16));return cv;
         }
         static readonly uint[] MountRock={Rgb(48,46,56),Rgb(76,72,80),Rgb(108,100,102),Rgb(140,128,120),Rgb(176,162,146)};
         static PixelCanvas MountainSprite(int variant)
         {
-            var cv=new PixelCanvas(SW,SH);int s=variant*13;double snowline=.5;
-            var peaks=new[]{new[]{AX-12.0,AY+7.0,30+(int)(Hsh(variant,1,2)*6),17.0},new[]{AX+13.0,AY+8.0,27+(int)(Hsh(variant,2,2)*6),16.0},new[]{AX+1.0,AY+11.0,40.0,19.0}};
+            var cv=new PixelCanvas(SW,SH);int s=variant*13;
+            // back to front: two small side peaks, then the tall centre peak
+            var peaks=new[]{new[]{AX-12.0,AY+6.0,21+(int)(Hsh(variant,1,2)*4),9.0},new[]{AX+13.0,AY+7.0,19+(int)(Hsh(variant,2,2)*4),9.0},new[]{AX+1.0,AY+10.0,36.0,14.0}};
             for(int pi=0;pi<3;pi++)
             {
                 double px=peaks[pi][0],py=peaks[pi][1],h=peaks[pi][2],w=peaks[pi][3];int top=(int)(py-h);
                 for(int y=top;y<=(int)py;y++)
                 {
-                    double f=(y-top)/h,half=w*f*(.85+.3*Hsh(y,pi,s));
+                    double f=(y-top)/h,half=w*f+(Hsh(y,pi,s)-.5)*1.4;
                     for(int x=(int)(px-half);x<=(int)(px+half);x++)
                     {
                         double side=(x-px)/Math.Max(1.0,half);
-                        double ridge=.12*Math.Sin(y*.9+pi*2)+(Hsh(y>>1,pi,s+4)-.5)*.25;
+                        double ridge=-.15+.18*Math.Sin(y*.7+pi*2)+(Hsh(y>>1,pi,s+4)-.5)*.25;
                         bool litFace=side<ridge;uint c;
-                        if(f<=snowline*.9+Hsh(x,y,s)*.07&&(side<.6||f<.3))c=litFace?Rgb(244,250,252):Rgb(178,198,220);
+                        if(f<=.42+(Hsh(x>>1,y>>1,s)-.5)*.16+(litFace?.05:-.03))c=litFace?Rgb(246,251,253):Rgb(170,192,218);
                         else
                         {
-                            double v=(litFace?.62:.28)-.12*f+(Bay(x,y)-.5)*.34;
-                            if((y+pi*3)%5==0&&Hsh(x,y,6)>.35)v-=.18;
+                            double v=(litFace?.64:.24)-.14*f+(Bay(x,y)-.5)*.3;
+                            if((y+pi*3)%4==0&&Hsh(x,y,6)>.3)v-=.2;
+                            if(Math.Abs(side-ridge)<.1)v-=.2;
                             c=RampPick(MountRock,v);
                         }
                         cv.Over(x,y,c);
