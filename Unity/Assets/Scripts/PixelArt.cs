@@ -356,7 +356,6 @@ namespace ParadigmRealm
 
         // ---------- tile composition: ground, blends, rivers, foam, cliffs (64 x 48) ----------
         // Neighbour order everywhere: 0 NE (map y-1), 1 SE (x+1), 2 SW (y+1), 3 NW (x-1).
-        static readonly string DirNames="NE SE SW NW";
         public static int Height(int t){return IsWater(t)?0:Elev;}
         static int SkirtFamily(int t)
         {

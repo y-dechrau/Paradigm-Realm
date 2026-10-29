@@ -68,7 +68,7 @@ public partial class RealmGame {
         foreach(var u in world.units.Where(u=>u.owner==0).ToList())
             if(Button(World.UnitNames[u.type]+" #"+u.id+" | HP "+u.hp+" | "+world.Activity(u)+" | upkeep "+World.Upkeep[u.type])){selected=u.id;cityId=-1;detailsScreen="";cityScreen=false;Center();GUIUtility.ExitGUI();}
     }
-    Texture2D atlasTexture,globeTexture;Color[] atlasPixels;bool globeMode=true;float globeLon,globeLat,globeBuilt=-9,globeDrawnLon=-99,globeDrawnLat=-99;int globeDrawnAtlas;World atlasWorld;float atlasBuilt;readonly Color[] atlasColours=new Color[64];readonly bool[] atlasColourReady=new bool[64];
+    Texture2D atlasTexture,globeTexture;Color[] atlasPixels;bool globeMode=true;float globeLon,globeLat,globeDrawnLon=-99,globeDrawnLat=-99;int globeDrawnAtlas;World atlasWorld;float atlasBuilt;readonly Color[] atlasColours=new Color[64];readonly bool[] atlasColourReady=new bool[64];
     Color AtlasColour(int id){
         id=Math.Max(0,Math.Min(atlasColours.Length-1,id));
         if(!atlasColourReady[id]){var px=terrain[id].GetPixels();float r=0,g=0,b=0;foreach(var c in px){r+=c.r;g+=c.g;b+=c.b;}int n=Math.Max(1,px.Length);atlasColours[id]=new Color(r/n,g/n,b/n,1);atlasColourReady[id]=true;}
@@ -114,7 +114,7 @@ public partial class RealmGame {
             }
             globeTexture.SetPixels(px);globeTexture.Apply();globeDrawnLon=globeLon;globeDrawnLat=globeLat;globeBuiltAtlas=globeDrawnAtlas;
         }
-        GUI.DrawTexture(area,globeTexture,ScaleMode.StretchToFit,true);
+        GUI.DrawTexture(area,globeTexture,ScaleMode.StretchToFill,true);
         GUI.Label(new Rect(20,380,140,60),"Drag the globe to spin it. Click land to centre the main map.",small);
         if(e.type==EventType.MouseDown&&e.button==0&&area.Contains(e.mousePosition)){
             float R=D/2f,nx=(e.mousePosition.x-area.x-R)/R,ny=(R-(e.mousePosition.y-area.y))/R,r2=nx*nx+ny*ny;
