@@ -43,7 +43,7 @@ namespace ParadigmRealm {
    }
    return chosen.Select(t=>t.Tile).ToList();
   }
-  public int FoodNeeded(City c){return 12+c.pop*6;}
+  public int FoodNeeded(City c){return 10+c.pop*4;}
   public string GrowthStatus(City c){
    int net=Yield(c)[0];
    if(net<0)return "Food shortage: "+(-net)+"/turn. "+(c.food/(-net)+1)+" turns until stores run out; reduce specialists or improve food tiles.";

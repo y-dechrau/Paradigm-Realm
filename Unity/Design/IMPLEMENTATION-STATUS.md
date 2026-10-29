@@ -2,6 +2,12 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Victory screen, Concord victory and first rules alignment (source written 29 Oct 2026; NOT yet compiled or run in Unity)
+- `Victory.cs` / `VictoryUI.cs`: new "Victory" button in the header opens one screen with three bars (Conquest, Transcendence, Concord). Concord is a new win: friendship or alliance with every surviving rival for 20 consecutive turns (a lapsed treaty or an unmet rival resets it). The count is a new saved field `concordTurns` (defaults to 0, so older saves load unchanged).
+- Rules alignment from CORE-DESIGN-16BIT.md, first two items only: growth now needs 10 + 4 x population food (was 12 + 6 x population), and buying costs 2 gold per remaining shield, doubled when nothing has been built yet (was 3 per shield). The tax split, upkeep, happiness, experience and cost tables are NOT yet aligned; Stage 3 is partly done.
+- These two changes make cities grow faster and buying cheaper once production has started, so early pacing will shift; expect to tune in play.
+- Harness: `VictoryChecks` (concord counting and reset, three bars, growth formula) and the rush price check in `EmpireChecks` were updated. Nothing has run in Unity.
+
 ## Stage 2: variable civilisation count (source written 29 Oct 2026; NOT yet compiled or run in Unity)
 - New games can have 2 to 16 civilisations (slider on the New Game screen). Limit per map size: Tiny 4, Small 6, Medium 8, Large 12, Huge 14, Massive 16. Three civilisations is still the default and keeps the old start positions on flat maps.
 - Save version 10 adds `civCount`. All per-civilisation arrays (`nations`, `met`, `war`, `openBorders`, war weariness, diplomacy pairs) are sized from it. Diplomacy pairs are stored in (0,1),(0,2)... order and found by index. The single `rivalWar` flag is replaced by a per-pair `atWar`, so rivals can be at war with some civilisations and at peace with others. Version 9 saves migrate (the old flag is copied onto the rival pair).

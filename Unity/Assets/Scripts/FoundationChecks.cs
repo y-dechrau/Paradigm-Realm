@@ -73,6 +73,7 @@ namespace ParadigmRealm
             SpeedChecks();
             PixelChecks();
             CivChecks();
+            VictoryChecks();
             ContentChecks.Run();
             var victory=World.New(22);victory.units.RemoveAll(a=>a.owner>0);victory.cities.RemoveAll(a=>a.owner>0);victory.CheckVictory();Require(victory.result.StartsWith("Conquest"),"conquest detected");
             var defeat=World.New(23);defeat.units.RemoveAll(a=>a.owner==0);defeat.CheckVictory();Require(defeat.result.Contains("fallen"),"defeat detected");
@@ -170,6 +171,26 @@ namespace ParadigmRealm
             Require(old.version==10&&old.civCount==3&&old.AtWar(1,2)&&!old.AtWar(0,1)&&old.Valid(),"version 9 saves upgrade with the old rival war flag preserved");
             var peace=World.New(7,"Peace",0,1,1,0,1,0,3);peace.version=9;peace.rivalWar=false;peace.UpgradeSave();
             Require(!peace.AtWar(1,2)&&peace.Valid(),"version 9 peace between rivals preserved");
+        }
+        static void VictoryChecks()
+        {
+            var w=World.New(31,"Victory Test",0,1,1,0,1,1,4);
+            var rivals=w.SurvivingRivals();
+            Require(rivals.Count==3&&w.concordTurns==0,"four civilisations start with three surviving rivals");
+            foreach(int o in rivals){w.Relation(0,o).contact=true;w.met[o]=true;w.Relation(0,o).friendUntil=w.turn+100;}
+            for(int i=0;i<World.ConcordTarget-1;i++){w.turn++;w.UpdateConcord();}
+            Require(w.concordTurns==World.ConcordTarget-1&&w.result=="","concord counts consecutive turns without winning early");
+            w.Relation(0,rivals[0]).friendUntil=0;w.turn++;w.UpdateConcord();
+            Require(w.concordTurns==0,"a lapsed friendship resets the count");
+            w.Relation(0,rivals[0]).friendUntil=w.turn+100;
+            for(int i=0;i<World.ConcordTarget;i++){w.turn++;w.UpdateConcord();}
+            Require(w.result.StartsWith("Concord"),"twenty consecutive turns of friendship win");
+            float[] progress;var text=w.VictoryText(out progress);
+            Require(text.Length==3&&progress.Length==3&&progress[2]==1f,"victory screen reports three bars");
+            var lone=World.New(32,"Lone",0,1,1,0,1,1,3);lone.units.RemoveAll(a=>a.owner>0);lone.cities.RemoveAll(a=>a.owner>0);
+            Require(lone.SurvivingRivals().Count==0,"eliminated rivals no longer count");
+            var growth=World.New(33,"Growth",0,1,1,0,1,1,3);var city=growth.Found(growth.units.First(a=>a.owner==0&&a.type==0));
+            Require(growth.FoodNeeded(city)==10+4*city.pop,"growth needs 10 + 4 x population food");
         }
         static void SphereChecks()
         {

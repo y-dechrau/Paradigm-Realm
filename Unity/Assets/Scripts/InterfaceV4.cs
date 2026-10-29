@@ -60,8 +60,8 @@ namespace ParadigmRealm
             if(GUI.Button(new Rect(995,15,110,30),"New world",button)){mainMenu=true;confirmNew=true;GUIUtility.ExitGUI();}
             if(GUI.Button(new Rect(1115,15,110,30),"Guide",button)){cityScreen=false;researchScreen=false;detailsScreen="";guide=true;GUIUtility.ExitGUI();}
             if(GUI.Button(new Rect(510,54,140,32),"Research",button)){researchScreen=true;detailsScreen="";ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
-            string[] names={"Economy","Diplomacy","Identity","Cities","Chronicle"};
-            for(int i=0;i<names.Length;i++)if(GUI.Button(new Rect(660+i*116,54,110,32),names[i]+(names[i]=="Diplomacy"&&world.offers.Any(o=>o.to==0&&o.status==0&&o.expires>world.turn)?" ("+world.offers.Count(o=>o.to==0&&o.status==0&&o.expires>world.turn)+")":""),button))OpenDetails(names[i]);
+            string[] names={"Economy","Diplomacy","Victory","Identity","Cities","Chronicle"};
+            for(int i=0;i<names.Length;i++)if(GUI.Button(new Rect(660+i*97,54,93,32),names[i]+(names[i]=="Diplomacy"&&world.offers.Any(o=>o.to==0&&o.status==0&&o.expires>world.turn)?" ("+world.offers.Count(o=>o.to==0&&o.status==0&&o.expires>world.turn)+")":""),button))OpenDetails(names[i]);
             GUI.enabled=enabled;
         }
         void DrawDetailsScreen()
@@ -77,6 +77,7 @@ namespace ParadigmRealm
             DrawEmpireEconomy();
             }else if(detailsScreen=="Settlement adviser"){DrawSettlementAdviser();
             }else if(detailsScreen=="Citizens"){DrawCitizenManagement();
+            }else if(detailsScreen=="Victory"){DrawVictoryStatus();
             }else if(detailsScreen=="Identity"){
                 GUI.SetNextControlName("rename");renameText=GUILayout.TextField(renameText,32);if(Button("Apply civilisation name"))world.civilisationName=World.CleanName(renameText);
                 world.flag=GUILayout.SelectionGrid(world.flag,new[]{"Leaf","Star","Sun"},3);
