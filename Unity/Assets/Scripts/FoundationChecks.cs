@@ -62,7 +62,7 @@ namespace ParadigmRealm
             dual.ChooseProject(dc,2,false);for(int i=0;i<2;i++)dual.Add(0,2,dc.x,dc.y);dc.production=dual.Cost(2);dc.buildingProduction=dual.Cost(8);dual.Produce(dc,1);
             Require(dc.build==2&&dc.library,"blocked unit stack does not block building construction");
             var old=Flat();var oc=old.Found(old.units.First(v=>v.owner==0&&v.type==0));old.version=3;oc.build=8;oc.production=17;oc.queue=new System.Collections.Generic.List<int>{1,7,1,9};old.UpgradeSave();
-            Require(old.version==9&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
+            Require(old.version==10&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
             old.UpgradeSave();Require(oc.buildingProduction==17&&oc.queue.Count==1,"migration is idempotent");
             var upgrade=Flat();var uc=upgrade.Found(upgrade.units.First(v=>v.owner==0&&v.type==0));var troop=upgrade.units.First(v=>v.owner==0&&v.type==2);upgrade.tech[6]=true;upgrade.gold=100;
             Require(!upgrade.Upgrade(troop),"owned territory alone does not permit upgrades");troop.x=uc.x;troop.y=uc.y;Require(upgrade.Upgrade(troop)&&troop.type==7,"owned city permits eligible upgrade");
@@ -72,6 +72,7 @@ namespace ParadigmRealm
             SphereChecks();
             SpeedChecks();
             PixelChecks();
+            CivChecks();
             ContentChecks.Run();
             var victory=World.New(22);victory.units.RemoveAll(a=>a.owner>0);victory.cities.RemoveAll(a=>a.owner>0);victory.CheckVictory();Require(victory.result.StartsWith("Conquest"),"conquest detected");
             var defeat=World.New(23);defeat.units.RemoveAll(a=>a.owner==0);defeat.CheckVictory();Require(defeat.result.Contains("fallen"),"defeat detected");
@@ -146,6 +147,30 @@ namespace ParadigmRealm
                 Require((int)Math.Round((u+v)/2)==i&&(int)Math.Round((v-u)/2)==j,"diamond pick round trip "+i+","+j);
             }
         }
+        static void CivChecks()
+        {
+            foreach(var plan in new[]{new[]{1,1,2},new[]{1,1,5},new[]{0,0,4},new[]{1,2,8},new[]{0,1,6}})
+            {
+                int shape=plan[0],size=plan[1],civs=plan[2];
+                var w=World.New(900+civs,"Civ Test",0,1,1,0,size,shape,civs);
+                string label=(shape==1?"sphere ":"flat ")+World.MapSizeNames[size]+" with "+civs+" civilisations";
+                Require(w.civCount==civs&&w.nations.Length==civs&&w.met.Length==civs&&w.war.Length==civs&&w.openBorders.Length==civs,label+": per-civilisation arrays match");
+                Require(w.diplomacy.Count==civs*(civs-1)/2&&w.Valid(),label+": diplomacy pairs and validity");
+                Require(w.cities.Count==civs-1&&w.units.Count(u=>u.owner==0)==3,label+": every rival has a city, the player has a start party");
+                var starts=Enumerable.Range(0,civs).Select(o=>w.units.Where(u=>u.owner==o).Select(u=>u.y*w.Width+u.x).First()).ToList();
+                Require(starts.Distinct().Count()==civs,label+": distinct start tiles");
+                for(int o=0;o<civs;o++)Require(w.units.Any(u=>u.owner==o&&u.type==0||w.cities.Any(c=>c.owner==o)),label+": civilisation "+o+" has a start");
+                for(int a=0;a<civs;a++)for(int b=a+1;b<civs;b++)Require(w.Relation(a,b)!=null&&w.Relation(b,a)==w.Relation(a,b)&&w.Relation(a,b).a==a&&w.Relation(a,b).b==b,label+": pair "+a+","+b+" lookup");
+                for(int i=0;i<6;i++)w.EndTurn();
+                Require(w.Valid(),label+": still valid after six turns");
+            }
+            var clamped=World.New(5,"Clamp",0,1,1,0,0,1,16);
+            Require(clamped.civCount==World.MaxCivsBySize[0],"requests above the size limit are clamped");
+            var old=World.New(6,"Old",0,1,1,0,1,0,3);old.version=9;old.rivalWar=true;foreach(var p in old.diplomacy)p.atWar=false;old.UpgradeSave();
+            Require(old.version==10&&old.civCount==3&&old.AtWar(1,2)&&!old.AtWar(0,1)&&old.Valid(),"version 9 saves upgrade with the old rival war flag preserved");
+            var peace=World.New(7,"Peace",0,1,1,0,1,0,3);peace.version=9;peace.rivalWar=false;peace.UpgradeSave();
+            Require(!peace.AtWar(1,2)&&peace.Valid(),"version 9 peace between rivals preserved");
+        }
         static void SphereChecks()
         {
             for(int size=0;size<World.SphereWidths.Length;size++){
@@ -195,7 +220,7 @@ namespace ParadigmRealm
             Require(s.Move(climber,4,-1)&&climber.x==4+w2/2&&climber.y==0,"a unit steps over the north pole");
             // Saves migrate: version 8 becomes version 9 and stays flat.
             var old=World.New(8);old.version=8;old.UpgradeSave();
-            Require(old.version==9&&old.mapShape==0&&old.Valid(),"version 8 saves upgrade to flat version 9");
+            Require(old.version==10&&old.mapShape==0&&old.Valid(),"version 8 saves upgrade to flat version 10");
         }
         static void MapSizeChecks()
         {
@@ -212,7 +237,7 @@ namespace ParadigmRealm
             Require(World.New(9).Width==48&&World.New(9).Height==30,"default map stays Small 48 x 30");
             Require(World.New(9,"A",0,1,1,0,1).tiles.Select(t=>t.terrain).SequenceEqual(World.New(9).tiles.Select(t=>t.terrain)),"Small is the default size and repeatable by seed");
             var legacy=World.New(3);legacy.version=7;legacy.mapWidth=0;legacy.mapHeight=0;legacy.UpgradeSave();
-            Require(legacy.Width==48&&legacy.Height==30&&legacy.version==9&&legacy.Valid(),"version 7 saves upgrade to Small flat version 9");
+            Require(legacy.Width==48&&legacy.Height==30&&legacy.version==10&&legacy.Valid(),"version 7 saves upgrade to Small flat version 10");
         }
     }
 }

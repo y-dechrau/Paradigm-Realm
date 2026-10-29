@@ -20,8 +20,8 @@ public partial class RealmGame {
    if(Button("Cancel diplomatic action")){diplomacyConfirmation="";confirmingInbox=-1;confirmingOffer=null;}
    GUILayout.Label(status,body);return;
   }
-  var known=Enumerable.Range(1,2).Where(i=>world.met[i]).ToArray();if(known.Length==0){GUILayout.Label("Explore to meet other civilisations.",body);return;}
-  GUILayout.BeginHorizontal();foreach(int other in known)if(Button(world.NationName(other)))diplomacyPartner=other;GUILayout.EndHorizontal();if(!world.met[diplomacyPartner])diplomacyPartner=known[0];int partner=diplomacyPartner;var p=world.Relation(0,partner);
+  var known=Enumerable.Range(1,world.civCount-1).Where(i=>world.met[i]).ToArray();if(known.Length==0){GUILayout.Label("Explore to meet other civilisations.",body);return;}
+  for(int row=0;row<known.Length;row+=4){GUILayout.BeginHorizontal();foreach(int other in known.Skip(row).Take(4))if(Button(world.NationName(other)))diplomacyPartner=other;GUILayout.EndHorizontal();}if(!world.met[diplomacyPartner])diplomacyPartner=known[0];int partner=diplomacyPartner;var p=world.Relation(0,partner);
   GUILayout.Label(world.NationName(partner)+" — "+(world.AtWar(0,partner)?"WAR":world.Allied(0,partner)?"ALLIED":world.Friends(0,partner)?"FRIENDS":"PEACE"),heading);
   GUILayout.Label(world.Personality(partner),small);GUILayout.Label(world.RelationshipBreakdown(partner,0),body);
   GUILayout.Label("War weariness: "+world.warWeariness[0]+"; your cities lose "+world.WarUnhappiness(0)+" happiness. Peace recovers 2 weariness/turn.",small);
@@ -33,7 +33,7 @@ public partial class RealmGame {
   diplomacyDuration=GUILayout.SelectionGrid(diplomacyDuration,new[]{"10 turns","15 turns","30 turns"},3);
   DealField("You offer gold now",ref giveGold);DealField("You request gold now",ref askGold);
   if(diplomacyKind==4||diplomacyKind==5){DealField("You pay gold/turn (0–20)",ref givePerTurn);DealField("Partner pays gold/turn (0–20)",ref askPerTurn);GUILayout.Label("You share resource access",small);giveResource=GUILayout.SelectionGrid(giveResource,World.ResourceNames,6);GUILayout.Label("You request resource access",small);askResource=GUILayout.SelectionGrid(askResource,World.ResourceNames,6);}
-  bool recurring=diplomacyKind==4||diplomacyKind==5;int target=Enumerable.Range(1,2).FirstOrDefault(i=>i!=partner&&world.met[i]);
+  bool recurring=diplomacyKind==4||diplomacyKind==5;int target=Enumerable.Range(1,world.civCount-1).FirstOrDefault(i=>i!=partner&&world.met[i]);
   var offer=new DiplomaticOffer{from=0,to=partner,kind=(TreatyKind)diplomacyKind,duration=new[]{10,15,30}[diplomacyDuration],giveGold=DealNumber(giveGold,10000),askGold=DealNumber(askGold,10000),givePerTurn=recurring?DealNumber(givePerTurn,20):0,askPerTurn=recurring?DealNumber(askPerTurn,20):0,giveResource=recurring?giveResource:0,askResource=recurring?askResource:0,target=target==0?-1:target};
   GUILayout.Label(world.DescribeOffer(offer),body);GUILayout.Label(world.OfferAssessment(offer),small);
   bool enabled=GUI.enabled;GUI.enabled=enabled&&world.OfferProblem(offer)=="";if(Button("Review proposal")){confirmingOffer=offer;confirmingInbox=-1;diplomacyConfirmation="Send this proposal?";}GUI.enabled=enabled;

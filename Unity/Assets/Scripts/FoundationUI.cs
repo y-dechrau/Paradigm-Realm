@@ -58,7 +58,7 @@ namespace ParadigmRealm
             if(saveError!="")GUILayout.Label(saveError,small);GUILayout.EndArea();
         }
         string renameText="Verdant Union",seedText="";
-        int setupMap,setupSpeed=1,setupTrait,setupSize=1,setupShape=1;
+        int setupMap,setupSpeed=1,setupTrait,setupSize=1,setupShape=1,setupCivs=3;
         
         void AtomicSave(string path)
         {
@@ -95,7 +95,8 @@ namespace ParadigmRealm
             GUILayout.Label("Trait",body);
             setupTrait=GUILayout.SelectionGrid(setupTrait,new[]{"Balanced","Builders +1 production","Scholars +1 science","Traders +1 gold/city"},2);
             GUILayout.Label("Seed (optional number for repeatable worlds)",body);seedText=GUILayout.TextField(seedText,11);
-            GUILayout.Label("Earth / conquest / standard AI. Larger maps still have three civilisations for now; more are planned.",small);
+            int maxCivs=World.MaxCivsBySize[setupSize];if(setupCivs>maxCivs)setupCivs=maxCivs;if(setupCivs<2)setupCivs=2;
+            GUILayout.BeginHorizontal();GUILayout.Label("Civilisations: "+setupCivs+" (max "+maxCivs+" on this size)",body,GUILayout.Width(250));setupCivs=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupCivs,2,maxCivs));GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }
         void DrawFoundationPanel(Unit u)

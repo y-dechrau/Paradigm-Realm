@@ -48,7 +48,7 @@ Done in source: variable size and v8 migration, scaled starts and terrain featur
 - Make fog update incrementally, only around units and cities that moved or were created.
 - Harness: size round trip at every preset, v7 to v8 migration, determinism by seed, performance smoke test on Massive.
 
-### Stage 2 — Variable civilisation count (save v9)
+### Stage 2 — Variable civilisation count (save v10) — source written 29 Oct 2026, awaiting Unity testing
 Dynamic `nations`, diplomacy pairs for every pair of civilisations, AI and contact rules at 2 to 16, UI lists that scroll. Start positions spread by map size.
 
 ### Stage 3 — Rules alignment: economy and cities (save v10)

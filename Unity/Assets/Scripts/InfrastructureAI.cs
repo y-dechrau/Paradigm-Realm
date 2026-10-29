@@ -13,7 +13,7 @@ namespace ParadigmRealm {
    if(own.Any(c=>c.pop>=GrowthLimit(c)-1))wanted.Add(BuildingTech[Array.IndexOf(BuildingIds,own.Any(c=>!HasBuilding(c,37))?37:41)]);
    if(own.Any(c=>Happiness(c)<1))wanted.Add(TechnologyCatalog.Index("mysticism"));
    if(Budget(owner)[2]<0)wanted.Add(BuildingTech[Array.IndexOf(BuildingIds,31)]);
-   if(Enumerable.Range(0,3).Any(other=>other!=owner&&Friends(owner,other))){wanted.Add(TechnologyCatalog.Index("writing"));wanted.Add(TechnologyCatalog.Index("laws"));}
+   if(Enumerable.Range(0,civCount).Any(other=>other!=owner&&Friends(owner,other))){wanted.Add(TechnologyCatalog.Index("writing"));wanted.Add(TechnologyCatalog.Index("laws"));}
    wanted=wanted.Where(t=>t>=0&&!nations[owner].tech[t]).ToList();
    return available.OrderBy(t=>ResearchCost(t)/(1.0+ (ActiveTechBenefits(t).Length>0?1:0)+wanted.Count(target=>LeadsTo(t,target))*4)).ThenBy(t=>t).First();
   }

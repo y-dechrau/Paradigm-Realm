@@ -272,15 +272,15 @@ namespace ParadigmRealm
             return score;
         }
 
-        // Picks three well-spaced start sites on the largest landmass. Returns false if the world is unsuitable.
+        // Picks one well-spaced start site per civilisation on the largest landmass. Returns false if the world is unsuitable.
         bool ChooseSphereStarts(int[] sx,int[] sy,bool relaxed)
         {
             var masses=Landmasses();if(masses.Count==0)return false;
             var main=masses.OrderByDescending(m=>m.Count).First();
             if(!relaxed&&main.Count<tiles.Length*8/100)return false;
-            int minGap=Math.Max(8,Width/9);
+            int minGap=sx.Length<=3?Math.Max(8,Width/9):Math.Max(5,Math.Min(Width/9,(int)(Math.Sqrt(main.Count/(double)sx.Length)*.8)));
             var picked=new List<int>();
-            for(int k=0;k<3;k++)
+            for(int k=0;k<sx.Length;k++)
             {
                 int bestTile=-1,bestScore=int.MinValue;
                 foreach(int i in main)
@@ -301,7 +301,7 @@ namespace ParadigmRealm
                 }
                 picked.Add(bestTile);
             }
-            for(int k=0;k<3;k++){sx[k]=picked[k]%Width;sy[k]=picked[k]/Width;}
+            for(int k=0;k<sx.Length;k++){sx[k]=picked[k]%Width;sy[k]=picked[k]/Width;}
             return true;
         }
 

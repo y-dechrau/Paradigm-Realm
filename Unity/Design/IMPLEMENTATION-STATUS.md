@@ -2,6 +2,13 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Stage 2: variable civilisation count (source written 29 Oct 2026; NOT yet compiled or run in Unity)
+- New games can have 2 to 16 civilisations (slider on the New Game screen). Limit per map size: Tiny 4, Small 6, Medium 8, Large 12, Huge 14, Massive 16. Three civilisations is still the default and keeps the old start positions on flat maps.
+- Save version 10 adds `civCount`. All per-civilisation arrays (`nations`, `met`, `war`, `openBorders`, war weariness, diplomacy pairs) are sized from it. Diplomacy pairs are stored in (0,1),(0,2)... order and found by index. The single `rivalWar` flag is replaced by a per-pair `atWar`, so rivals can be at war with some civilisations and at peace with others. Version 9 saves migrate (the old flag is copied onto the rival pair).
+- Start sites: sphere worlds pick one site per civilisation on the largest landmass with spacing that shrinks as the count grows; flat maps use farthest-point spacing for counts other than three.
+- Diplomacy AI runs for every rival: contact between any two civilisations, proposals, war and peace. The diplomacy screen lists met civilisations in rows of four. Sixteen map colours and fifteen rival names exist.
+- Harness: `CivChecks` (array sizes, pair lookup, distinct starts, six turns stay valid, clamping, v9 migration). Only the logic is checked there; nothing has run in Unity. Turn time with many civilisations on large maps is unmeasured.
+
 ## Diamond view, procedural pixel art and globe (source written 29 Oct 2026; NOT yet compiled or run in Unity)
 - `PixelArt.cs`: procedural 64x32 diamond tiles with 8 px land elevation, cliff skirts, ramp-grouped neighbour blending, animated water, scenery sprites, farms, roads and overlays. Deterministic; no image files needed.
 - `IsoRenderer.cs`: diamond renderer (back-to-front), camera in lattice coordinates that wraps east-west on sphere worlds, picking (raised surface first), five zoom steps, selection/destination/stack-label overlay, per-frame paint budget and texture cache.
