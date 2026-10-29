@@ -71,6 +71,7 @@ namespace ParadigmRealm
             MapSizeChecks();
             SphereChecks();
             SpeedChecks();
+            PixelChecks();
             ContentChecks.Run();
             var victory=World.New(22);victory.units.RemoveAll(a=>a.owner>0);victory.cities.RemoveAll(a=>a.owner>0);victory.CheckVictory();Require(victory.result.StartsWith("Conquest"),"conquest detected");
             var defeat=World.New(23);defeat.units.RemoveAll(a=>a.owner==0);defeat.CheckVictory();Require(defeat.result.Contains("fallen"),"defeat detected");
@@ -123,6 +124,27 @@ namespace ParadigmRealm
             foreach(var target in big.cities)if(big.Route(scout,target.x,target.y).Count>0)found++;
             Require(found>0,"a route crosses the Massive sphere");
             Require(generated<60000&&clock.ElapsedMilliseconds<20000,"Massive sphere builds and routes within a generous limit (built in "+generated+" ms, routes in "+clock.ElapsedMilliseconds+" ms)");
+        }
+        static void PixelChecks()
+        {
+            int[] none={-1,-1,-1,-1};
+            for(int t=0;t<21;t++){
+                var a=PixelArt.Compose(t,0,none,0,0);var b=PixelArt.Compose(t,0,none,0,0);
+                Require(a.w==PixelArt.CW&&a.h==PixelArt.CH,"terrain "+t+" composite has the expected size");
+                bool same=true;for(int i=0;i<a.p.Length;i++)if(a.p[i]!=b.p[i]){same=false;break;}
+                Require(same,"terrain "+t+" art is deterministic");
+                int opaque=0;foreach(uint c in a.p)if((c>>24)>0)opaque++;
+                Require(opaque>400,"terrain "+t+" composite is not empty");
+                var sp=PixelArt.Sprite(t,1);Require(sp==null||(sp.w==PixelArt.SW&&sp.h==PixelArt.SH),"terrain "+t+" sprite size");
+            }
+            Require(PixelArt.NeighbourCode(0,1,-1)==-1&&PixelArt.NeighbourCode(0,1,4)==4,"neighbour codes for unknown and water");
+            Require(PixelArt.Farm(0).w==PixelArt.TW&&PixelArt.Road(5).w==PixelArt.TW,"farm and road overlays are tile sized");
+            // The diamond screen mapping must invert exactly: tile centres map back to the same lattice point.
+            float tw=64,th=32;
+            for(int i=-3;i<=3;i++)for(int j=-3;j<=3;j++){
+                float dx=(i-j)*tw/2,dy=(i+j)*th/2,u=dx/(tw/2),v=dy/(th/2);
+                Require((int)Math.Round((u+v)/2)==i&&(int)Math.Round((v-u)/2)==j,"diamond pick round trip "+i+","+j);
+            }
         }
         static void SphereChecks()
         {

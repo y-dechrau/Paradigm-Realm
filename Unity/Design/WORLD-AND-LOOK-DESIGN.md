@@ -1,6 +1,6 @@
 # Paradigm Realm — spherical world, realistic biomes and new look (design, planned)
 
-Status: **Parts A and B (sphere topology, climate generator) are written in source but NOT yet tested in Unity; parts C and D (new art, diamond view, globe) are planned and not implemented.** Date: 28 October 2026. Extends CORE-DESIGN-16BIT.md and IMPLEMENTATION-PLAN-16BIT.md. Gameplay maths stays integer-only; world generation may use floating point internally because it runs once per new game and is seeded.
+Status: **Parts A and B (sphere topology, climate generator) are written in source but NOT yet tested in Unity; parts C and D (procedural art, diamond view, globe) are now written in source (29 Oct 2026) but NOT yet compiled or run in Unity.** Date: 28 October 2026. Extends CORE-DESIGN-16BIT.md and IMPLEMENTATION-PLAN-16BIT.md. Gameplay maths stays integer-only; world generation may use floating point internally because it runs once per new game and is seeded.
 
 ## Owner requests (28 Oct 2026)
 1. Improve the terrain textures significantly.

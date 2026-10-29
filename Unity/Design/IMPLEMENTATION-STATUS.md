@@ -2,6 +2,13 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Diamond view, procedural pixel art and globe (source written 29 Oct 2026; NOT yet compiled or run in Unity)
+- `PixelArt.cs`: procedural 64x32 diamond tiles with 8 px land elevation, cliff skirts, ramp-grouped neighbour blending, animated water, scenery sprites, farms, roads and overlays. Deterministic; no image files needed.
+- `IsoRenderer.cs`: diamond renderer (back-to-front), camera in lattice coordinates that wraps east-west on sphere worlds, picking (raised surface first), five zoom steps, selection/destination/stack-label overlay, per-frame paint budget and texture cache.
+- The old square renderer is kept; press V or use the "View" button to switch. Diamond is the default.
+- WASD / middle-drag pan, wheel and Zoom buttons change diamond zoom. The Known World screen shows a rotating globe on sphere worlds (drag to spin; click land to centre the map).
+- Harness: `PixelChecks` (size, determinism, non-empty, pick round trip). These only prove the maths; nothing here has been compiled or looked at in Unity. Art quality and performance are unverified.
+
 ## Performance pass 1 (source written 28 Oct 2026; NOT yet measured in Unity)
 
 Cause found by reading the code (no profiler data yet): every frame the map drew each tile three times, rebuilt a text key and an array for every tile's terrain picture, asked a slow visibility question per tile, and painted any new tile's 64 x 64 picture pixel by pixel in one go. City yields scanned the whole map. Changes:

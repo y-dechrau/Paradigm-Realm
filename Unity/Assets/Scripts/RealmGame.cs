@@ -18,7 +18,7 @@ namespace ParadigmRealm
         static void Boot(){if(FindFirstObjectByType<RealmGame>()==null)new GameObject("Paradigm Realm").AddComponent<RealmGame>();}
         void Awake(){zoomSensitivity=PlayerPrefs.GetFloat("RealmZoomSensitivity",2f);tooltips=PlayerPrefs.GetInt("RealmTooltips",1)!=0;var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.055f,.09f,.11f);camera.orthographic=true;Application.targetFrameRate=30;world=World.New(Environment.TickCount&int.MaxValue);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
         Unit Selected(){return world.units.Find(u=>u.owner==0&&u.id==selected);}
-        void Center(){var u=Selected();if(u!=null)mapScroll=new Vector2(Mathf.Max(0,u.x*tilePixels-350),Mathf.Max(0,u.y*tilePixels-250));}
+        void Center(){var u=Selected();if(u!=null&&diamondView){FocusTile(u.x,u.y);return;}if(u!=null)mapScroll=new Vector2(Mathf.Max(0,u.x*tilePixels-350),Mathf.Max(0,u.y*tilePixels-250));}
         string SavePath {get{return Path.Combine(Application.persistentDataPath,"earth-save.json");}}
         void Save(){SaveTo(activeSavePath??SavePath);}
         bool HasSavedGame(){return File.Exists(SavePath)||NamedSaves().Length>0;}
@@ -167,7 +167,7 @@ namespace ParadigmRealm
         {
             Vector2 mouse=Event.current.mousePosition;
             if(!new Rect(24,100,835,607).Contains(mouse))return;
-            int x=Mathf.FloorToInt((mouse.x-24+mapScroll.x)/tilePixels),y=Mathf.FloorToInt((mouse.y-100+mapScroll.y)/tilePixels);
+            int x,y;if(!MapTileAt(mouse,out x,out y))return;
             var t=world.KnownTile(world.At(x,y));if(t==null)return;
             string text="Unexplored territory";
             if(t.seen){var v=world.TileYield(t);text=World.TerrainNames[t.terrain]+"  ("+x+", "+y+")";
@@ -191,6 +191,7 @@ namespace ParadigmRealm
         void DrawMap()
         {
             // Pictures are only painted on Repaint events; Layout and mouse events skip all the drawing work.
+            if(diamondView){DrawIsoMap();return;}
             bool repaint=Event.current.type==EventType.Repaint;
             mapScroll=new Vector2(Mathf.Round(mapScroll.x),Mathf.Round(mapScroll.y));
             if(repaint){world.BeginVisibilityCache();PrepareTerrainView();}
@@ -250,7 +251,7 @@ namespace ParadigmRealm
         void HandleMapInput()
         {
             var e=Event.current;var viewport=new Rect(24,100,836,608);bool inside=viewport.Contains(e.mousePosition);
-            int x=Mathf.FloorToInt((e.mousePosition.x-24+mapScroll.x)/tilePixels),y=Mathf.FloorToInt((e.mousePosition.y-100+mapScroll.y)/tilePixels);
+            int x,y;if(!MapTileAt(e.mousePosition,out x,out y)){x=-1;y=-1;inside=false;}
             if(!GUI.enabled||world.result!=""){dragUnit=-1;dragging=false;mapPointerDown=false;return;}
             if(e.type==EventType.MouseDown&&e.button==0&&inside){
                 var city=world.cities.Find(c=>c.owner==0&&c.x==x&&c.y==y);

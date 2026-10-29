@@ -91,5 +91,5 @@ namespace ParadigmRealm { public partial class RealmGame {
   if(terrainComposites.Count>=2048){long oldest=terrainCacheOrder.Dequeue();Destroy(terrainComposites[oldest]);terrainComposites.Remove(oldest);}
   terrainComposites.Add(key,output);terrainCacheOrder.Enqueue(key);return Shown(tileIndex,output);
  }
- void ClearTerrainComposites(){foreach(var t in terrainComposites.Values)Destroy(t);foreach(var t in uniformTerrain.Values)Destroy(t);terrainComposites.Clear();terrainCacheOrder.Clear();uniformTerrain.Clear();lastShown.Clear();terrainSourcePixels.Clear();terrainSnapshot=null;}
+ void ClearTerrainComposites(){ClearIso();foreach(var t in terrainComposites.Values)Destroy(t);foreach(var t in uniformTerrain.Values)Destroy(t);terrainComposites.Clear();terrainCacheOrder.Clear();uniformTerrain.Clear();lastShown.Clear();terrainSourcePixels.Clear();terrainSnapshot=null;}
 }}

@@ -68,7 +68,7 @@ public partial class RealmGame {
         foreach(var u in world.units.Where(u=>u.owner==0).ToList())
             if(Button(World.UnitNames[u.type]+" #"+u.id+" | HP "+u.hp+" | "+world.Activity(u)+" | upkeep "+World.Upkeep[u.type])){selected=u.id;cityId=-1;detailsScreen="";cityScreen=false;Center();GUIUtility.ExitGUI();}
     }
-    Texture2D atlasTexture;World atlasWorld;float atlasBuilt;readonly Color[] atlasColours=new Color[64];readonly bool[] atlasColourReady=new bool[64];
+    Texture2D atlasTexture,globeTexture;Color[] atlasPixels;bool globeMode=true;float globeLon,globeLat,globeBuilt=-9,globeDrawnLon=-99,globeDrawnLat=-99;int globeDrawnAtlas;World atlasWorld;float atlasBuilt;readonly Color[] atlasColours=new Color[64];readonly bool[] atlasColourReady=new bool[64];
     Color AtlasColour(int id){
         id=Math.Max(0,Math.Min(atlasColours.Length-1,id));
         if(!atlasColourReady[id]){var px=terrain[id].GetPixels();float r=0,g=0,b=0;foreach(var c in px){r+=c.r;g+=c.g;b+=c.b;}int n=Math.Max(1,px.Length);atlasColours[id]=new Color(r/n,g/n,b/n,1);atlasColourReady[id]=true;}
@@ -84,11 +84,59 @@ public partial class RealmGame {
             if(t.seen){c=AtlasColour(t.terrain);if(t.owner>=0){var n=nations[t.owner];c=new Color(c.r+(n.r-c.r)*.45f,c.g+(n.g-c.g)*.45f,c.b+(n.b-c.b)*.45f,1);}}
             pixels[(world.Height-1-t.y)*world.Width+t.x]=c;
         }
-        atlasTexture.SetPixels(pixels);atlasTexture.Apply();atlasWorld=world;atlasBuilt=Time.realtimeSinceStartup;
+        atlasTexture.SetPixels(pixels);atlasTexture.Apply();atlasPixels=pixels;globeDrawnAtlas++;atlasWorld=world;atlasBuilt=Time.realtimeSinceStartup;
     }
+    // Orthographic globe drawn from the same known-world colours as the flat atlas. Drag to spin, buttons nudge.
+    void DrawGlobe(){
+        if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>1f)BuildAtlasTexture();
+        const int D=420;int W=world.Width,H=world.Height;var area=new Rect(160,40,D,D);
+        var e=Event.current;
+        if(e.type==EventType.MouseDrag&&e.button==0&&area.Contains(e.mousePosition)){globeLon-=e.delta.x*0.012f;globeLat=Mathf.Clamp(globeLat+e.delta.y*0.012f,-1.2f,1.2f);e.Use();}
+        if(GUI.Button(new Rect(20,200,110,28),"Rotate west"))globeLon-=0.4f;
+        if(GUI.Button(new Rect(20,236,110,28),"Rotate east"))globeLon+=0.4f;
+        if(GUI.Button(new Rect(20,272,110,28),"Tilt north"))globeLat=Mathf.Clamp(globeLat-0.3f,-1.2f,1.2f);
+        if(GUI.Button(new Rect(20,308,110,28),"Tilt south"))globeLat=Mathf.Clamp(globeLat+0.3f,-1.2f,1.2f);
+        if(GUI.Button(new Rect(20,344,110,28),"Face my units")){var u=Selected();if(u!=null){globeLon=(u.x+.5f)/W*Mathf.PI*2-Mathf.PI;globeLat=-(0.5f-(u.y+.5f)/H)*Mathf.PI;}}
+        if(globeTexture==null){globeTexture=new Texture2D(D,D,TextureFormat.RGBA32,false){filterMode=FilterMode.Bilinear,wrapMode=TextureWrapMode.Clamp};globeDrawnLon=-99;}
+        if(globeDrawnLon!=globeLon||globeDrawnLat!=globeLat||globeDrawnAtlas!=globeBuiltAtlas){
+            var px=new Color[D*D];float R=D/2f,sinT=Mathf.Sin(globeLat),cosT=Mathf.Cos(globeLat);
+            for(int py=0;py<D;py++)for(int qx=0;qx<D;qx++){
+                float nx=(qx+.5f-R)/R,ny=(R-py-.5f)/R,r2=nx*nx+ny*ny;
+                if(r2>1){px[py*D+qx]=new Color(0,0,0,0);continue;}
+                float nz=Mathf.Sqrt(1-r2);
+                // Tilt about the horizontal axis, then spin about the polar axis.
+                float y2=ny*cosT+nz*sinT,z2=nz*cosT-ny*sinT;
+                float lat=Mathf.Asin(Mathf.Clamp(y2,-1,1)),lon=Mathf.Atan2(nx,z2)+globeLon;
+                float u01=lon/(Mathf.PI*2)+.5f;u01-=Mathf.Floor(u01);
+                int tx=Mathf.Min(W-1,(int)(u01*W)),ty=Mathf.Clamp((int)((.5f-lat/Mathf.PI)*H),0,H-1);
+                var c=atlasPixels[(H-1-ty)*W+tx];float shade=.5f+.5f*nz;
+                px[py*D+qx]=new Color(c.r*shade,c.g*shade,c.b*shade,1);
+            }
+            globeTexture.SetPixels(px);globeTexture.Apply();globeDrawnLon=globeLon;globeDrawnLat=globeLat;globeBuiltAtlas=globeDrawnAtlas;
+        }
+        GUI.DrawTexture(area,globeTexture,ScaleMode.StretchToFit,true);
+        GUI.Label(new Rect(20,380,140,60),"Drag the globe to spin it. Click land to centre the main map.",small);
+        if(e.type==EventType.MouseDown&&e.button==0&&area.Contains(e.mousePosition)){
+            float R=D/2f,nx=(e.mousePosition.x-area.x-R)/R,ny=(R-(e.mousePosition.y-area.y))/R,r2=nx*nx+ny*ny;
+            if(r2<=1){
+                float nz=Mathf.Sqrt(1-r2),sinT=Mathf.Sin(globeLat),cosT=Mathf.Cos(globeLat);
+                float y2=ny*cosT+nz*sinT,z2=nz*cosT-ny*sinT;
+                float lat=Mathf.Asin(Mathf.Clamp(y2,-1,1)),lon=Mathf.Atan2(nx,z2)+globeLon;
+                float u01=lon/(Mathf.PI*2)+.5f;u01-=Mathf.Floor(u01);
+                int tx=Mathf.Min(W-1,(int)(u01*W)),ty=Mathf.Clamp((int)((.5f-lat/Mathf.PI)*H),0,H-1);
+                if(diamondView)FocusTile(tx,ty);else{mapScroll=new Vector2(tx*tilePixels-418,ty*tilePixels-304);ClampMapScroll();}
+                detailsScreen="";cityScreen=false;e.Use();GUIUtility.ExitGUI();
+            }
+        }
+    }
+    int globeBuiltAtlas=-1;
     void DrawAtlas(){
         GUILayout.Label("Known world — click a tile to centre the main map. Dark tiles are unexplored.",body);
         GUILayout.Space(490);
+        if(world.Sphere){
+            if(GUI.Button(new Rect(590,2,180,28),globeMode?"Show flat map":"Show globe"))globeMode=!globeMode;
+            if(globeMode){DrawGlobe();return;}
+        }
         float cell=Mathf.Min(768f/world.Width,480f/world.Height);
         var area=new Rect(0,35,world.Width*cell,world.Height*cell);
         if(world.tiles.Length<=4000){
@@ -103,7 +151,7 @@ public partial class RealmGame {
         }
         var e=Event.current;if(e.type==EventType.MouseDown&&e.button==0&&area.Contains(e.mousePosition)){
             int x=Math.Max(0,Math.Min(world.Width-1,(int)(e.mousePosition.x/cell))),y=Math.Max(0,Math.Min(world.Height-1,(int)((e.mousePosition.y-35)/cell)));
-            mapScroll=new Vector2(x*tilePixels-418,y*tilePixels-304);ClampMapScroll();detailsScreen="";cityScreen=false;e.Use();GUIUtility.ExitGUI();
+            if(diamondView)FocusTile(x,y);else{mapScroll=new Vector2(x*tilePixels-418,y*tilePixels-304);ClampMapScroll();}detailsScreen="";cityScreen=false;e.Use();GUIUtility.ExitGUI();
         }
     }
     void DrawEmpireGlyph(Rect r,int id){

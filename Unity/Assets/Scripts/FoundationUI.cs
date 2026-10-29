@@ -116,7 +116,8 @@ namespace ParadigmRealm
                 if(Button("Disband this unit permanently")){world.units.Remove(u);selected=-1;world.CheckVictory();GUIUtility.ExitGUI();}
             }
             GUILayout.Space(10);
-            GUILayout.BeginHorizontal();if(GUILayout.Button("Zoom -"))tilePixels=Mathf.Max(24,tilePixels-8);if(GUILayout.Button("Zoom +"))tilePixels=Mathf.Min(96,tilePixels+8);GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();if(GUILayout.Button("Zoom -")){if(diamondView)IsoZoom(-1);else tilePixels=Mathf.Max(24,tilePixels-8);}if(GUILayout.Button("Zoom +")){if(diamondView)IsoZoom(1);else tilePixels=Mathf.Min(96,tilePixels+8);}GUILayout.EndHorizontal();
+            if(GUILayout.Button(diamondView?"View: diamond (V)":"View: square (V)"))ToggleView();
         }
         bool Powerful(Unit u){return World.Power[u.type]>0;}
         void NavigationInput()
@@ -124,15 +125,16 @@ namespace ParadigmRealm
             if(guide||confirmNew||pendingUnit!=-1||mainMenu||pauseMenu||cityScreen||researchScreen||detailsScreen!=""||loadScreen)return;
             var e=Event.current;
             // Consume the wheel before BeginScrollView can turn it into vertical panning.
-            if(e.type==EventType.ScrollWheel&&new Rect(24,100,836,608).Contains(e.mousePosition)){
+            if(e.type==EventType.ScrollWheel&&diamondView&&new Rect(24,100,836,608).Contains(e.mousePosition)){IsoZoom(e.delta.y>0?-1:1);ResetMapGesture();e.Use();}
+            else if(e.type==EventType.ScrollWheel&&new Rect(24,100,836,608).Contains(e.mousePosition)){
                 float old=tilePixels;tilePixels=Mathf.Clamp(tilePixels-e.delta.y*zoomSensitivity,24,96);
                 var point=e.mousePosition-new Vector2(24,100);
                 mapScroll=(mapScroll+point)*(tilePixels/old)-point;ClampMapScroll();ResetMapGesture();e.Use();
             }
             string focus=GUI.GetNameOfFocusedControl();if(focus=="rename"||focus=="cityrename")return;
-            if(e.type==EventType.KeyDown&&!e.control&&!e.alt&&!e.command){if(e.keyCode==KeyCode.W){mapScroll.y-=64;e.Use();}else if(e.keyCode==KeyCode.S){mapScroll.y+=64;e.Use();}else if(e.keyCode==KeyCode.A){mapScroll.x-=64;e.Use();}else if(e.keyCode==KeyCode.D){mapScroll.x+=64;e.Use();}else if(e.keyCode==KeyCode.F1){guide=true;e.Use();}}
-            if(e.type==EventType.MouseDrag&&e.button==2&&new Rect(24,100,836,608).Contains(e.mousePosition)){mapScroll-=e.delta;e.Use();}
-            ClampMapScroll();
+            if(e.type==EventType.KeyDown&&!e.control&&!e.alt&&!e.command){if(e.keyCode==KeyCode.V){ToggleView();e.Use();}else if(e.keyCode==KeyCode.W){if(diamondView)IsoPan(0,-64);else mapScroll.y-=64;e.Use();}else if(e.keyCode==KeyCode.S){if(diamondView)IsoPan(0,64);else mapScroll.y+=64;e.Use();}else if(e.keyCode==KeyCode.A){if(diamondView)IsoPan(-64,0);else mapScroll.x-=64;e.Use();}else if(e.keyCode==KeyCode.D){if(diamondView)IsoPan(64,0);else mapScroll.x+=64;e.Use();}else if(e.keyCode==KeyCode.F1){guide=true;e.Use();}}
+            if(e.type==EventType.MouseDrag&&e.button==2&&new Rect(24,100,836,608).Contains(e.mousePosition)){if(diamondView)IsoPan(-e.delta.x,-e.delta.y);else mapScroll-=e.delta;e.Use();}
+            if(diamondView)ClampCamera();else ClampMapScroll();
         }
     }
 }
