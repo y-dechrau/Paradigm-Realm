@@ -30,7 +30,7 @@ namespace ParadigmRealm
             }
             // Coast and mangrove tiles are traversable shoreline land; reefs remain water.
             foreach(var t in tiles.Where(t=>!Barren(t.terrain)).ToList()){
-                bool coast=new[]{At(t.x-1,t.y),At(t.x+1,t.y),At(t.x,t.y-1),At(t.x,t.y+1)}.Any(a=>a!=null&&(a.terrain==4||a.terrain==12));
+                bool coast=new[]{Step(t.x,t.y,-1,0),Step(t.x,t.y,1,0),Step(t.x,t.y,0,-1),Step(t.x,t.y,0,1)}.Any(a=>a!=null&&(a.terrain==4||a.terrain==12));
                 if(coast)t.terrain=t.terrain==11?19:18;
             }
             for(int i=0,lakes=Math.Max(2,tiles.Length/360);i<lakes;i++){

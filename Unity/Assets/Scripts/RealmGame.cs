@@ -248,7 +248,7 @@ namespace ParadigmRealm
         {
             // Pictures are only painted on Repaint events; Layout and mouse events skip all the drawing work.
             if(globeZoom){DrawGlobeZoom();return;}
-            if(diamondView){DrawIsoMap();return;}
+            if(diamondView||world.Staggered){diamondView=true;DrawIsoMap();return;}
             bool repaint=Event.current.type==EventType.Repaint;
             mapScroll=new Vector2(Mathf.Round(mapScroll.x),Mathf.Round(mapScroll.y));
             if(repaint){world.BeginVisibilityCache();PrepareTerrainView();}

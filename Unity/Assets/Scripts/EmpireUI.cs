@@ -151,20 +151,21 @@ public partial class RealmGame {
             if(GUI.Button(new Rect(590,2,180,28),globeMode?"Show flat map":"Show globe"))globeMode=!globeMode;
             if(globeMode){DrawGlobe();return;}
         }
-        float cell=Mathf.Min(768f/world.Width,480f/world.Height);
-        var area=new Rect(0,35,world.Width*cell,world.Height*cell);
+        // Staggered rows are a quarter of a tile width apart and odd rows sit half a tile east.
+        bool brick=world.Staggered;float cell=Mathf.Min(768f/(world.Width+(brick?.5f:0)),480f/(world.Height*(brick?.25f:1f))),cellH=brick?cell/4:cell;
+        var area=new Rect(0,35,(world.Width+(brick?.5f:0))*cell,world.Height*cellH);
         if(world.tiles.Length<=4000){
             for(int y=0;y<world.Height;y++)for(int x=0;x<world.Width;x++){
-                var t=world.KnownTile(world.At(x,y));var r=new Rect(x*cell,35+y*cell,cell,cell);
+                var t=world.KnownTile(world.At(x,y));var r=new Rect((x+(brick&&(y&1)==1?.5f:0))*cell,35+y*cellH,cell,cellH);
                 if(!t.seen){Fill(r,new Color(.025f,.04f,.06f));continue;}
-                GUI.DrawTexture(r,terrain[t.terrain]);if(t.owner>=0)Fill(new Rect(r.x+cell*.31f,r.y+cell*.31f,cell*.38f,cell*.38f),nations[t.owner]);
+                GUI.DrawTexture(r,terrain[t.terrain]);if(t.owner>=0)Fill(new Rect(r.x+cell*.31f,r.y+r.height*.31f,cell*.38f,r.height*.38f),nations[t.owner]);
             }
         }else{
             if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>1f)BuildAtlasTexture();
             GUI.DrawTexture(area,atlasTexture,ScaleMode.StretchToFill,false);
         }
         var e=Event.current;if(e.type==EventType.MouseDown&&e.button==0&&area.Contains(e.mousePosition)){
-            int x=Math.Max(0,Math.Min(world.Width-1,(int)(e.mousePosition.x/cell))),y=Math.Max(0,Math.Min(world.Height-1,(int)((e.mousePosition.y-35)/cell)));
+            int y=Math.Max(0,Math.Min(world.Height-1,(int)((e.mousePosition.y-35)/cellH))),x=Math.Max(0,Math.Min(world.Width-1,(int)(e.mousePosition.x/cell-(brick&&(y&1)==1?.5f:0))));
             if(diamondView)FocusTile(x,y);else FocusTile(x,y);detailsScreen="";cityScreen=false;e.Use();GUIUtility.ExitGUI();
         }
     }

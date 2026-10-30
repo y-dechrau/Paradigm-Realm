@@ -61,7 +61,7 @@ namespace ParadigmRealm
             for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++)
             {
                 if(dx==0&&dy==0)continue;
-                var t=At(x+dx,y+dy);if(t==null)continue;
+                var t=Step(x,y,dx,dy);if(t==null)continue;
                 buffer[count++]=t.y*Width+t.x;
             }
             var result=new int[count];Array.Copy(buffer,result,count);return result;
@@ -80,9 +80,11 @@ namespace ParadigmRealm
         }
 
         // Point on the unit sphere for a tile centre, so noise is continuous across the east-west seam.
+        // Staggered rows: odd rows sit half a tile east, so their longitude is half a column further on.
+        double RowShift(int y){return Staggered&&(y&1)==1?.5:0;}
         void SpherePoint(int x,int y,out double px,out double py,out double pz)
         {
-            double lat=Math.PI*(0.5-(y+.5)/Height),lon=2*Math.PI*(x+.5)/Width,cl=Math.Cos(lat);
+            double lat=Math.PI*(0.5-(y+.5)/Height),lon=2*Math.PI*(x+.5+RowShift(y))/Width,cl=Math.Cos(lat);
             px=cl*Math.Cos(lon);py=Math.Sin(lat);pz=cl*Math.Sin(lon);
         }
 
@@ -117,7 +119,7 @@ namespace ParadigmRealm
                     int tc=TemperatureClass(t.terrain),wc=MoistureClass(t.terrain);if(tc<0)continue;
                     for(int dy=-1;dy<=1&&tc>=0;dy++)for(int dx=-1;dx<=1;dx++)
                     {
-                        if(dx==0&&dy==0)continue;var n=At(t.x+dx,t.y+dy);if(n==null)continue;int nc=TemperatureClass(n.terrain),nw=MoistureClass(n.terrain);
+                        if(dx==0&&dy==0)continue;var n=Step(t.x,t.y,dx,dy);if(n==null)continue;int nc=TemperatureClass(n.terrain),nw=MoistureClass(n.terrain);
                         if(nc>=0&&tc-nc>=2){int to=Cooler(t.terrain);if(to!=t.terrain){t.terrain=to;changes++;any=true;}break;}
                         if(nw>=0&&wc==0&&nw==2){int to=Wetter(t.terrain);if(to!=t.terrain){t.terrain=to;changes++;any=true;}break;}
                     }
@@ -137,7 +139,7 @@ namespace ParadigmRealm
                 lat[y]=Math.PI*(0.5-(y+.5)/H);
                 for(int x=0;x<W;x++)
                 {
-                    double lon=2*Math.PI*(x+.5)/W,cl=Math.Cos(lat[y]);
+                    double lon=2*Math.PI*(x+.5+RowShift(y))/W,cl=Math.Cos(lat[y]);
                     double px=cl*Math.Cos(lon),py=Math.Sin(lat[y]),pz=cl*Math.Sin(lon);
                     // Land types (New Game): 0 continents, 1 one landmass, 2 archipelago, 3 small continents, 4 lakes and inland seas.
                     double broad=mapType==3?2.6:1.4;
@@ -319,7 +321,7 @@ namespace ParadigmRealm
             if(Barren(t.terrain)||t.terrain==2||t.terrain==17)return -1;
             for(int dy=-3;dy<=3;dy++)for(int dx=-3;dx<=3;dx++)
             {
-                var n=At(t.x+dx,t.y+dy);if(n==null)continue;
+                var n=Step(t.x,t.y,dx,dy);if(n==null)continue;
                 int r=Math.Max(Math.Abs(dx),Math.Abs(dy));int w=r<=1?3:r==2?2:1;
                 switch(n.terrain)
                 {

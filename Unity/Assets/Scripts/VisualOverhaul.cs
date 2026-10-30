@@ -119,7 +119,7 @@ namespace ParadigmRealm {
    foreach(var c in world.cities){
     int want=Math.Min(8,Math.Max(0,(c.pop-3)/2));if(want==0)continue;
     var order=Enumerable.Range(0,8).OrderBy(k=>(k*7+c.id*3)%8).ToList();
-    foreach(int k in order){if(want==0)break;var t=world.At(c.x+SuburbDx[k],c.y+SuburbDy[k]);if(t==null)continue;int cell=t.y*world.Width+t.x;
+    foreach(int k in order){if(want==0)break;var t=world.Step(c.x,c.y,SuburbDx[k],SuburbDy[k]);if(t==null)continue;int cell=t.y*world.Width+t.x;
      if(t.owner!=c.owner||suburbCells.ContainsKey(cell)||portCells.ContainsKey(cell)||World.Barren(t.terrain)||t.terrain==1||t.terrain==11||t.terrain==13||t.terrain==17||t.terrain==19||world.cities.Any(o=>o.x==t.x&&o.y==t.y))continue;
      suburbCells[cell]=c;want--;}
    }
@@ -131,7 +131,7 @@ namespace ParadigmRealm {
   void DrawTerritory(Tile t,Rect r){
    if(t.owner<0)return;Color ink=nations[t.owner];ink.a=.7f;float w=Mathf.Max(1,r.width/40);
    int[] dx={-1,1,0,0},dy={0,0,-1,1};
-   for(int i=0;i<4;i++){var adjacent=world.At(t.x+dx[i],t.y+dy[i]);if(adjacent!=null&&adjacent.seen&&world.KnownOwner(adjacent)==t.owner)continue;
+   for(int i=0;i<4;i++){var adjacent=world.Step(t.x,t.y,dx[i],dy[i]);if(adjacent!=null&&adjacent.seen&&world.KnownOwner(adjacent)==t.owner)continue;
     var edge=i==0?new Rect(r.x,r.y,w,r.height):i==1?new Rect(r.xMax-w,r.y,w,r.height):i==2?new Rect(r.x,r.y,r.width,w):new Rect(r.x,r.yMax-w,r.width,w);Fill(edge,ink);
    }
   }

@@ -62,7 +62,7 @@ namespace ParadigmRealm
             dual.ChooseProject(dc,2,false);for(int i=0;i<2;i++)dual.Add(0,2,dc.x,dc.y);dc.production=dual.Cost(2);dc.buildingProduction=dual.Cost(8);dual.Produce(dc,1);
             Require(dc.build==2&&dc.library,"blocked unit stack does not block building construction");
             var old=Flat();var oc=old.Found(old.units.First(v=>v.owner==0&&v.type==0));old.version=3;oc.build=8;oc.production=17;oc.queue=new System.Collections.Generic.List<int>{1,7,1,9};old.UpgradeSave();
-            Require(old.version==18&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
+            Require(old.version==19&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
             old.UpgradeSave();Require(oc.buildingProduction==17&&oc.queue.Count==1,"migration is idempotent");
             var upgrade=Flat();var uc=upgrade.Found(upgrade.units.First(v=>v.owner==0&&v.type==0));var troop=upgrade.units.First(v=>v.owner==0&&v.type==2);upgrade.tech[TechnologyCatalog.Index("bronze")]=true;upgrade.gold=100;
             Require(!upgrade.Upgrade(troop),"owned territory alone does not permit upgrades");troop.x=uc.x;troop.y=uc.y;Require(upgrade.Upgrade(troop)&&troop.type==7,"owned city permits eligible upgrade");
@@ -177,6 +177,14 @@ namespace ParadigmRealm
                 }
                 double ex,ey,s2x,s2y;PixelArt.ScreenOf(i+11,j+5,10.25,5.5,tw,out ex,out ey);PixelArt.ScreenOf(i+10,j+6,10.25,5.5,tw,out s2x,out s2y);
                 Require(Math.Abs(ex-sx-tw/2)<1e-9&&Math.Abs(ey-sy-th/2)<1e-9&&Math.Abs(s2x-sx+tw/2)<1e-9&&Math.Abs(s2y-sy-th/2)<1e-9,"east steps down-right and south steps down-left by half a diamond");
+                // Staggered rows: centres and points just inside each tip pick back to the tile; east is a whole diamond to
+                // the right, and the grid step (0,+1) of World.Step lands half a diamond down-left or down-right on screen.
+                {int x=i+10,y=j+6;double cx=10.3,cy=6.4,tx,ty;PixelArt.StaggerScreenOf(x,y,cx,cy,tw,out tx,out ty);
+                 foreach(var tip in new[]{new[]{0.0,0.0},new[]{-.85,0},new[]{.85,0},new[]{0,-.85},new[]{0,.85},new[]{.4,.4}}){int px,py;PixelArt.StaggerPickOf(tx+tip[0]*tw/2,ty+tip[1]*th/2,cx,cy,tw,out px,out py);Require(px==x&&py==y,"staggered pick round trip "+x+","+y+" at zoom "+tw);}
+                 double rx,ry;PixelArt.StaggerScreenOf(x+1,y,cx,cy,tw,out rx,out ry);Require(Math.Abs(rx-tx-tw)<1e-9&&Math.Abs(ry-ty)<1e-9,"staggered east is one diamond to the right");
+                 int gi,gj,nx,ny;World.GridOf(x,y,out gi,out gj);World.TileOf(gi,gj+1,out nx,out ny);double sx2,sy2;PixelArt.StaggerScreenOf(nx,ny,cx,cy,tw,out sx2,out sy2);
+                 World.TileOf(gi+1,gj,out nx,out ny);double ex2,ey2;PixelArt.StaggerScreenOf(nx,ny,cx,cy,tw,out ex2,out ey2);
+                 Require(Math.Abs(sx2-tx+tw/2)<1e-9&&Math.Abs(sy2-ty-th/2)<1e-9&&Math.Abs(ex2-tx-tw/2)<1e-9&&Math.Abs(ey2-ty-th/2)<1e-9,"grid steps on staggered rows match the diagonal view's directions");}
                 var diamond=PixelArt.ToDiamond(PixelArt.Compose(Enumerable.Repeat(0,9).ToArray(),i+10,j+5,0,0));
                 Require(diamond.w==PixelArt.DW&&diamond.h==PixelArt.DH&&(diamond.Get(PixelArt.DW/2,PixelArt.DH/2)>>24)==255&&(diamond.Get(0,0)>>24)==0,"ground is reshaped into an opaque diamond with clear corners");
             }
@@ -206,7 +214,7 @@ namespace ParadigmRealm
             var clamped=World.New(5,"Clamp",0,1,1,0,0,1,16);
             Require(clamped.civCount==World.MaxCivsBySize[0],"requests above the size limit are clamped");
             var old=World.New(6,"Old",0,1,1,0,1,0,3);old.version=9;old.rivalWar=true;foreach(var p in old.diplomacy)p.atWar=false;old.UpgradeSave();
-            Require(old.version==18&&old.civCount==3&&old.AtWar(1,2)&&!old.AtWar(0,1)&&old.Valid(),"version 9 saves upgrade with the old rival war flag preserved");
+            Require(old.version==19&&old.civCount==3&&old.AtWar(1,2)&&!old.AtWar(0,1)&&old.Valid(),"version 9 saves upgrade with the old rival war flag preserved");
             var peace=World.New(7,"Peace",0,1,1,0,1,0,3);peace.version=9;peace.rivalWar=false;peace.UpgradeSave();
             Require(!peace.AtWar(1,2)&&peace.Valid(),"version 9 peace between rivals preserved");
         }
@@ -235,14 +243,14 @@ namespace ParadigmRealm
             for(int size=0;size<World.SphereWidths.Length;size++){
                 string name=World.MapSizeNames[size];
                 var w=World.New(70+size,"Sphere Test",0,1,1,0,size,1);
-                Require(w.Sphere&&w.Width==World.SphereWidths[size]&&w.Height==World.SphereHeights[size]&&w.Width==2*w.Height&&w.tiles.Length==w.Width*w.Height,name+" sphere is a 2:1 grid");
+                Require(w.Sphere&&w.Staggered&&w.Width==World.SphereHeights[size]&&w.Height==World.SphereWidths[size]&&w.Height==2*w.Width&&w.tiles.Length==w.Width*w.Height,name+" globe is W columns by 2W half-height rows (a 2:1 picture)");
                 Require(w.Valid(),"new "+name+" sphere is valid");
                 Require(w.cities.Count==2&&w.units.Count(u=>u.owner==0)==3,name+" sphere has the usual starting civilisations and units");
                 Require(w.units.Where(u=>u.owner==0).All(u=>!World.IsImpassable(w.At(u.x,u.y).terrain)),"player starts on passable land on the "+name+" sphere");
                 if(w.tiles.Length<=10000)for(int owner=0;owner<3;owner++)for(int i=0;i<w.tiles.Length;i++)if(w.nations[owner].known[i]!=w.VisibleTo(owner,i%w.Width,i/w.Width))throw new Exception("FAIL: incremental fog differs from full visibility on the "+name+" sphere");
                 // All three civilisations must share one landmass so conquest is possible without ships.
                 var start=w.cities.First(c=>c.owner==1);var reached=new HashSet<int>{start.y*w.Width+start.x};var queue=new Queue<Tile>();queue.Enqueue(w.At(start.x,start.y));
-                while(queue.Count>0){var t=queue.Dequeue();for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=w.At(t.x+dx,t.y+dy);if(n==null||World.IsImpassable(n.terrain)||!reached.Add(n.y*w.Width+n.x))continue;queue.Enqueue(n);}}
+                while(queue.Count>0){var t=queue.Dequeue();for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=w.Step(t.x,t.y,dx,dy);if(n==null||World.IsImpassable(n.terrain)||!reached.Add(n.y*w.Width+n.x))continue;queue.Enqueue(n);}}
                 Require(w.cities.All(c=>reached.Contains(c.y*w.Width+c.x))&&w.units.Where(u=>u.owner==0).All(u=>reached.Contains(u.y*w.Width+u.x)),"all "+name+" sphere starts are connected by land");
                 int land=w.tiles.Count(t=>t.terrain!=4&&t.terrain!=12&&t.terrain!=14);
                 Require(land*100>=w.tiles.Length*28&&land*100<=w.tiles.Length*50,name+" sphere has a believable land share ("+(land*100/w.tiles.Length)+"%)");
@@ -251,7 +259,7 @@ namespace ParadigmRealm
                 for(int i=0;i<w.tiles.Length;i++){
                     var a=w.tiles[i];
                     for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){
-                        var b=w.At(a.x+dx,a.y+dy);if(b==null||(dx==0&&dy==0))continue;
+                        var b=w.Step(a.x,a.y,dx,dy);if(b==null||(dx==0&&dy==0))continue;
                         maxStep=Math.Max(maxStep,Math.Abs(w.climateTemperature[i]-w.climateTemperature[b.y*w.Width+b.x]));
                         bool hot=a.terrain==11||a.terrain==3||a.terrain==16,cold=b.terrain==8||b.terrain==13||b.terrain==14;
                         if(hot&&cold)incoherent++;
@@ -263,9 +271,12 @@ namespace ParadigmRealm
             }
             var s=World.New(5,"Sphere",0,1,1,0,1,1);
             Require(s.At(-1,3)==s.At(s.Width-1,3)&&s.At(s.Width,3)==s.At(0,3),"sphere wraps east-west");
-            Require(s.At(4,-1)==s.At(4+s.Width/2,0)&&s.At(4,s.Height)==s.At(4+s.Width/2,s.Height-1)&&s.At(4,-s.Height-1)==null,"sphere crosses both poles");
+            Require(s.At(4,-1)==null&&s.At(4,s.Height)==null,"staggered globe ends at the polar rows");
             Require(s.Distance(0,5,s.Width-1,5)==1&&s.Distance(2,5,s.Width-2,5)==4,"distance wraps east-west");
-            Require(s.Distance(4,0,4+s.Width/2,0)==1&&s.Distance(s.Width/4,0,s.Width/4+s.Width/2,3)==4&&s.Distance(4,s.Height-1,4+s.Width/2,s.Height-1)==1,"distance crosses the poles");
+            Require(s.Distance(4,0,4,2)==1&&s.Distance(4,0,4,1)==1&&s.Distance(4,1,4,0)==1&&s.Distance(4,1,5,0)==1&&s.Distance(4,0,4,4)==2,"staggered neighbours: two rows down, the half-step rows and the next column are one move");
+            {bool ok=true;var rng=new Random(3);for(int k=0;k<300&&ok;k++){int x=rng.Next(s.Width),y=1+rng.Next(s.Height-2);for(int dj=-1;dj<=1;dj++)for(int di=-1;di<=1;di++){if(di==0&&dj==0)continue;var n=s.Step(x,y,di,dj);if(n==null)continue;var back=s.Step(n.x,n.y,-di,-dj);if(back==null||back.x!=x||back.y!=y||s.Distance(x,y,n.x,n.y)!=1)ok=false;}
+              var far=s.Step(x,y,rng.Next(-6,7),rng.Next(-6,7));if(far!=null&&s.Distance(x,y,far.x,far.y)!=s.Distance(far.x,far.y,x,y))ok=false;}
+             Require(ok,"staggered steps are reversible, neighbours are one move apart and distance is symmetric");}
             Require(s.Distance(3,7,12,9)==s.Distance(12,9,3,7),"distance is symmetric");
             var flat=World.New(5);
             Require(!flat.Sphere&&flat.At(-1,3)==null&&flat.Distance(0,5,flat.Width-1,5)==flat.Width-1,"flat maps keep hard edges");
@@ -276,10 +287,10 @@ namespace ParadigmRealm
             var walker=s.Add(0,2,0,10);walker.moves=4;
             Require(s.Move(walker,-1,10)&&walker.x==w2-1&&walker.y==10,"a unit steps west across the seam");
             var climber=s.Add(0,2,4,0);climber.moves=4;
-            Require(s.Move(climber,4,-1)&&climber.x==4+w2/2&&climber.y==0,"a unit steps over the north pole");
+            Require(!s.Move(climber,4,-1)&&climber.x==4&&climber.y==0,"no step beyond the north pole on a staggered globe");
             // Saves migrate: version 8 becomes version 9 and stays flat.
             var old=World.New(8);old.version=8;old.UpgradeSave();
-            Require(old.version==18&&old.mapShape==0&&old.Valid(),"version 8 saves upgrade to flat version 18");
+            Require(old.version==19&&old.mapShape==0&&old.Valid(),"version 8 saves upgrade to flat version 19");
         }
         static void MapSizeChecks()
         {
@@ -296,7 +307,7 @@ namespace ParadigmRealm
             Require(World.New(9).Width==48&&World.New(9).Height==30,"default map stays Small 48 x 30");
             Require(World.New(9,"A",0,1,1,0,1).tiles.Select(t=>t.terrain).SequenceEqual(World.New(9).tiles.Select(t=>t.terrain)),"Small is the default size and repeatable by seed");
             var legacy=World.New(3);legacy.version=7;legacy.mapWidth=0;legacy.mapHeight=0;legacy.UpgradeSave();
-            Require(legacy.Width==48&&legacy.Height==30&&legacy.version==18&&legacy.Valid(),"version 7 saves upgrade to Small flat version 18");
+            Require(legacy.Width==48&&legacy.Height==30&&legacy.version==19&&legacy.Valid(),"version 7 saves upgrade to Small flat version 19");
         }
     }
 }

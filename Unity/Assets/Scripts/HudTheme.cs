@@ -170,10 +170,12 @@ namespace ParadigmRealm
         {
             GUI.Box(MiniMap,"");var inner=new Rect(MiniMap.x+5,MiniMap.y+5,MiniMap.width-10,MiniMap.height-10);
             if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>1f)BuildAtlasTexture();
-            float aspect=world.Width/(float)world.Height,w=inner.width,h=w/aspect;if(h>inner.height){h=inner.height;w=h*aspect;}
+            // Staggered rows are a quarter of a tile width apart (16 of 64 pixels), so a row is a quarter as tall as a column is wide.
+            float aspect=world.Width/(world.Staggered?world.Height*.25f:(float)world.Height),w=inner.width,h=w/aspect;if(h>inner.height){h=inner.height;w=h*aspect;}
             var drawn=new Rect(inner.center.x-w/2,inner.center.y-h/2,w,h);Fill(inner,UiTrough);GUI.DrawTexture(drawn,atlasTexture,ScaleMode.StretchToFill);
             float vx,vy,vw,vh;
-            if(diamondView){// The diagonal view covers a turned square of the grid; outline the grid rectangle around it.
+            if(diamondView&&world.Staggered){float tw=isoWidth,th=tw*PixelArt.DH/PixelArt.DW;vx=camI-MapW/2/tw;vw=MapW/tw;vy=camJ-MapH/th;vh=2*MapH/th;}
+            else if(diamondView){// The diagonal view covers a turned square of the grid; outline the grid rectangle around it.
                 float lo=float.MaxValue,hi=float.MinValue,top=float.MaxValue,bottom=float.MinValue;foreach(var p in new[]{new Vector2(0,0),new Vector2(MapW,0),new Vector2(0,MapH),new Vector2(MapW,MapH)}){float tw=isoWidth,th=tw*PixelArt.DH/PixelArt.DW,a=(p.x-IsoCentreX)/(tw/2),b=(p.y-IsoCentreY)/(th/2),gi=camI+(a+b)/2,gj=camJ+(b-a)/2;lo=Mathf.Min(lo,gi);hi=Mathf.Max(hi,gi);top=Mathf.Min(top,gj);bottom=Mathf.Max(bottom,gj);}
                 vx=lo;vy=top;vw=hi-lo;vh=bottom-top;}
             else{vx=mapScroll.x/tilePixels;vy=mapScroll.y/tilePixels;vw=MapW/tilePixels;vh=MapH/tilePixels;}
@@ -190,7 +192,7 @@ namespace ParadigmRealm
             var viewButton=new Rect(MiniButtons.x,MiniButtons.y+bh*2+8,MiniButtons.width,bh);
             if(GUI.Button(viewButton,""))ToggleView();DrawIcon(PixelArt.IconLayers,new Rect(MiniButtons.x+4,MiniButtons.y+bh*2.5f+8-12,24,24));
             // Hovering names the view the button switches to, beside the pointer (kept on screen to its left).
-            if(viewButton.Contains(e.mousePosition)){string tip=diamondView?"Classic view (V)":"Pixel-art view (V)";var size=small.CalcSize(new GUIContent(tip));var tipRect=new Rect(e.mousePosition.x-size.x-26,e.mousePosition.y-size.y-10,size.x+12,size.y+6);Fill(tipRect,new Color(.05f,.08f,.16f,.95f));Fill(new Rect(tipRect.x,tipRect.yMax-1,tipRect.width,1),new Color(.85f,.68f,.3f));GUI.Label(new Rect(tipRect.x+6,tipRect.y+3,size.x,size.y),tip,small);}
+            if(viewButton.Contains(e.mousePosition)){string tip=world.Staggered?"Pixel-art view (classic view: older maps only)":diamondView?"Classic view (V)":"Pixel-art view (V)";var size=small.CalcSize(new GUIContent(tip));var tipRect=new Rect(e.mousePosition.x-size.x-26,e.mousePosition.y-size.y-10,size.x+12,size.y+6);Fill(tipRect,new Color(.05f,.08f,.16f,.95f));Fill(new Rect(tipRect.x,tipRect.yMax-1,tipRect.width,1),new Color(.85f,.68f,.3f));GUI.Label(new Rect(tipRect.x+6,tipRect.y+3,size.x,size.y),tip,small);}
         }
         // The selected unit or city: picture, name, health or growth, key figures and the main actions. "More" opens every
         // other action in a panel above the card.

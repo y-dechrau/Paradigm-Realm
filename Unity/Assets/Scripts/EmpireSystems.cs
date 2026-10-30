@@ -11,7 +11,7 @@ public partial class World {
     public static bool IsWonder(int b){return b>=60&&b<=63;}
     public static bool IsProject(int b){return b>=70&&b<=72;}
     public bool OwnWonder(int owner,int id){return cities.Any(c=>c.owner==owner&&HasBuilding(c,id));}
-    public bool AdjacentWater(City c){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){if(dx==0&&dy==0)continue;var t=At(c.x+dx,c.y+dy);if(t!=null&&(t.terrain==4||t.terrain==6||t.terrain==12))return true;}return false;}
+    public bool AdjacentWater(City c){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){if(dx==0&&dy==0)continue;var t=Step(c.x,c.y,dx,dy);if(t!=null&&(t.terrain==4||t.terrain==6||t.terrain==12))return true;}return false;}
     public int GovernmentSupport(int owner){return new[]{6,8,2,0,10}[nations[owner].government];}
     public bool ChangeGovernment(int owner,int government){if(owner<0||owner>=civCount||government<0||government>=Governments.Length||result!="")return false;var n=nations[owner];if(n.government==government||n.revolution>0||(government>0&&!HasTech(owner,GovernmentTech[government])))return false;n.government=government;n.revolution=2;if(owner==0)Note("Revolution: two turns of reduced output before "+Governments[government]+".");return true;}
     public int ExtraHappiness(City c){var n=nations[c.owner];return c.entertainers*2+n.luxury*2+(n.government==1?1:0)+(HasBuilding(c,36)?2:0)+(HasBuilding(c,42)?3:0)+(OwnWonder(c.owner,61)?2:0)-(n.revolution>0?2:0)-(n.government==3&&units.Any(u=>u.owner==c.owner&&Power[u.type]>0&&At(u.x,u.y).owner>=0&&At(u.x,u.y).owner!=c.owner&&AtWar(c.owner,At(u.x,u.y).owner))?2:0);}
@@ -62,7 +62,7 @@ public partial class World {
         if(u.owner==0)Note("The tribe shares its knowledge of the land around it and pledges allegiance"+(before>=0?" (won over from "+NationName(before)+")":"")+"; it pays "+VillageTax+" gold a turn while within 4 tiles of your borders.");
         else if(before==0)Note("A tribal village has been won over by "+NationName(u.owner)+".");}
     public const int VillageTax=2;
-    public bool VillageInReach(int owner,Tile t){if(t.owner==owner)return true;for(int dy=-4;dy<=4;dy++)for(int dx=-4;dx<=4;dx++){var n=At(t.x+dx,t.y+dy);if(n!=null&&n.owner==owner)return true;}return false;}
+    public bool VillageInReach(int owner,Tile t){if(t.owner==owner)return true;for(int dy=-4;dy<=4;dy++)for(int dx=-4;dx<=4;dx++){var n=Step(t.x,t.y,dx,dy);if(n!=null&&n.owner==owner)return true;}return false;}
     public int VillageTribute(int owner){int sum=0;foreach(var t in tiles)if(t.village&&t.villageOwner==owner&&VillageInReach(owner,t))sum+=VillageTax;return sum;}
     // Scouts and every combat unit can explore on their own (owner request); exploring stops when an enemy comes near.
     public static bool CanExplore(int type){return type==3||Power[type]>0||IsNaval(type);}
@@ -83,10 +83,10 @@ public partial class World {
         var known=nations[u.owner].known;var seen=new HashSet<int>{u.y*Width+u.x};var queue=new Queue<Tile>();queue.Enqueue(At(u.x,u.y));int budget=4000;
         while(queue.Count>0&&budget-->0){
             var t=queue.Dequeue();
-            if(t.x!=u.x||t.y!=u.y){bool frontier=false;for(int dy=-1;dy<=1&&!frontier;dy++)for(int dx=-1;dx<=1;dx++){var n=At(t.x+dx,t.y+dy);if(n!=null&&!known[n.y*Width+n.x]){frontier=true;break;}}
+            if(t.x!=u.x||t.y!=u.y){bool frontier=false;for(int dy=-1;dy<=1&&!frontier;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n!=null&&!known[n.y*Width+n.x]){frontier=true;break;}}
                 if(frontier&&!units.Any(a=>a.owner!=u.owner&&a.x==t.x&&a.y==t.y))return t;}
             for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){
-                if(dx==0&&dy==0)continue;var n=At(t.x+dx,t.y+dy);if(n==null)continue;int idx=n.y*Width+n.x;
+                if(dx==0&&dy==0)continue;var n=Step(t.x,t.y,dx,dy);if(n==null)continue;int idx=n.y*Width+n.x;
                 if(seen.Contains(idx)||!known[idx])continue;seen.Add(idx);
                 int terrain=u.owner==0&&!Visible(n.x,n.y)?KnownTerrain(n):n.terrain;
                 if((IsNaval(u.type)?!Passable(u,n,terrain):Barren(terrain))||!CanEnter(u.owner,n))continue;

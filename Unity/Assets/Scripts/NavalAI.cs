@@ -100,7 +100,7 @@ namespace ParadigmRealm
             Tile best=null;int bestLength=int.MaxValue;
             for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++)
             {
-                var n=At(land.x+dx,land.y+dy);if(n==null||!Sailable(n.terrain)||!Passable(ship,n,n.terrain))continue;
+                var n=Step(land.x,land.y,dx,dy);if(n==null||!Sailable(n.terrain)||!Passable(ship,n,n.terrain))continue;
                 if(n.x==ship.x&&n.y==ship.y)return n;
                 var path=Route(ship,n.x,n.y);if(path.Count>0&&path.Count<bestLength){bestLength=path.Count;best=n;}
             }
@@ -112,10 +112,10 @@ namespace ParadigmRealm
             var candidates=new List<Tile>();
             for(int dy=-15;dy<=15;dy++)for(int dx=-15;dx<=15;dx++)
             {
-                var t=At(x+dx,y+dy);if(t==null||IsWater(t.terrain)||!nations[owner].known[t.y*Width+t.x]||!NextToSea(t.x,t.y))continue;
+                var t=Step(x,y,dx,dy);if(t==null||IsWater(t.terrain)||!nations[owner].known[t.y*Width+t.x]||!NextToSea(t.x,t.y))continue;
                 // Land seen before (not necessarily in sight now), legal to settle, with room around it; the settler plans properly once ashore.
                 if(SiteReason(owner,t.x,t.y,false)!=""||SettlementThreat(owner,t.x,t.y))continue;
-                int room=0;for(int ry=-2;ry<=2;ry++)for(int rx=-2;rx<=2;rx++){var k=At(t.x+rx,t.y+ry);if(k!=null&&!IsWater(k.terrain)&&nations[owner].known[k.y*Width+k.x])room++;}
+                int room=0;for(int ry=-2;ry<=2;ry++)for(int rx=-2;rx<=2;rx++){var k=Step(t.x,t.y,rx,ry);if(k!=null&&!IsWater(k.terrain)&&nations[owner].known[k.y*Width+k.x])room++;}
                 if(room>=6)candidates.Add(t);
             }
             return candidates.OrderBy(t=>Distance(x,y,t.x,t.y)).ThenBy(t=>t.y*Width+t.x).FirstOrDefault();
@@ -135,7 +135,7 @@ namespace ParadigmRealm
                 for(int i=0;i<tiles.Length;i++)
                 {
                     if(landmass[i]!=0||Barren(tiles[i].terrain))continue;landmass[i]=next;queue.Enqueue(i);
-                    while(queue.Count>0){int k=queue.Dequeue();var t=tiles[k];for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=At(t.x+dx,t.y+dy);if(n==null)continue;int j=n.y*Width+n.x;if(landmass[j]==0&&!Barren(n.terrain)){landmass[j]=next;queue.Enqueue(j);}}}
+                    while(queue.Count>0){int k=queue.Dequeue();var t=tiles[k];for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n==null)continue;int j=n.y*Width+n.x;if(landmass[j]==0&&!Barren(n.terrain)){landmass[j]=next;queue.Enqueue(j);}}}
                     next++;
                 }
                 landmassTurn=turn;
@@ -157,7 +157,7 @@ namespace ParadigmRealm
             Tile best=null;int bestLength=int.MaxValue;
             for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++)
             {
-                var t=At(target.x+dx,target.y+dy);if(t==null||IsWater(t.terrain)||IsImpassable(t.terrain)||!NextToSea(t.x,t.y))continue;
+                var t=Step(target.x,target.y,dx,dy);if(t==null||IsWater(t.terrain)||IsImpassable(t.terrain)||!NextToSea(t.x,t.y))continue;
                 if(t.x==target.x&&t.y==target.y)continue;if(units.Any(a=>a.owner!=owner&&a.x==t.x&&a.y==t.y))continue;
                 var water=AdjacentWater(t,ship);if(water==null)continue;int length=(water.x==ship.x&&water.y==ship.y?0:Route(ship,water.x,water.y).Count)*10+Distance(t.x,t.y,target.x,target.y);
                 if(length<bestLength){bestLength=length;best=t;}
@@ -174,7 +174,7 @@ namespace ParadigmRealm
             var g=InvasionGalley(u.owner);if(g==null||Cargo(g).Count>=CargoSpace(g.type)||!AtSea(g))return false;
             if(Distance(u.x,u.y,g.x,g.y)==1){Move(u,g.x,g.y);return true;}
             Tile shore=null;int best=int.MaxValue;
-            for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=At(g.x+dx,g.y+dy);if(n==null||IsWater(n.terrain)||IsImpassable(n.terrain)||Landmass(n.x,n.y)!=Landmass(u.x,u.y))continue;int d=Distance(u.x,u.y,n.x,n.y);if(d<best){best=d;shore=n;}}
+            for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(g.x,g.y,dx,dy);if(n==null||IsWater(n.terrain)||IsImpassable(n.terrain)||Landmass(n.x,n.y)!=Landmass(u.x,u.y))continue;int d=Distance(u.x,u.y,n.x,n.y);if(d<best){best=d;shore=n;}}
             if(shore==null)return false;Order(u,shore.x,shore.y);if(Distance(u.x,u.y,g.x,g.y)==1&&u.moves>0)Move(u,g.x,g.y);return true;
         }
         // Galley with troops (or waiting for them).
@@ -204,7 +204,7 @@ namespace ParadigmRealm
             }
         }
         // A land unit at sea that is not being ferried steps onto the nearest land it can reach.
-        void GoAshore(Unit u){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=At(u.x+dx,u.y+dy);if(n!=null&&!IsWater(n.terrain)&&Move(u,n.x,n.y))return;}}
+        void GoAshore(Unit u){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(u.x,u.y,dx,dy);if(n!=null&&!IsWater(n.terrain)&&Move(u,n.x,n.y))return;}}
         // Settler with no reachable site: ask for a ferry, and step aboard a galley alongside.
         bool SettlerAwaitsFerry(Unit u)
         {
@@ -212,7 +212,7 @@ namespace ParadigmRealm
             FerryWanted.Add(u.owner);
             for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++)
             {
-                var n=At(u.x+dx,u.y+dy);if(n==null||!Sailable(n.terrain))continue;
+                var n=Step(u.x,u.y,dx,dy);if(n==null||!Sailable(n.terrain))continue;
                 var ship=units.FirstOrDefault(s=>s.owner==u.owner&&s.type==GalleyUnit&&s.x==n.x&&s.y==n.y);
                 if(ship!=null&&Cargo(ship).Count<CargoSpace(ship.type)&&Move(u,n.x,n.y))return true;
             }

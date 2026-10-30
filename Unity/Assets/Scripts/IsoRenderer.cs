@@ -60,7 +60,8 @@ namespace ParadigmRealm
         static int GroveVariant(int x,int y){unchecked{int h=x*83492791^y*1640531527;return (h&0x7fffffff)%8;}}
 
         // ---------- camera ----------
-        void ToggleView(){diamondView=!diamondView;var u=Selected();if(u!=null)FocusTile(u.x,u.y);ResetMapGesture();}
+        // The classic square view draws the old grid; staggered maps (shape 2) always use the pixel-art view.
+        void ToggleView(){if(world!=null&&world.Staggered){diamondView=true;status="The classic view is only available on older diagonal maps.";return;}diamondView=!diamondView;var u=Selected();if(u!=null)FocusTile(u.x,u.y);ResetMapGesture();}
         void ClampCamera()
         {
             if(world.Sphere){float w=world.Width;camI%=w;if(camI<0)camI+=w;}
@@ -69,14 +70,18 @@ namespace ParadigmRealm
         }
         void FocusTile(int x,int y)
         {
-            if(!diamondView){mapScroll=new Vector2(x*tilePixels-MapW/2,y*tilePixels-MapH/2);ClampMapScroll();return;}
-            float i=x;if(world.Sphere){float w=world.Width;i=x+w*(float)Math.Round((camI-x)/w);}
+            if(!diamondView){if(world.Staggered){mapScroll=new Vector2((x+(y&1)*.5f)*tilePixels-MapW/2,y*tilePixels/2f-MapH/2);ClampMapScroll();return;}mapScroll=new Vector2(x*tilePixels-MapW/2,y*tilePixels-MapH/2);ClampMapScroll();return;}
+            // Staggered rows: the camera is in columns (with the odd-row half step) and rows.
+            float i=x+(world.Staggered?(y&1)*.5f:0);if(world.Sphere){float w=world.Width;i=i+w*(float)Math.Round((camI-i)/w);}
             camI=i;camJ=y;ClampCamera();
         }
         void IsoPan(float dx,float dy)
         {
+            float tw=isoWidth,th=tw*PixelArt.DH/PixelArt.DW;
+            // Staggered rows pan straight: right is east, down is south.
+            if(world.Staggered){camI+=dx/tw;camJ+=dy/(th/2);ClampCamera();return;}
             // Screen movement of (dx,dy) pixels moves the camera by whole and part tiles, through the diagonal projection.
-            float tw=isoWidth,th=tw*PixelArt.DH/PixelArt.DW,a=dx/(tw/2),b=dy/(th/2);
+            float a=dx/(tw/2),b=dy/(th/2);
             camI+=(a+b)/2;camJ+=(b-a)/2;ClampCamera();
         }
         void IsoZoom(int direction)
@@ -90,13 +95,17 @@ namespace ParadigmRealm
         {
             float i=x;
             if(world.Sphere){float w=world.Width;i=x+w*(float)Math.Round((camI-x)/w);}
-            double dx,dy;PixelArt.ScreenOf(i,y,camI,camJ,isoWidth,out dx,out dy);sx=IsoCentreX+(float)dx;sy=IsoCentreY+(float)dy;
+            double dx,dy;
+            if(world.Staggered)PixelArt.StaggerScreenOf(i,y,camI,camJ,isoWidth,out dx,out dy);else PixelArt.ScreenOf(i,y,camI,camJ,isoWidth,out dx,out dy);
+            sx=IsoCentreX+(float)dx;sy=IsoCentreY+(float)dy;
         }
         // Which map tile is under a point given in map-view coordinates (0,0 = top left of the view).
         bool IsoPick(Vector2 local,out int x,out int y)
         {
-            // Land and water are level, so the tile under the pointer is simply the rectangle it falls in.
-            int i,j;PixelArt.PickOf(local.x-IsoCentreX,local.y-IsoCentreY,camI,camJ,isoWidth,out i,out j);
+            // Land and water are level, so the tile under the pointer is simply the diamond it falls in.
+            int i,j;
+            if(world.Staggered)PixelArt.StaggerPickOf(local.x-IsoCentreX,local.y-IsoCentreY,camI,camJ,isoWidth,out i,out j);
+            else PixelArt.PickOf(local.x-IsoCentreX,local.y-IsoCentreY,camI,camJ,isoWidth,out i,out j);
             var t=world.At(i,j);if(t==null){x=-1;y=-1;return false;}
             x=t.x;y=t.y;return true;
         }
@@ -109,19 +118,16 @@ namespace ParadigmRealm
         }
 
         // ---------- terrain pictures ----------
-        int IsoKnownTerrain(int i,int j)
-        {
-            var n=world.At(i,j);
-            return n==null||!n.seen?-1:world.KnownTerrain(n);
-        }
+        int IsoKnownTerrain(Tile n){return n==null||!n.seen?-1:world.KnownTerrain(n);}
         readonly int[] isoN9=new int[9];
         // Each tile's picture depends on its own position (world-space noise) and on the 3 x 3 block of terrain the player
         // knows, so the cache key is the tile plus a hash of that block, its river mask and the water animation frame.
         Texture2D IsoGround(Tile t,int i,int j,int frame)
         {
             int mask=0;bool anyWater=false;
-            for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){int n=IsoKnownTerrain(i+dx,j+dy);if(dx==0&&dy==0)n=t.terrain;isoN9[(dy+1)*3+dx+1]=n;if(n>=0&&PixelArt.IsWater(n))anyWater=true;}
-            if(t.terrain==7){int[] offI={0,1,0,-1},offJ={-1,0,1,0};for(int k=0;k<4;k++){int n=IsoKnownTerrain(i+offI[k],j+offJ[k]);if(n>=0&&(n==7||PixelArt.IsWater(n)))mask|=1<<k;}}
+            // Neighbours by grid step from the tile itself, so the same picture serves diagonal and staggered maps.
+            for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){int n=IsoKnownTerrain(world.Step(t.x,t.y,dx,dy));if(dx==0&&dy==0)n=t.terrain;isoN9[(dy+1)*3+dx+1]=n;if(n>=0&&PixelArt.IsWater(n))anyWater=true;}
+            if(t.terrain==7){int[] offI={0,1,0,-1},offJ={-1,0,1,0};for(int k=0;k<4;k++){int n=IsoKnownTerrain(world.Step(t.x,t.y,offI[k],offJ[k]));if(n>=0&&(n==7||PixelArt.IsWater(n)))mask|=1<<k;}}
             int fr=anyWater?frame:0;int sig=17;unchecked{foreach(int n in isoN9)sig=sig*31+n+1;sig=sig*31+mask;}
             int index=t.y*world.Width+t.x;long key=((long)(uint)sig<<32)|(uint)(index*4+fr);
             Texture2D tex;
@@ -149,7 +155,7 @@ namespace ParadigmRealm
             HandleMapInput();
             if(dragging){var m=Event.current.mousePosition;var u=world.units.Find(a=>a.id==dragUnit);if(u!=null){float sx,sy;IsoScreen(u.x,u.y,out sx,out sy);DrawOrderLine(new Vector2(MapX+sx,MapY+sy-6*isoWidth/64f),m);}GUI.Label(new Rect(m.x+15,m.y+12,220,30),"Release to issue destination",body);}
         }
-        readonly List<Vector3> isoFog=new List<Vector3>(),isoMist=new List<Vector3>();
+        readonly List<Vector3> isoFog=new List<Vector3>(),isoMist=new List<Vector3>();readonly List<Vector4> isoCells=new List<Vector4>();
         // Dark mist colours: the void and unexplored ground, the cloud banks over it, the veil over remembered land and its tint.
         static readonly Color MistDeep=new Color(.07f,.08f,.11f),MistBank=new Color(.17f,.19f,.24f,.97f),MistThin=new Color(.14f,.16f,.21f,.3f),Remembered=new Color(.58f,.61f,.68f,1);
         static readonly int[] RoadDx={-1,0,1,1,1,0,-1,-1},RoadDy={-1,-1,-1,0,1,1,1,0};
@@ -168,12 +174,25 @@ namespace ParadigmRealm
             // R covers every tile whose diamond can touch the view, with a margin for tall scenery below the bottom edge.
             int R=(int)Math.Ceiling(MapW/tw+MapH/th)+3,ci=(int)Math.Round(camI),cj=(int)Math.Round(camJ);
             int pooled=0;isoResTiles.Clear();isoResPos.Clear();isoCityNames.Clear();isoCityPos.Clear();isoCityInk.Clear();isoCityRefs.Clear();
-            for(int sum=-2*R;sum<=2*R;sum++)for(int di=-R;di<=R;di++)
+            // Staggered rows: draw row by row from the back (north); every tile of a row is level, so order within it is free.
+            isoCells.Clear();
+            if(world.Staggered)
             {
+                int top=(int)Math.Floor(camJ-MapH/th)-2,bottom=(int)Math.Ceiling(camJ+MapH/th+64*s/(th/2))+1;int left=(int)Math.Floor(camI-MapW/2/tw)-2,right=(int)Math.Ceiling(camI+MapW/2/tw)+2;
+                for(int j=Math.Max(0,top);j<=Math.Min(world.Height-1,bottom);j++)for(int i=left;i<=right;i++)
+                {float sx=IsoCentreX+(i+(j&1)*.5f-camI)*tw,sy=IsoCentreY+(j-camJ)*th/2;if(sx<-tw||sx>MapW+tw||sy<-th||sy>MapH+64*s)continue;isoCells.Add(new Vector4(i,j,sx,sy));}
+            }
+            else for(int sum=-2*R;sum<=2*R;sum++)for(int di=-R;di<=R;di++)
+            {
+                // Diagonal view: tiles go back to front by diagonal (i + j).
                 int dj=sum-di;if(dj<-R||dj>R)continue;int i=ci+di,j=cj+dj;
                 if(j<0||j>=world.Height||!world.Sphere&&(i<0||i>=width))continue;
                 float sx=IsoCentreX+((i-camI)-(j-camJ))*tw/2,sy=IsoCentreY+((i-camI)+(j-camJ))*th/2;
-                if(sx<-tw||sx>MapW+tw||sy<-th||sy>MapH+64*s)continue;
+                if(sx<-tw||sx>MapW+tw||sy<-th||sy>MapH+64*s)continue;isoCells.Add(new Vector4(i,j,sx,sy));
+            }
+            foreach(var cellAt in isoCells)
+            {
+                int i=(int)cellAt.x,j=(int)cellAt.y;float sx=cellAt.z,sy=cellAt.w;
                 var source=world.At(i,j);if(source==null)continue;
                 bool visible=world.Visible(source.x,source.y);Tile t=source;
                 if(source.seen&&!visible){if(pooled==knownPool.Count)knownPool.Add(new Tile());t=knownPool[pooled++];world.CopyKnown(source,t);}
@@ -195,7 +214,7 @@ namespace ParadigmRealm
                     Color ink=nations[t.owner];ink.a=.85f;int[] offI={0,1,0,-1},offJ={-1,0,1,0};
                     for(int k=0;k<4;k++)
                     {
-                        var n=world.At(i+offI[k],j+offJ[k]);
+                        var n=world.Step(source.x,source.y,offI[k],offJ[k]);
                         if(n!=null&&n.seen&&world.KnownOwner(n)==t.owner)continue;
                         GUI.color=ink;GUI.DrawTexture(ground,IsoPicture(4,k,0));
                     }
@@ -243,7 +262,7 @@ namespace ParadigmRealm
         {
             if(cloudTexture==null){cloudTexture=PixelTexture(PixelArt.CloudShadows());cloudTexture.wrapMode=TextureWrapMode.Repeat;}
             float tile=128*3*s,t=Time.realtimeSinceStartup;
-            float offX=(-(camI-camJ)*isoWidth/2+t*9f)%tile,offY=(-(camI+camJ)*isoWidth*PixelArt.DH/PixelArt.DW/2+t*4f)%tile;if(offX>0)offX-=tile;if(offY>0)offY-=tile;
+            float offX=(-(world.Staggered?camI*2:camI-camJ)*isoWidth/2+t*9f)%tile,offY=(-(world.Staggered?camJ:camI+camJ)*isoWidth*PixelArt.DH/PixelArt.DW/2+t*4f)%tile;if(offX>0)offX-=tile;if(offY>0)offY-=tile;
             for(float y=offY;y<MapH;y+=tile)for(float x=offX;x<MapW;x+=tile)GUI.DrawTexture(new Rect(x,y,tile,tile),cloudTexture);
         }
         // How far a tile's surface is raised on screen: land (as the player knows it) stands Elev pixels above water.

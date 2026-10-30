@@ -2,7 +2,7 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
-## Owner requests 30 Oct evening (no save change)
+## Owner requests 30 Oct evening (save version 19)
 - **Clearing woodland:** Forest, Jungle, Arctic forest and Mangrove must be cleared before a farm or mine (new worker job 5, 4 worker-turns, needs Bronze Working for axes). They become Grassland, Grassland, Arctic tundra and Bog. Roads can still go through woodland. On a wooded tile the worker's Farm button reads Clear; rival workers clear tiles they want to farm (`InfrastructureAI`).
 - **Esc** lets go of the selected unit (and any pending Move); with nothing selected it opens the pause menu as before.
 - **Technology screen:** hold the mouse wheel (middle button) and drag to pan around the tree.
@@ -12,7 +12,13 @@
 - **Fog of war as dark mist:** unexplored land under dark drifting banks (the cloud puffs, darkened), land seen before but not watched now under a thin drifting veil and a darker tint; the void beyond the map is near-black.
 - **Diplomacy screen** in the layout of the owner's mockup (`Design/Mockups/diplomacy-mockup.png`): the partner's leader framed before a painted coast cut from the mockup (`Resources/Visuals/diplomacy-backdrop.png`), a card per met civilisation, name and mood badge, greeting, active treaties, Your offer / Their offer with steppers, Propose Agreement, Discuss (the full detail panel with every earlier action, the inbox and confirmations), Leave and Declare War (`DiplomacyScreen.cs`).
 - **Checked:** EngineChecks (with new Content checks for clearing and the mountain cap) and DiplomacyUIChecks pass; RealmTools.Checks and GraphicsChecks pass in Unity; Windows build and `-autoShot` run with no exceptions (diplomacy, mist and map screenshots reviewed). **Not yet played by hand.**
-- **Planned next (owner approved):** staggered-row map layout (rows run east-west, poles top and bottom, east-west wrap) for new games; older saves keep the diagonal layout.
+- **Staggered rows (save version 19):** every new globe game uses `mapShape` 2. Rows run east-west and wrap, the poles are the top and bottom rows (no crossing over them), odd rows sit half a tile east, so the map pans freely in every direction like Civilization V/VI instead of showing a diagonal band.
+  - The rules did not change: they still move on the same 8-neighbour grid, now reached through `World.Step(x,y,di,dj)` (grid position i = x + (y + y%2)/2, j = (y - y%2)/2 - x). Every neighbour lookup in the game (about 45: movement, routes, borders, vision, territory, rivers, coasts, ports, naval AI, settling, generation) goes through it. `Distance` is the grid distance with the east-west wrap.
+  - Map sizes keep their tile counts: W columns by 2W rows (Tiny 24 x 48 ... Massive 160 x 320), a 2:1 picture. The climate generator shifts odd rows' longitude by half a column.
+  - Renderer: row-by-row drawing from the north, straight panning (right is east), diamond picking (`PixelArt.StaggerScreenOf/StaggerPickOf`), the minimap and atlas in half-height brick rows.
+  - Older saves (shapes 0 and 1) keep their diagonal layout and play exactly as before.
+  - **Not done:** the classic square view is not drawn for staggered maps (the view button explains this; older maps keep it). Flat maps (the New Game "flat" shape) still use the diagonal layout.
+  - Harness: staggered globes are W x 2W and end at the polar rows; steps are reversible and neighbours one move apart; distance is symmetric and wraps; screen/pick round trips at every zoom; grid steps point the same way as in the diagonal view.
 
 ## Every art slot filled from SpriteCook (30 Oct 2026, later; no save change)
 - **Sprites added** (SpriteCook Pixel Engine Image, 56 images, 336 credits on the owner's Starter plan): all 32 settlement slots (`city-0..3-0..3` with and without `-walled`; the three medieval pictures from the first batch were re-fitted the same way), farmsteads `hamlet-0..3`, cloud puffs `cloud-0..3`, ships `Visuals/unit-12..14` (Boat, Galley, War Galley; 128 x 128, reduced to the game's 64 x 64 unit sprite at load), terrain scenery `terrain-09/11/13/15/16/18/19/20`, grassland groves `terrain-00-0..3` (open meadow variants 4-7 stay drawn) and extra variants `terrain-01-1/2` and `terrain-05-1/2`.

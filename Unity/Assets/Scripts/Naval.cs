@@ -20,9 +20,9 @@ namespace ParadigmRealm
         public static bool IsNaval(int type){return type>=BoatUnit&&type<=WarGalleyUnit;}
         public static bool Sailable(int t){return t==4||t==6;}
         public static int CargoSpace(int type){return type==BoatUnit?1:type==GalleyUnit?3:0;}
-        bool NextToLand(Tile t){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=At(t.x+dx,t.y+dy);if(n!=null&&!IsWater(n.terrain))return true;}return false;}
+        bool NextToLand(Tile t){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n!=null&&!IsWater(n.terrain))return true;}return false;}
         static bool IsWater(int t){return t==4||t==6||t==12;}
-        bool NextToSea(int x,int y){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){if(dx==0&&dy==0)continue;var n=At(x+dx,y+dy);if(n!=null&&Sailable(n.terrain))return true;}return false;}
+        bool NextToSea(int x,int y){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){if(dx==0&&dy==0)continue;var n=Step(x,y,dx,dy);if(n!=null&&Sailable(n.terrain))return true;}return false;}
         public List<Unit> Cargo(Unit ship){var t=At(ship.x,ship.y);if(t==null||!IsWater(t.terrain))return new List<Unit>();return units.Where(a=>a.owner==ship.owner&&!IsNaval(a.type)&&a.x==ship.x&&a.y==ship.y).ToList();}
         public Unit TransportAt(int owner,int x,int y){return units.FirstOrDefault(s=>s.owner==owner&&CargoSpace(s.type)>0&&s.x==x&&s.y==y&&Cargo(s).Count<CargoSpace(s.type));}
         // Whether unit u may stand on tile t (terrain as the unit's owner knows it); other civilisations' units are checked elsewhere.
@@ -47,7 +47,7 @@ namespace ParadigmRealm
             Tile best=null;int bestDistance=99;
             for(int dy=-3;dy<=3;dy++)for(int dx=-3;dx<=3;dx++)
             {
-                var t=At(c.x+dx,c.y+dy);if(t==null||t.owner!=c.owner||IsWater(t.terrain)||Barren(t.terrain)||!NextToSea(t.x,t.y))continue;
+                var t=Step(c.x,c.y,dx,dy);if(t==null||t.owner!=c.owner||IsWater(t.terrain)||Barren(t.terrain)||!NextToSea(t.x,t.y))continue;
                 if(cities.Any(o=>o.x==t.x&&o.y==t.y))continue;int d=Distance(c.x,c.y,t.x,t.y);if(d<bestDistance){bestDistance=d;best=t;}
             }
             return best;
@@ -70,7 +70,7 @@ namespace ParadigmRealm
                 var t=queue.Dequeue();
                 for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++)
                 {
-                    var n=At(t.x+dx,t.y+dy);if(n==null||!seen.Add(n.y*Width+n.x))continue;
+                    var n=Step(t.x,t.y,dx,dy);if(n==null||!seen.Add(n.y*Width+n.x))continue;
                     if(n.x==port.x&&n.y==port.y)return true;
                     if(!n.road||EnemyOn(c.owner,n)||Distance(c.x,c.y,n.x,n.y)>4)continue;
                     queue.Enqueue(n);
@@ -102,7 +102,7 @@ namespace ParadigmRealm
             var from=type==BoatUnit?At(c.x,c.y):PortTile(c);if(from==null)return null;var probe=new Unit{owner=c.owner,type=type,id=-1,x=from.x,y=from.y};
             for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++)
             {
-                var n=At(from.x+dx,from.y+dy);if(n==null||!Sailable(n.terrain)||!Passable(probe,n,n.terrain))continue;
+                var n=Step(from.x,from.y,dx,dy);if(n==null||!Sailable(n.terrain)||!Passable(probe,n,n.terrain))continue;
                 if(units.Any(a=>a.owner!=c.owner&&a.x==n.x&&a.y==n.y))continue;
                 if(units.Count(a=>a.owner==c.owner&&IsNaval(a.type)&&a.x==n.x&&a.y==n.y)>=3)continue;
                 return n;

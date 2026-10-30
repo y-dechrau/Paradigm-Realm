@@ -16,12 +16,12 @@ namespace ParadigmRealm {
    if(c.portLinked&&IsSeaResource(t.resource)&&ResourceKnown(c.owner,t.resource))v[0]++;
    return v;
   }
-  bool NearRiver(Tile t){for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){var a=At(t.x+x,t.y+y);if(a!=null&&a.terrain==7)return true;}return false;}
+  bool NearRiver(Tile t){for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){var a=Step(t.x,t.y,x,y);if(a!=null&&a.terrain==7)return true;}return false;}
   public List<Tile> Workable(City c){
    // Only the 5x5 block around the city can qualify, so nothing scans the whole map.
    var result=new List<Tile>();
    for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){
-    if(dx==0&&dy==0)continue;var t=At(c.x+dx,c.y+dy);if(t==null||t.owner!=c.owner)continue;
+    if(dx==0&&dy==0)continue;var t=Step(c.x,c.y,dx,dy);if(t==null||t.owner!=c.owner)continue;
     if(Distance(t.x,t.y,c.x,c.y)>2||result.Contains(t))continue;
     bool occupied=false;foreach(var other in cities)if(other.x==t.x&&other.y==t.y){occupied=true;break;}
     if(occupied)continue;

@@ -126,7 +126,7 @@ namespace ParadigmRealm
             for(int sum=-8;sum<=8;sum++)for(int dx=-4;dx<=4;dx++)
             {
                 int dy=sum-dx;if(dy<-4||dy>4)continue;
-                var t=world.At(c.x+dx,c.y+dy);if(t==null)continue;
+                var t=world.Step(c.x,c.y,dx,dy);if(t==null)continue;
                 float sx=cx+(dx-dy)*tw/2,sy=cy+(dx+dy)*th/2;var r=new Rect(sx-tw/2,sy-th/2,tw,th);
                 if(r.xMax<0||r.x>view.width||r.yMax<0||r.y>view.height+th)continue;
                 bool ring=Math.Max(Math.Abs(dx),Math.Abs(dy))<=2&&world.Distance(c.x,c.y,t.x,t.y)<=2,mine=t.owner==c.owner;

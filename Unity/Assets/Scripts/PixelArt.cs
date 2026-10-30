@@ -25,6 +25,18 @@ namespace ParadigmRealm
         public const int DW=64,DH=32;
         // Screen mapping shared by the renderer and the checks: tile (i,j) centre relative to the camera, and its inverse.
         // Diagonal view: moving east (i) goes down-right on screen, moving south (j) goes down-left; tw is a diamond's screen width.
+        // Staggered rows (World.mapShape 2): tile (x,y) is centred at column x + y%2/2 and half-row y; cx, cy is the camera in
+        // the same units. Picking tries the rows around the point and keeps the diamond the point lies deepest inside.
+        public static void StaggerScreenOf(double x,int y,double cx,double cy,double tw,out double sx,out double sy){sx=(x+(y&1)*.5-cx)*tw;sy=(y-cy)*tw*DH/DW/2;}
+        public static void StaggerPickOf(double dx,double dy,double cx,double cy,double tw,out int x,out int y)
+        {
+            double th=tw*DH/DW,fy=cy+dy/(th/2),best=double.MaxValue;x=0;y=(int)Math.Round(fy);
+            for(int r=(int)Math.Floor(fy)-1;r<=(int)Math.Floor(fy)+2;r++)
+            {
+                int c=(int)Math.Round(cx+dx/tw-(r&1)*.5);double ox=(c+(r&1)*.5-cx)*tw-dx,oy=(r-cy)*th/2-dy,m=Math.Abs(ox)/(tw/2)+Math.Abs(oy)/(th/2);
+                if(m<best){best=m;x=c;y=r;}
+            }
+        }
         public static void ScreenOf(double i,double j,double camI,double camJ,double tw,out double sx,out double sy){double di=i-camI,dj=j-camJ;sx=(di-dj)*tw/2;sy=(di+dj)*tw*DH/DW/2;}
         public static void PickOf(double dx,double dy,double camI,double camJ,double tw,out int i,out int j){double a=dx/(tw/2),b=dy/(tw*DH/DW/2);i=(int)Math.Floor(camI+(a+b)/2+.5);j=(int)Math.Floor(camJ+(b-a)/2+.5);}
         // Reshapes a square grid-space tile picture (ground, roads, farms, borders) into its DW x DH diamond, nearest pixel, so

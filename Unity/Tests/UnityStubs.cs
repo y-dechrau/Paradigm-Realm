@@ -14,6 +14,7 @@ public class RenderTexture{public int width,height;public static RenderTexture a
 public static class Graphics{public static void Blit(Texture2D src,RenderTexture dst){}}
 public struct Vector2 {public float x,y;public Vector2(float x,float y){this.x=x;this.y=y;}public static Vector2 zero=>new Vector2();public float sqrMagnitude=>x*x+y*y;public float magnitude=>(float)System.Math.Sqrt(x*x+y*y);public static Vector2 operator/(Vector2 a,float f)=>new Vector2(a.x/f,a.y/f);public static Vector2 operator+(Vector2 a,Vector2 b)=>new Vector2(a.x+b.x,a.y+b.y);public static Vector2 operator-(Vector2 a,Vector2 b)=>new Vector2(a.x-b.x,a.y-b.y);public static Vector2 operator*(Vector2 a,float f)=>new Vector2(a.x*f,a.y*f);}
 public struct Vector3{public float x,y,z;public Vector3(float x,float y,float z){this.x=x;this.y=y;this.z=z;}}
+public struct Vector4{public float x,y,z,w;public Vector4(float x,float y,float z,float w){this.x=x;this.y=y;this.z=z;this.w=w;}}
 public struct Quaternion{public static Quaternion identity=>new Quaternion();}
 public struct Matrix4x4{public static Matrix4x4 TRS(Vector3 a,Quaternion b,Vector3 c)=>new Matrix4x4();}
 public struct Rect{public float x,y,width,height;public Rect(float x,float y,float w,float h){this.x=x;this.y=y;width=w;height=h;}public float xMax=>x+width;public float yMax=>y+height;public Vector2 center=>new Vector2(x+width/2,y+height/2);public bool Contains(Vector2 p)=>p.x>=x&&p.x<xMax&&p.y>=y&&p.y<yMax;}

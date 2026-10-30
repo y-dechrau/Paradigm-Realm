@@ -23,7 +23,7 @@ public static void Run(){
     Check(TechnologyCatalog.Index("astronomy")==TechnologyCatalog.Index("mysticism"),"astronomy (globe zoom) is part of Mysticism");
     // Land types (New Game): every type makes a valid world; archipelago has the most sea, lakes and inland seas the least.
     {int[] share=new int[World.LandTypeNames.Length];for(int m=0;m<share.Length;m++){var lw=World.New(300+m,"Lands",m,1,1,0,1,1);Check(lw.Valid()&&lw.mapType==m,"land type "+World.LandTypeNames[m]+" makes a valid world");share[m]=lw.tiles.Count(t=>t.terrain==4||t.terrain==12)*100/lw.tiles.Length;
-      int clash=0;foreach(var a in lw.tiles)for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var b=lw.At(a.x+dx,a.y+dy);if(b!=null&&b!=a&&lw.BiomeClash(a,b))clash++;}
+      int clash=0;foreach(var a in lw.tiles)for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var b=lw.Step(a.x,a.y,dx,dy);if(b!=null&&b!=a&&lw.BiomeClash(a,b))clash++;}
       Check(clash==0,"no desert beside ice or jungle beside tundra on "+World.LandTypeNames[m]+" ("+clash+" clashes)");}
      Check(share[2]>share[0]&&share[4]<share[0],"archipelago is mostly sea; lakes type has the most land");}
     // Sea resources: ten of them, on water only, with real yields.
@@ -37,7 +37,7 @@ public static void Run(){
      for(int k=0;k<5&&spot.terrain==1;k++)wood.EndTurn();Check(spot.terrain==0&&hand.job==0,"cleared forest becomes grassland");Check(World.Cleared(13)==8&&World.Cleared(19)==9&&World.Cleared(11)==0,"arctic forest, mangrove and jungle clear to tundra, bog and grassland");}
     // Mountain ranges are capped at about sqrt(tiles)/4 connected peaks, so small maps are not walled off.
     {var peaks=World.New(9);int cap=Math.Max(4,(int)Math.Round(Math.Sqrt(peaks.tiles.Length)/4)),largest=0;var seen=new HashSet<Tile>();
-     foreach(var t in peaks.tiles.Where(t=>t.terrain==5||t.terrain==15)){if(!seen.Add(t))continue;int size=0;var stack=new Stack<Tile>();stack.Push(t);while(stack.Count>0){var a=stack.Pop();size++;for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var b=peaks.At(a.x+dx,a.y+dy);if(b!=null&&(b.terrain==5||b.terrain==15)&&seen.Add(b))stack.Push(b);}}largest=Math.Max(largest,size);}
+     foreach(var t in peaks.tiles.Where(t=>t.terrain==5||t.terrain==15)){if(!seen.Add(t))continue;int size=0;var stack=new Stack<Tile>();stack.Push(t);while(stack.Count>0){var a=stack.Pop();size++;for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var b=peaks.Step(a.x,a.y,dx,dy);if(b!=null&&(b.terrain==5||b.terrain==15)&&seen.Add(b))stack.Push(b);}}largest=Math.Max(largest,size);}
      Check(largest<=cap,"largest mountain range "+largest+" within cap "+cap);}
     // A version 4 save (12 original technologies) still upgrades all the way to keystones.
     var legacy=World.New(4);legacy.version=4;legacy.tech=new bool[12];legacy.tech[LegacyTechnologyCatalog.Index("engineering")]=true;legacy.research=4;legacy.science=23;
@@ -85,7 +85,7 @@ static void StageFive(){
     old.tech=old.nations[0].tech;foreach(var id in new[]{"toolmaking","agriculture","pottery","masonry","steam"})old.tech[LegacyTechnologyCatalog.Index(id)]=true;
     old.nations[0].progress[LegacyTechnologyCatalog.Index("sailing")]=11;old.nations[0].progress[LegacyTechnologyCatalog.Index("shipbuilding")]=7;old.research=LegacyTechnologyCatalog.Index("sailing");old.science=11;
     old.UpgradeSave();
-    Check(old.version==18&&old.Valid(),"version 12 converts to a valid version 18");
+    Check(old.version==19&&old.Valid(),"version 12 converts to a valid version 19");
     Check(old.HasTech(0,"pottery")&&old.HasTech(0,"masonry")&&old.HasTech(0,"steam")&&old.HasTech(0,"engineering"),"any known folded technology keeps its keystone, with prerequisites");
     Check(old.research==K("sailing")&&old.science==18,"research and progress move to the keystone (Sailing 11 + Shipbuilding 7)");
     Check(old.nations.All(n=>n.edicts!=null&&n.edicts.Length==6),"edict slots added");

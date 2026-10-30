@@ -77,7 +77,7 @@ namespace ParadigmRealm
             yield return Shot(folder,"6-coast-close.bmp");
             // A grown, walled medieval capital with farmsteads around it (this throwaway game only).
             if(city!=null){city.pop=11;city.walls=true;city.granary=true;city.library=true;if(!city.buildings.Contains(36))city.buildings.Add(36);if(!city.buildings.Contains(31))city.buildings.Add(31);
-                world.tech[TechnologyCatalog.Index("feudalism")]=true;for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=world.At(city.x+dx,city.y+dy);if(n!=null)n.owner=0;}
+                world.tech[TechnologyCatalog.Index("feudalism")]=true;for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=world.Step(city.x,city.y,dx,dy);if(n!=null)n.owner=0;}
                 isoWidth=128;FocusTile(city.x,city.y);}
             yield return Shot(folder,"6b-grown-city.bmp");
             // A port with ships (this throwaway game only): the nearest stretch of sea to the capital gets a port, a road, a Galley and a Boat.
