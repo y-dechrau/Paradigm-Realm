@@ -207,6 +207,7 @@ namespace ParadigmRealm
                     tile.terrain=b;
                 }
             }
+            CapMountainRanges(hn,tb);
             // Volcanic ground on warm high hills, with a deterministic hash choosing a few clusters.
             for(int i=0;i<n;i++){var t=tiles[i];if(t.terrain==2&&tb[i]>=3&&hn[i]>.6&&Lattice(s+5,i%W/3,i/W/3,0)>.9)t.terrain=17;}
             // Coasts: low ground beside the sea becomes rocky shoreline where hills are near, mangrove in the wet tropics.
@@ -229,6 +230,22 @@ namespace ParadigmRealm
             MakeRivers(s,land,hn,mb);
         }
 
+        // The relief noise is laid on the globe, so a range covers the same share of any map and dominates a small one (owner
+        // request: massive ranges less likely on small maps). A connected range keeps at most about sqrt(tiles)/4 peaks (8 on
+        // Tiny, more on bigger maps), the highest; the lower rest become hills (tundra where it is too cold for hills).
+        void CapMountainRanges(double[] hn,int[] tb)
+        {
+            int n=tiles.Length,cap=Math.Max(4,(int)Math.Round(Math.Sqrt(n)/4));var seen=new bool[n];
+            for(int i=0;i<n;i++)
+            {
+                if(seen[i]||!IsMountain(tiles[i].terrain))continue;
+                var range=new List<int>();var stack=new Stack<int>();stack.Push(i);seen[i]=true;
+                while(stack.Count>0){int k=stack.Pop();range.Add(k);foreach(int j in SphereNeighbours(k))if(!seen[j]&&IsMountain(tiles[j].terrain)){seen[j]=true;stack.Push(j);}}
+                if(range.Count<=cap)continue;
+                foreach(int k in range.OrderByDescending(k=>hn[k]).ThenBy(k=>k).Skip(cap))tiles[k].terrain=tb[k]>0?2:8;
+            }
+        }
+        static bool IsMountain(int terrain){return terrain==5||terrain==15;}
         double WastelandNoise(int s,int x,int y){double px,py,pz;SpherePoint(x,y,out px,out py,out pz);return Fbm(s+9,px*6+2,py*6+2,pz*6+2,2);}
 
         void MakeLakes(int s,bool[] land,int[] dist,double[] hn,int[] tb)

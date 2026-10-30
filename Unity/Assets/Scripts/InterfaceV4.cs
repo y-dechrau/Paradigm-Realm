@@ -48,9 +48,10 @@ namespace ParadigmRealm
             }catch(Exception e){loadError="Could not delete: "+e.Message;}
             deleteCandidate=null;
         }
-        void OpenDetails(string name){detailsScreen=name;researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
+        void OpenDetails(string name){detailsScreen=name;diplomacyDiscuss=false;researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
         void DrawDetailsScreen()
         {
+            if(detailsScreen=="Diplomacy"){DrawDiplomacyScreen();return;}
             GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(50,115,800,40),detailsScreen,title);
             if(GUI.Button(new Rect(1040,115,190,34),"Back",button)){detailsScreen="";GUI.FocusControl(null);GUIUtility.ExitGUI();}
             GUILayout.BeginArea(new Rect(55,175,1160,520));detailsScroll=GUILayout.BeginScrollView(detailsScroll);

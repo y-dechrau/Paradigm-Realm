@@ -187,7 +187,10 @@ namespace ParadigmRealm
             float bh=(MiniButtons.height-8)/3;
             if(GUI.Button(new Rect(MiniButtons.x,MiniButtons.y,MiniButtons.width,bh),"")){if(diamondView)IsoZoom(1);else ClassicZoom(8);}DrawIcon(PixelArt.IconZoomIn,new Rect(MiniButtons.x+4,MiniButtons.y+bh/2-12,24,24));
             if(GUI.Button(new Rect(MiniButtons.x,MiniButtons.y+bh+4,MiniButtons.width,bh),"")){if(diamondView)IsoZoom(-1);else ClassicZoom(-8);}DrawIcon(PixelArt.IconZoomOut,new Rect(MiniButtons.x+4,MiniButtons.y+bh*1.5f+4-12,24,24));
-            if(GUI.Button(new Rect(MiniButtons.x,MiniButtons.y+bh*2+8,MiniButtons.width,bh),""))ToggleView();DrawIcon(PixelArt.IconLayers,new Rect(MiniButtons.x+4,MiniButtons.y+bh*2.5f+8-12,24,24));
+            var viewButton=new Rect(MiniButtons.x,MiniButtons.y+bh*2+8,MiniButtons.width,bh);
+            if(GUI.Button(viewButton,""))ToggleView();DrawIcon(PixelArt.IconLayers,new Rect(MiniButtons.x+4,MiniButtons.y+bh*2.5f+8-12,24,24));
+            // Hovering names the view the button switches to, beside the pointer (kept on screen to its left).
+            if(viewButton.Contains(e.mousePosition)){string tip=diamondView?"Classic view (V)":"Pixel-art view (V)";var size=small.CalcSize(new GUIContent(tip));var tipRect=new Rect(e.mousePosition.x-size.x-26,e.mousePosition.y-size.y-10,size.x+12,size.y+6);Fill(tipRect,new Color(.05f,.08f,.16f,.95f));Fill(new Rect(tipRect.x,tipRect.yMax-1,tipRect.width,1),new Color(.85f,.68f,.3f));GUI.Label(new Rect(tipRect.x+6,tipRect.y+3,size.x,size.y),tip,small);}
         }
         // The selected unit or city: picture, name, health or growth, key figures and the main actions. "More" opens every
         // other action in a panel above the card.
@@ -227,7 +230,8 @@ namespace ParadigmRealm
             var actions=new List<KeyValuePair<int,string>>();bool idle=GUI.enabled&&world.result=="";
             actions.Add(new KeyValuePair<int,string>(PixelArt.IconMove,"Move"));
             if(u.type==0)actions.Add(new KeyValuePair<int,string>(PixelArt.IconFound,"Found"));
-            if(u.type==1){actions.Add(new KeyValuePair<int,string>(PixelArt.IconRoad,"Road"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconFood,"Farm"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconShields,"Mine"));}
+            // On woodland the farm button becomes Clear: the forest must be cut down first (Bronze Working).
+            if(u.type==1){actions.Add(new KeyValuePair<int,string>(PixelArt.IconRoad,"Road"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconFood,World.Forested(world.At(u.x,u.y).terrain)?"Clear":"Farm"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconShields,"Mine"));}
             if(World.CanExplore(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconExplore,"Explore"));
             actions.Add(new KeyValuePair<int,string>(PixelArt.IconSkip,"Skip"));
             if(World.Power[u.type]>0&&!World.IsNaval(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconFortify,u.fortified?"Wake":"Fortify"));
@@ -244,7 +248,7 @@ namespace ParadigmRealm
                     {
                         case "Move":moveMode=!moveMode;status=moveMode?"Click a destination for the "+World.UnitNames[u.type]+" (right-click cancels).":"";break;
                         case "Found":Found();break;
-                        case "Road":case "Farm":case "Mine":{int job=a.Value=="Road"?1:a.Value=="Farm"?2:3;string reason=world.WorkerTeam(u).Select(m=>world.JobReason(m,job)).FirstOrDefault(s=>s!="")??"";if(!world.StartJob(u,job))status=reason;break;}
+                        case "Road":case "Farm":case "Mine":case "Clear":{int job=a.Value=="Road"?1:a.Value=="Farm"?2:a.Value=="Clear"?5:3;string reason=world.WorkerTeam(u).Select(m=>world.JobReason(m,job)).FirstOrDefault(s=>s!="")??"";if(!world.StartJob(u,job))status=reason;break;}
                         case "Explore":if(u.exploring)world.CancelActivity(u);else world.AutoExplore(u);break;
                         case "Skip":world.SkipTurn(u);status=World.UnitNames[u.type]+" skips this turn.";break;
                         case "Fortify":case "Wake":if(World.Power[u.type]>0&&!World.IsNaval(u.type)){bool fortify=!u.fortified;world.CancelActivity(u);u.fortified=fortify;}else{bool watch=!u.sentry;world.CancelActivity(u);u.sentry=watch;}break;

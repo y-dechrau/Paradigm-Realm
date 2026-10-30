@@ -411,7 +411,9 @@ namespace ParadigmRealm
                         var t=At(from.x+dx,from.y+dy);if(t==null||(dx==0&&dy==0))continue;
                         int next=t.y*Width+t.x;bool known=nations[u.owner].known[next];
                         Tile seenTile=t;if(known&&u.owner==0)seenTile=KnownTileInto(t,routeScratch);
-                        if(known&&!Passable(u,t,seenTile.terrain))continue;if(!known&&IsNaval(u.type))continue;if(!IsNaval(u.type)&&IsWater(seenTile.terrain)&&next!=end)continue;
+                        // The player's unexplored tiles are assumed passable land (their real terrain is not known yet); the route is
+                        // planned again before every step, so it bends or stops once the unit sees the water.
+                        if(known&&!Passable(u,t,seenTile.terrain))continue;if(!known&&IsNaval(u.type))continue;if((known||u.owner!=0)&&!IsNaval(u.type)&&IsWater(seenTile.terrain)&&next!=end)continue;
                         bool visible=VisibleTo(u.owner,t.x,t.y);
                         if(visible&&next!=end&&(!CanEnter(u.owner,t)||!ignoreUnits&&foreign.Contains(next)))continue;
                         if(!ignoreUnits&&mine.Contains(next)&&!Capacity(u,t.x,t.y))continue;
@@ -431,8 +433,22 @@ namespace ParadigmRealm
         // stack) is replaced by the nearest reachable tile beside it; a path jammed only by units waits for the next turn; an
         // order ends only when there is no way there at all (owner request).
         public bool Order(Unit u,int x,int y){if(u==null||result!="")return false;CancelOrder(u);u.fortified=false;if(u.x==x&&u.y==y)return true;var goal=At(x,y);if(goal==null)return false;
-            if(Route(u,x,y).Count==0&&Route(u,x,y,true).Count==0){var near=NearestReachableBeside(u,goal);if(near==null)return false;x=near.x;y=near.y;if(u.x==x&&u.y==y)return true;}
+            if(Route(u,x,y).Count==0&&Route(u,x,y,true).Count==0){var near=NearestReachableBeside(u,goal)??(IsNaval(u.type)||u.owner!=0?null:NearestLandToward(u,goal));if(near==null)return false;x=near.x;y=near.y;if(u.x==x&&u.y==y)return true;}
             u.destinationX=x;u.destinationY=y;u.hasOrder=true;ContinueOrder(u);return true;}
+        // A land unit sent out over water (owner request): head for the reachable land tile closest to the goal, usually the
+        // coast facing it. Only the unit's own map knowledge is used; unexplored tiles count as land until seen.
+        Tile NearestLandToward(Unit u,Tile goal)
+        {
+            var known=nations[u.owner].known;int tries=0;
+            foreach(var t in tiles.Where(t=>Distance(t.x,t.y,goal.x,goal.y)<=16&&(!known[t.y*Width+t.x]||!IsWater(u.owner==0&&!Visible(t.x,t.y)?KnownTerrain(t):t.terrain)))
+                .OrderBy(t=>Distance(t.x,t.y,goal.x,goal.y)).ThenBy(t=>Distance(t.x,t.y,u.x,u.y)))
+            {
+                if(t.x==u.x&&t.y==u.y)return t;
+                if(++tries>40)break;
+                if(Route(u,t.x,t.y).Count>0)return t;
+            }
+            return null;
+        }
         Tile NearestReachableBeside(Unit u,Tile goal)
         {
             // Tiles touching the destination first; a ring further out only when none of those can be reached.
@@ -465,7 +481,11 @@ namespace ParadigmRealm
                     u.destinationX=near.x;u.destinationY=near.y;if(++retargets>1)break;continue;
                 }
                 var p=Route(u,u.destinationX,u.destinationY);
-                if(p.Count==0){if(Route(u,u.destinationX,u.destinationY,true).Count>0)break;u.hasOrder=false;if(u.owner==0)Note("Order stopped: no route to the destination.");break;}
+                if(p.Count==0){if(Route(u,u.destinationX,u.destinationY,true).Count>0)break;
+                    // Land units heading into unexplored water keep going to the shore facing their goal, then stop there.
+                    if(u.owner==0&&!IsNaval(u.type)&&dest!=null&&retargets==0){var shore=NearestLandToward(u,dest);if(shore!=null&&!(shore.x==u.destinationX&&shore.y==u.destinationY)&&!(shore.x==u.x&&shore.y==u.y)){u.destinationX=shore.x;u.destinationY=shore.y;retargets++;continue;}
+                        if(shore!=null&&shore.x==u.x&&shore.y==u.y){u.hasOrder=false;if(u.owner==0)Note(UnitNames[u.type]+" reached the coast; the way on is water.");break;}}
+                    u.hasOrder=false;if(u.owner==0)Note("Order stopped: no route to the destination.");break;}
                 var t=p[0];
                 if(u.moves<StepCost(u,u.x,u.y,t))break;
                 if(!Move(u,t.x,t.y))break;
@@ -495,15 +515,19 @@ namespace ParadigmRealm
         public int UpgradeTarget(Unit u){return u.type==2?7:u.type==7?6:u.type==8?5:-1;}
         public bool Upgrade(Unit u){if(u==null||u.moves<=0)return false;int t=UpgradeTarget(u);if(t<0||!cities.Any(c=>c.owner==u.owner&&c.x==u.x&&c.y==u.y)||!nations[u.owner].tech[UnitTech[t]]||!HasResource(u.owner,UnitResource[t]))return false;int price=(UnitCosts[t]-UnitCosts[u.type])*2;if(u.owner==0)nations[0].gold=gold;if(nations[u.owner].gold<price)return false;nations[u.owner].gold-=price;if(u.owner==0)gold=nations[0].gold;u.type=t;u.moves=0;CancelOrder(u);return true;}
         public bool Improve(Unit u,bool farm){return StartJob(u,farm?2:1);}
-        public string JobReason(Unit u,int job){if(u==null||u.type!=1||u.moves<=0)return "Worker needs movement.";var t=At(u.x,u.y);if(Barren(t.terrain))return "Requires passable land free of polar ice.";if(job==1&&!HasTech(u.owner,"wheel"))return "Requires The Wheel.";if(job==1)return !CanEnter(u.owner,t)?"Requires access to this territory.":t.road?"Road already built.":"";if(t.owner!=u.owner)return "Requires your territory.";if(job==2){if(!HasTech(u.owner,"agriculture"))return "Requires Agriculture.";return t.farm||t.mine||!Farmable(t.terrain)?"Tile cannot support a farm/pasture.":"";}if(job==3){if(!HasTech(u.owner,"mining"))return "Requires Mining.";return t.mine||t.farm||!(t.terrain==2||t.resource==2||t.resource==3)?"Requires hills or a mineral deposit.":"";}if(job==4)return !HasTech(u.owner,"engineering")?"Requires Engineering.":t.fort?"Fort already built.":"";return "Unknown job.";}
-        public int JobWork(Unit u,int job){var t=At(u.x,u.y);return job==1?2+(t.owner==u.owner?0:t.terrain==2?2:1):3;}
+        public string JobReason(Unit u,int job){if(u==null||u.type!=1||u.moves<=0)return "Worker needs movement.";var t=At(u.x,u.y);if(Barren(t.terrain))return "Requires passable land free of polar ice.";if(job==1&&!HasTech(u.owner,"wheel"))return "Requires The Wheel.";if(job==1)return !CanEnter(u.owner,t)?"Requires access to this territory.":t.road?"Road already built.":"";if(t.owner!=u.owner)return "Requires your territory.";if(job==5){if(!Forested(t.terrain))return "No forest to clear.";return !HasTech(u.owner,"bronze")?"Requires Bronze Working (axes).":"";}if((job==2||job==3)&&Forested(t.terrain))return "Clear the forest first.";if(job==2){if(!HasTech(u.owner,"agriculture"))return "Requires Agriculture.";return t.farm||t.mine||!Farmable(t.terrain)?"Tile cannot support a farm/pasture.":"";}if(job==3){if(!HasTech(u.owner,"mining"))return "Requires Mining.";return t.mine||t.farm||!(t.terrain==2||t.resource==2||t.resource==3)?"Requires hills or a mineral deposit.":"";}if(job==4)return !HasTech(u.owner,"engineering")?"Requires Engineering.":t.fort?"Fort already built.":"";return "Unknown job.";}
+        public int JobWork(Unit u,int job){var t=At(u.x,u.y);return job==1?2+(t.owner==u.owner?0:t.terrain==2?2:1):job==5?4:3;}
+        // Woodland must be cleared (job 5, needs Bronze Working for axes) before a farm or mine: Forest and Jungle become
+        // Grassland, Arctic forest becomes Arctic tundra, Mangrove becomes Bog. Roads can still be built through woodland.
+        public static bool Forested(int terrain){return terrain==1||terrain==11||terrain==13||terrain==19;}
+        public static int Cleared(int terrain){return terrain==13?8:terrain==19?9:0;}
         public List<Unit> WorkerTeam(Unit u){return u==null?new List<Unit>():u.type!=1||u.workerGroup==0?new List<Unit>{u}:units.Where(a=>a.type==1&&a.owner==u.owner&&a.workerGroup==u.workerGroup&&a.x==u.x&&a.y==u.y).ToList();}
         public bool GroupWorkers(Unit u){if(u==null||u.type!=1)return false;var team=units.Where(a=>a.type==1&&a.owner==u.owner&&a.x==u.x&&a.y==u.y).ToList();if(team.Count<2)return false;foreach(var a in team){CancelOrder(a);a.fortified=false;a.workerGroup=u.id;}return true;}
         public void UngroupWorkers(Unit u){if(u==null||u.workerGroup==0)return;int group=u.workerGroup;foreach(var a in units.Where(a=>a.owner==u.owner&&a.workerGroup==group)){CancelOrder(a);a.workerGroup=0;}}
         public void CancelActivity(Unit u){foreach(var a in WorkerTeam(u)){CancelOrder(a);a.fortified=false;}}
         public bool StartJob(Unit u,int job){var team=WorkerTeam(u);if(team.Count==0||team.Any(a=>JobReason(a,job)!=""))return false;int work=JobWork(u,job);foreach(var a in team){CancelOrder(a);a.fortified=false;a.job=job;a.jobTurns=work;a.moves=0;}return true;}
         public int JobTurnsRemaining(Unit u){if(u==null||u.job==0)return 0;int count=WorkerTeam(u).Count(a=>a.job==u.job);return (u.jobTurns+Math.Max(1,count)-1)/Math.Max(1,count);}
-        public string Activity(Unit u){if(u.exploring)return "Auto-exploring";if(u.sentry)return "Sentry: watching for enemies";if(u.job>0)return new[]{"","Building road","Building farm / pasture","Building mine","Building fort"}[u.job];if(u.hasOrder)return "Travelling to "+u.destinationX+", "+u.destinationY;if(u.fortified)return "Fortifying / healing";return u.moves==0?"Waiting for next turn":"Idle";}
+        public string Activity(Unit u){if(u.exploring)return "Auto-exploring";if(u.sentry)return "Sentry: watching for enemies";if(u.job>0)return new[]{"","Building road","Building farm / pasture","Building mine","Building fort","Clearing forest"}[u.job];if(u.hasOrder)return "Travelling to "+u.destinationX+", "+u.destinationY;if(u.fortified)return "Fortifying / healing";return u.moves==0?"Waiting for next turn":"Idle";}
         public string Remaining(Unit u){if(u.job>0)return JobTurnsRemaining(u)+" turns remaining";if(!u.hasOrder)return "Turns remaining: —";var route=Route(u,u.destinationX,u.destinationY);if(route.Count==0)return "Route blocked";int turns=0,budget=u.moves,x=u.x,y=u.y;foreach(var t in route){int cost=StepCost(u,x,y,u.owner==0?KnownTile(t):t);if(cost>budget){turns++;budget=Moves[u.type];}budget-=cost;x=t.x;y=t.y;}return "Approx. "+turns+" turns remaining";}
         void ProcessJobs(int owner){
             var processed=new HashSet<int>();
@@ -513,7 +537,7 @@ namespace ParadigmRealm
                 var t=At(u.x,u.y);if(IsImpassable(t.terrain)||(u.job==1?!CanEnter(owner,t):t.owner!=owner)){foreach(var a in team)CancelOrder(a);continue;}
                 int job=u.job,remaining=Math.Max(0,team.Min(a=>a.jobTurns)-team.Count);
                 foreach(var a in team)a.jobTurns=remaining;
-                if(remaining==0){if(job==1)t.road=true;if(job==2)t.farm=true;if(job==3)t.mine=true;if(job==4)t.fort=true;foreach(var a in team)a.job=0;networks=null;if(owner==0)Note("Workers completed an improvement.");}
+                if(remaining==0){if(job==1)t.road=true;if(job==2)t.farm=true;if(job==3)t.mine=true;if(job==4)t.fort=true;if(job==5&&Forested(t.terrain)){t.terrain=Cleared(t.terrain);t.farm=false;}foreach(var a in team)a.job=0;networks=null;if(owner==0)Note(job==5?"Workers cleared the forest.":"Workers completed an improvement.");}
             }
         }
         public bool Pillage(Unit u){if(u==null||Power[u.type]==0||u.moves<=0)return false;var t=At(u.x,u.y);if(t.owner<0||!AtWar(u.owner,t.owner)||!(t.road||t.farm||t.mine||t.fort))return false;Grieve(t.owner,u.owner,6);t.road=t.farm=t.mine=t.fort=false;u.moves=0;networks=null;return true;}

@@ -28,9 +28,10 @@ namespace ParadigmRealm {
     if(units.Any(a=>a.id!=u.id&&a.owner==u.owner&&a.type==1&&(a.job>0&&a.x==tile.x&&a.y==tile.y||a.hasOrder&&a.destinationX==tile.x&&a.destinationY==tile.y)))continue;
     if(units.Any(a=>AtWar(u.owner,a.owner)&&VisibleTo(u.owner,a.x,a.y)&&Distance(tile.x,tile.y,a.x,a.y)<=2))continue;
     var probe=new Unit{owner=u.owner,type=1,x=tile.x,y=tile.y,moves=u.moves};
-    for(int job=1;job<=3;job++){
+    foreach(int job in new[]{1,2,3,5}){
      if(JobReason(probe,job)!="")continue;
-     int value=job==1?4:worked.Contains(tile)?24:10;
+     // Clearing woodland is worth a little less than the farm it makes room for.
+     int value=job==1?4:job==5?(worked.Contains(tile)?18:6):worked.Contains(tile)?24:10;
      if(job==2&&hunger)value+=20;
      bool improvement=tile.resource>0&&(tile.resource==2||tile.resource==3?job==3:job==2);
      if(improvement)value+=24;

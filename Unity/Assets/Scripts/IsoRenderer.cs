@@ -149,7 +149,9 @@ namespace ParadigmRealm
             HandleMapInput();
             if(dragging){var m=Event.current.mousePosition;var u=world.units.Find(a=>a.id==dragUnit);if(u!=null){float sx,sy;IsoScreen(u.x,u.y,out sx,out sy);DrawOrderLine(new Vector2(MapX+sx,MapY+sy-6*isoWidth/64f),m);}GUI.Label(new Rect(m.x+15,m.y+12,220,30),"Release to issue destination",body);}
         }
-        readonly List<Vector3> isoFog=new List<Vector3>();
+        readonly List<Vector3> isoFog=new List<Vector3>(),isoMist=new List<Vector3>();
+        // Dark mist colours: the void and unexplored ground, the cloud banks over it, the veil over remembered land and its tint.
+        static readonly Color MistDeep=new Color(.07f,.08f,.11f),MistBank=new Color(.17f,.19f,.24f,.97f),MistThin=new Color(.14f,.16f,.21f,.3f),Remembered=new Color(.58f,.61f,.68f,1);
         static readonly int[] RoadDx={-1,0,1,1,1,0,-1,-1},RoadDy={-1,-1,-1,0,1,1,1,0};
         void DrawIsoContents()
         {
@@ -157,7 +159,7 @@ namespace ParadigmRealm
             ClampCamera();
             float tw=isoWidth,th=tw*PixelArt.DH/PixelArt.DW,s=tw/64f;int width=world.Width;
             int frame=(int)(Time.realtimeSinceStartup*2.5f)%3;
-            Fill(new Rect(0,0,MapW,MapH),new Color(.87f,.89f,.93f));isoFog.Clear();
+            Fill(new Rect(0,0,MapW,MapH),MistDeep);isoFog.Clear();isoMist.Clear();
             viewStacks.Clear();
             foreach(var unit in world.units){List<Unit> stackAt;int cell=unit.y*width+unit.x;if(!viewStacks.TryGetValue(cell,out stackAt)){stackAt=new List<Unit>(2);viewStacks[cell]=stackAt;}stackAt.Add(unit);}
             viewCities.Clear();foreach(var city in world.cities)viewCities[city.y*width+city.x]=city;
@@ -175,9 +177,10 @@ namespace ParadigmRealm
                 var source=world.At(i,j);if(source==null)continue;
                 bool visible=world.Visible(source.x,source.y);Tile t=source;
                 if(source.seen&&!visible){if(pooled==knownPool.Count)knownPool.Add(new Tile());t=knownPool[pooled++];world.CopyKnown(source,t);}
-                if(!source.seen){GUI.DrawTexture(new Rect(sx-32*s,sy-PixelArt.DH/2*s,64*s,PixelArt.DH*s),IsoPicture(4,5,0));isoFog.Add(new Vector3(sx,sy,(i*7+j*13)&3));continue;}
+                if(!source.seen){var keep=GUI.color;GUI.color=MistDeep;GUI.DrawTexture(new Rect(sx-32*s,sy-PixelArt.DH/2*s,64*s,PixelArt.DH*s),IsoPicture(4,5,0));GUI.color=keep;isoFog.Add(new Vector3(sx,sy,(i*7+j*13)&3));continue;}
                 bool water=PixelArt.IsWater(t.terrain);float gy=sy;
-                var old=GUI.color;if(!visible)GUI.color=new Color(.62f,.66f,.74f,1);
+                if(!visible)isoMist.Add(new Vector3(sx,sy,(i*5+j*11)&3));
+                var old=GUI.color;if(!visible)GUI.color=Remembered;
                 var ground=new Rect(sx-32*s,sy-PixelArt.DH/2*s,64*s,PixelArt.DH*s);
                 GUI.DrawTexture(ground,IsoGround(t,i,j,frame));
                 if(!water&&t.farm){var farm=IsoPicture(2,IsoVariant(t.x,t.y),0);if(farm!=null)GUI.DrawTexture(ground,farm);}
@@ -196,7 +199,7 @@ namespace ParadigmRealm
                         if(n!=null&&n.seen&&world.KnownOwner(n)==t.owner)continue;
                         GUI.color=ink;GUI.DrawTexture(ground,IsoPicture(4,k,0));
                     }
-                    GUI.color=visible?old:new Color(.62f,.66f,.74f,1);
+                    GUI.color=visible?old:Remembered;
                 }
                 // Grassland groves use eight variants so lone trees do not repeat in a pattern; none on farms, roads or cities.
                 bool meadow=t.terrain==0;bool built=t.farm||t.road||viewCities.ContainsKey(t.y*width+t.x);
@@ -220,9 +223,13 @@ namespace ParadigmRealm
                 var shown=picked??first;
                 if(shown!=null){DrawUnitArt(shown,new Rect(sx-20*s,gy-36*s,40*s,40*s),count);}
             }
-            // Unexplored land lies under banks of cloud that spill a little over the edge of the known world.
+            // Fog of war as dark mist (owner request): a thin drifting veil over land seen before but not watched now, and
+            // thick dark banks (the cloud puffs, darkened) over unexplored land, spilling a little over the known world's edge.
             DrawCloudShadows(s);
-            foreach(var f in isoFog)GUI.DrawTexture(new Rect(f.x-48*s*1.1f,f.y-38*s*1.1f,96*s*1.1f,64*s*1.1f),IsoPicture(9,(int)f.z,0));
+            float clock=Time.realtimeSinceStartup;var before=GUI.color;
+            foreach(var f in isoMist){float drift=Mathf.Sin(clock*.35f+f.z*1.7f+f.x*.013f)*5*s;GUI.color=MistThin;GUI.DrawTexture(new Rect(f.x-48*s+drift,f.y-36*s,96*s,64*s),IsoPicture(9,(int)f.z,0));}
+            foreach(var f in isoFog){float drift=Mathf.Sin(clock*.25f+f.z*2.1f+f.y*.011f)*4*s;GUI.color=MistBank;GUI.DrawTexture(new Rect(f.x-48*s*1.1f+drift,f.y-38*s*1.1f,96*s*1.1f,64*s*1.1f),IsoPicture(9,(int)f.z,0));}
+            GUI.color=before;
             // Resource badges go on after every tile so the tiles in front can never cover them.
             for(int n=0;n<isoResTiles.Count;n++){var p=isoResPos[n];DrawResource(isoResTiles[n],new Rect(p.x-36*s,p.y+15*s-61*s,61*s,61*s));}
             // City names sit just below each settlement, drawn last so neither tiles nor clouds cover them.

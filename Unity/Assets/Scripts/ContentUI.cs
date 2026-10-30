@@ -40,7 +40,12 @@ namespace ParadigmRealm
                 int era=e;if(GUI.Button(new Rect(42+e%7*171,150+e/7*29,166,26),TechnologyCatalog.EraNames[e].Replace(" Age",""),button)){FocusTechnology(Enumerable.Range(0,TechnologyCatalog.Count).Where(i=>TechnologyCatalog.Eras[i]==era).OrderBy(i=>techDepth[i]).First());}
             }
             GUI.Label(new Rect(42,211,1165,26),TechnologyCatalog.Count+" technologies in "+TechnologyCatalog.EraCount+" eras • You are in the "+TechnologyCatalog.EraNames[world.Era(0)]+" • Knowing "+World.EraThreshold+" of an era's "+TechnologyCatalog.PerEra+" completes it and offers an edict • Every prerequisite is required.",small);
-            researchScroll=GUI.BeginScrollView(new Rect(40,243,790,465),researchScroll,new Rect(0,0,(techDepth.Max()+1)*252+20,(techRow.Max()+1)*230+20));
+            // Hold the mouse wheel (middle button) and drag to pan around the tree.
+            var treeView=new Rect(40,243,790,465);var treeSize=new Vector2((techDepth.Max()+1)*252+20,(techRow.Max()+1)*230+20);var pan=Event.current;
+            if(pan.button==2&&treeView.Contains(pan.mousePosition)&&(pan.type==EventType.MouseDown||pan.type==EventType.MouseDrag)){
+                if(pan.type==EventType.MouseDrag)researchScroll=new Vector2(Mathf.Clamp(researchScroll.x-pan.delta.x,0,Mathf.Max(0,treeSize.x-treeView.width+16)),Mathf.Clamp(researchScroll.y-pan.delta.y,0,Mathf.Max(0,treeSize.y-treeView.height+16)));
+                pan.Use();}
+            researchScroll=GUI.BeginScrollView(treeView,researchScroll,new Rect(0,0,treeSize.x,treeSize.y));
             // Draw only selected incoming/outgoing links so the large graph stays readable.
             for(int i=0;i<TechnologyCatalog.Count;i++)foreach(int pre in World.Requirements[i])if(i==inspectedTech||pre==inspectedTech){
                 Rect from=ExpandedTechRect(pre),to=ExpandedTechRect(i);float x=from.xMax+10,y=from.y+100,ty=to.y+100;

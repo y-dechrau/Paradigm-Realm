@@ -31,6 +31,14 @@ public static void Run(){
      Check(sea>0&&Enumerable.Range(6,9).All(r=>World.ResourceFood[r]+World.ResourceShields[r]+World.ResourceTrade[r]>0),"sea resources placed and each yields something (offshore oil needs Refining)");}
     movement.At(x,y).terrain=11;unit.moves=4;Check(movement.Move(unit,x,y)&&unit.moves==1,"jungle movement cost");
     var road=World.New(7);var worker=road.units.First(u=>u.owner==0&&u.type==1);Check(!road.StartJob(worker,1),"road gated by Wheel");road.tech[K("wheel")]=true;Check(road.StartJob(worker,1),"Wheel enables road");
+    // Woodland must be cleared (Bronze Working, for axes) before a farm; clearing turns Forest into Grassland.
+    {var wood=World.New(8);var founder=wood.units.First(u=>u.owner==0&&u.type==0);wood.Found(founder);var hand=wood.units.First(u=>u.owner==0&&u.type==1);hand.x=founder.x;hand.y=founder.y;hand.moves=4;var spot=wood.At(hand.x,hand.y);spot.terrain=1;spot.farm=false;wood.tech[K("agriculture")]=true;
+     Check(wood.JobReason(hand,2)=="Clear the forest first.","farm blocked by forest");Check(!wood.StartJob(hand,5),"clearing needs Bronze Working");wood.tech[K("bronze")]=true;Check(wood.StartJob(hand,5)&&hand.jobTurns==4,"Bronze Working enables a four-turn clearing");
+     for(int k=0;k<5&&spot.terrain==1;k++)wood.EndTurn();Check(spot.terrain==0&&hand.job==0,"cleared forest becomes grassland");Check(World.Cleared(13)==8&&World.Cleared(19)==9&&World.Cleared(11)==0,"arctic forest, mangrove and jungle clear to tundra, bog and grassland");}
+    // Mountain ranges are capped at about sqrt(tiles)/4 connected peaks, so small maps are not walled off.
+    {var peaks=World.New(9);int cap=Math.Max(4,(int)Math.Round(Math.Sqrt(peaks.tiles.Length)/4)),largest=0;var seen=new HashSet<Tile>();
+     foreach(var t in peaks.tiles.Where(t=>t.terrain==5||t.terrain==15)){if(!seen.Add(t))continue;int size=0;var stack=new Stack<Tile>();stack.Push(t);while(stack.Count>0){var a=stack.Pop();size++;for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var b=peaks.At(a.x+dx,a.y+dy);if(b!=null&&(b.terrain==5||b.terrain==15)&&seen.Add(b))stack.Push(b);}}largest=Math.Max(largest,size);}
+     Check(largest<=cap,"largest mountain range "+largest+" within cap "+cap);}
     // A version 4 save (12 original technologies) still upgrades all the way to keystones.
     var legacy=World.New(4);legacy.version=4;legacy.tech=new bool[12];legacy.tech[LegacyTechnologyCatalog.Index("engineering")]=true;legacy.research=4;legacy.science=23;
     for(int i=0;i<3;i++){legacy.nations[i].tech=new bool[12];legacy.nations[i].progress=new int[12];legacy.nations[i].research=0;}

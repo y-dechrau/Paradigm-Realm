@@ -26,6 +26,8 @@ namespace ParadigmRealm
             else if(saveAsScreen||settingsScreen){PersistSettings();saveAsScreen=false;settingsScreen=false;}
             else if(pauseMenu)pauseMenu=false;
             else if(researchScreen||detailsScreen!=""){researchScreen=false;detailsScreen="";}
+            // Esc first lets go of the selected unit (and any pending move); with nothing selected it opens the pause menu.
+            else if(!cityScreen&&(selected>=0||moveMode)){selected=-1;moveMode=false;moreActions=false;status="";}
             else {guide=false;confirmNew=false;pendingUnit=-1;pauseMenu=true;}
             ResetMapGesture();GUI.FocusControl(null);e.Use();GUIUtility.ExitGUI();
         }
