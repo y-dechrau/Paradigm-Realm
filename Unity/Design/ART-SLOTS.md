@@ -18,7 +18,7 @@ The map is drawn by code (`PixelArt.cs`). Any picture put in `Unity/Assets/Resou
 | `Visuals/unit-NN` (existing folder `Resources/Visuals`) | Unit NN (`World.UnitNames`: 00 Settler … 12 Boat, 13 Galley, 14 War Galley) | Any square size; feet at the bottom centre. |
 
 ## Filled so far (30 Oct 2026, SpriteCook)
-`city-3-0`, `city-3-1-walled`, `city-3-2-walled`, `city-3-3-walled`, `terrain-01`, `terrain-05`, `port`. The town pictures carry their own grass patch inside the diamond. Every other slot still uses the drawn art.
+Every settlement (`city-0..3-0..3`, with and without `-walled`), `hamlet-0..3`, `port`, `cloud-0..3`, `Visuals/unit-12..14`, and terrain `00-0..3`, `01` (+`-1`, `-2`), `05` (+`-1`, `-2`), `09`, `11`, `13`, `15`, `16`, `18`, `19`, `20`. Most carry their own small ground patch, fitted so its tip row sits on the tile centre row (44 for settlements, 40 otherwise). Grassland open-meadow variants 4-7 still use the drawn art.
 
 ## Leader portraits
 `Resources/Leaders/leader-NN.png` (300 x 400), and age versions `leader-NN-eE.png` (E = 0 Dawn … 5 Dimensional) for clothing that changes with the age. Jade Dynasty (15) and Serpent League (16) join the game once their portraits exist.

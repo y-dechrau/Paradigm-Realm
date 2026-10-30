@@ -41,8 +41,9 @@ namespace ParadigmRealm
             long key=((long)kind<<40)|((long)a<<8)|(long)b;Texture2D tex;
             if(isoPictures.TryGetValue(key,out tex))return tex;
             // Supplied art (Resources/Sprites, e.g. from SpriteCook) replaces the drawn pictures; see Design/ART-SLOTS.md.
+            // Cloud puffs carry their variant in a (cloud-V); the other slots in b.
             string slot=kind==1?"terrain-"+a.ToString("00"):kind==6?"hamlet-"+a:kind==7?"port":kind==9?"cloud":null;
-            if(slot!=null){var supplied=SpriteSlot(slot+"-"+b)??SpriteSlot(slot);if(supplied!=null){isoPictures[key]=supplied;return supplied;}}
+            if(slot!=null){var supplied=SpriteSlot(slot+"-"+(kind==9?a:b))??SpriteSlot(slot);if(supplied!=null){isoPictures[key]=supplied;return supplied;}}
             PixelCanvas cv=null;
             if(kind==1)cv=PixelArt.Sprite(a,b);else if(kind==6)cv=PixelArt.Hamlet(a,b);else if(kind==7)cv=PixelArt.PortSprite();else if(kind==8)cv=PixelArt.HudIcon(a);else if(kind==9)cv=PixelArt.CloudPuff(a);else if(kind==2)cv=PixelArt.Farm(a);else if(kind==3)cv=PixelArt.Road(a);else if(kind==5)cv=PixelArt.ResourceIcon(a);else cv=PixelArt.Misc(a);
             // Tile-shaped overlays (farms, roads, borders, selection, unexplored) are drawn as diamonds in the diagonal view.
