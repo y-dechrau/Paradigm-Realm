@@ -315,6 +315,9 @@ namespace ParadigmRealm
             var e=Event.current;bool inside=InMap(e.mousePosition);
             int x,y;if(!MapTileAt(e.mousePosition,out x,out y)){x=-1;y=-1;inside=false;}
             if(!GUI.enabled||world.result!=""){dragUnit=-1;dragging=false;mapPointerDown=false;return;}
+            // Move mode (the unit card's Move button): the next click on the map is the selected unit's destination.
+            if(moveMode&&e.type==EventType.MouseDown&&e.button==0&&inside){var mover=Selected();moveMode=false;if(mover!=null&&!(mover.x==x&&mover.y==y))IssueOrder(mover,x,y);e.Use();return;}
+            if(moveMode&&e.type==EventType.MouseDown&&e.button==1){moveMode=false;e.Use();return;}
             if(e.type==EventType.MouseDown&&e.button==0&&inside){
                 var city=world.cities.Find(c=>c.owner==0&&c.x==x&&c.y==y);
                 if(e.clickCount==2&&city!=null){e.Use();OpenCity(city);return;}

@@ -16,30 +16,31 @@ namespace ParadigmRealm
         static readonly Rect MapView=new Rect(MapX,MapY,MapW,MapH);
         static readonly Rect TopBar=new Rect(0,0,1280,38),ResearchCard=new Rect(80,46,300,52),UnitCard=new Rect(8,592,410,200),
             TileCard=new Rect(472,742,336,52),MiniMap=new Rect(1060,590,178,138),MiniButtons=new Rect(1242,590,32,138),
-            EndTurnRect=new Rect(1060,738,214,54),NextUnitRect=new Rect(926,746,126,44),StatusRect=new Rect(430,706,420,30),MorePanel=new Rect(8,246,410,340);
+            EndTurnRect=new Rect(1060,738,214,54),MorePanel=new Rect(8,246,410,340);
         static readonly string[] RailScreens={"Economy","Research","Diplomacy","Cities","Military","Atlas","Victory","Chronicle","Identity"};
         static readonly string[] RailLabels={"Empire","Research","Diplomacy","Cities","Military","Realms","Victory","Chronicle","Identity"};
         static readonly int[] RailIcons={PixelArt.IconEmpire,PixelArt.IconResearch,PixelArt.IconDiplomacy,PixelArt.IconCities,PixelArt.IconMilitary,PixelArt.IconRealms,PixelArt.IconVictory,PixelArt.IconChronicle,PixelArt.IconIdentity};
         const float RailItem=54;
         static Rect RailRect{get{return new Rect(0,44,72,RailScreens.Length*RailItem+8);}}
         readonly List<Rect> hudRects=new List<Rect>();
-        bool moreActions;
+        bool moreActions,moveMode;
         // Clicks and the mouse wheel reach the map only where no widget is drawn over it.
         bool OverHud(Vector2 p){foreach(var r in hudRects)if(r.Contains(p))return true;return false;}
         bool InMap(Vector2 p){return MapView.Contains(p)&&!OverHud(p);}
         List<int> MetRivals(){return Enumerable.Range(1,world.civCount-1).Where(o=>world.met[o]).Take(5).ToList();}
         Rect LeaderRect(int i){return new Rect(1274-(i+1)*80,46,74,96);}
-        List<string> RecentNotes(){string now="Turn "+world.turn+":",last="Turn "+(world.turn-1)+":";return world.log.Where(l=>l.StartsWith(now)||l.StartsWith(last)).Take(3).ToList();}
+        // The current message (what just happened or why an order failed) leads, then the newest log entries of this turn and last.
+        List<string> RecentNotes(){string now="Turn "+world.turn+":",last="Turn "+(world.turn-1)+":";var notes=new List<string>();if(!string.IsNullOrEmpty(status))notes.Add(status);foreach(var l in world.log.Where(l=>l.StartsWith(now)||l.StartsWith(last))){if(notes.Count>=3)break;string text=l.Substring(l.IndexOf(':')+1).Trim();if(text!=status)notes.Add(text);}return notes;}
         Rect NoteRect(int i){float top=MetRivals().Count>0?150:46;return new Rect(1040,top+i*52,234,46);}
         bool CardShown(){return Selected()!=null||world.cities.Any(a=>a.owner==0&&a.id==cityId);}
         void BuildHudRects()
         {
             hudRects.Clear();if(world==null)return;
-            hudRects.Add(TopBar);hudRects.Add(RailRect);hudRects.Add(ResearchCard);hudRects.Add(MiniMap);hudRects.Add(MiniButtons);hudRects.Add(EndTurnRect);hudRects.Add(NextUnitRect);hudRects.Add(TileCard);
+            hudRects.Add(TopBar);hudRects.Add(RailRect);hudRects.Add(ResearchCard);hudRects.Add(MiniMap);hudRects.Add(MiniButtons);hudRects.Add(EndTurnRect);hudRects.Add(TileCard);
             if(CardShown())hudRects.Add(UnitCard);if(moreActions&&CardShown())hudRects.Add(MorePanel);
             for(int i=0;i<MetRivals().Count;i++)hudRects.Add(LeaderRect(i));
             for(int i=0;i<RecentNotes().Count;i++)hudRects.Add(NoteRect(i));
-            if(!string.IsNullOrEmpty(status))hudRects.Add(StatusRect);
+
         }
 
         // ---------- type and icons ----------
@@ -82,9 +83,9 @@ namespace ParadigmRealm
             DrawRail();DrawResearchCard();DrawLeaders();DrawNotices();DrawMiniMap();
             if(CardShown()){if(moreActions)DrawMoreActions();DrawUnitCard();}else moreActions=false;
             DrawTileCard();
-            if(!string.IsNullOrEmpty(status)){GUI.Box(StatusRect,"");GUI.Label(new Rect(StatusRect.x+10,StatusRect.y+5,StatusRect.width-20,20),status,hudCentre);}
+
             GUI.enabled=idle&&world.result=="";
-            if(HudButton(NextUnitRect,PixelArt.IconNext,"Next unit"))NextUnit();
+
             if(GUI.Button(EndTurnRect,"END TURN",endTurnStyle))EndTurn();
             var cap=new Rect(EndTurnRect.xMax-50,EndTurnRect.yMax-21,42,16);Fill(cap,new Color(.12f,.08f,.03f,.75f));GUI.Label(cap,"Enter",keyCapStyle);
             GUI.enabled=true;
@@ -150,7 +151,7 @@ namespace ParadigmRealm
                 if(art!=null)GUI.DrawTexture(face,art,ScaleMode.ScaleAndCrop);else{Fill(face,nations[o%nations.Length]*.6f);GUI.Label(face,world.NationName(o).Substring(0,1),hudTitle);}
                 if(world.AtWar(0,o)){Fill(new Rect(r.x,r.y,r.width,2),new Color(.85f,.2f,.15f));Fill(new Rect(r.x,r.yMax-2,r.width,2),new Color(.85f,.2f,.15f));}
                 int opinion=world.Opinion(o,0);Color mood=opinion>10?new Color(.35f,.8f,.4f):opinion<-10?new Color(.9f,.3f,.25f):new Color(.95f,.78f,.3f);
-                Fill(new Rect(r.x+10,r.yMax-19,12,12),mood);GUI.Label(new Rect(r.x+26,r.yMax-23,r.width-30,20),(opinion>0?"+":"")+opinion,hudLabel);
+                DrawIcon(opinion>10?PixelArt.IconMoodGood:opinion<-10?PixelArt.IconMoodBad:PixelArt.IconMoodNeutral,new Rect(r.x+6,r.yMax-24,20,20));var score=new GUIStyle(hudLabel);score.normal.textColor=mood;GUI.Label(new Rect(r.x+30,r.yMax-23,r.width-34,20),(opinion>0?"+":"")+opinion,score);
                 if(clicked){diplomacyPartner=o;OpenDetails("Diplomacy");}
             }
         }
@@ -160,7 +161,7 @@ namespace ParadigmRealm
             for(int i=0;i<notes.Count;i++)
             {
                 var r=NoteRect(i);if(GUI.Button(r,""))OpenDetails("Chronicle");
-                DrawIcon(PixelArt.IconChronicle,new Rect(r.x+8,r.y+11,24,24));string text=notes[i];int colon=text.IndexOf(':');if(colon>=0)text=text.Substring(colon+1).Trim();
+                DrawIcon(i==0&&notes[i]==status?PixelArt.IconHelp:PixelArt.IconChronicle,new Rect(r.x+8,r.y+11,24,24));string text=notes[i];
                 GUI.Label(new Rect(r.x+40,r.y+4,r.width-46,r.height-6),text,hudSmall);
             }
         }
@@ -172,7 +173,9 @@ namespace ParadigmRealm
             float aspect=world.Width/(float)world.Height,w=inner.width,h=w/aspect;if(h>inner.height){h=inner.height;w=h*aspect;}
             var drawn=new Rect(inner.center.x-w/2,inner.center.y-h/2,w,h);Fill(inner,UiTrough);GUI.DrawTexture(drawn,atlasTexture,ScaleMode.StretchToFill);
             float vx,vy,vw,vh;
-            if(diamondView){float tw=isoWidth,th=tw*PixelArt.TH/PixelArt.TW;vw=MapW/tw;vh=MapH/th;vx=camI-vw/2;vy=camJ-vh/2;}
+            if(diamondView){// The diagonal view covers a turned square of the grid; outline the grid rectangle around it.
+                float lo=float.MaxValue,hi=float.MinValue,top=float.MaxValue,bottom=float.MinValue;foreach(var p in new[]{new Vector2(0,0),new Vector2(MapW,0),new Vector2(0,MapH),new Vector2(MapW,MapH)}){float tw=isoWidth,th=tw*PixelArt.DH/PixelArt.DW,a=(p.x-IsoCentreX)/(tw/2),b=(p.y-IsoCentreY)/(th/2),gi=camI+(a+b)/2,gj=camJ+(b-a)/2;lo=Mathf.Min(lo,gi);hi=Mathf.Max(hi,gi);top=Mathf.Min(top,gj);bottom=Mathf.Max(bottom,gj);}
+                vx=lo;vy=top;vw=hi-lo;vh=bottom-top;}
             else{vx=mapScroll.x/tilePixels;vy=mapScroll.y/tilePixels;vw=MapW/tilePixels;vh=MapH/tilePixels;}
             float sx=w/world.Width,sy=h/world.Height;var view=new Rect(drawn.x+vx*sx,drawn.y+vy*sy,vw*sx,vh*sy);
             GUI.BeginGroup(drawn);var local=new Rect(view.x-drawn.x,view.y-drawn.y,view.width,view.height);var edge=new Color(1,1,1,.9f);
@@ -222,6 +225,7 @@ namespace ParadigmRealm
         void DrawUnitActions(Unit u,Rect row)
         {
             var actions=new List<KeyValuePair<int,string>>();bool idle=GUI.enabled&&world.result=="";
+            actions.Add(new KeyValuePair<int,string>(PixelArt.IconMove,"Move"));
             if(u.type==0)actions.Add(new KeyValuePair<int,string>(PixelArt.IconFound,"Found"));
             if(u.type==1){actions.Add(new KeyValuePair<int,string>(PixelArt.IconRoad,"Road"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconFood,"Farm"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconShields,"Mine"));}
             if(World.CanExplore(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconExplore,"Explore"));
@@ -232,12 +236,13 @@ namespace ParadigmRealm
             float w=(row.width-(actions.Count-1)*6)/actions.Count;
             for(int i=0;i<actions.Count;i++)
             {
-                var a=actions[i];bool active=a.Value=="Explore"&&u.exploring||a.Value=="Wake"||a.Value=="Less";
+                var a=actions[i];bool active=a.Value=="Explore"&&u.exploring||a.Value=="Wake"||a.Value=="Less"||a.Value=="Move"&&moveMode;
                 bool enabled=GUI.enabled;GUI.enabled=enabled&&(idle||a.Key==PixelArt.IconMore);
                 if(HudButton(new Rect(row.x+i*(w+6),row.y,w,row.height),a.Key,a.Value,active))
                 {
                     switch(a.Value)
                     {
+                        case "Move":moveMode=!moveMode;status=moveMode?"Click a destination for the "+World.UnitNames[u.type]+" (right-click cancels).":"";break;
                         case "Found":Found();break;
                         case "Road":case "Farm":case "Mine":{int job=a.Value=="Road"?1:a.Value=="Farm"?2:3;string reason=world.WorkerTeam(u).Select(m=>world.JobReason(m,job)).FirstOrDefault(s=>s!="")??"";if(!world.StartJob(u,job))status=reason;break;}
                         case "Explore":if(u.exploring)world.CancelActivity(u);else world.AutoExplore(u);break;

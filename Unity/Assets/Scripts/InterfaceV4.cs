@@ -115,16 +115,18 @@ namespace ParadigmRealm
         {
             GUI.Box(area,"");GUI.Label(new Rect(area.x+12,area.y+6,area.width-24,26),"The land around "+c.name,heading);
             var view=new Rect(area.x+8,area.y+36,area.width-16,374);
-            const float tw=80,th=tw*PixelArt.TH/PixelArt.TW,s=tw/64f;var worked=world.Worked(c);var e=Event.current;
+            const float tw=96,th=tw*PixelArt.DH/PixelArt.DW,s=tw/64f;var worked=world.Worked(c);var e=Event.current;
             int frame=(int)(Time.realtimeSinceStartup*2.5f)%3;string hover=null;Rect hoverRect=new Rect();
             GUI.BeginGroup(view);
             Fill(new Rect(0,0,view.width,view.height),new Color(.2f,.25f,.31f));
             float cx=view.width/2,cy=view.height/2;
             for(int pass=0;pass<2;pass++)
-            for(int dy=-4;dy<=4;dy++)for(int dx=-4;dx<=4;dx++)
+            // Diagonal layout, back to front by diagonal so scenery overlaps the tiles behind it.
+            for(int sum=-8;sum<=8;sum++)for(int dx=-4;dx<=4;dx++)
             {
+                int dy=sum-dx;if(dy<-4||dy>4)continue;
                 var t=world.At(c.x+dx,c.y+dy);if(t==null)continue;
-                float sx=cx+dx*tw,sy=cy+dy*th;var r=new Rect(sx-tw/2,sy-th/2,tw,th);
+                float sx=cx+(dx-dy)*tw/2,sy=cy+(dx+dy)*th/2;var r=new Rect(sx-tw/2,sy-th/2,tw,th);
                 if(r.xMax<0||r.x>view.width||r.yMax<0||r.y>view.height+th)continue;
                 bool ring=Math.Max(Math.Abs(dx),Math.Abs(dy))<=2&&world.Distance(c.x,c.y,t.x,t.y)<=2,mine=t.owner==c.owner;
                 var known=t.seen?world.KnownTile(t):null;var old=GUI.color;
@@ -148,7 +150,7 @@ namespace ParadigmRealm
                 int[] v=centre?world.CityCentreYield(c):world.EffectiveTileYield(c,t);bool active=centre||worked.Contains(t),locked=world.IsLocked(c,t);
                 if(active)DrawYieldPips(new Rect(sx-tw/2+5,sy+th/2-14,tw-10,10),v);
                 if(locked){Fill(new Rect(sx+tw/2-16,sy-th/2+5,11,11),new Color(.08f,.16f,.3f,.9f));Fill(new Rect(sx+tw/2-14,sy-th/2+7,7,7),UiAccent);}
-                if(r.Contains(e.mousePosition)&&e.mousePosition.y<=view.height){
+                if(Mathf.Abs(e.mousePosition.x-sx)/(tw/2)+Mathf.Abs(e.mousePosition.y-sy)/(th/2)<=1&&e.mousePosition.y<=view.height){
                     hoverRect=r;hover=World.TerrainNames[known.terrain]+(known.resource>0?" with "+World.ResourceNames[known.resource]:"")+": "+v[0]+" food, "+v[1]+" shields, "+v[2]+" trade — "+(centre?"city centre":locked?"locked citizen (click to release)":active?"worked (click to lock)":"not worked (click to lock a citizen here)");
                     if(!centre&&e.type==EventType.MouseDown&&e.button==0&&GUI.enabled){bool ok=world.ToggleLock(c,t);status=ok?(world.IsLocked(c,t)?"Citizen locked on "+World.TerrainNames[known.terrain]+".":"Tile released to the Governor."):"Cannot lock: every working citizen is already locked here.";e.Use();}
                 }

@@ -31,7 +31,7 @@ namespace ParadigmRealm {
    for(int i=0;i<people.Length;i++){var t=Art("unit-"+i.ToString("00"));if(t!=null){Destroy(people[i]);people[i]=t;}
     try{unitSprites[i]=PixelTexture(PixelArt.UnitSprite(ReadArtPixels(people[i]),people[i].width,people[i].height));}catch(Exception){unitSprites[i]=null;}}
    // Vessels are drawn by the pixel-art generator (no supplied art); the same picture serves the build list.
-   for(int i=World.BoatUnit;i<=World.WarGalleyUnit&&i<people.Length;i++){unitSprites[i]=PixelTexture(PixelArt.ShipSprite(i-World.BoatUnit));people[i]=unitSprites[i];}
+   for(int i=World.BoatUnit;i<=World.WarGalleyUnit&&i<people.Length;i++){if(Art("unit-"+i.ToString("00"))!=null)continue;unitSprites[i]=PixelTexture(PixelArt.ShipSprite(i-World.BoatUnit));people[i]=unitSprites[i];}
    EnableCivilisationsWithArt();
    var city=Art("city-0-0");if(city!=null){Destroy(cityTexture);cityTexture=city;}
    var names=Resources.Load<TextAsset>("Visuals/gallery-names");galleryNames=names==null?new string[0]:names.text.Split(new[]{'\n'},StringSplitOptions.RemoveEmptyEntries);
@@ -96,9 +96,17 @@ namespace ParadigmRealm {
   }
   Texture2D SettlementTexture(int style,int pop,int flags,int variant){
    long key=((long)style<<24)|((long)Math.Min(16,pop)<<16)|((long)flags<<4)|(long)(variant&7);Texture2D tex;
-   if(!settlementTextures.TryGetValue(key,out tex)){tex=PixelTexture(PixelArt.Settlement(style,pop,flags,variant));settlementTextures[key]=tex;}
+   if(!settlementTextures.TryGetValue(key,out tex)){
+    // Supplied art first: city-<age>-<size band>[-walled], size bands 0 (1-3), 1 (4-7), 2 (8-11), 3 (12 and over).
+    int band=pop<=3?0:pop<=7?1:pop<=11?2:3;string name="city-"+style+"-"+band;bool walled=(flags&PixelArt.FlagWalls)!=0;
+    tex=(walled?SpriteSlot(name+"-walled"):null)??SpriteSlot(name);
+    if(tex==null)tex=PixelTexture(PixelArt.Settlement(style,pop,flags,variant));settlementTextures[key]=tex;}
    return tex;
   }
+  // Art slots: pictures in Assets/Resources/Sprites (for example from SpriteCook) replace the drawn ones by name. Missing
+  // names fall back to the procedural art, so slots can be filled one at a time. Naming: Design/ART-SLOTS.md.
+  readonly Dictionary<string,Texture2D> spriteSlots=new Dictionary<string,Texture2D>();
+  Texture2D SpriteSlot(string name){Texture2D t;if(!spriteSlots.TryGetValue(name,out t)){t=Resources.Load<Texture2D>("Sprites/"+name);if(t!=null)t.filterMode=FilterMode.Point;spriteSlots[name]=t;}return t;}
   void DrawCityArt(City c,Rect r){GUI.DrawTexture(r,SettlementTexture(CityVisualEra(c.owner),c.pop,SettlementFlags(c),c.id),ScaleMode.ScaleToFit,true);}
   // Outlying farmsteads: from size 5, one neighbouring land tile of the city's own territory per two citizens (up to 8)
   // gets a few houses, chosen in a fixed order per city so they do not jump about.
@@ -141,6 +149,10 @@ namespace ParadigmRealm {
    var baseRect=new Rect(feet.x-size*.3f,feet.y-size*.09f,size*.6f,size*.225f);
    GUI.DrawTexture(baseRect,IsoPicture(4,8,0));var old=GUI.color;GUI.color=nations[u.owner];GUI.DrawTexture(baseRect,IsoPicture(4,7,0));GUI.color=old;
    var art=unitSprites!=null&&unitSprites[u.type]!=null?unitSprites[u.type]:people[u.type];
+   // Armies carry a banner in their owner's colour behind them, as in the owner's mockup.
+   if(World.Power[u.type]>0&&!World.IsNaval(u.type)){float px=feet.x+size*.26f,top=feet.y-size*1.02f,pole=Mathf.Max(1,size*.025f);
+    Fill(new Rect(px,top,pole,size*.9f),new Color(.32f,.22f,.12f));var ink=nations[u.owner];var flag=new Rect(px+pole,top+size*.02f,size*.2f,size*.24f);
+    Fill(flag,ink*.75f+new Color(0,0,0,.25f));Fill(new Rect(flag.x,flag.y,flag.width,flag.height*.18f),Color.Lerp(ink,Color.white,.35f));Fill(new Rect(flag.x+flag.width*.35f,flag.y+flag.height*.35f,flag.width*.3f,flag.height*.3f),new Color(.95f,.88f,.6f));}
    GUI.DrawTexture(new Rect(feet.x-size/2,feet.y-size*62f/64f,size,size),art,ScaleMode.ScaleToFit,true);
    // Health shows above the head, and only when the unit is hurt, so the map stays clean.
    if(u.hp<10){float h=Mathf.Max(3,r.width*.07f),bar=r.width*.8f,by=feet.y-size*60f/64f-h;

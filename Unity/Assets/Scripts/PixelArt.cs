@@ -20,10 +20,27 @@ namespace ParadigmRealm
     {
         // TW x TH = one tile on screen at zoom 64; CW x CH = composed ground (the same size: land and water are level);
         // sprites are SW x SH with the tile centre at (AX,AY). Elev stays 0 (no step between land and sea, owner request).
-        public const int TW=64,TH=40,SW=64,SH=64,AX=32,AY=40,CW=64,CH=TH,Elev=0;
+        public const int TW=48,TH=48,SW=64,SH=64,AX=32,AY=40,CW=TW,CH=TH,Elev=0;
+        // Diagonal (isometric) view, as in the owner's mockup (30 Oct 2026): each square grid tile of TW x TH is drawn as a DW x DH diamond.
+        public const int DW=64,DH=32;
         // Screen mapping shared by the renderer and the checks: tile (i,j) centre relative to the camera, and its inverse.
-        public static void ScreenOf(double i,double j,double camI,double camJ,double tw,out double sx,out double sy){sx=(i-camI)*tw;sy=(j-camJ)*tw*TH/TW;}
-        public static void PickOf(double dx,double dy,double camI,double camJ,double tw,out int i,out int j){i=(int)Math.Floor(camI+dx/tw+.5);j=(int)Math.Floor(camJ+dy/(tw*TH/TW)+.5);}
+        // Diagonal view: moving east (i) goes down-right on screen, moving south (j) goes down-left; tw is a diamond's screen width.
+        public static void ScreenOf(double i,double j,double camI,double camJ,double tw,out double sx,out double sy){double di=i-camI,dj=j-camJ;sx=(di-dj)*tw/2;sy=(di+dj)*tw*DH/DW/2;}
+        public static void PickOf(double dx,double dy,double camI,double camJ,double tw,out int i,out int j){double a=dx/(tw/2),b=dy/(tw*DH/DW/2);i=(int)Math.Floor(camI+(a+b)/2+.5);j=(int)Math.Floor(camJ+(b-a)/2+.5);}
+        // Reshapes a square grid-space tile picture (ground, roads, farms, borders) into its DW x DH diamond, nearest pixel, so
+        // the pixel art stays crisp. The diamond reaches half a pixel past its edges so neighbouring tiles leave no gaps.
+        public static PixelCanvas ToDiamond(PixelCanvas square)
+        {
+            var d=new PixelCanvas(DW,DH);double reach=.5+1.0/DH;
+            for(int py=0;py<DH;py++)for(int px=0;px<DW;px++)
+            {
+                double x=px+.5-DW/2.0,y=py+.5-DH/2.0,fu=x/DW+y/DH,fv=y/DH-x/DW;
+                if(Math.Abs(fu)>reach||Math.Abs(fv)>reach)continue;
+                int sx=Math.Max(0,Math.Min(square.w-1,(int)((fu+.5)*square.w))),sy=Math.Max(0,Math.Min(square.h-1,(int)((fv+.5)*square.h)));
+                d.Set(px,py,square.Get(sx,sy));
+            }
+            return d;
+        }
 
         // ---------- colour and noise helpers ----------
         public static uint Rgb(int r,int g,int b,int a=255){return (uint)((a<<24)|(r<<16)|(g<<8)|b);}
@@ -599,7 +616,8 @@ namespace ParadigmRealm
         // ---------- interface icons (24 x 24, gold and enamel on a dark outline, for the dark navy and gold interface) ----------
         public const int IconEmpire=0,IconResearch=1,IconDiplomacy=2,IconCities=3,IconMilitary=4,IconRealms=5,IconVictory=6,IconChronicle=7,IconIdentity=8,
             IconGold=9,IconScience=10,IconAge=11,IconOrder=12,IconTurn=13,IconMenu=14,IconCrown=15,IconFood=16,IconShields=17,IconExplore=18,IconSkip=19,
-            IconFortify=20,IconFound=21,IconMore=22,IconZoomIn=23,IconZoomOut=24,IconLayers=25,IconSentry=26,IconRoad=27,IconTrade=28,IconHelp=29,IconNext=30;
+            IconFortify=20,IconFound=21,IconMore=22,IconZoomIn=23,IconZoomOut=24,IconLayers=25,IconSentry=26,IconRoad=27,IconTrade=28,IconHelp=29,IconNext=30,
+            IconMoodGood=31,IconMoodNeutral=32,IconMoodBad=33,IconMove=34;
         static readonly uint[] HudGold=Ramp(90,64,24,150,112,44,206,164,76,240,206,120,255,240,190),HudBlue=Ramp(20,50,100,40,90,160,70,130,210,120,180,240,190,225,255),
             HudSilver=Ramp(70,76,90,120,128,142,170,178,190,210,216,226,245,248,252),HudGreen=Ramp(20,70,30,40,110,40,70,150,60,120,190,90,180,230,150),
             HudRed=Ramp(90,20,20,150,40,30,200,70,50,235,120,90,250,180,150),HudWood=Ramp(60,36,20,92,58,32,128,86,48,164,118,70,196,152,100);
@@ -646,9 +664,27 @@ namespace ParadigmRealm
                 case IconLayers:for(int i=0;i<3;i++){int y0=14-i*5;Poly(cv,new[]{P(12,y0-5),P(21,y0),P(12,y0+5),P(3,y0)},(X,Y)=>RampPick(i==0?HudSilver:i==1?HudBlue:HudGold,.8-(X-3)/30.0));}break;
                 case IconSentry:Disk(cv,12,12,9,5,HudSilver,.3);Disk(cv,12,12,3.5,3.5,HudBlue,0);cv.Set(12,12,Rgb(10,14,20));cv.Set(11,11,Rgb(255,255,255));break;
                 case IconRoad:Poly(cv,new[]{P(9,2),P(15,2),P(21,22),P(3,22)},(X,Y)=>RampPick(HudWood,.6+(Y)/60.0));for(int y=4;y<21;y+=5)RectFill(cv,11,y,13,y+2,Rgb(236,226,198));break;
+                case IconMoodGood:case IconMoodNeutral:case IconMoodBad:{var face=k==IconMoodGood?HudGreen:k==IconMoodNeutral?HudGold:HudRed;Disk(cv,12,12,9,9,face,.1);uint ink=Rgb(20,24,20);cv.Set(9,9,ink);cv.Set(9,10,ink);cv.Set(15,9,ink);cv.Set(15,10,ink);for(int x=8;x<=16;x++){int y=k==IconMoodGood?(x==8||x==16?14:15):k==IconMoodBad?(x==8||x==16?16:15):15;cv.Set(x,y,ink);}break;}
+                case IconMove:Poly(cv,new[]{P(3,9),P(13,9),P(13,4),P(21,12),P(13,20),P(13,15),P(3,15)},(X,Y)=>RampPick(HudSilver,.95-(Y-4)/20.0));break;
                 case IconHelp:Disk(cv,12,12,9,9,HudBlue,.1);RectFill(cv,10,6,15,8,Rgb(240,236,226));RectFill(cv,13,8,15,12,Rgb(240,236,226));RectFill(cv,11,11,14,14,Rgb(240,236,226));RectFill(cv,11,16,14,19,Rgb(240,236,226));break;
             }
             Outline(cv,Rgb(12,16,24));iconCacheHud[k]=cv;return cv;
+        }
+        // ---------- fog of war as cloud banks (owner's mockup) ----------
+        // A billowing cloud puff, 96 x 64, lit from the top left; puffs drawn over every unexplored tile overlap into banks.
+        static readonly uint[] CloudRamp=Ramp(150,160,182,190,198,214,220,226,238,240,244,250,255,255,255);
+        public static readonly uint FogBase=Rgb(222,228,238);
+        static readonly Dictionary<int,PixelCanvas> puffCache=new Dictionary<int,PixelCanvas>();
+        public static PixelCanvas CloudPuff(int variant)
+        {
+            variant&=3;PixelCanvas cv;if(puffCache.TryGetValue(variant,out cv))return cv;cv=new PixelCanvas(96,64);int s=variant*17+5;
+            for(int k=0;k<9;k++)
+            {
+                double a=Hsh(k,s,1)*Math.PI*2,r=Hsh(k,s,2)*22;double cx=48+Math.Cos(a)*r*1.3,cy=34+Math.Sin(a)*r*.55,rx=13+Hsh(k,s,3)*12,ry=rx*.62;
+                Disk(cv,cx,cy,rx,ry,CloudRamp,.18);
+            }
+            Disk(cv,48,30,24,15,CloudRamp,.3);
+            puffCache[variant]=cv;return cv;
         }
         // ---------- vessels and ports ----------
         // kind 0 Boat: a small wooden boat with one sail; 1 Galley: a long hull with oars and a striped square sail;
@@ -765,7 +801,7 @@ namespace ParadigmRealm
         {
             // Ridges are sampled on rotated axes so the value-noise grid never lines up with the map rows.
             double u=gx*.8+gy*.9,v=-gx*.6+gy*1.2;double r1=Ridged(u/24.0,v/18.0,401),r2=Ridged(u/8.0,v/6.5,403);
-            return fade*fade*(3-2*fade)*(.55*Math.Pow(Massif(n9,wx,wy,gx,gy,5,40,30),1.3)+.35*r1*r1+.1*r2);
+            return fade*fade*(3-2*fade)*(.55*Math.Pow(Massif(n9,wx,wy,gx,gy,5,32,32),1.3)+.35*r1*r1+.1*r2);
         }
         static readonly uint[] Foothill=Ramp(58,52,44,86,76,62,112,100,80,140,126,100,168,154,124);
         static readonly uint[] Snow={Rgb(118,136,168),Rgb(150,170,200),Rgb(196,212,232),Rgb(232,240,248),Rgb(252,253,255)};
@@ -815,7 +851,7 @@ namespace ParadigmRealm
             double u=(px+.5-TW/2.0)/(TW/2.0),v=(py+.5-TH/2.0)/(TH/2.0);
             switch(dir){case 0:return -v;case 1:return u;case 2:return v;default:return -u;}
         }
-        static readonly int[] MidX={32,63,32,0},MidY={0,TH/2,TH-1,TH/2};
+        static readonly int[] MidX={TW/2,TW-1,TW/2,0},MidY={0,TH/2,TH-1,TH/2};
         static PixelCanvas RiverOverlay(int mask,int variant)
         {
             var cv=new PixelCanvas(TW,TH);uint wet=Rgb(40,110,160);
@@ -823,17 +859,17 @@ namespace ParadigmRealm
             if(ends.Count==0)ends.Add(-1);
             foreach(int k in ends)
             {
-                int ex=k<0?32:MidX[k],ey=k<0?TH/2:MidY[k];bool vertical=k==0||k==2;
+                int ex=k<0?TW/2:MidX[k],ey=k<0?TH/2:MidY[k];bool vertical=k==0||k==2;
                 // Each arm bends in a gentle S between the centre and the tile edge; both ends stay fixed so rivers join up.
                 double bend=(3.5+variant*1.5)*(k%2==0?1:-1);
                 for(int s=0;s<=48;s++)
                 {
-                    double t=s/48.0,x=32+(ex-32)*t,y=TH/2+(ey-TH/2)*t,wob=Math.Sin(t*Math.PI)*bend*Math.Cos(t*Math.PI*.9);
+                    double t=s/48.0,x=TW/2+(ex-TW/2)*t,y=TH/2+(ey-TH/2)*t,wob=Math.Sin(t*Math.PI)*bend*Math.Cos(t*Math.PI*.9);
                     double bx=x+(vertical?wob:0),by=y+(vertical?0:wob*.8);double r=2.4+.8*Math.Sin(t*Math.PI);
                     for(int dy=-4;dy<=4;dy++)for(int dx=-4;dx<=4;dx++)if(dx*dx+dy*dy<=r*r)cv.Set((int)Math.Round(bx)+dx,(int)Math.Round(by)+dy,wet);
                 }
             }
-            if(ends.Count==1)for(int dy=-4;dy<=4;dy++)for(int dx=-5;dx<=5;dx++)if(dx*dx/25.0+dy*dy/16.0<=1)cv.Set(32+dx,TH/2+dy,wet);
+            if(ends.Count==1)for(int dy=-4;dy<=4;dy++)for(int dx=-5;dx<=5;dx++)if(dx*dx/25.0+dy*dy/16.0<=1)cv.Set(TW/2+dx,TH/2+dy,wet);
             var o=new PixelCanvas(TW,TH);
             for(int y=0;y<TH;y++)for(int x=0;x<TW;x++)
             {
@@ -931,11 +967,11 @@ namespace ParadigmRealm
         {
             // Fenced plots as in the gallery maps: mostly golden wheat with ripple rows, one green crop plot in rows,
             // a brown wooden fence with posts around each plot.
-            var cv=new PixelCanvas(TW,TH);int split=26+variant*5;
+            var cv=new PixelCanvas(TW,TH);int split=TW/2-4+variant*4;
             for(int y=0;y<TH;y++)for(int x=0;x<TW;x++)
             {
-                if(x<7||x>56||y<6||y>TH-7)continue;
-                bool fence=x==7||x==56||y==6||y==TH-7||(x==split&&y>6&&y<TH-7);
+                if(x<5||x>TW-6||y<5||y>TH-6)continue;
+                bool fence=x==5||x==TW-6||y==5||y==TH-6||(x==split&&y>5&&y<TH-6);
                 if(fence){cv.Set(x,y,(x+y)%4==0?Rgb(70,48,28):Rgb(132,96,56));continue;}
                 bool wheat=variant==1?x>split:x<split;uint c;
                 if(wheat){double r=Math.Sin(x*.9+y*.35)+(Hsh(x,y,61)-.5)*.8;c=r>.6?Rgb(250,216,96):r<-.7?Rgb(186,138,44):Rgb(226,184,64);}
@@ -945,7 +981,7 @@ namespace ParadigmRealm
             return cv;
         }
         // mask bits: 0 NW(-1,-1) 1 N(0,-1) 2 NE(1,-1) 3 E(1,0) 4 SE(1,1) 5 S(0,1) 6 SW(-1,1) 7 W(-1,0)
-        static readonly int[] RoadX={0,32,63,63,63,32,0,0},RoadY={0,0,0,TH/2,TH-1,TH-1,TH-1,TH/2};
+        static readonly int[] RoadX={0,TW/2,TW-1,TW-1,TW-1,TW/2,0,0},RoadY={0,0,0,TH/2,TH-1,TH-1,TH-1,TH/2};
         static readonly Dictionary<int,PixelCanvas> roadCache=new Dictionary<int,PixelCanvas>();
         public static PixelCanvas Road(int mask)
         {
@@ -957,9 +993,9 @@ namespace ParadigmRealm
                 for(int k=0;k<8;k++)
                 {
                     if((mask&(1<<k))==0)continue;
-                    for(int s=0;s<=24;s++){double t=s/24.0;int x=(int)(32+(RoadX[k]-32)*t),y=(int)(TH/2+(RoadY[k]-TH/2)*t);for(int dy=-rad;dy<=rad;dy++)for(int dx=-rad;dx<=rad;dx++)cv.Set(x+dx,y+dy,col);}
+                    for(int s=0;s<=24;s++){double t=s/24.0;int x=(int)(TW/2+(RoadX[k]-TW/2)*t),y=(int)(TH/2+(RoadY[k]-TH/2)*t);for(int dy=-rad;dy<=rad;dy++)for(int dx=-rad;dx<=rad;dx++)cv.Set(x+dx,y+dy,col);}
                 }
-                for(int dy=-rad;dy<=rad;dy++)for(int dx=-rad;dx<=rad;dx++)cv.Set(32+dx,TH/2+dy,col);
+                for(int dy=-rad;dy<=rad;dy++)for(int dx=-rad;dx<=rad;dx++)cv.Set(TW/2+dx,TH/2+dy,col);
             }
             roadCache[mask]=cv;return cv;
         }
@@ -997,7 +1033,7 @@ namespace ParadigmRealm
                     double u=Math.Abs(x+.5-TW/2.0)/(TW/2.0),v=Math.Abs(y+.5-TH/2.0)/(TH/2.0);
                     if(Math.Max(u,v)>.92&&(u>.7&&v>.55||u>.97||v>.95))cv.Set(x,y,Rgb(255,222,120));
                 }
-                else if(kind==5)cv.Set(x,y,(x+y)%5==0?Rgb(58,72,88):Rgb(50,62,76));
+                else if(kind==5)cv.Set(x,y,FogBase);
                 else cv.Set(x,y,Rgb(4,8,20,110));
             }
             misc[kind]=cv;return cv;

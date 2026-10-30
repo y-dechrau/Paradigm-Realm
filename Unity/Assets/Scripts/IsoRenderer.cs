@@ -20,7 +20,6 @@ namespace ParadigmRealm
         readonly Queue<long> isoTileOrder=new Queue<long>();
         readonly Dictionary<long,Texture2D> isoPictures=new Dictionary<long,Texture2D>();
         readonly Dictionary<int,Texture2D> isoShown=new Dictionary<int,Texture2D>();
-        readonly List<int> isoLabelCells=new List<int>();
         readonly int[] isoNb=new int[4];
         readonly List<Tile> isoResTiles=new List<Tile>();
         readonly List<Vector2> isoResPos=new List<Vector2>();
@@ -41,8 +40,13 @@ namespace ParadigmRealm
         {
             long key=((long)kind<<40)|((long)a<<8)|(long)b;Texture2D tex;
             if(isoPictures.TryGetValue(key,out tex))return tex;
+            // Supplied art (Resources/Sprites, e.g. from SpriteCook) replaces the drawn pictures; see Design/ART-SLOTS.md.
+            string slot=kind==1?"terrain-"+a.ToString("00"):kind==6?"hamlet-"+a:kind==7?"port":kind==9?"cloud":null;
+            if(slot!=null){var supplied=SpriteSlot(slot+"-"+b)??SpriteSlot(slot);if(supplied!=null){isoPictures[key]=supplied;return supplied;}}
             PixelCanvas cv=null;
-            if(kind==1)cv=PixelArt.Sprite(a,b);else if(kind==6)cv=PixelArt.Hamlet(a,b);else if(kind==7)cv=PixelArt.PortSprite();else if(kind==8)cv=PixelArt.HudIcon(a);else if(kind==2)cv=PixelArt.Farm(a);else if(kind==3)cv=PixelArt.Road(a);else if(kind==5)cv=PixelArt.ResourceIcon(a);else cv=PixelArt.Misc(a);
+            if(kind==1)cv=PixelArt.Sprite(a,b);else if(kind==6)cv=PixelArt.Hamlet(a,b);else if(kind==7)cv=PixelArt.PortSprite();else if(kind==8)cv=PixelArt.HudIcon(a);else if(kind==9)cv=PixelArt.CloudPuff(a);else if(kind==2)cv=PixelArt.Farm(a);else if(kind==3)cv=PixelArt.Road(a);else if(kind==5)cv=PixelArt.ResourceIcon(a);else cv=PixelArt.Misc(a);
+            // Tile-shaped overlays (farms, roads, borders, selection, unexplored) are drawn as diamonds in the diagonal view.
+            if(cv!=null&&(kind==2||kind==3||kind==4&&a<=6))cv=PixelArt.ToDiamond(cv);
             tex=cv==null?null:PixelTexture(cv);isoPictures[key]=tex;return tex;
         }
         void ClearIso()
@@ -69,9 +73,9 @@ namespace ParadigmRealm
         }
         void IsoPan(float dx,float dy)
         {
-            // Screen movement of (dx,dy) pixels moves the camera by whole and part tiles.
-            float tw=isoWidth,th=tw*PixelArt.TH/PixelArt.TW;
-            camI+=dx/tw;camJ+=dy/th;ClampCamera();
+            // Screen movement of (dx,dy) pixels moves the camera by whole and part tiles, through the diagonal projection.
+            float tw=isoWidth,th=tw*PixelArt.DH/PixelArt.DW,a=dx/(tw/2),b=dy/(th/2);
+            camI+=(a+b)/2;camJ+=(b-a)/2;ClampCamera();
         }
         void IsoZoom(int direction)
         {
@@ -125,7 +129,7 @@ namespace ParadigmRealm
                 Texture2D previous;
                 if(isoShown.TryGetValue(index,out previous)&&previous!=null)return previous;
             }
-            tex=PixelTexture(PixelArt.Compose(isoN9,t.x,t.y,fr,mask));
+            tex=PixelTexture(PixelArt.ToDiamond(PixelArt.Compose(isoN9,t.x,t.y,fr,mask)));
             if(isoTiles.Count>=6000){long oldest=isoTileOrder.Dequeue();Texture2D gone;if(isoTiles.TryGetValue(oldest,out gone)){Destroy(gone);isoTiles.Remove(oldest);}}
             isoTiles[key]=tex;isoTileOrder.Enqueue(key);isoShown[index]=tex;return tex;
         }
@@ -143,35 +147,36 @@ namespace ParadigmRealm
             HandleMapInput();
             if(dragging){var m=Event.current.mousePosition;var u=world.units.Find(a=>a.id==dragUnit);if(u!=null){float sx,sy;IsoScreen(u.x,u.y,out sx,out sy);DrawOrderLine(new Vector2(MapX+sx,MapY+sy-6*isoWidth/64f),m);}GUI.Label(new Rect(m.x+15,m.y+12,220,30),"Release to issue destination",body);}
         }
+        readonly List<Vector3> isoFog=new List<Vector3>();
         static readonly int[] RoadDx={-1,0,1,1,1,0,-1,-1},RoadDy={-1,-1,-1,0,1,1,1,0};
         void DrawIsoContents()
         {
             compositeBudgetOn=true;compositeClock.Reset();compositeClock.Start();
             ClampCamera();
-            float tw=isoWidth,th=tw*PixelArt.TH/PixelArt.TW,s=tw/64f;int width=world.Width;
+            float tw=isoWidth,th=tw*PixelArt.DH/PixelArt.DW,s=tw/64f;int width=world.Width;
             int frame=(int)(Time.realtimeSinceStartup*2.5f)%3;
-            Fill(new Rect(0,0,MapW,MapH),new Color(.2f,.25f,.31f));
+            Fill(new Rect(0,0,MapW,MapH),new Color(.87f,.89f,.93f));isoFog.Clear();
             viewStacks.Clear();
             foreach(var unit in world.units){List<Unit> stackAt;int cell=unit.y*width+unit.x;if(!viewStacks.TryGetValue(cell,out stackAt)){stackAt=new List<Unit>(2);viewStacks[cell]=stackAt;}stackAt.Add(unit);}
             viewCities.Clear();foreach(var city in world.cities)viewCities[city.y*width+city.x]=city;
             if(Event.current.type==EventType.Repaint)BuildSuburbs();
-            // Columns and rows that can touch the view (one extra row in front for tall scenery reaching up into view).
-            int iLo=(int)Math.Floor(camI-(IsoCentreX+tw)/tw)-1,iHi=(int)Math.Ceiling(camI+(MapW-IsoCentreX+tw)/tw)+1;
-            int jLo=(int)Math.Floor(camJ-(IsoCentreY+th)/th)-1,jHi=(int)Math.Ceiling(camJ+(MapH-IsoCentreY+(64+PixelArt.Elev)*s)/th)+1;
-            if(!world.Sphere){iLo=Math.Max(iLo,0);iHi=Math.Min(iHi,width-1);}
-            jLo=Math.Max(jLo,0);jHi=Math.Min(jHi,world.Height-1);
-            int pooled=0;isoLabelCells.Clear();isoResTiles.Clear();isoResPos.Clear();isoCityNames.Clear();isoCityPos.Clear();isoCityInk.Clear();isoCityRefs.Clear();
-            for(int j=jLo;j<=jHi;j++)for(int i=iLo;i<=iHi;i++)
+            // Diagonal view: tiles go back to front by diagonal (i + j), so raised scenery overlaps the tiles behind it.
+            // R covers every tile whose diamond can touch the view, with a margin for tall scenery below the bottom edge.
+            int R=(int)Math.Ceiling(MapW/tw+MapH/th)+3,ci=(int)Math.Round(camI),cj=(int)Math.Round(camJ);
+            int pooled=0;isoResTiles.Clear();isoResPos.Clear();isoCityNames.Clear();isoCityPos.Clear();isoCityInk.Clear();isoCityRefs.Clear();
+            for(int sum=-2*R;sum<=2*R;sum++)for(int di=-R;di<=R;di++)
             {
-                float sx=IsoCentreX+(i-camI)*tw,sy=IsoCentreY+(j-camJ)*th;
+                int dj=sum-di;if(dj<-R||dj>R)continue;int i=ci+di,j=cj+dj;
+                if(j<0||j>=world.Height||!world.Sphere&&(i<0||i>=width))continue;
+                float sx=IsoCentreX+((i-camI)-(j-camJ))*tw/2,sy=IsoCentreY+((i-camI)+(j-camJ))*th/2;
                 if(sx<-tw||sx>MapW+tw||sy<-th||sy>MapH+64*s)continue;
                 var source=world.At(i,j);if(source==null)continue;
                 bool visible=world.Visible(source.x,source.y);Tile t=source;
                 if(source.seen&&!visible){if(pooled==knownPool.Count)knownPool.Add(new Tile());t=knownPool[pooled++];world.CopyKnown(source,t);}
-                if(!source.seen){GUI.DrawTexture(new Rect(sx-32*s,sy-PixelArt.TH/2*s,64*s,PixelArt.TH*s),IsoPicture(4,5,0));continue;}
+                if(!source.seen){GUI.DrawTexture(new Rect(sx-32*s,sy-PixelArt.DH/2*s,64*s,PixelArt.DH*s),IsoPicture(4,5,0));isoFog.Add(new Vector3(sx,sy,(i*7+j*13)&3));continue;}
                 bool water=PixelArt.IsWater(t.terrain);float gy=sy;
                 var old=GUI.color;if(!visible)GUI.color=new Color(.62f,.66f,.74f,1);
-                var ground=new Rect(sx-32*s,sy-PixelArt.TH/2*s,64*s,PixelArt.TH*s);
+                var ground=new Rect(sx-32*s,sy-PixelArt.DH/2*s,64*s,PixelArt.DH*s);
                 GUI.DrawTexture(ground,IsoGround(t,i,j,frame));
                 if(!water&&t.farm){var farm=IsoPicture(2,IsoVariant(t.x,t.y),0);if(farm!=null)GUI.DrawTexture(ground,farm);}
                 if(t.road)
@@ -211,13 +216,15 @@ namespace ParadigmRealm
                 // At sea the ship is drawn, not the units it carries.
                 if(picked==null&&water&&stackAt!=null){var ship=stackAt.Find(a=>World.IsNaval(a.type)&&(a.owner==0||visible));if(ship!=null)first=ship;}
                 var shown=picked??first;
-                if(shown!=null){DrawUnitArt(shown,new Rect(sx-20*s,gy-36*s,40*s,40*s),count);isoLabelCells.Add(cell);}
+                if(shown!=null){DrawUnitArt(shown,new Rect(sx-20*s,gy-36*s,40*s,40*s),count);}
             }
+            // Unexplored land lies under banks of cloud that spill a little over the edge of the known world.
+            DrawCloudShadows(s);
+            foreach(var f in isoFog)GUI.DrawTexture(new Rect(f.x-48*s*1.1f,f.y-38*s*1.1f,96*s*1.1f,64*s*1.1f),IsoPicture(9,(int)f.z,0));
             // Resource badges go on after every tile so the tiles in front can never cover them.
             for(int n=0;n<isoResTiles.Count;n++){var p=isoResPos[n];DrawResource(isoResTiles[n],new Rect(p.x-36*s,p.y+15*s-61*s,61*s,61*s));}
-            DrawCloudShadows(s);
             // City names sit just below each settlement, drawn last so neither tiles nor clouds cover them.
-            for(int n=0;n<isoCityNames.Count;n++)DrawCityPlate(isoCityRefs[n],isoCityNames[n],new Vector2(isoCityPos[n].x,isoCityPos[n].y+21*s),isoCityInk[n]);
+            for(int n=0;n<isoCityNames.Count;n++)DrawCityPlate(isoCityRefs[n],isoCityNames[n],new Vector2(isoCityPos[n].x,isoCityPos[n].y+24*s),isoCityInk[n]);
             DrawIsoOverlay(s);
             compositeBudgetOn=false;
         }
@@ -227,7 +234,7 @@ namespace ParadigmRealm
         {
             if(cloudTexture==null){cloudTexture=PixelTexture(PixelArt.CloudShadows());cloudTexture.wrapMode=TextureWrapMode.Repeat;}
             float tile=128*3*s,t=Time.realtimeSinceStartup;
-            float offX=(-camI*isoWidth+t*9f)%tile,offY=(-camJ*isoWidth*PixelArt.TH/PixelArt.TW+t*4f)%tile;if(offX>0)offX-=tile;if(offY>0)offY-=tile;
+            float offX=(-(camI-camJ)*isoWidth/2+t*9f)%tile,offY=(-(camI+camJ)*isoWidth*PixelArt.DH/PixelArt.DW/2+t*4f)%tile;if(offX>0)offX-=tile;if(offY>0)offY-=tile;
             for(float y=offY;y<MapH;y+=tile)for(float x=offX;x<MapW;x+=tile)GUI.DrawTexture(new Rect(x,y,tile,tile),cloudTexture);
         }
         // How far a tile's surface is raised on screen: land (as the player knows it) stands Elev pixels above water.
@@ -240,7 +247,7 @@ namespace ParadigmRealm
             if(chosen!=null)
             {
                 IsoScreen(chosen.x,chosen.y,out sx,out sy);sy-=Lift(chosen.x,chosen.y,s);
-                GUI.DrawTexture(new Rect(sx-32*s,sy-PixelArt.TH/2*s,64*s,PixelArt.TH*s),IsoPicture(4,4,0));
+                GUI.DrawTexture(new Rect(sx-32*s,sy-PixelArt.DH/2*s,64*s,PixelArt.DH*s),IsoPicture(4,4,0));
                 if(chosen.hasOrder)
                 {
                     IsoScreen(chosen.destinationX,chosen.destinationY,out sx,out sy);
@@ -250,17 +257,7 @@ namespace ParadigmRealm
             else if(cityId>=0)
             {
                 var city=world.cities.Find(a=>a.id==cityId);
-                if(city!=null){IsoScreen(city.x,city.y,out sx,out sy);sy-=Lift(city.x,city.y,s);GUI.DrawTexture(new Rect(sx-32*s,sy-PixelArt.TH/2*s,64*s,PixelArt.TH*s),IsoPicture(4,4,0));}
-            }
-            if(tileLabel==null)tileLabel=new GUIStyle(small){fontSize=10,alignment=TextAnchor.MiddleCenter,wordWrap=false};
-            foreach(int cell in isoLabelCells)
-            {
-                List<Unit> stack;if(!viewStacks.TryGetValue(cell,out stack))continue;
-                var visibleStack=stack.Where(u=>u.owner==0||world.Visible(u.x,u.y)).ToList();
-                string label=World.StackLabel(visibleStack);if(label=="")continue;
-                var unit=visibleStack[0];IsoScreen(unit.x,unit.y,out sx,out sy);sy-=Lift(unit.x,unit.y,s);
-                float width2=Mathf.Max(48,label.Length*6+6);var r=new Rect(sx-width2/2,sy+PixelArt.TH/2*s-13,width2,13);
-                Fill(r,UiLabelBack);GUI.Label(r,label,tileLabel);
+                if(city!=null){IsoScreen(city.x,city.y,out sx,out sy);sy-=Lift(city.x,city.y,s);GUI.DrawTexture(new Rect(sx-32*s,sy-PixelArt.DH/2*s,64*s,PixelArt.DH*s),IsoPicture(4,4,0));}
             }
         }
     }

@@ -2,6 +2,24 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Diagonal view and closer match to the owner's mockup (30 Oct 2026, no save change)
+The owner asked for the interface and the game to look exactly like the mockup, chose the mockup's diagonal view, and chose SpriteCook for painted art. SpriteCook was not installed when this was done, so the painted art is still to come. Everything else is in place, including slots the art drops into.
+- **Diagonal (isometric) map:** each grid tile is drawn as a 64 x 32 diamond. Moving east goes down-right on screen and moving south goes down-left (`PixelArt.ScreenOf`/`PickOf`).
+  - The ground is still composed on a square grid (now 48 x 48, `PixelArt.TW/TH`) with all its organic blending, and reshaped pixel for pixel into the diamond (`PixelArt.ToDiamond`). Farms, roads, borders, the selection marker and unexplored ground are reshaped the same way.
+  - Tiles are drawn back to front by diagonal, so scenery overlaps correctly. Panning, picking, the minimap's view outline and the city screen's land view all follow the diagonal.
+  - This replaces the horizontal view the owner asked for on 29 Oct.
+- **Fog of war as cloud banks:** unexplored land lies under overlapping white cloud puffs (`PixelArt.CloudPuff`) that spill a little over the edge of the known world, as at the mockup's edges. Drifting cloud shadows are now drawn beneath them.
+- **Mockup details:**
+  - Armies carry a banner in their owner's colour.
+  - Leader portraits show a mood face with the opinion score in green, gold or red.
+  - The unit card gains **Move**: click it, then click a destination; right-click cancels.
+  - The bottom status strip and Next unit button are gone, as in the mockup. The current message now leads the notification cards, and Tab still selects the next unit.
+  - Unit name labels are no longer drawn on the diagonal map; stacks keep their count badge.
+- **Art slots for painted sprites** (`Design/ART-SLOTS.md`): pictures in `Assets/Resources/Sprites` replace the drawn ones by name, one slot at a time. The slots are terrain scenery, settlements by age, size and walls, farmsteads, the port and cloud puffs; ships use the existing `Visuals/unit-NN`. The guide gives canvas sizes and the tile centre so generated art lines up.
+- **Harness:** the projection check now tests the diagonal round trip and half-diamond steps, and that ground becomes an opaque diamond with clear corners. The northern-coast check measures ten positions, because the wavy coastline can lie wholly in the sea tile at some positions. The Unity stand-ins gained `Vector3` fields, `Color` addition and `Mathf.Abs`.
+- **Checked:** all harnesses, RealmTools.Checks and GraphicsChecks pass; Windows build and screenshot run with no exceptions; screenshots of the diagonal map, fog, harbour and city screen reviewed. **Not yet played by hand.**
+- **Not exact yet:** the mockup's painted castles, towns, ships, trees and mountains need painted sprites (SpriteCook or the owner). The drawn art is a stand-in. The mockup's Culture and Stability figures are not game mechanics.
+
 ## Interface in the style of the owner's mockup (30 Oct 2026, no save change)
 - **Theme:** dark navy panels framed in gold with a dark inner line, cream text, and teal for progress bars and the active button. It replaces the light theme everywhere (menus, city, research, diplomacy and every other screen) through the shared skin.
 - **Lettering:** titles, panel headings, city names and the End Turn button use **Cinzel** (`Assets/Resources/Fonts/Cinzel.ttf`, SIL Open Font Licence, with `Cinzel-OFL.txt`; downloaded from Google Fonts with the owner's approval). Body text stays sans-serif.

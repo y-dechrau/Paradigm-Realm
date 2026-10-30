@@ -158,21 +158,27 @@ namespace ParadigmRealm
             Require(touched>=5&&westUntouched,"neighbouring desert blends into the east of the tile only, at most positions");
             Require(reach.Distinct().Count()>10,"the border wanders from row to row instead of a straight line");
             var pure=PixelArt.Compose(grass,5,7,0,0);
-            // Coasts: sea to the north changes only the northern part of a land tile (lip and meander), never the south.
-            int[] northSea=(int[])grass.Clone();northSea[0]=northSea[1]=northSea[2]=4;var coast=PixelArt.Compose(northSea,5,7,0,0);
-            bool southSame=true,northChanged=false;for(int x=0;x<PixelArt.TW;x++){for(int y=34;y<PixelArt.TH;y++)if(coast.Get(x,y)!=pure.Get(x,y))southSame=false;for(int y=0;y<14;y++)if(coast.Get(x,y)!=pure.Get(x,y))northChanged=true;}
-            Require(southSame&&northChanged,"a northern coast shapes only the north of the tile");
+            // Coasts: sea to the north changes only the northern part of a land tile (lip and meander), never the south. The
+            // wavy coastline may lie wholly in the sea tile at some positions, so it is measured at ten positions along a row.
+            int[] northSea=(int[])grass.Clone();northSea[0]=northSea[1]=northSea[2]=4;int coastsSeen=0;bool southSame=true;
+            for(int wx=0;wx<10;wx++){var plain=PixelArt.Compose(grass,wx,7,0,0);var coast=PixelArt.Compose(northSea,wx,7,0,0);bool northChanged=false;
+                for(int x=0;x<PixelArt.TW;x++){for(int y=PixelArt.TH*2/3;y<PixelArt.TH;y++)if(coast.Get(x,y)!=plain.Get(x,y))southSame=false;for(int y=0;y<PixelArt.TH/3;y++)if(coast.Get(x,y)!=plain.Get(x,y))northChanged=true;}
+                if(northChanged)coastsSeen++;}
+            Require(southSame&&coastsSeen>=5,"a northern coast shapes only the north of the tile (seen at "+coastsSeen+" of 10 positions)");
             var clouds=PixelArt.CloudShadows();Require(clouds.w==128&&clouds.p.Any(c=>(c>>24)>0)&&clouds.p.Any(c=>(c>>24)==0),"cloud shadows have clear sky and shade");
             Require(PixelArt.Farm(0).w==PixelArt.TW&&PixelArt.Road(5).w==PixelArt.TW,"farm and road overlays are tile sized");
-            // The horizontal screen mapping must invert exactly at every zoom: tile centres and points just inside a tile's
-            // corners map back to that tile, and rows stay level (same j gives the same screen y whatever i is).
+            // The diagonal screen mapping must invert exactly at every zoom: diamond centres and points just inside a diamond's
+            // four tips map back to that tile; a step east goes half a diamond down-right, a step south half a diamond down-left.
             foreach(double tw in new[]{32.0,48,64,96,128})for(int i=-3;i<=3;i++)for(int j=-3;j<=3;j++){
-                double sx,sy;PixelArt.ScreenOf(i+10,j+5,10.25,5.5,tw,out sx,out sy);double th=tw*PixelArt.TH/PixelArt.TW;
-                foreach(var corner in new[]{new[]{0.0,0.0},new[]{-.45,-.45},new[]{.45,.45},new[]{-.45,.45}}){
-                    int pi,pj;PixelArt.PickOf(sx+corner[0]*tw,sy+corner[1]*th,10.25,5.5,tw,out pi,out pj);
-                    Require(pi==i+10&&pj==j+5,"horizontal pick round trip "+i+","+j+" at zoom "+tw);
+                double sx,sy;PixelArt.ScreenOf(i+10,j+5,10.25,5.5,tw,out sx,out sy);double th=tw*PixelArt.DH/PixelArt.DW;
+                foreach(var tip in new[]{new[]{0.0,0.0},new[]{-.85,0},new[]{.85,0},new[]{0,-.85},new[]{0,.85},new[]{.4,.4}}){
+                    int pi,pj;PixelArt.PickOf(sx+tip[0]*tw/2,sy+tip[1]*th/2,10.25,5.5,tw,out pi,out pj);
+                    Require(pi==i+10&&pj==j+5,"diagonal pick round trip "+i+","+j+" at zoom "+tw);
                 }
-                double sx2,sy2;PixelArt.ScreenOf(i+11,j+5,10.25,5.5,tw,out sx2,out sy2);Require(sy2==sy&&sx2-sx==tw,"rows are level and columns evenly spaced");
+                double ex,ey,s2x,s2y;PixelArt.ScreenOf(i+11,j+5,10.25,5.5,tw,out ex,out ey);PixelArt.ScreenOf(i+10,j+6,10.25,5.5,tw,out s2x,out s2y);
+                Require(Math.Abs(ex-sx-tw/2)<1e-9&&Math.Abs(ey-sy-th/2)<1e-9&&Math.Abs(s2x-sx+tw/2)<1e-9&&Math.Abs(s2y-sy-th/2)<1e-9,"east steps down-right and south steps down-left by half a diamond");
+                var diamond=PixelArt.ToDiamond(PixelArt.Compose(Enumerable.Repeat(0,9).ToArray(),i+10,j+5,0,0));
+                Require(diamond.w==PixelArt.DW&&diamond.h==PixelArt.DH&&(diamond.Get(PixelArt.DW/2,PixelArt.DH/2)>>24)==255&&(diamond.Get(0,0)>>24)==0,"ground is reshaped into an opaque diamond with clear corners");
             }
             // Unit sprites: processed copies are 64 x 64 with an outline and keep their feet on the bottom rows.
             var src=new uint[32*32];for(int y=4;y<32;y++)for(int x=10;x<22;x++)src[y*32+x]=PixelArt.Rgb(180,120,80);
