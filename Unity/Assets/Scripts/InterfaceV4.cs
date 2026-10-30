@@ -49,21 +49,6 @@ namespace ParadigmRealm
             deleteCandidate=null;
         }
         void OpenDetails(string name){detailsScreen=name;researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
-        void DrawGameHeader()
-        {
-            bool enabled=GUI.enabled;GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1;
-            GUI.Label(new Rect(24,12,630,32),world.civilisationName,title);
-            GUI.Label(new Rect(24,51,490,37),world.Calendar()+" | Turn "+world.turn+" | Gold "+world.gold+" ("+world.Budget(0)[2]+"/turn)",body);
-            if(GUI.Button(new Rect(680,15,100,30),"Menu",button)){mainMenu=true;GUIUtility.ExitGUI();}
-            if(GUI.Button(new Rect(795,15,90,30),"Save",button))Save();
-            if(GUI.Button(new Rect(895,15,90,30),"Load",button))OpenLoadScreen();
-            if(GUI.Button(new Rect(995,15,110,30),"New world",button)){mainMenu=true;confirmNew=true;GUIUtility.ExitGUI();}
-            if(GUI.Button(new Rect(1115,15,110,30),"Guide",button)){cityScreen=false;researchScreen=false;detailsScreen="";guide=true;GUIUtility.ExitGUI();}
-            if(GUI.Button(new Rect(510,54,140,32),"Research",button)){researchScreen=true;detailsScreen="";ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
-            string[] names={"Economy","Diplomacy","Victory","Identity","Cities","Chronicle"};
-            for(int i=0;i<names.Length;i++)if(GUI.Button(new Rect(660+i*97,54,93,32),names[i]+(names[i]=="Diplomacy"&&world.offers.Any(o=>o.to==0&&o.status==0&&o.expires>world.turn)?" ("+world.offers.Count(o=>o.to==0&&o.status==0&&o.expires>world.turn)+")":""),button))OpenDetails(names[i]);
-            GUI.enabled=enabled;
-        }
         void DrawDetailsScreen()
         {
             GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(50,115,800,40),detailsScreen,title);
@@ -99,7 +84,7 @@ namespace ParadigmRealm
             if(tileLabel==null)tileLabel=new GUIStyle(small){fontSize=10,alignment=TextAnchor.MiddleCenter,wordWrap=false};
             foreach(var stack in world.units.Where(u=>u.owner==0||world.Visible(u.x,u.y)).GroupBy(u=>new {u.x,u.y})){
                 string label=World.StackLabel(stack);if(label=="")continue;var unit=stack.First();float x=unit.x*tilePixels,y=unit.y*tilePixels;
-                if(x<mapScroll.x-tilePixels||x>mapScroll.x+852||y<mapScroll.y-tilePixels||y>mapScroll.y+624)continue;
+                if(x<mapScroll.x-tilePixels||x>mapScroll.x+MapW||y<mapScroll.y-tilePixels||y>mapScroll.y+MapH)continue;
                 float width=Mathf.Max(tilePixels,label.Length*6+6);var r=new Rect(x+(tilePixels-width)/2,y+tilePixels-2,width,14);
                 Fill(r,UiLabelBack);GUI.Label(r,label,tileLabel);
             }

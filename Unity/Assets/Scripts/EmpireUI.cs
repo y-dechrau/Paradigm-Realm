@@ -94,9 +94,9 @@ public partial class RealmGame {
     bool GlobeZoomAllowed(){return world!=null&&world.Sphere&&world.HasTech(0,"astronomy");}
     void EnterGlobeZoom(int x,int y){globeZoom=true;globeLon=(x+.5f)/world.Width*Mathf.PI*2-Mathf.PI;globeLat=-(0.5f-(y+.5f)/world.Height)*Mathf.PI*.8f;}
     void DrawGlobeZoom(){
-        GUI.Box(new Rect(18,94,865,637),"");Fill(new Rect(24,100,852,624),new Color(.03f,.05f,.09f));
-        DrawGlobeAt(new Rect(150,112,600,600),false);
-        GUI.Label(new Rect(32,108,300,60),"The known world. Drag to spin; click a place, or zoom in, to return to the map.",small);
+        Fill(MapView,new Color(.03f,.05f,.09f));
+        DrawGlobeAt(new Rect(MapW/2-300,MapH/2-300,600,600),false);
+        GUI.Label(new Rect(90,52,300,60),"The known world. Drag to spin; click a place, or zoom in, to return to the map.",small);
     }
     void DrawGlobeAt(Rect area,bool controls){
         if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>1f)BuildAtlasTexture();

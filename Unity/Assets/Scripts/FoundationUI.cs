@@ -14,7 +14,7 @@ namespace ParadigmRealm
         Vector2 cityScroll,saveScroll;
         void ResetMapGesture(){dragUnit=-1;dragging=false;mapPointerDown=false;}
         // On a sphere the classic view pans east or west for ever: the scroll position wraps round the world width (owner request).
-        void ClampMapScroll(){if(world.Sphere){float wpx=world.Width*tilePixels;mapScroll.x=((mapScroll.x%wpx)+wpx)%wpx;mapScroll.y=Mathf.Clamp(mapScroll.y,0,Mathf.Max(0,world.Height*tilePixels-608));return;}mapScroll.x=Mathf.Clamp(mapScroll.x,0,Mathf.Max(0,world.Width*tilePixels-836));mapScroll.y=Mathf.Clamp(mapScroll.y,0,Mathf.Max(0,world.Height*tilePixels-608));}
+        void ClampMapScroll(){if(world.Sphere){float wpx=world.Width*tilePixels;mapScroll.x=((mapScroll.x%wpx)+wpx)%wpx;mapScroll.y=Mathf.Clamp(mapScroll.y,0,Mathf.Max(0,world.Height*tilePixels-MapH));return;}mapScroll.x=Mathf.Clamp(mapScroll.x,0,Mathf.Max(0,world.Width*tilePixels-MapW));mapScroll.y=Mathf.Clamp(mapScroll.y,0,Mathf.Max(0,world.Height*tilePixels-MapH));}
         void OpenCity(City c){cityId=c.id;selected=-1;cityScreen=true;cityScroll=Vector2.zero;cityMapScroll=new Vector2(Mathf.Max(0,(Math.Min(4,2+c.age/25)*2+1)*40-207),Mathf.Max(0,(Math.Min(4,2+c.age/25)*2+1)*40-147));builtScroll=Vector2.zero;unitQueueScroll=Vector2.zero;buildingQueueScroll=Vector2.zero;researchScreen=false;detailsScreen="";GUI.FocusControl(null);ResetMapGesture();GUIUtility.ExitGUI();}
         bool OrderTeam(Unit u,int x,int y){var team=world.WorkerTeam(u).ToList();bool ok=false;foreach(var member in team)ok=world.Order(member,x,y)||ok;status=ok?"Order issued. Travel continues each turn; new orders replace it.":"Cannot reach that destination.";return ok;}
         string UnitDescription(Unit u){return new[]{"Founds new cities","Builds roads and improvements","Basic close-combat infantry","Explores distant territory","Ranged infantry","Armoured mounted troops","Gunpowder infantry","Counters mounted troops","Fast mounted troops","Siege artillery","Helps nearby units heal","Establishes trade routes and supplies wonders"}[u.type];}
@@ -129,7 +129,7 @@ namespace ParadigmRealm
         }
         void ClassicZoom(int step){
             if(globeZoom){if(step>0)globeZoom=false;return;}
-            if(step<0&&tilePixels<=24&&GlobeZoomAllowed()){EnterGlobeZoom(WrapColumn((int)((mapScroll.x+418)/tilePixels)),Mathf.Clamp((int)((mapScroll.y+304)/tilePixels),0,world.Height-1));return;}
+            if(step<0&&tilePixels<=24&&GlobeZoomAllowed()){EnterGlobeZoom(WrapColumn((int)((mapScroll.x+MapW/2)/tilePixels)),Mathf.Clamp((int)((mapScroll.y+MapH/2)/tilePixels),0,world.Height-1));return;}
             tilePixels=Mathf.Clamp(tilePixels+step,24,96);ClampMapScroll();
         }
         bool Powerful(Unit u){return World.Power[u.type]>0;}
@@ -138,16 +138,16 @@ namespace ParadigmRealm
             if(guide||confirmNew||pendingUnit!=-1||mainMenu||pauseMenu||cityScreen||researchScreen||detailsScreen!=""||loadScreen)return;
             var e=Event.current;
             // Consume the wheel before BeginScrollView can turn it into vertical panning.
-            if(e.type==EventType.ScrollWheel&&diamondView&&new Rect(24,100,836,608).Contains(e.mousePosition)){IsoZoom(e.delta.y>0?-1:1);ResetMapGesture();e.Use();}
-            else if(e.type==EventType.ScrollWheel&&new Rect(24,100,836,608).Contains(e.mousePosition)&&(globeZoom||e.delta.y>0&&tilePixels<=24&&GlobeZoomAllowed())){ClassicZoom(e.delta.y>0?-8:8);ResetMapGesture();e.Use();}
-            else if(e.type==EventType.ScrollWheel&&new Rect(24,100,836,608).Contains(e.mousePosition)){
+            if(e.type==EventType.ScrollWheel&&diamondView&&MapView.Contains(e.mousePosition)){IsoZoom(e.delta.y>0?-1:1);ResetMapGesture();e.Use();}
+            else if(e.type==EventType.ScrollWheel&&MapView.Contains(e.mousePosition)&&(globeZoom||e.delta.y>0&&tilePixels<=24&&GlobeZoomAllowed())){ClassicZoom(e.delta.y>0?-8:8);ResetMapGesture();e.Use();}
+            else if(e.type==EventType.ScrollWheel&&MapView.Contains(e.mousePosition)){
                 float old=tilePixels;tilePixels=Mathf.Clamp(tilePixels-e.delta.y*zoomSensitivity,24,96);
-                var point=e.mousePosition-new Vector2(24,100);
+                var point=e.mousePosition-new Vector2(MapX,MapY);
                 mapScroll=(mapScroll+point)*(tilePixels/old)-point;ClampMapScroll();ResetMapGesture();e.Use();
             }
             string focus=GUI.GetNameOfFocusedControl();if(focus=="rename"||focus=="cityrename")return;
             if(e.type==EventType.KeyDown&&!e.control&&!e.alt&&!e.command){if(e.keyCode==KeyCode.V){ToggleView();e.Use();}else if(e.keyCode==KeyCode.W){if(diamondView)IsoPan(0,-64);else mapScroll.y-=64;e.Use();}else if(e.keyCode==KeyCode.S){if(diamondView)IsoPan(0,64);else mapScroll.y+=64;e.Use();}else if(e.keyCode==KeyCode.A){if(diamondView)IsoPan(-64,0);else mapScroll.x-=64;e.Use();}else if(e.keyCode==KeyCode.D){if(diamondView)IsoPan(64,0);else mapScroll.x+=64;e.Use();}else if(e.keyCode==KeyCode.F1){guide=true;e.Use();}}
-            if(e.type==EventType.MouseDrag&&e.button==2&&new Rect(24,100,836,608).Contains(e.mousePosition)){if(diamondView)IsoPan(-e.delta.x,-e.delta.y);else mapScroll-=e.delta;e.Use();}
+            if(e.type==EventType.MouseDrag&&e.button==2&&MapView.Contains(e.mousePosition)){if(diamondView)IsoPan(-e.delta.x,-e.delta.y);else mapScroll-=e.delta;e.Use();}
             if(diamondView)ClampCamera();else ClampMapScroll();
         }
     }

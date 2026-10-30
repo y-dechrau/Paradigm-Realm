@@ -106,7 +106,7 @@ namespace ParadigmRealm
             for(int i=0;i<BuildingIds.Length;i++)if(BuildingTech[i]==id)benefits.Add("Build "+BuildingNames[i]);
             for(int g=1;g<Governments.Length;g++)if(TechnologyCatalog.Index(GovernmentTech[g])==id)benefits.Add("Government: "+Governments[g]);
             foreach(string key in TechnologyCatalog.Folded[id])switch(key){
-                case "writing":benefits.Add("Negotiate research pacts with friends: 25 gold each, +2 base science/city");break;
+                case "writing":benefits.Add("Negotiate research pacts with friends: 25 gold each, +2 science at your capital");break;
                 case "laws":benefits.Add("Negotiate defensive alliances with friends; both sides require Code of Laws");break;
                 case "agriculture":benefits.Add("Workers can build farms / pastures");break;
                 case "wheel":benefits.Add("Workers can build roads");break;

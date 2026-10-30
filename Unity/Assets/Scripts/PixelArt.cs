@@ -596,6 +596,60 @@ namespace ParadigmRealm
             }
             Outline(cv,Ink);settlementCache[key]=cv;return cv;
         }
+        // ---------- interface icons (24 x 24, gold and enamel on a dark outline, for the dark navy and gold interface) ----------
+        public const int IconEmpire=0,IconResearch=1,IconDiplomacy=2,IconCities=3,IconMilitary=4,IconRealms=5,IconVictory=6,IconChronicle=7,IconIdentity=8,
+            IconGold=9,IconScience=10,IconAge=11,IconOrder=12,IconTurn=13,IconMenu=14,IconCrown=15,IconFood=16,IconShields=17,IconExplore=18,IconSkip=19,
+            IconFortify=20,IconFound=21,IconMore=22,IconZoomIn=23,IconZoomOut=24,IconLayers=25,IconSentry=26,IconRoad=27,IconTrade=28,IconHelp=29,IconNext=30;
+        static readonly uint[] HudGold=Ramp(90,64,24,150,112,44,206,164,76,240,206,120,255,240,190),HudBlue=Ramp(20,50,100,40,90,160,70,130,210,120,180,240,190,225,255),
+            HudSilver=Ramp(70,76,90,120,128,142,170,178,190,210,216,226,245,248,252),HudGreen=Ramp(20,70,30,40,110,40,70,150,60,120,190,90,180,230,150),
+            HudRed=Ramp(90,20,20,150,40,30,200,70,50,235,120,90,250,180,150),HudWood=Ramp(60,36,20,92,58,32,128,86,48,164,118,70,196,152,100);
+        static readonly Dictionary<int,PixelCanvas> iconCacheHud=new Dictionary<int,PixelCanvas>();
+        static void Line(PixelCanvas cv,double x0,double y0,double x1,double y1,double w,uint[] ramp)
+        {
+            int n=(int)Math.Ceiling(Math.Max(Math.Abs(x1-x0),Math.Abs(y1-y0))*2)+1;
+            for(int i=0;i<=n;i++){double t=i/(double)n,x=x0+(x1-x0)*t,y=y0+(y1-y0)*t;for(int dy=-(int)w;dy<=(int)w;dy++)for(int dx=-(int)w;dx<=(int)w;dx++)if(dx*dx+dy*dy<=w*w+.5)cv.Over((int)Math.Round(x+dx),(int)Math.Round(y+dy),RampPick(ramp,.75-(dx+dy)*.12));}
+        }
+        static void Shield(PixelCanvas cv,uint[] face,uint[] emblem)
+        {
+            Poly(cv,new[]{P(4,3),P(20,3),P(20,11),P(12,21),P(4,11)},(X,Y)=>RampPick(face,.85-(X-4)/22.0-(Y-3)/60.0));
+            RectFill(cv,11,5,13,17,RampPick(emblem,.7));RectFill(cv,7,8,17,10,RampPick(emblem,.7));
+        }
+        public static PixelCanvas HudIcon(int k)
+        {
+            PixelCanvas cv;if(iconCacheHud.TryGetValue(k,out cv))return cv;cv=new PixelCanvas(24,24);
+            switch(k)
+            {
+                case IconEmpire:Shield(cv,HudGold,HudBlue);break;
+                case IconFortify:Shield(cv,HudSilver,HudBlue);break;
+                case IconResearch:RectFill(cv,10,3,14,10,HudSilver[3]);RectFill(cv,9,2,15,3,HudSilver[4]);Poly(cv,new[]{P(5,21),P(19,21),P(14,10),P(10,10)},(X,Y)=>Y>14?RampPick(HudBlue,.85-(X-5)/20.0):RampPick(HudSilver,.8-(X-5)/24.0));break;
+                case IconDiplomacy:Disk(cv,11,14,7,4,HudSilver,.25);Disk(cv,18,10,3,3,HudSilver,.25);Poly(cv,new[]{P(6,13),P(12,3),P(15,13)},(X,Y)=>RampPick(HudSilver,.95-(Y-3)/30.0));cv.Over(21,10,HudGold[3]);cv.Over(22,10,HudGold[2]);cv.Over(19,9,Rgb(20,24,30));Line(cv,4,16,2,19,.6,HudSilver);break;
+                case IconCities:Poly(cv,new[]{P(2,9),P(12,2),P(22,9)},(X,Y)=>RampPick(HudGold,.9-(X-2)/26.0));RectFill(cv,3,19,21,22,HudGold[2]);foreach(int cx in new[]{5,10,15})RectFill(cv,cx,10,cx+3,19,cx<12?HudSilver[3]:HudSilver[2]);break;
+                case IconMilitary:Line(cv,5,4,18,17,1,HudSilver);Line(cv,19,4,6,17,1,HudSilver);Line(cv,15,19,20,14,1,HudGold);Line(cv,4,14,9,19,1,HudGold);RectFill(cv,18,18,21,21,HudWood[2]);RectFill(cv,3,18,6,21,HudWood[2]);break;
+                case IconRealms:Poly(cv,new[]{P(12,1),P(14.5,9.5),P(23,12),P(14.5,14.5),P(12,23),P(9.5,14.5),P(1,12),P(9.5,9.5)},(X,Y)=>RampPick(HudGold,(X<12)==(Y<12)?.85:.45));Disk(cv,12,12,2.5,2.5,HudBlue,.2);break;
+                case IconVictory:Poly(cv,new[]{P(5,3),P(19,3),P(17,11),P(7,11)},(X,Y)=>RampPick(HudGold,.9-(X-5)/18.0));RectFill(cv,11,11,13,16,HudGold[2]);RectFill(cv,7,16,17,19,HudGold[1]);Line(cv,4,4,2,8,.6,HudGold);Line(cv,20,4,22,8,.6,HudGold);break;
+                case IconChronicle:RectFill(cv,4,4,20,20,HudRed[1]);RectFill(cv,6,5,19,18,Rgb(236,226,198));for(int y=8;y<17;y+=3)RectFill(cv,8,y,17,y+1,Rgb(150,140,120));RectFill(cv,4,4,6,20,HudRed[0]);break;
+                case IconIdentity:case IconFound:RectFill(cv,5,2,7,22,HudWood[2]);Poly(cv,new[]{P(7,3),P(20,3),P(17,8),P(20,13),P(7,13)},(X,Y)=>RampPick(k==IconFound?HudGreen:HudRed,.85-(X-7)/20.0));break;
+                case IconGold:case IconTrade:Disk(cv,12,12,8,8,HudGold,.1);Disk(cv,12,12,5,5,HudGold,-.1);RectFill(cv,11,9,13,15,HudGold[4]);break;
+                case IconScience:Poly(cv,new[]{P(2,6),P(11,8),P(11,20),P(2,18)},(X,Y)=>RampPick(HudBlue,.95-(11-X)/20.0));Poly(cv,new[]{P(13,8),P(22,6),P(22,18),P(13,20)},(X,Y)=>RampPick(HudBlue,.7-(X-13)/30.0));RectFill(cv,11,8,13,20,HudBlue[0]);break;
+                case IconAge:Disk(cv,12,12,5,5,HudGold,.2);for(int a=0;a<8;a++){double t=a*Math.PI/4;Line(cv,12+Math.Cos(t)*7,12+Math.Sin(t)*7,12+Math.Cos(t)*10,12+Math.Sin(t)*10,.6,HudGold);}break;
+                case IconOrder:Disk(cv,12,12,9,9,HudGreen,.1);cv.Set(9,9,Rgb(20,30,20));cv.Set(15,9,Rgb(20,30,20));cv.Set(9,10,Rgb(20,30,20));cv.Set(15,10,Rgb(20,30,20));for(int x=8;x<=16;x++)cv.Set(x,15+(x==8||x==16?-1:0),Rgb(20,30,20));break;
+                case IconTurn:RectFill(cv,5,2,19,4,HudWood[2]);RectFill(cv,5,20,19,22,HudWood[2]);Poly(cv,new[]{P(7,4),P(17,4),P(12,12)},(X,Y)=>Y>8?HudGold[3]:HudSilver[3]);Poly(cv,new[]{P(12,12),P(17,20),P(7,20)},(X,Y)=>Y>15?HudGold[3]:HudSilver[3]);break;
+                case IconMenu:foreach(int y in new[]{6,11,16})RectFill(cv,4,y,20,y+3,Rgb(236,226,198));break;
+                case IconCrown:Poly(cv,new[]{P(3,18),P(3,7),P(8,12),P(12,4),P(16,12),P(21,7),P(21,18)},(X,Y)=>RampPick(HudGold,.9-(X-3)/24.0));RectFill(cv,3,17,22,20,HudGold[1]);cv.Over(12,13,HudRed[3]);break;
+                case IconFood:Poly(cv,new[]{P(12,2),P(20,10),P(13,21),P(5,12)},(X,Y)=>RampPick(HudGreen,.9-(X-5)/20.0));Line(cv,7,18,17,6,.4,Ramp(20,60,20,30,80,30,40,100,40,60,120,50,80,140,60));break;
+                case IconShields:Line(cv,5,20,15,8,1,HudWood);RectFill(cv,12,3,21,9,HudSilver[2]);RectFill(cv,12,3,21,5,HudSilver[4]);break;
+                case IconExplore:for(int a=0;a<64;a++){double t=a*Math.PI/32;cv.Over((int)Math.Round(10+Math.Cos(t)*6),(int)Math.Round(10+Math.Sin(t)*6),HudSilver[3]);cv.Over((int)Math.Round(10+Math.Cos(t)*5),(int)Math.Round(10+Math.Sin(t)*5),HudSilver[2]);}Disk(cv,10,10,4,4,HudBlue,.5);Line(cv,15,15,21,21,1.2,HudWood);break;
+                case IconSkip:case IconNext:Poly(cv,new[]{P(3,5),P(11,12),P(3,19)},(X,Y)=>HudGold[3]);Poly(cv,new[]{P(12,5),P(20,12),P(12,19)},(X,Y)=>HudGold[2]);break;
+                case IconMore:foreach(int x in new[]{5,12,19})Disk(cv,x,12,2.2,2.2,HudSilver,.2);break;
+                case IconZoomIn:RectFill(cv,10,4,14,20,Rgb(236,226,198));RectFill(cv,4,10,20,14,Rgb(236,226,198));break;
+                case IconZoomOut:RectFill(cv,4,10,20,14,Rgb(236,226,198));break;
+                case IconLayers:for(int i=0;i<3;i++){int y0=14-i*5;Poly(cv,new[]{P(12,y0-5),P(21,y0),P(12,y0+5),P(3,y0)},(X,Y)=>RampPick(i==0?HudSilver:i==1?HudBlue:HudGold,.8-(X-3)/30.0));}break;
+                case IconSentry:Disk(cv,12,12,9,5,HudSilver,.3);Disk(cv,12,12,3.5,3.5,HudBlue,0);cv.Set(12,12,Rgb(10,14,20));cv.Set(11,11,Rgb(255,255,255));break;
+                case IconRoad:Poly(cv,new[]{P(9,2),P(15,2),P(21,22),P(3,22)},(X,Y)=>RampPick(HudWood,.6+(Y)/60.0));for(int y=4;y<21;y+=5)RectFill(cv,11,y,13,y+2,Rgb(236,226,198));break;
+                case IconHelp:Disk(cv,12,12,9,9,HudBlue,.1);RectFill(cv,10,6,15,8,Rgb(240,236,226));RectFill(cv,13,8,15,12,Rgb(240,236,226));RectFill(cv,11,11,14,14,Rgb(240,236,226));RectFill(cv,11,16,14,19,Rgb(240,236,226));break;
+            }
+            Outline(cv,Rgb(12,16,24));iconCacheHud[k]=cv;return cv;
+        }
         // ---------- vessels and ports ----------
         // kind 0 Boat: a small wooden boat with one sail; 1 Galley: a long hull with oars and a striped square sail;
         // 2 War Galley: a darker hull with a bronze ram, shields along the side and a red sail. Waterline near the bottom.

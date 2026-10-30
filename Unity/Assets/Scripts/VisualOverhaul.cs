@@ -7,10 +7,12 @@ namespace ParadigmRealm {
   readonly Dictionary<string,Texture2D> visualArt=new Dictionary<string,Texture2D>();
   readonly List<Texture2D> themeTextures=new List<Texture2D>();
   GUISkin visualSkin; bool artGallery; int galleryIndex,loadedGallery=-1; string[] galleryNames; Texture2D galleryImage;
-  // Light theme: soft blue-grey panels with rounded corners, dark slate text, one blue accent.
-  static readonly Color UiBackground=new Color(.84f,.88f,.91f),UiPanel=new Color(.965f,.972f,.978f,.98f),UiPanelEdge=new Color(.68f,.75f,.81f),
-   UiButton=new Color(.91f,.94f,.965f),UiButtonHover=new Color(.84f,.91f,.97f),UiButtonActive=new Color(.74f,.85f,.95f),UiAccent=new Color(.27f,.52f,.8f),
-   UiText=new Color(.13f,.18f,.23f),UiLabelBack=new Color(.98f,.98f,.96f,.9f),UiDim=new Color(.1f,.14f,.18f,.42f),UiTrough=new Color(.8f,.85f,.89f);
+  // Dark navy and gold theme (owner's mockup, 30 Oct 2026): deep navy panels framed in gold, cream text, teal for progress
+  // and the active button.
+  static readonly Color UiBackground=new Color(.04f,.065f,.11f),UiPanel=new Color(.065f,.1f,.165f,.95f),UiPanelEdge=new Color(.72f,.58f,.32f),
+   UiButton=new Color(.11f,.165f,.25f),UiButtonHover=new Color(.16f,.24f,.35f),UiButtonActive=new Color(.1f,.4f,.46f),UiAccent=new Color(.27f,.78f,.82f),
+   UiText=new Color(.94f,.9f,.8f),UiLabelBack=new Color(.065f,.1f,.165f,.93f),UiDim=new Color(0,0,0,.55f),UiTrough=new Color(.03f,.05f,.09f),
+   UiGold=new Color(.86f,.7f,.39f),UiMuted=new Color(.66f,.68f,.7f);
   // Processed copies of the supplied unit pictures (the files themselves are untouched); null falls back to the original.
   Texture2D[] unitSprites;
   // Leader portraits (Resources/Leaders, scaled copies of the owner's leader art). An age-specific picture
@@ -45,13 +47,15 @@ namespace ParadigmRealm {
    for(int y=0;y<src.height;y++)for(int x=0;x<src.width;x++){var c=px[(src.height-1-y)*src.width+x];result[y*src.width+x]=((uint)c.a<<24)|((uint)c.r<<16)|((uint)c.g<<8)|c.b;}
    return result;
   }
-  // 16 x 16 nine-slice panel with 4 px rounded corners, a 1 px edge and, for buttons, a gentle top-to-bottom shine.
+  // 16 x 16 nine-slice panel: slightly rounded corners, a 1 px gold edge with a dark line just inside it (the framed look of
+  // the mockup) and, for buttons, a gentle top-to-bottom sheen.
   Texture2D PanelTexture(Color centre,Color edge,bool shine=false){
    var t=new Texture2D(16,16,TextureFormat.RGBA32,false){filterMode=FilterMode.Bilinear,wrapMode=TextureWrapMode.Clamp};
    for(int y=0;y<16;y++)for(int x=0;x<16;x++){
-    float cx=x<4?3.5f-x:x>11?x-11.5f:0,cy=y<4?3.5f-y:y>11?y-11.5f:0,d=Mathf.Sqrt(cx*cx+cy*cy);
-    Color c;if(d>3.9f)c=Color.clear;else if(d>2.9f||(cx==0&&(y==0||y==15))||(cy==0&&(x==0||x==15)))c=edge;
-    else{c=centre;if(shine)c=Color.Lerp(centre*.97f,Color.Lerp(centre,Color.white,.35f),y/15f);c.a=centre.a;}
+    float cx=x<3?2.5f-x:x>12?x-12.5f:0,cy=y<3?2.5f-y:y>12?y-12.5f:0,d=Mathf.Sqrt(cx*cx+cy*cy);
+    Color c;if(d>2.9f)c=Color.clear;else if(d>1.9f||(cx==0&&(y==0||y==15))||(cy==0&&(x==0||x==15)))c=edge;
+    else if(d>.9f||(cx==0&&(y==1||y==14))||(cy==0&&(x==1||x==14)))c=new Color(centre.r*.45f,centre.g*.45f,centre.b*.45f,1);
+    else{c=centre;if(shine)c=Color.Lerp(centre*.85f,Color.Lerp(centre,Color.white,.12f),y/15f);c.a=centre.a;}
     t.SetPixel(x,y,c);}
    t.Apply();themeTextures.Add(t);return t;
   }
@@ -60,7 +64,7 @@ namespace ParadigmRealm {
     visualSkin=Instantiate(GUI.skin);
     var panel=PanelTexture(UiPanel,UiPanelEdge);
     var normal=PanelTexture(UiButton,UiPanelEdge,true);
-    var hover=PanelTexture(UiButtonHover,Color.Lerp(UiPanelEdge,UiAccent,.6f),true);
+    var hover=PanelTexture(UiButtonHover,UiGold,true);
     var active=PanelTexture(UiButtonActive,UiAccent,true);
     visualSkin.box.normal.background=panel;visualSkin.box.border=new RectOffset(5,5,5,5);visualSkin.box.normal.textColor=UiText;
     foreach(var s in new[]{visualSkin.button,visualSkin.textField,visualSkin.textArea}){
@@ -71,7 +75,7 @@ namespace ParadigmRealm {
     }
     foreach(var s in new[]{visualSkin.label,visualSkin.toggle})foreach(var state in new[]{s.normal,s.hover,s.active,s.onNormal,s.onHover,s.onActive})state.textColor=UiText;
     // Scrollbars and sliders: pale troughs with rounded blue-grey thumbs instead of Unity's default dark ones.
-    var trough=PanelTexture(UiTrough,UiTrough);var thumb=PanelTexture(new Color(.6f,.68f,.76f),new Color(.5f,.58f,.67f));var thumbHover=PanelTexture(Color.Lerp(new Color(.6f,.68f,.76f),UiAccent,.5f),UiAccent);
+    var trough=PanelTexture(UiTrough,UiTrough);var thumb=PanelTexture(new Color(.2f,.27f,.38f),new Color(.45f,.37f,.22f));var thumbHover=PanelTexture(new Color(.26f,.35f,.48f),UiGold);
     foreach(var s in new[]{visualSkin.verticalScrollbar,visualSkin.horizontalScrollbar,visualSkin.horizontalSlider,visualSkin.verticalSlider}){s.normal.background=trough;s.border=new RectOffset(5,5,5,5);}
     foreach(var s in new[]{visualSkin.verticalScrollbarThumb,visualSkin.horizontalScrollbarThumb,visualSkin.horizontalSliderThumb,visualSkin.verticalSliderThumb}){s.normal.background=thumb;s.hover.background=thumbHover;s.active.background=thumbHover;s.border=new RectOffset(5,5,5,5);}
    }
@@ -113,14 +117,8 @@ namespace ParadigmRealm {
    }
   }
   // City name plates under each settlement: a light rounded plate with a strip in the owner's colour (owner request).
-  readonly List<string> isoCityNames=new List<string>();readonly List<Vector2> isoCityPos=new List<Vector2>();readonly List<Color> isoCityInk=new List<Color>();
-  GUIStyle cityNameStyle;
-  void DrawCityName(string name,Vector2 topCentre,Color ink){
-   if(cityNameStyle==null)cityNameStyle=new GUIStyle(small){fontSize=11,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter,wordWrap=false};
-   float w=Mathf.Max(40,name.Length*7+14),h=17;var r=new Rect(topCentre.x-w/2,topCentre.y,w,h);
-   Fill(new Rect(r.x+1,r.y+2,r.width,r.height),new Color(0,0,0,.25f));Fill(r,UiLabelBack);Fill(new Rect(r.x,r.yMax-3,r.width,3),ink);
-   GUI.Label(new Rect(r.x,r.y-1,r.width,r.height-1),name,cityNameStyle);
-  }
+  readonly List<string> isoCityNames=new List<string>();readonly List<Vector2> isoCityPos=new List<Vector2>();readonly List<Color> isoCityInk=new List<Color>();readonly List<City> isoCityRefs=new List<City>();
+
   Texture2D HamletTexture(City c,int x,int y){return IsoPicture(6,CityVisualEra(c.owner),(x*5+y*3)&7);}
   void DrawTerritory(Tile t,Rect r){
    if(t.owner<0)return;Color ink=nations[t.owner];ink.a=.7f;float w=Mathf.Max(1,r.width/40);

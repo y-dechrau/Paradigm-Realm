@@ -2,6 +2,26 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Interface in the style of the owner's mockup (30 Oct 2026, no save change)
+- **Theme:** dark navy panels framed in gold with a dark inner line, cream text, and teal for progress bars and the active button. It replaces the light theme everywhere (menus, city, research, diplomacy and every other screen) through the shared skin.
+- **Lettering:** titles, panel headings, city names and the End Turn button use **Cinzel** (`Assets/Resources/Fonts/Cinzel.ttf`, SIL Open Font Licence, with `Cinzel-OFL.txt`; downloaded from Google Fonts with the owner's approval). Body text stays sans-serif.
+- **Map:** fills the whole 1280 x 800 screen (`HudTheme.MapView`). The widgets float over it, and clicks, dragging and the mouse wheel reach the map only where no widget is drawn.
+- **Widgets** (`HudTheme.cs`):
+  - **Top bar:** gold (with net income), science per turn, current age, order (share of your cities not in disorder), turn and date, help and menu buttons. The mockup's Culture and Stability are not mechanics in this game, so real figures are shown instead.
+  - **Left rail:** Empire (Economy), Research, Diplomacy (red badge with waiting offers), Cities, Military, Realms (atlas and globe), Victory, Chronicle and Identity.
+  - **Research card:** current technology, turns left and a progress bar; click to open Research.
+  - **Leader portraits** of met civilisations (up to five) in their age's portrait, with a mood dot and how they feel about you. A red edge means war; click to open Diplomacy with them.
+  - **Notification cards:** the newest messages from this turn and last; click for the Chronicle.
+  - **Minimap:** the known world with the visible area outlined; click or drag to move. Zoom in, zoom out and view buttons sit beside it.
+  - **End Turn:** a gold button with an Enter key cap, plus a Next unit button.
+  - **Unit card:** picture, name, health bar, movement, strength, rank and activity. Action buttons with icons: Found, Road/Farm/Mine, Explore, Skip, Fortify or Sentry, and More, which opens every other order (the former side panel) above the card. For a city: settlement picture, size, yields, current production with progress, Open city and Next unit.
+  - **Tile card** (bottom centre): terrain, road, farm, mine and known resource with food, shield and trade yields. Holding Alt shows the full tile details tooltip.
+  - **City plates:** framed plates with a crown for capitals, the city name and size; your cities also show production and turns left with a progress bar.
+- **Icons:** 30 gold-and-enamel pixel icons drawn by `PixelArt.HudIcon`.
+- **Fix:** first contact now opens Diplomacy from `Update` rather than inside the GUI pass. Before, the screen could change between Unity's layout and repaint passes and raise a GUILayout exception.
+- **Harness:** `DiplomacyUIChecks` now checks the rail's Diplomacy badge instead of the removed header button. The Unity stand-ins gained `Font`, `GUIStyle.font/clipping/padding/CalcSize` and the styled scroll view.
+- **Checked:** all harnesses, RealmTools.Checks and GraphicsChecks pass; Windows build and screenshot run with no exceptions; screenshots of the map, city, research, diplomacy and New Game screens reviewed. **Not yet played by hand.**
+
 ## Stage 8: AI and balance (30 Oct 2026, no save change)
 Measured with headless rival games in the .NET harness (the player founds a capital and then passes; 4 civilisations; standard speed).
 - **Why rivals won early:** science, not cheap technology. The design's costs (20 x e^2 + 5 x e x i) were already in, but older rules multiplied science: the University gave +50% after every flat bonus, and each research pact added 2 science in every city. A city with 10 trade made about 52 science by turn 120.

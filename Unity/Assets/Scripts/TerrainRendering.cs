@@ -19,7 +19,7 @@ namespace ParadigmRealm { public partial class RealmGame {
  void PrepareTerrainView(){
   // Small maps refresh everything; large maps refresh only the visible window plus a margin for neighbour lookups.
   if(world.tiles.Length<=4000)PrepareTerrainRegion(0,0,world.Width-1,world.Height-1);
-  else PrepareTerrainRegion((int)(mapScroll.x/tilePixels)-4,(int)(mapScroll.y/tilePixels)-4,(int)((mapScroll.x+852)/tilePixels)+4,(int)((mapScroll.y+624)/tilePixels)+4);
+  else PrepareTerrainRegion((int)(mapScroll.x/tilePixels)-4,(int)(mapScroll.y/tilePixels)-4,(int)((mapScroll.x+MapW)/tilePixels)+4,(int)((mapScroll.y+MapH)/tilePixels)+4);
  }
  void PrepareTerrainRegion(int x0,int y0,int x1,int y1){
   if(terrainWorld!=world){ClearTerrainComposites();terrainWorld=world;}
@@ -30,7 +30,7 @@ namespace ParadigmRealm { public partial class RealmGame {
  // Only tiles on screen are drawn, in the same row-by-row order as the full tile list.
  IEnumerable<Tile> TilesInView(){
   int x0=Math.Max(0,(int)(mapScroll.x/tilePixels)-1),y0=Math.Max(0,(int)(mapScroll.y/tilePixels)-1);
-  int x1=Math.Min(world.Width-1,(int)((mapScroll.x+852)/tilePixels)+1),y1=Math.Min(world.Height-1,(int)((mapScroll.y+624)/tilePixels)+1);
+  int x1=Math.Min(world.Width-1,(int)((mapScroll.x+MapW)/tilePixels)+1),y1=Math.Min(world.Height-1,(int)((mapScroll.y+MapH)/tilePixels)+1);
   for(int y=y0;y<=y1;y++)for(int x=x0;x<=x1;x++)yield return world.tiles[y*world.Width+x];
  }
  int ViewTerrain(int x,int y){x=Math.Max(0,Math.Min(world.Width-1,x));y=Math.Max(0,Math.Min(world.Height-1,y));return terrainSnapshot[y*world.Width+x];}
