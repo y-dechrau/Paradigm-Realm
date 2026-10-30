@@ -2,6 +2,13 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## First painted sprites from SpriteCook (30 Oct 2026, no save change)
+- **Sprites added** to `Assets/Resources/Sprites` (SpriteCook Pixel Engine Image, 64 x 64, transparent, 6 images, 36 of the owner's 40 free credits): `city-3-0` (medieval town), `city-3-1-walled` (walled town with blue spires), `city-3-3-walled` (castle city with blue spires; the same picture is also saved as `city-3-2-walled`), `terrain-05` (snowy peaks), `terrain-01` (conifer and autumn forest) and `port` (jetty, crane and warehouse).
+- **Clean-up:** leftover background patches were removed from the castle city and the port, and the earth skirts under the town bases were trimmed below the tile diamond. Nothing was redrawn by hand.
+- **Fix:** `ClearIso` (run on every zoom change) destroyed every cached map picture, including supplied sprites that the slot cache still held, so supplied art would vanish after the first zoom. It now leaves supplied art alone (`IsoRenderer.cs`).
+- **Still drawn art (no sprite yet):** cities of the Stone, Bronze and Classical ages, medieval cities of size 4-11 without walls, 8 and over without walls and 1-3 with walls, other terrain scenery, farmsteads, clouds and ships. Each terrain has one picture, so long mountain ranges and forests repeat it.
+- **Checked:** RealmTools.Checks and GraphicsChecks pass in Unity; the Windows build succeeds; the `-autoShot` run has no exceptions. Screenshots in `Documentation/Unity-Screenshots-2026-10-30-Sprites` show the castle city, port, peaks and forests on their tiles after zoom changes. The DiplomacyUIChecks harness (compiles all scripts) passes. **Not yet played by hand.**
+
 ## Diagonal view and closer match to the owner's mockup (30 Oct 2026, no save change)
 The owner asked for the interface and the game to look exactly like the mockup, chose the mockup's diagonal view, and chose SpriteCook for painted art. SpriteCook was not installed when this was done, so the painted art is still to come. Everything else is in place, including slots the art drops into.
 - **Diagonal (isometric) map:** each grid tile is drawn as a 64 x 32 diamond. Moving east goes down-right on screen and moving south goes down-left (`PixelArt.ScreenOf`/`PickOf`).

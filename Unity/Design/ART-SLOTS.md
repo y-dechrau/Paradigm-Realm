@@ -17,5 +17,8 @@ The map is drawn by code (`PixelArt.cs`). Any picture put in `Unity/Assets/Resou
 | `cloud` or `cloud-V` | One puff of the cloud banks over unexplored land (V = 0-3) | 96 x 64 canvas; puffs overlap their neighbours. |
 | `Visuals/unit-NN` (existing folder `Resources/Visuals`) | Unit NN (`World.UnitNames`: 00 Settler … 12 Boat, 13 Galley, 14 War Galley) | Any square size; feet at the bottom centre. |
 
+## Filled so far (30 Oct 2026, SpriteCook)
+`city-3-0`, `city-3-1-walled`, `city-3-2-walled`, `city-3-3-walled`, `terrain-01`, `terrain-05`, `port`. The town pictures carry their own grass patch inside the diamond. Every other slot still uses the drawn art.
+
 ## Leader portraits
 `Resources/Leaders/leader-NN.png` (300 x 400), and age versions `leader-NN-eE.png` (E = 0 Dawn … 5 Dimensional) for clothing that changes with the age. Jade Dynasty (15) and Serpent League (16) join the game once their portraits exist.

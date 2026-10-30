@@ -51,7 +51,8 @@ namespace ParadigmRealm
         }
         void ClearIso()
         {
-            foreach(var t in isoTiles.Values)Destroy(t);foreach(var t in isoPictures.Values)if(t!=null)Destroy(t);
+            // Supplied art (spriteSlots) is a loaded asset shared by the cache, so only the drawn pictures are destroyed.
+            foreach(var t in isoTiles.Values)Destroy(t);foreach(var t in isoPictures.Values)if(t!=null&&!spriteSlots.ContainsValue(t))Destroy(t);
             isoTiles.Clear();isoTileOrder.Clear();isoPictures.Clear();isoShown.Clear();
         }
         static int IsoVariant(int x,int y){unchecked{int h=x*73856093^y*19349663;return (h&0x7fffffff)%3;}}
