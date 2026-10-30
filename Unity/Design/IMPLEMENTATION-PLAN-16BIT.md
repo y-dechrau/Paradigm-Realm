@@ -67,8 +67,8 @@ Conquest by capitals, Transcendence in three stages, Concord. One status screen 
 ### Stage 7 — Interface (save v15) — complete in source 29 Oct 2026 (three-panel city screen, Governor, tile locks, clearer New Game screen; two production lines kept)
 Three-panel city screen with Governor presets, the victory status screen, a clearer New Game screen.
 
-### Stage 8 — AI and balance
-Headless multi-turn runs at each map size to check pacing targets and turn time; tune numbers.
+### Stage 8 — AI and balance — pacing and turn time tuned 30 Oct 2026 (headless .NET runs; Unity play still to confirm)
+Headless multi-turn runs at each map size to check pacing targets and turn time; tune numbers. Done: per-era research pace, flat University and once-per-civilisation research pacts, A* routes with early give-up for rivals. Results in IMPLEMENTATION-STATUS.md. Still open: balance of combat and economy from real play.
 
 ## Risks
 

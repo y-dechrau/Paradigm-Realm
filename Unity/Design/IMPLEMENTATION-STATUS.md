@@ -2,6 +2,36 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Stage 8: AI and balance (30 Oct 2026, no save change)
+Measured with headless rival games in the .NET harness (the player founds a capital and then passes; 4 civilisations; standard speed).
+- **Why rivals won early:** science, not cheap technology. The design's costs (20 x e^2 + 5 x e x i) were already in, but older rules multiplied science: the University gave +50% after every flat bonus, and each research pact added 2 science in every city. A city with 10 trade made about 52 science by turn 120.
+- **Changes:**
+  - University: +3 science, flat, as the design states ("buildings give flat bonuses").
+  - Research pacts add their science once per civilisation, at the capital.
+  - Research cost: the design cost times a per-era pace (`World.ResearchPace`): 150, 190, 280, 400, 420 and 420 percent for Dawn to Dimensional. Speed settings still scale on top.
+- **Pacing measured:** nine games (Tiny, Small and Medium, three seeds each), averages over every rival.
+
+  | Milestone | Target turn | Before | Now |
+  |---|---|---|---|
+  | Era 1 complete | 40 | ~31 | ~36 |
+  | Era 2 complete | 80 | ~58 | ~77 |
+  | Era 3 complete | 125 | ~80 | ~124 |
+  | Era 4 complete | 170 | ~100 | ~170 |
+  | Earliest Transcendence | ~230 | 138-155 | 222-250 |
+
+  Era 5 is not completed before Transcendence: rivals go for the project once Computing is known.
+- **Turn time:** pathfinding was about 95% of a slow turn. Routes now use A* with an admissible estimate (the tile distance times the cheapest step), so they are still the cheapest. Occupied tiles are collected once per search. Rival land units give up at once on goals they cannot reach over land, and do not chase detours longer than three times the direct cost. Your own units keep the full search.
+
+  | Map size | Before (average / slowest) | Now (average / slowest) |
+  |---|---|---|
+  | Large | 207 ms / 0.76 s | 20 ms / 56 ms |
+  | Huge | 38 ms / 0.47 s | 22 ms / 60 ms |
+  | Massive | 246 ms / 1.4 s | 38 ms / 106 ms |
+
+  Measured in .NET to turn 120, not in Unity; Unity drawing is separate.
+- **Harness** (`EmpireChecks.StageEightChecks`): University flat +3; a pact adds 2 science only at the capital; research cost equals design cost times the era's pace; a full Small game in which no rival wins before turn 200 and every rival completes the first era between turns 25 and 60.
+- **Still open:** combat and economy balance need real play; the pace values are tuned for a passive player and will want checking against a human game.
+
 ## Owner request: invasions by sea (29 Oct 2026, no save change)
 - A rival at war with a civilisation whose city lies on other land (`NavalAI.InvasionTarget`: known city tile, on a landmass none of the rival's cities stand on, nearest a connected port) builds a Galley at a connected port.
 - Landmasses ignore polar ice: a crossing over the pole is possible but is not treated as a road for an army.

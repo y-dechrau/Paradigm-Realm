@@ -21,7 +21,7 @@ public static class EmpireChecks {
  var villageTile=w.At(13,15);villageTile.owner=-1;foreach(var tt in w.tiles)if(tt.owner==0&&w.Distance(tt.x,tt.y,13,15)<=4)tt.owner=-1;Check(w.VillageTribute(0)==0,"no tax from a village far from your borders");
  w.At(14,15).owner=0;Check(w.VillageTribute(0)==World.VillageTax,"village within 4 tiles of your borders pays tax");
  scout.x=13;scout.y=17;var rivalScout=w.Add(1,3,12,15);Check(w.Move(rivalScout,13,15)&&villageTile.villageOwner==1&&w.VillageTribute(0)==0,"another civilisation can win the village over");w.AutoExplore(scout);w.CancelActivity(scout);Check(!scout.exploring&&!scout.hasOrder,"X stops exploration");
- StageThreeEconomy();StageThreeTrade();StageThreeHappiness();StageThreeUnits();StageFourCombat();StageSixVictory();StageSevenCity();CivilisationChecks();PathfindingChecks();NavalChecks();NavalAIChecks();
+ StageThreeEconomy();StageThreeTrade();StageThreeHappiness();StageThreeUnits();StageFourCombat();StageSixVictory();StageSevenCity();CivilisationChecks();PathfindingChecks();NavalChecks();NavalAIChecks();StageEightChecks();
  Check(w.Valid(),"expanded state validates");w.tradeRoutes=null;w.UpgradeSave();Check(w.tradeRoutes!=null&&w.Valid(),"legacy absent routes migrated");
  for(int seed=0;seed<3;seed++){w=World.New(seed);w.Found(w.units.First(u=>u.owner==0&&u.type==0));for(int turn=0;turn<50;turn++){w.EndTurn();Check(w.Valid(),"campaign state, seed "+seed+" turn "+turn);}}
  }
@@ -140,6 +140,21 @@ public static class EmpireChecks {
   var land=w.Add(0,2,c.x,c.y);Check(!w.Passable(land,w.At(next.x,next.y),4),"open sea is impassable to land units without a ship");
   w.At(c.x-1,c.y).terrain=6;Check(w.BuildReason(c,World.UnitBuild(World.BoatUnit))=="","a lakeside city can build boats");
   Check(w.Valid(),"naval state validates");
+ }
+ // Stage 8 (AI and balance): flat science buildings, research pacts once per civilisation, the research pace, and a
+ // whole standard game in which no rival wins before turn 200 (design target: earliest Transcendence around 230).
+ static void StageEightChecks(){
+  var w=Setup();var c=w.cities.First(a=>a.owner==0);c.pop=6;int before=w.Yield(c)[2];c.buildings.Add(38);Check(w.Yield(c)[2]==before+3,"University adds a flat +3 science");
+  var second=w.Found(w.Add(0,0,c.x+6,c.y));second.pop=4;w.met[1]=true;w.Relation(0,1).researchUntil=w.turn+10;
+  int pact=w.DiplomaticScience(0);Check(pact==2,"one research pact gives 2 science");
+  int capitalScience=w.Yield(c)[2],otherScience=w.Yield(second)[2];w.Relation(0,1).researchUntil=0;
+  Check(w.Yield(c)[2]==capitalScience-2&&w.Yield(second)[2]==otherScience,"a research pact adds its science once, at the capital");
+  int first=TechnologyCatalog.Index("agriculture"),late=TechnologyCatalog.Index("fusion");w.speed=1;
+  Check(w.ResearchCost(first,-1)==World.TechCosts[first]*World.ResearchPace[0]/100&&w.ResearchCost(late,-1)==World.TechCosts[late]*World.ResearchPace[TechnologyCatalog.Eras[late]]/100,"research cost is the design cost times the era's pace");
+  var g=World.New(701,"Pace",0,1,1,0,1,1,4);g.Found(g.units.First(u=>u.owner==0&&u.type==0));var eraOne=new int[g.civCount];
+  for(int t=0;t<200&&g.result=="";t++){g.EndTurn();for(int o=1;o<g.civCount;o++)if(eraOne[o]==0&&g.Era(o)>=1)eraOne[o]=g.turn;}
+  Check(g.result=="","no rival wins before turn 200 in a standard Small game ("+g.result+")");
+  Check(Enumerable.Range(1,g.civCount-1).All(o=>eraOne[o]>=25&&eraOne[o]<=60),"rivals complete the first era between turns 25 and 60 ("+string.Join(", ",Enumerable.Range(1,g.civCount-1).Select(o=>eraOne[o]))+")");
  }
  // Rivals use the sea: they link ports by road, hunt enemy ships at war, and ferry stranded settlers to other land.
  static World Islands(out City rival,out int bx){

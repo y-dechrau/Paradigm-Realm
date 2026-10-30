@@ -345,7 +345,11 @@ namespace ParadigmRealm
         public static string StackLabel(IEnumerable<Unit> source){var stack=source.ToList();if(stack.Count==0)return "";if(stack.GroupBy(u=>u.owner).Any(g=>g.Select(u=>u.type).Distinct().Count()>1))return "";return stack.Count>1?"Stack":UnitNames[stack[0].type];}
         public List<int> AvailableTech(int owner=0){return Enumerable.Range(0,TechNames.Length).Where(i=>!nations[owner].tech[i]&&Requirements[i].All(j=>nations[owner].tech[j])).ToList();}
         // Base cost scaled by game speed; a fifth cheaper (rounded down) once two civilisations this one has met know it (design).
-        public int ResearchCost(int t,int owner=0){int cost=TechCosts[t]*(speed==0?1:speed==2?3:2)/2;if(owner>=0&&owner<civCount&&Enumerable.Range(0,civCount).Count(o=>o!=owner&&HasContact(owner,o)&&nations[o].tech[t])>=2)cost-=cost/5;return cost;}
+        // Stage 8 pacing: the design's cost (20 x e^2 + 5 x e x i) scaled per era, in percent, so a standard game meets the
+        // design's targets (eras complete around turns 40, 80, 125, 170 and 210; Transcendence around 230). Measured with
+        // headless rival games; see IMPLEMENTATION-STATUS.md.
+        public static readonly int[] ResearchPace={150,190,280,400,420,420};
+        public int ResearchCost(int t,int owner=0){int cost=TechCosts[t]*ResearchPace[TechnologyCatalog.Eras[t]]/100*(speed==0?1:speed==2?3:2)/2;if(owner>=0&&owner<civCount&&Enumerable.Range(0,civCount).Count(o=>o!=owner&&HasContact(owner,o)&&nations[o].tech[t])>=2)cost-=cost/5;return cost;}
         public void SelectResearch(int t){if(!AvailableTech().Contains(t))return;nations[0].progress[research<0?0:research]=science;research=t;nations[0].research=t;science=nations[0].progress[t];}
         public void CancelOrder(Unit u){if(u==null)return;u.exploring=false;u.sentry=false;u.hasOrder=false;u.job=0;u.jobTurns=0;}
         public int[] PeaceOwners(Unit u,int x,int y){if(u==null||!VisibleTo(u.owner,x,y))return new int[0];var owners=units.Where(a=>a.x==x&&a.y==y).Select(a=>a.owner).Concat(cities.Where(a=>a.x==x&&a.y==y).Select(a=>a.owner));var t=At(x,y);if(t!=null&&t.owner>=0&&!CanEnter(u.owner,t))owners=owners.Concat(new[]{t.owner});return owners.Where(a=>a!=u.owner&&!AtWar(u.owner,a)).Distinct().ToArray();}
@@ -354,27 +358,52 @@ namespace ParadigmRealm
         public int StepCost(Unit u,int x,int y,Tile t){if(IsNaval(u.type))return 2;if(t.terrain==14||t.terrain==15)return Math.Max(4,Moves[u.type]);return At(x,y).road&&t.road?1:u.type==3?2:u.type==8&&Wooded(t.terrain)?2:(RoughTerrain(t.terrain)?3:2);}
         bool Capacity(Unit u,int x,int y){if(IsNaval(u.type))return units.Count(a=>a.id!=u.id&&a.owner==u.owner&&IsNaval(a.type)&&a.x==x&&a.y==y)<3;var at=At(x,y);if(at!=null&&IsWater(at.terrain))return true;if(u.type==1)return true;return units.Count(a=>a.type!=1&&!IsNaval(a.type)&&a.id!=u.id&&a.owner==u.owner&&a.x==x&&a.y==y&&(Power[a.type]>0)==(Power[u.type]>0))<(Power[u.type]>0?3:1);}
         [NonSerialized] int[] routeDist,routePrev,routeSeq; [NonSerialized] Tile routeScratch;
+        // Regions a land unit can walk between (water, reefs, lakes and peaks separate them; polar ice joins them, as it is
+        // passable). Rebuilt only when the terrain fingerprint changes, which in play means once per map.
+        [NonSerialized] int[] walkRegion;[NonSerialized] long walkPrint;
+        int WalkRegion(int cell)
+        {
+            long print=tiles.Length;for(int i=0;i<tiles.Length;i++)print=print*31+(IsImpassable(tiles[i].terrain)?1:2);
+            if(walkRegion==null||walkRegion.Length!=tiles.Length||print!=walkPrint)
+            {
+                walkPrint=print;
+                walkRegion=new int[tiles.Length];int next=1;var queue=new Queue<int>();
+                for(int i=0;i<tiles.Length;i++)
+                {
+                    if(walkRegion[i]!=0||IsImpassable(tiles[i].terrain))continue;walkRegion[i]=next;queue.Enqueue(i);
+                    while(queue.Count>0){int k=queue.Dequeue();var t=tiles[k];for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var nb=At(t.x+dx,t.y+dy);if(nb==null)continue;int j=nb.y*Width+nb.x;if(walkRegion[j]==0&&!IsImpassable(nb.terrain)){walkRegion[j]=next;queue.Enqueue(j);}}}
+                    next++;
+                }
+            }
+            return walkRegion[cell];
+        }
         static void HeapPush(List<long> h,long v){h.Add(v);int i=h.Count-1;while(i>0){int p=(i-1)/2;if(h[p]<=h[i])break;long tmp=h[p];h[p]=h[i];h[i]=tmp;i=p;}}
         static long HeapPop(List<long> h){long top=h[0];int last=h.Count-1;h[0]=h[last];h.RemoveAt(last);int i=0,n=h.Count;while(true){int l=2*i+1,r=l+1,m=i;if(l<n&&h[l]<h[m])m=l;if(r<n&&h[r]<h[m])m=r;if(m==i)break;long tmp=h[m];h[m]=h[i];h[i]=tmp;i=m;}return top;}
-        // Cheapest route by movement cost. Candidates are taken in (cost, discovery order), which matches the original
-        // list-scan search exactly, but with a heap and reusable arrays so cost no longer grows with the size of the map.
+        // Cheapest route by movement cost: A* with the tile distance times the cheapest possible step as its estimate (never
+        // more than the real remaining cost, so the route found is still the cheapest), a heap and reusable arrays.
         // ignoreUnits: plan as if no units stood in the way (used to tell a jam that will clear from a route that does not exist).
+        // Stage 8 speed: rival land units give up at once when the goal lies on land they cannot reach over land.
         public List<Tile> Route(Unit u,int x,int y,bool ignoreUnits=false)
         {
             var path=new List<Tile>();var goal=At(x,y);if(u==null||goal==null)return path;
             x=goal.x;y=goal.y;
             if(nations[u.owner].known[y*Width+x]&&!Passable(u,goal,u.owner==0?KnownTerrain(goal):goal.terrain))return path;
             int n=tiles.Length,start=u.y*Width+u.x,end=y*Width+x;
+            if(u.owner!=0&&!IsNaval(u.type)&&!IsWater(goal.terrain)&&WalkRegion(start)!=WalkRegion(end))return path;
             if(routeDist==null||routeDist.Length!=n){routeDist=new int[n];routePrev=new int[n];routeSeq=new int[n];for(int k=0;k<n;k++){routeDist[k]=int.MaxValue;routePrev[k]=-1;routeSeq[k]=-1;}}
             if(routeScratch==null)routeScratch=new Tile();
             var dist=routeDist;var prev=routePrev;var seqOf=routeSeq;var touched=new List<int>();var seqNode=new List<int>();var heap=new List<long>();
+            int minStep=IsNaval(u.type)?2:1;Func<int,int> estimate=i=>Distance(tiles[i].x,tiles[i].y,x,y)*minStep;
+            // Rivals do not chase detours longer than three times the direct cost (plus a margin); their fallbacks take over.
+            int limit=u.owner==0?int.MaxValue:estimate(start)*3*2+40;
+            var foreign=new HashSet<int>();var mine=new HashSet<int>();foreach(var a in units){int cell=a.y*Width+a.x;if(a.owner!=u.owner)foreign.Add(cell);else if(a.id!=u.id)mine.Add(cell);}
             try
             {
-                dist[start]=0;seqOf[start]=0;seqNode.Add(start);touched.Add(start);HeapPush(heap,0L);
+                dist[start]=0;seqOf[start]=0;seqNode.Add(start);touched.Add(start);HeapPush(heap,(long)estimate(start)<<32);
                 while(heap.Count>0)
                 {
                     long key=HeapPop(heap);int current=seqNode[(int)(key&0xFFFFFFFFL)];
-                    if((int)(key>>32)!=dist[current])continue;
+                    if((int)(key>>32)!=dist[current]+estimate(current))continue;
                     if(current==end)break;
                     var from=tiles[current];
                     for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++)
@@ -384,13 +413,13 @@ namespace ParadigmRealm
                         Tile seenTile=t;if(known&&u.owner==0)seenTile=KnownTileInto(t,routeScratch);
                         if(known&&!Passable(u,t,seenTile.terrain))continue;if(!known&&IsNaval(u.type))continue;if(!IsNaval(u.type)&&IsWater(seenTile.terrain)&&next!=end)continue;
                         bool visible=VisibleTo(u.owner,t.x,t.y);
-                        if(visible&&next!=end&&(!CanEnter(u.owner,t)||!ignoreUnits&&units.Any(a=>a.owner!=u.owner&&a.x==t.x&&a.y==t.y)))continue;
-                        if(!ignoreUnits&&!Capacity(u,t.x,t.y))continue;
+                        if(visible&&next!=end&&(!CanEnter(u.owner,t)||!ignoreUnits&&foreign.Contains(next)))continue;
+                        if(!ignoreUnits&&mine.Contains(next)&&!Capacity(u,t.x,t.y))continue;
                         int cost=dist[current]+(known?StepCost(u,from.x,from.y,seenTile):2);
-                        if(cost>=dist[next])continue;
+                        if(cost>=dist[next]||cost+estimate(next)>limit)continue;
                         dist[next]=cost;prev[next]=current;
                         if(seqOf[next]<0){seqOf[next]=seqNode.Count;seqNode.Add(next);touched.Add(next);}
-                        HeapPush(heap,((long)cost<<32)|(long)seqOf[next]);
+                        HeapPush(heap,((long)(cost+estimate(next))<<32)|(long)seqOf[next]);
                     }
                 }
                 if(start!=end&&prev[end]>=0){for(int i=end;i!=start;i=prev[i])path.Add(tiles[i]);path.Reverse();}
