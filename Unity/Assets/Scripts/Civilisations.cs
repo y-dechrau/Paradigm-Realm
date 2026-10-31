@@ -35,6 +35,11 @@ public static class CivilisationCatalog {
  public static readonly bool[] Enabled={true,true,false,true,true,true,false,true,true,true,true,true,true,true,true,false,false,true,true,true,true,true,true,true,true,true,true,true,true};
  public static bool[] AwaitingArt={false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,false,false,false,false,false,false};
  public static IEnumerable<int> Offered(){return Enumerable.Range(0,Count).Where(i=>Enabled[i]);}
+ // The New Game screen offers two groups (owner request): Fantasy Kingdoms (0-16) and Real World Civilisations (17 on).
+ public const int FirstReal=17;
+ public static bool IsReal(int civ){return civ>=FirstReal;}
+ public static bool RealPortrait(int portrait){return portrait>=FirstReal;}
+ public static IEnumerable<int> Offered(bool real){return Offered().Where(i=>IsReal(i)==real);}
  public static readonly string[] PortraitTitles={"King of the coastal kingdom","Desert queen of the oasis","Mountain queen of the snow citadel","Enchanted forest queen","Void queen of the crystal realm","Emperor of the grand capital","Samurai lord","King of a coastal kingdom","Guardian of the golden citadel","Hellenistic commander","Emperor of the golden city","Emperor of the grand cathedral","Caesar of the eternal city","Crusader king","Steppe warlord","Empress of the jade court (art needed)","King of the serpent coast (art needed)","First Emperor of Qin","Pharaoh of the New Kingdom","First Emperor of Rome","Statesman of Athens","Huey Tlatoani of Tenochtitlan","Sapa Inca of Tawantinsuyu","Ajaw of Lakamha (Palenque)","Emperor of Ethiopia","Abbasid Caliph of Baghdad","King of Kings of Persia","Mauryan Emperor","King of Babylon"};
  // What each leader says on meeting you (peace); war and friendship have their own lines in World.Greeting.
  public static readonly string[] Greetings={
@@ -78,7 +83,9 @@ public partial class World {
  // and two seeded traits.
  public void AssignRivalCivilisations()
  {
-  var r=new Random(seed^0x5eed);var pool=CivilisationCatalog.Offered().Where(i=>i!=nations[0].civ).OrderBy(i=>r.Next()).ToList();
+  var r=new Random(seed^0x5eed);
+  // Rivals come from the same group as the player first (Real World or Fantasy), then from the other group if more are needed.
+  var pool=CivilisationCatalog.Offered(realWorld).Where(i=>i!=nations[0].civ).OrderBy(i=>r.Next()).Concat(CivilisationCatalog.Offered(!realWorld).OrderBy(i=>r.Next())).ToList();
   for(int o=1;o<civCount;o++)
   {
    var n=nations[o];

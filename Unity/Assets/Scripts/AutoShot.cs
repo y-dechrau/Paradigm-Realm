@@ -40,13 +40,14 @@ namespace ParadigmRealm
             yield return Frames(5);
             mainMenu=false;nameSetup=true;setupPage=0;setupCiv=4;
             yield return Shot(folder,"0-new-game.bmp");
-            setupCiv=17;yield return Shot(folder,"0a-real-civilisation.bmp");civLoreOpen=true;yield return Shot(folder,"0a2-civilisation-lore.bmp");setupCiv=26;yield return Shot(folder,"0a3-lore-persia.bmp");civLoreOpen=false;setupCiv=4;
+            civGroupReal=true;setupCiv=17;yield return Shot(folder,"0a-real-civilisation.bmp");civLoreOpen=true;yield return Shot(folder,"0a2-civilisation-lore.bmp");setupCiv=26;yield return Shot(folder,"0a3-lore-persia.bmp");civLoreOpen=false;
+            setupCiv=CivilisationCatalog.Count;proposedName="Free Cantons";customLeader="Mayor Tell";customPortrait=18;yield return Shot(folder,"0a4-real-custom.bmp");civGroupReal=false;setupCiv=4;
             setupCiv=CivilisationCatalog.Count;proposedName="Ember Clans";customLeader="Chief Oru";customPortrait=13;customTraitA=2;customTraitB=9;
             yield return Shot(folder,"0b-custom.bmp");
             setupCiv=0;setupPage=1;
             yield return Shot(folder,"0c-world.bmp");
             seedText="421";nameSetup=false;guide=false;StartGame();hasSession=true;guide=false;
-            tutorialOn=true;tutorialStep=0;tutorialMinimised=false;yield return Shot(folder,"1a-tutorial-welcome.bmp");tutorialStep=1;yield return Shot(folder,"1b-tutorial-step.bmp");tutorialOn=false;tutorialStep=-1;
+            tutorialOn=true;tutorialStep=0;tutorialMinimised=false;yield return Shot(folder,"1a-tutorial-welcome.bmp");tutorialStep=1;yield return Shot(folder,"1b-tutorial-step.bmp");tutorialStep=6;yield return Shot(folder,"1c-tutorial-workers.bmp");tutorialOn=false;tutorialStep=-1;
             yield return Shot(folder,"1-map.bmp");
             var settler=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);
             if(settler!=null)world.Found(settler);

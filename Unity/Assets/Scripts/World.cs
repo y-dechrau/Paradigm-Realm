@@ -98,6 +98,8 @@ namespace ParadigmRealm
         // Buildings come in tiers of 40, 60 and 80 shields; 60 and 80 tier buildings cost 1 gold upkeep. Wonders (0 here) cost WonderCost().
         public static readonly int[] BuildingCosts={40,40,40,60,60,40,40,60,60,40,60,80,80,80,80,60,40,60,0,0,0,0,300,400,500};
         public static readonly int[] BuildingTech={TechnologyCatalog.Index("pottery"),TechnologyCatalog.Index("writing"),TechnologyCatalog.Index("masonry"),TechnologyCatalog.Index("bronze"),TechnologyCatalog.Index("currency"),TechnologyCatalog.Index("bronze"),TechnologyCatalog.Index("agriculture"),TechnologyCatalog.Index("laws"),TechnologyCatalog.Index("medicine"),TechnologyCatalog.Index("mysticism"),TechnologyCatalog.Index("engineering"),TechnologyCatalog.Index("education"),TechnologyCatalog.Index("banking"),TechnologyCatalog.Index("industrialisation"),TechnologyCatalog.Index("medicine"),TechnologyCatalog.Index("construction"),TechnologyCatalog.Index("sailing"),TechnologyCatalog.Index("engineering"),TechnologyCatalog.Index("writing"),TechnologyCatalog.Index("calendar"),TechnologyCatalog.Index("economics"),TechnologyCatalog.Index("military_science"),TechnologyCatalog.Index("computers"),TechnologyCatalog.Index("computers"),TechnologyCatalog.Index("computers")};
+        // realWorld: the game was set up with the Real World Civilisations (rivals drawn from them first), not the Fantasy Kingdoms.
+        public bool realWorld;
         public int version=23,civCount=3,seed,turn=1,nextId=1,gold=20,science,research=TechnologyCatalog.Index("agriculture"),mapType,speed=1,difficulty=1,trait;
         public Tile[] tiles; public List<Unit> units=new List<Unit>(); public List<City> cities=new List<City>();
         public List<string> log=new List<string>(); public bool[] tech=TechnologyCatalog.Starting(),war=new bool[3],met=new[]{true,false,false},openBorders=new bool[3];
@@ -178,7 +180,7 @@ namespace ParadigmRealm
         public Unit Add(int owner,int type,int x,int y){var u=new Unit{id=nextId++,owner=owner,type=type,x=x,y=y};u.moves=MaxMoves(u);units.Add(u);return u;}
         // civChoice: -2 keeps the old single-trait setup (trait), 0-11 picks a premade civilisation, -1 a custom one (name, leader,
         // portrait and traitA/traitB). Rivals then take premade civilisations the player did not choose.
-        public static World New(int seed,string civilisationName="Verdant Union",int mapType=0,int speed=1,int difficulty=1,int trait=0,int mapSize=1,int mapShape=0,int civs=3,int civChoice=-2,string leader="",int portrait=0,int traitA=-1,int traitB=-1)
+        public static World New(int seed,string civilisationName="Verdant Union",int mapType=0,int speed=1,int difficulty=1,int trait=0,int mapSize=1,int mapShape=0,int civs=3,int civChoice=-2,string leader="",int portrait=0,int traitA=-1,int traitB=-1,bool realWorld=false)
         {
             // New globe games use staggered rows (shape 2): the same tile count as the diagonal globe, W columns by 2W rows,
             // which shows as a 2:1 picture because rows are half a tile tall.
@@ -187,7 +189,7 @@ namespace ParadigmRealm
             var w=new World{seed=seed,civilisationName=CleanName(civilisationName),mapType=mapType,speed=speed,difficulty=difficulty,trait=trait,mapSizeIndex=mapSize,mapShape=mapShape,mapWidth=mw,mapHeight=mh,tiles=new Tile[mw*mh]};
             w.SetCivCount(civs);
             foreach(var nation in w.nations)nation.known=new bool[mw*mh];
-            w.nations[0].trait=trait;w.nations[0].traits=TraitsFromLegacy(trait);if(civChoice>=-1)w.SetPlayerCivilisation(civChoice,civilisationName,leader,portrait,traitA,traitB);else w.AssignRivalCivilisations();w.tech=w.nations[0].tech;var r=new Random(seed);
+            w.nations[0].trait=trait;w.nations[0].traits=TraitsFromLegacy(trait);w.realWorld=realWorld||civChoice>=CivilisationCatalog.FirstReal;if(civChoice>=-1)w.SetPlayerCivilisation(civChoice,civilisationName,leader,portrait,traitA,traitB);else w.AssignRivalCivilisations();w.tech=w.nations[0].tech;var r=new Random(seed);
             int[] sx=new int[civs],sy=new int[civs];
             if(civs==3){sx=new[]{9,34,31};sy=new[]{12,9,23};}
             if(mapShape==2){

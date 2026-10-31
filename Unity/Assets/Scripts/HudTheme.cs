@@ -42,6 +42,8 @@ namespace ParadigmRealm
             if(CardShown())hudRects.Add(UnitCard);if(moreActions&&CardShown())hudRects.Add(MorePanel);
             for(int i=0;i<MetRivals().Count;i++)hudRects.Add(LeaderRect(i));
             for(int i=0;i<RecentNotes().Count;i++)hudRects.Add(NoteRect(i));
+            // The tutorial panel takes its own clicks (its Next, Hide and End buttons), not the map underneath.
+            if(TutorialShown())hudRects.Add(TutorialRect());
 
         }
 

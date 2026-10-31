@@ -67,7 +67,7 @@ namespace ParadigmRealm
 
         void StartGame()
         {
-            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; bool custom=setupCiv>=CivilisationCatalog.Count;world=World.New(chosenSeed,custom?proposedName:CivilisationCatalog.Names[setupCiv],setupMap,setupSpeed,1,0,setupSize,setupShape,setupCivs,custom?-1:setupCiv,customLeader,customPortrait,customTraitA,customTraitB);setupPage=0;ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
+            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; bool custom=setupCiv>=CivilisationCatalog.Count;world=World.New(chosenSeed,custom?proposedName:CivilisationCatalog.Names[setupCiv],setupMap,setupSpeed,1,0,setupSize,setupShape,setupCivs,custom?-1:setupCiv,customLeader,customPortrait,customTraitA,customTraitB,civGroupReal);setupPage=0;ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
             selected=world.units.First(u=>u.owner==0).id;cityId=-1;
             sideScroll=Vector2.zero;researchScreen=false;detailsScreen="";cityScreen=false;pauseMenu=false;activeSavePath=null;Center();hasSession=true;mainMenu=false;
             // With the tutorial on, its guide replaces the opening help page.
@@ -136,7 +136,9 @@ namespace ParadigmRealm
         int setupPage,setupCiv,customPortrait=7,customTraitA=6,customTraitB=8;string customLeader="";
         GUIStyle cardLabel;
         // Step through the portraits that exist (pictures still to be supplied are skipped).
-        int NextPortrait(int from,int step){for(int k=1;k<=CivilisationCatalog.PortraitCount;k++){int i=((from+step*k)%CivilisationCatalog.PortraitCount+CivilisationCatalog.PortraitCount)%CivilisationCatalog.PortraitCount;if(Portrait(i)!=null)return i;}return from;}
+        int NextPortrait(int from,int step){for(int k=1;k<=CivilisationCatalog.PortraitCount;k++){int i=((from+step*k)%CivilisationCatalog.PortraitCount+CivilisationCatalog.PortraitCount)%CivilisationCatalog.PortraitCount;if(CivilisationCatalog.RealPortrait(i)==civGroupReal&&Portrait(i)!=null)return i;}return from;}
+        bool civGroupReal;
+        void SelectCivilisationGroup(){var first=CivilisationCatalog.Offered(civGroupReal).FirstOrDefault();setupCiv=first;proposedName=CivilisationCatalog.Names[first];civLoreOpen=false;customPortrait=NextPortrait(civGroupReal?CivilisationCatalog.FirstReal-1:CivilisationCatalog.PortraitCount-1,1);GUIUtility.ExitGUI();}
         bool CustomValid(){return setupCiv<CivilisationCatalog.Count||(!string.IsNullOrWhiteSpace(proposedName)&&customTraitA!=customTraitB);}
         void DrawNameSetup()
         {
@@ -152,19 +154,23 @@ namespace ParadigmRealm
         void DrawCivilisationChoice()
         {
             if(cardLabel==null)cardLabel=new GUIStyle(small){alignment=TextAnchor.UpperCenter,wordWrap=true};
-            GUI.Label(new Rect(190,74,900,44),"Choose your civilisation",title);
+            GUI.Label(new Rect(76,70,560,44),"Choose your civilisation",title);
+            // Two groups (owner request): Fantasy Kingdoms and Real World Civilisations, each ending with a card to create your own.
+            if(GUI.Button(new Rect(660,78,270,32),(civGroupReal?"":"▸ ")+"Fantasy Kingdoms",button)&&civGroupReal){civGroupReal=false;SelectCivilisationGroup();}
+            if(GUI.Button(new Rect(940,78,270,32),(civGroupReal?"▸ ":"")+"Real World Civilisations",button)&&!civGroupReal){civGroupReal=true;SelectCivilisationGroup();}
+            Fill(new Rect(civGroupReal?940:660,108,270,2),UiAccent);
             var e=Event.current;
-            // Every offered civilisation, then Custom, eight to a row.
-            var cards=CivilisationCatalog.Offered().Concat(new[]{CivilisationCatalog.Count}).ToList();
-            if(setupCiv<CivilisationCatalog.Count&&!CivilisationCatalog.Enabled[setupCiv])setupCiv=cards[0];
+            var cards=CivilisationCatalog.Offered(civGroupReal).Concat(new[]{CivilisationCatalog.Count}).ToList();
+            if(setupCiv<CivilisationCatalog.Count&&(!CivilisationCatalog.Enabled[setupCiv]||CivilisationCatalog.IsReal(setupCiv)!=civGroupReal))setupCiv=cards[0];
+            if(CivilisationCatalog.RealPortrait(customPortrait)!=civGroupReal)customPortrait=NextPortrait(civGroupReal?CivilisationCatalog.FirstReal-1:CivilisationCatalog.PortraitCount-1,1);
             for(int k=0;k<cards.Count;k++)
             {
-                int i=cards[k],col=k%13,row=k/13;var r=new Rect(68+col*88,116+row*160,84,152);
+                int i=cards[k],col=k%13,row=k/13;var r=new Rect(68+col*88,120+row*160,84,152);
                 if(setupCiv==i)Fill(new Rect(r.x-4,r.y-4,r.width+8,r.height+8),UiAccent);
                 GUI.Box(r,"");
                 var tex=Portrait(i<CivilisationCatalog.Count?CivilisationCatalog.Portraits[i]:customPortrait);
                 if(tex!=null)DrawPortrait(new Rect(r.x+3,r.y+3,78,104),tex);
-                GUI.Label(new Rect(r.x+2,r.y+109,80,42),i<CivilisationCatalog.Count?CivilisationCatalog.Names[i]:"Custom civilisation",cardLabel);
+                GUI.Label(new Rect(r.x+2,r.y+109,80,42),i<CivilisationCatalog.Count?CivilisationCatalog.Names[i]:"Create your own",cardLabel);
                 if(e.type==EventType.MouseDown&&e.button==0&&r.Contains(e.mousePosition)){setupCiv=i;if(i<CivilisationCatalog.Count)proposedName=CivilisationCatalog.Names[i];e.Use();}
             }
             if(setupCiv<CivilisationCatalog.Count){DrawCivilisationSummary(setupCiv);if(civLoreOpen){DrawCivilisationLore(setupCiv);return;}}
@@ -174,7 +180,7 @@ namespace ParadigmRealm
                 GUI.Label(new Rect(455,532,260,20),"Leader",small);customLeader=GUI.TextField(new Rect(455,552,260,28),customLeader,32);
                 GUI.Label(new Rect(725,532,370,20),"Portrait: "+CivilisationCatalog.PortraitTitles[customPortrait],small);
                 if(GUI.Button(new Rect(725,552,44,28),"<",button))customPortrait=NextPortrait(customPortrait,-1);
-                GUI.Label(new Rect(775,556,70,24),(customPortrait+1)+" / "+CivilisationCatalog.PortraitCount,body);
+                {var group=Enumerable.Range(0,CivilisationCatalog.PortraitCount).Where(p=>CivilisationCatalog.RealPortrait(p)==civGroupReal&&Portrait(p)!=null).ToList();GUI.Label(new Rect(775,556,70,24),(group.IndexOf(customPortrait)+1)+" / "+group.Count,body);}
                 if(GUI.Button(new Rect(845,552,44,28),">",button))customPortrait=NextPortrait(customPortrait,1);
                 GUI.Label(new Rect(185,584,455,20),"First trait",small);customTraitA=GUI.SelectionGrid(new Rect(185,603,450,69),customTraitA,CivilisationCatalog.TraitNames,4);
                 GUI.Label(new Rect(645,584,450,20),"Second trait",small);customTraitB=GUI.SelectionGrid(new Rect(645,603,450,69),customTraitB,CivilisationCatalog.TraitNames,4);

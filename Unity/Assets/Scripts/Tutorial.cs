@@ -49,7 +49,7 @@ public partial class RealmGame {
   if(guideFace==null)guideFace=Resources.Load<Texture2D>("Tutor/guide-face");if(guidePicture==null)guidePicture=Resources.Load<Texture2D>("Tutor/guide");
   if(TutorialWaits(tutorialStep)&&TutorialStepDone(tutorialStep)){AdvanceTutorial();if(tutorialStep<0)return;}
   bool was=GUI.enabled;GUI.enabled=true;
-  if(tutorialMinimised){var tab=new Rect(612,44,56,56);DrawGuideFrame(tab);if(guideFace!=null)GUI.DrawTexture(new Rect(tab.x+3,tab.y+3,50,50),guideFace,ScaleMode.ScaleAndCrop);if(GUI.Button(tab,"",GUIStyle.none))tutorialMinimised=false;GUI.enabled=was;return;}
+  if(tutorialMinimised){var tab=TutorialRect();DrawGuideFrame(tab);if(guideFace!=null)GUI.DrawTexture(new Rect(tab.x+3,tab.y+3,50,50),guideFace,ScaleMode.ScaleAndCrop);if(GUI.Button(tab,"",GUIStyle.none))tutorialMinimised=false;GUI.enabled=was;return;}
   // The welcome is a large card with the whole picture; later steps are a compact panel under the top bar.
   if(tutorialStep==0){
    Fill(new Rect(0,0,1280,800),new Color(0,0,0,.55f));var card=new Rect(240,90,800,610);DrawGuideFrame(card);
@@ -60,7 +60,7 @@ public partial class RealmGame {
    if(GUI.Button(new Rect(card.x+24,card.yMax-52,360,38),"Show me how to play",button))AdvanceTutorial();
    if(GUI.Button(new Rect(card.xMax-384,card.yMax-52,360,38),"I know what I'm doing (skip)",button)){tutorialStep=-1;SaveTutorialProgress();}
    GUI.enabled=was;return;}
-  var panel=new Rect(392,44,640,126);DrawGuideFrame(panel);
+  var panel=TutorialRect();DrawGuideFrame(panel);
   if(guideFace!=null)GUI.DrawTexture(new Rect(panel.x+8,panel.y+8,110,110),guideFace,ScaleMode.ScaleAndCrop);
   GUI.Label(new Rect(panel.x+128,panel.y+6,400,24),GuideName+" — "+TutorialTitles[tutorialStep]+"  ("+tutorialStep+"/"+(TutorialTitles.Length-1)+")",hudTitle);
   GUI.Label(new Rect(panel.x+128,panel.y+30,panel.width-136,64),TutorialTexts[tutorialStep],new GUIStyle(small){wordWrap=true,fontSize=12});
@@ -71,6 +71,8 @@ public partial class RealmGame {
   if(GUI.Button(new Rect(panel.xMax-108,by,100,24),"End tutorial",button)){tutorialStep=-1;SaveTutorialProgress();}
   GUI.enabled=was;
  }
+ bool TutorialShown(){return tutorialOn&&tutorialStep>0&&world!=null&&world.result==""&&!guide;}
+ Rect TutorialRect(){return tutorialMinimised?new Rect(612,44,56,56):new Rect(392,44,640,126);}
  void DrawGuideFrame(Rect r){Fill(r,new Color(.05f,.08f,.15f,.96f));var g=new Color(.86f,.7f,.39f);Fill(new Rect(r.x,r.y,r.width,2),g);Fill(new Rect(r.x,r.yMax-2,r.width,2),g);Fill(new Rect(r.x,r.y,2,r.height),g);Fill(new Rect(r.xMax-2,r.y,2,r.height),g);}
 }
 }
