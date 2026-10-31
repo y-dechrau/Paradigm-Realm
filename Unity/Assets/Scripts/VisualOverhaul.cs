@@ -20,7 +20,9 @@ namespace ParadigmRealm {
   readonly Dictionary<int,Texture2D> portraits=new Dictionary<int,Texture2D>();
   Texture2D Portrait(int i,int era=-1){
    if(i<0||i>=CivilisationCatalog.PortraitCount)return null;Texture2D t;
-   if(era>=0){int key=1000+i*10+era;if(!portraits.TryGetValue(key,out t)){t=Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00")+"-e"+era);portraits[key]=t;}if(t!=null)return t;}
+   // An age without its own picture borrows the nearest earlier one in its group (owner request, 31 Oct): Dawn and
+   // Classical share the ancient look (e0), Industrial onwards the modern look (e3); the Medieval Age uses the base portrait.
+   if(era>=0){for(int e=era;e>=(era>=3?3:era==2?2:0);e--){int key=1000+i*10+e;if(!portraits.TryGetValue(key,out t)){t=Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00")+"-e"+e);portraits[key]=t;}if(t!=null)return t;}}
    if(!portraits.TryGetValue(i,out t)){t=Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00"));portraits[i]=t;}return t;
   }
   // The portraits are 3:4 pictures, but Unity imports them padded to power-of-two sizes (300 x 400 arrives as 256 x 512), so

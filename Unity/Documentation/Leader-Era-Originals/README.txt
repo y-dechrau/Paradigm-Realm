@@ -1,0 +1,1 @@
+﻿Full-size SpriteCook (Nano Banana 2.1) age portraits, 31 Oct 2026, made from the owner's leader originals as references. 768 x 1376; the game uses 300 x 400 crops in Assets/Resources/Leaders as leader-NN-e0 (ancient: Dawn and Classical) and leader-NN-e3 (modern: Industrial onwards). The Medieval Age uses the original leader-NN.
