@@ -77,12 +77,14 @@ public partial class RealmGame {
     // Large worlds draw the known map as one small texture instead of thousands of rectangles.
     void BuildAtlasTexture(){
         if(atlasTexture!=null)Destroy(atlasTexture);
-        atlasTexture=new Texture2D(world.Width,world.Height,TextureFormat.RGBA32,false){filterMode=FilterMode.Point,wrapMode=TextureWrapMode.Clamp};
-        var pixels=new Color[world.Width*world.Height];
-        foreach(var source in world.tiles){
+        atlasTexture=new Texture2D(world.Width,ViewRows,TextureFormat.RGBA32,false){filterMode=FilterMode.Point,wrapMode=TextureWrapMode.Clamp};
+        var pixels=new Color[world.Width*ViewRows];int top=ViewTop;
+        // Only the world being viewed (home or a parallel world) goes into the atlas, minimap and globe.
+        atlasRealm=viewRealm;
+        for(int y=top;y<top+ViewRows;y++)for(int x=0;x<world.Width;x++){var source=world.tiles[y*world.Width+x];
             var t=world.KnownTile(source);var c=new Color(.025f,.04f,.06f,1);
             if(t.seen){c=AtlasColour(t.terrain);if(t.owner>=0){var n=nations[t.owner];c=new Color(c.r+(n.r-c.r)*.45f,c.g+(n.g-c.g)*.45f,c.b+(n.b-c.b)*.45f,1);}}
-            pixels[(world.Height-1-t.y)*world.Width+t.x]=c;
+            pixels[(ViewRows-1-(t.y-top))*world.Width+t.x]=c;
         }
         atlasTexture.SetPixels(pixels);atlasTexture.Apply();atlasPixels=pixels;globeDrawnAtlas++;atlasWorld=world;atlasBuilt=Time.realtimeSinceStartup;
     }
@@ -91,16 +93,19 @@ public partial class RealmGame {
     // Zooming the main map all the way out shows the whole sphere once the civilisation knows the world is round (owner request).
     bool globeZoom;
     int WrapColumn(int x){int w=world.Width;return ((x%w)+w)%w;}
-    bool GlobeZoomAllowed(){return world!=null&&world.Sphere&&world.HasTech(0,"astronomy");}
-    void EnterGlobeZoom(int x,int y){globeZoom=true;globeLon=(x+.5f)/world.Width*Mathf.PI*2-Mathf.PI;globeLat=-(0.5f-(y+.5f)/world.Height)*Mathf.PI*.8f;}
+    bool GlobeZoomAllowed(){return world!=null&&world.Sphere&&viewRealm==0&&world.HasTech(0,"astronomy");}
+    void EnterGlobeZoom(int x,int y){globeZoom=true;globeLon=(x+.5f)/world.Width*Mathf.PI*2-Mathf.PI;globeLat=-(0.5f-(y+.5f)/world.MainHeight)*Mathf.PI*.8f;}
     void DrawGlobeZoom(){
         Fill(MapView,new Color(.03f,.05f,.09f));
         DrawGlobeAt(new Rect(MapW/2-300,MapH/2-300,600,600),false);
         GUI.Label(new Rect(90,52,300,60),"The known world. Drag to spin; click a place, or zoom in, to return to the map.",small);
     }
     void DrawGlobeAt(Rect area,bool controls){
+        // The globe is the home world only; a parallel world in view has no globe.
+        if(viewRealm!=0){globeZoom=false;return;}
+        if(atlasRealm!=0)atlasTexture=null;
         if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>1f)BuildAtlasTexture();
-        const int D=420;int W=world.Width,H=world.Height;
+        const int D=420;int W=world.Width,H=world.MainHeight;
         var e=Event.current;
         if(e.type==EventType.MouseDrag&&e.button==0&&area.Contains(e.mousePosition)){globeLon-=e.delta.x*0.012f*D/area.width;globeLat=Mathf.Clamp(globeLat+e.delta.y*0.012f*D/area.height,-1.2f,1.2f);globeDragged=true;e.Use();}
         if(controls){
@@ -145,18 +150,19 @@ public partial class RealmGame {
     }
     int globeBuiltAtlas=-1;bool globeDragged;
     void DrawAtlas(){
-        GUILayout.Label("Known world — click a tile to centre the main map. Dark tiles are unexplored.",body);
+        DrawWorldSwitcher();
+        GUILayout.Label((viewRealm==0?"Known world":"The "+World.RealmNames[viewRealm])+" — click a tile to centre the main map. Dark tiles are unexplored.",body);
         GUILayout.Space(490);
-        if(world.Sphere){
+        if(world.Sphere&&viewRealm==0){
             if(GUI.Button(new Rect(590,2,180,28),globeMode?"Show flat map":"Show globe"))globeMode=!globeMode;
             if(globeMode){DrawGlobe();return;}
         }
         // Staggered rows are a quarter of a tile width apart and odd rows sit half a tile east.
-        bool brick=world.Staggered;float cell=Mathf.Min(768f/(world.Width+(brick?.5f:0)),480f/(world.Height*(brick?.25f:1f))),cellH=brick?cell/4:cell;
-        var area=new Rect(0,35,(world.Width+(brick?.5f:0))*cell,world.Height*cellH);
+        bool brick=world.Staggered;float cell=Mathf.Min(768f/(world.Width+(brick?.5f:0)),480f/(ViewRows*(brick?.25f:1f))),cellH=brick?cell/4:cell;
+        var area=new Rect(0,35,(world.Width+(brick?.5f:0))*cell,ViewRows*cellH);
         if(world.tiles.Length<=4000){
-            for(int y=0;y<world.Height;y++)for(int x=0;x<world.Width;x++){
-                var t=world.KnownTile(world.At(x,y));var r=new Rect((x+(brick&&(y&1)==1?.5f:0))*cell,35+y*cellH,cell,cellH);
+            for(int y=ViewTop;y<ViewTop+ViewRows;y++)for(int x=0;x<world.Width;x++){
+                var t=world.KnownTile(world.At(x,y));var r=new Rect((x+(brick&&(y&1)==1?.5f:0))*cell,35+(y-ViewTop)*cellH,cell,cellH);
                 if(!t.seen){Fill(r,new Color(.025f,.04f,.06f));continue;}
                 GUI.DrawTexture(r,terrain[t.terrain]);if(t.owner>=0)Fill(new Rect(r.x+cell*.31f,r.y+r.height*.31f,cell*.38f,r.height*.38f),nations[t.owner]);
             }
@@ -165,7 +171,7 @@ public partial class RealmGame {
             GUI.DrawTexture(area,atlasTexture,ScaleMode.StretchToFill,false);
         }
         var e=Event.current;if(e.type==EventType.MouseDown&&e.button==0&&area.Contains(e.mousePosition)){
-            int y=Math.Max(0,Math.Min(world.Height-1,(int)((e.mousePosition.y-35)/cellH))),x=Math.Max(0,Math.Min(world.Width-1,(int)(e.mousePosition.x/cell-(brick&&(y&1)==1?.5f:0))));
+            int y=ViewTop+Math.Max(0,Math.Min(ViewRows-1,(int)((e.mousePosition.y-35)/cellH))),x=Math.Max(0,Math.Min(world.Width-1,(int)(e.mousePosition.x/cell-(brick&&(y&1)==1?.5f:0))));
             if(diamondView)FocusTile(x,y);else FocusTile(x,y);detailsScreen="";cityScreen=false;e.Use();GUIUtility.ExitGUI();
         }
     }

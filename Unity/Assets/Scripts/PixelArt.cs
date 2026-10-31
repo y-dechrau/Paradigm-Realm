@@ -855,6 +855,21 @@ namespace ParadigmRealm
             for(int x=0;x<W;x++){cv.Set(x,0,rim);cv.Set(x,H-1,rim);}for(int y=0;y<H;y++){cv.Set(0,y,rim);cv.Set(W-1,y,rim);}
             return cv;
         }
+        // Ancient gateway (owner request, 31 Oct 2026): two weathered stone pillars and a lintel framing a swirling portal whose
+        // colour tells the world beyond: 0 gold (home), 1 fae green, 2 ash grey, 3 infernal red, 4 plague yellow-green, 5 sea blue.
+        static readonly Dictionary<int,PixelCanvas> gateCache=new Dictionary<int,PixelCanvas>();
+        public static PixelCanvas GatewaySprite(int kind)
+        {
+            PixelCanvas cv;if(gateCache.TryGetValue(kind,out cv))return cv;cv=new PixelCanvas(64,64);
+            uint[][] glows={Ramp(120,80,20,180,130,40,230,180,70,250,215,120,255,245,200),Ramp(20,80,60,40,140,100,80,200,150,150,240,200,220,255,240),Ramp(50,50,55,90,90,95,140,140,145,190,190,195,235,235,240),
+             Ramp(80,10,10,150,30,20,220,70,30,250,140,50,255,220,120),Ramp(60,70,20,110,130,30,160,180,40,200,215,90,235,240,170),Ramp(10,40,90,20,80,150,50,130,210,120,190,240,210,240,255)};
+            var glow=glows[Math.Max(0,Math.Min(5,kind))];uint[] stone=Ramp(60,58,56,95,92,88,130,126,120,165,160,152,200,196,186);
+            for(int y=14;y<=46;y++)for(int x=22;x<=42;x++){double dx=(x-32)/9.5,dy=(y-31)/15.0,d=dx*dx+dy*dy;if(d>1)continue;double a=Math.Atan2(dy,dx),swirl=.5+.5*Math.Sin(a*3+Math.Sqrt(d)*9);cv.Set(x,y,RampPick(glow,.25+.55*swirl*(1-d*.5)+.2*(1-d)));}
+            RectFill(cv,16,12,21,48,RampPick(stone,.7));RectFill(cv,43,12,48,48,RampPick(stone,.45));RectFill(cv,13,7,51,12,RampPick(stone,.8));
+            for(int y=13;y<48;y+=5){cv.Set(16,y,stone[0]);cv.Set(43,y,stone[0]);}for(int x=14;x<51;x+=6)cv.Set(x,9,stone[1]);
+            RectFill(cv,12,46,52,49,RampPick(stone,.35));
+            Outline(cv,Ink);gateCache[kind]=cv;return cv;
+        }
         static readonly Dictionary<int,PixelCanvas> spriteCache=new Dictionary<int,PixelCanvas>();
         // Returns null for terrain with no raised scenery.
         public static PixelCanvas Sprite(int t,int variant)

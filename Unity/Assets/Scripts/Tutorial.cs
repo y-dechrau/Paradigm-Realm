@@ -21,7 +21,7 @@ public partial class RealmGame {
   "When your units have moved and your cities are busy, press End Turn (or Enter). Things happen between turns: cities grow, research advances, and your rivals plot. Mostly plot.",
   "Workers build the roads, farms and mines that make an empire rich. Trees must be cleared first - with an axe, Clear. Anything greyed out needs a technology you don't have yet. Too much bother? Auto develop does the thinking.",
   "Cities grow when they have spare food, and stop at size 6 without an Aqueduct. Watch the content and unhappy citizens: too many unhappy ones and the city riots. Temples, entertainers and a Golden Age all help. And if a city stops growing, check it hasn't turned all its farmers into scholars!",
-  "Your borders spread as cities grow. Where they meet a rival's, culture and faith slowly pull tiles one way or the other. Tribal villages near your borders join you; ancient ruins hold gold, maps and secrets for the first to step in.",
+  "Your borders spread as cities grow. Where they meet a rival's, culture and faith slowly pull tiles one way or the other. Tribal villages near your borders join you; ancient ruins hold gold, maps and secrets for the first to step in. And if you find an ancient stone gateway, march a unit through it: it leads to another world. The Realms button switches the map between the worlds you know.",
   "Faith gathers in your capital and temples. Spend it on a pantheon, then found a real religion once you know Mysticism and have a Temple. Priests carry your faith to other cities - and they keep a city cheerful. Open the Religion button to see it all.",
   "Sooner or later you'll meet the neighbours. Open Diplomacy to talk to their leader: trade, friendship, alliances - or war. Every leader has an agenda; please it and they'll like you, ignore it and they'll sulk. Like me without wine.",
   "Great deeds - new cities, wonders, victories - earn era score, and a high score brings a Golden Age. Win by holding every rival capital, by completing Transcendence, or by keeping the peace (Concord). Now go, ruler. Make me proud - and send wine."};
@@ -74,5 +74,14 @@ public partial class RealmGame {
  bool TutorialShown(){return tutorialOn&&tutorialStep>0&&world!=null&&world.result==""&&!guide;}
  Rect TutorialRect(){return tutorialMinimised?new Rect(612,44,56,56):new Rect(392,44,640,126);}
  void DrawGuideFrame(Rect r){Fill(r,new Color(.05f,.08f,.15f,.96f));var g=new Color(.86f,.7f,.39f);Fill(new Rect(r.x,r.y,r.width,2),g);Fill(new Rect(r.x,r.yMax-2,r.width,2),g);Fill(new Rect(r.x,r.y,2,r.height),g);Fill(new Rect(r.xMax-2,r.y,2,r.height),g);}
+}
+}
+namespace ParadigmRealm {
+// Which world the map shows (owner request, 31 Oct 2026): the home world (0) or a parallel world (1-5), switched on the Realms
+// screen or by looking at a unit or tile in another world.
+public partial class RealmGame {
+ int viewRealm,atlasRealm;
+ int ViewTop{get{return world.RealmTop(viewRealm);}}
+ int ViewRows{get{return world.RealmBottom(viewRealm)-world.RealmTop(viewRealm);}}
 }
 }

@@ -44,6 +44,7 @@ namespace ParadigmRealm
             for(int i=0;i<RecentNotes().Count;i++)hudRects.Add(NoteRect(i));
             // The tutorial panel takes its own clicks (its Next, Hide and End buttons), not the map underneath.
             if(TutorialShown())hudRects.Add(TutorialRect());
+            if(viewRealm>0)hudRects.Add(new Rect(472,708,336,30));
 
         }
 
@@ -175,7 +176,7 @@ namespace ParadigmRealm
             GUI.Box(MiniMap,"");var inner=new Rect(MiniMap.x+5,MiniMap.y+5,MiniMap.width-10,MiniMap.height-10);
             if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>1f)BuildAtlasTexture();
             // Staggered rows are a quarter of a tile width apart (16 of 64 pixels), so a row is a quarter as tall as a column is wide.
-            float aspect=world.Width/(world.Staggered?world.Height*.25f:(float)world.Height),w=inner.width,h=w/aspect;if(h>inner.height){h=inner.height;w=h*aspect;}
+            float aspect=world.Width/(world.Staggered?ViewRows*.25f:(float)ViewRows),w=inner.width,h=w/aspect;if(h>inner.height){h=inner.height;w=h*aspect;}
             var drawn=new Rect(inner.center.x-w/2,inner.center.y-h/2,w,h);Fill(inner,UiTrough);GUI.DrawTexture(drawn,atlasTexture,ScaleMode.StretchToFill);
             float vx,vy,vw,vh;
             if(diamondView&&world.Staggered){float tw=isoWidth,th=tw*PixelArt.DH/PixelArt.DW;vx=camI-MapW/2/tw;vw=MapW/tw;vy=camJ-MapH/th;vh=2*MapH/th;}
@@ -183,13 +184,13 @@ namespace ParadigmRealm
                 float lo=float.MaxValue,hi=float.MinValue,top=float.MaxValue,bottom=float.MinValue;foreach(var p in new[]{new Vector2(0,0),new Vector2(MapW,0),new Vector2(0,MapH),new Vector2(MapW,MapH)}){float tw=isoWidth,th=tw*PixelArt.DH/PixelArt.DW,a=(p.x-IsoCentreX)/(tw/2),b=(p.y-IsoCentreY)/(th/2),gi=camI+(a+b)/2,gj=camJ+(b-a)/2;lo=Mathf.Min(lo,gi);hi=Mathf.Max(hi,gi);top=Mathf.Min(top,gj);bottom=Mathf.Max(bottom,gj);}
                 vx=lo;vy=top;vw=hi-lo;vh=bottom-top;}
             else{vx=mapScroll.x/tilePixels;vy=mapScroll.y/ClassicRowHeight();vw=MapW/tilePixels;vh=MapH/ClassicRowHeight();}
-            float sx=w/world.Width,sy=h/world.Height;var view=new Rect(drawn.x+vx*sx,drawn.y+vy*sy,vw*sx,vh*sy);
+            vy-=ViewTop;float sx=w/world.Width,sy=h/ViewRows;var view=new Rect(drawn.x+vx*sx,drawn.y+vy*sy,vw*sx,vh*sy);
             GUI.BeginGroup(drawn);var local=new Rect(view.x-drawn.x,view.y-drawn.y,view.width,view.height);var edge=new Color(1,1,1,.9f);
             Fill(new Rect(local.x,local.y,local.width,1),edge);Fill(new Rect(local.x,local.yMax-1,local.width,1),edge);Fill(new Rect(local.x,local.y,1,local.height),edge);Fill(new Rect(local.xMax-1,local.y,1,local.height),edge);
             GUI.EndGroup();
             var e=Event.current;
             if((e.type==EventType.MouseDown||e.type==EventType.MouseDrag)&&e.button==0&&drawn.Contains(e.mousePosition)&&GUI.enabled)
-            {int tx=Mathf.Clamp((int)((e.mousePosition.x-drawn.x)/sx),0,world.Width-1),ty=Mathf.Clamp((int)((e.mousePosition.y-drawn.y)/sy),0,world.Height-1);globeZoom=false;FocusTile(tx,ty);e.Use();}
+            {int tx=Mathf.Clamp((int)((e.mousePosition.x-drawn.x)/sx),0,world.Width-1),ty=ViewTop+Mathf.Clamp((int)((e.mousePosition.y-drawn.y)/sy),0,ViewRows-1);globeZoom=false;FocusTile(tx,ty);e.Use();}
             float bh=(MiniButtons.height-8)/3;
             if(GUI.Button(new Rect(MiniButtons.x,MiniButtons.y,MiniButtons.width,bh),"")){if(diamondView)IsoZoom(1);else ClassicZoom(8);}DrawIcon(PixelArt.IconZoomIn,new Rect(MiniButtons.x+4,MiniButtons.y+bh/2-12,24,24));
             if(GUI.Button(new Rect(MiniButtons.x,MiniButtons.y+bh+4,MiniButtons.width,bh),"")){if(diamondView)IsoZoom(-1);else ClassicZoom(-8);}DrawIcon(PixelArt.IconZoomOut,new Rect(MiniButtons.x+4,MiniButtons.y+bh*1.5f+4-12,24,24));
@@ -302,7 +303,9 @@ namespace ParadigmRealm
             var v=world.TileYield(t);bool known=t.resource>0&&world.ResourceKnown(0,t.resource);if(t.resource>0&&!known){v[0]-=World.ResourceFood[t.resource];v[1]-=World.ResourceShields[t.resource];v[2]-=World.ResourceTrade[t.resource];}
             var features=new List<string>{World.TerrainNames[t.terrain]};if(t.road)features.Add(World.Forested(t.terrain)?"Trail":"Road");if(t.farm)features.Add("Farm");if(t.mine)features.Add("Mine");if(t.fort)features.Add("Fort");if(known)features.Add(World.ResourceNames[t.resource]);
             // Tribal villages (owner request): named on the card, with the civilisation they joined if any.
-            {var ruinTile=world.At(t.x,t.y);if(ruinTile!=null&&ruinTile.ruin)features.Add("Ancient ruins");}
+            {var ruinTile=world.At(t.x,t.y);if(ruinTile!=null&&ruinTile.ruin)features.Add(ruinTile.realm>0?"Relic site":"Ancient ruins");}
+            // Ancient gateways name their world once you have been there.
+            {var gateTile=world.At(t.x,t.y);if(gateTile!=null&&gateTile.gateLink>0){int far=world.GateTwin(gateTile).realm;features.Add(gateTile.realm>0?"Ancient gateway home":world.RealmDiscovered(0,far)?world.GateName(gateTile):"Ancient gateway (destination unknown)");}}
             {var live=world.At(t.x,t.y);if(live!=null&&live.village)features.Add(live.villageOwner>=0?"Village (joined "+world.NationName(live.villageOwner)+")":"Tribal village");}
             // Border influence: how far a rival has swung this tile (it changes hands at 90%).
             {var live=world.At(t.x,t.y);if(live!=null&&live.swayCiv>=0&&live.sway>0)features.Add("Influence "+live.sway+"% to "+world.NationName(live.swayCiv));}

@@ -54,12 +54,12 @@ public partial class World {
   }
  }
  void ExploreRuin(Unit u){
-  var t=At(u.x,u.y);if(t==null||!t.ruin||IsNaval(u.type))return;t.ruin=false;var n=nations[u.owner];int roll=Math.Abs(seed*31+t.x*17+t.y*13+turn)%4;string what;
-  if(roll==0){int g=25+Math.Abs(t.x*7+t.y)%4*10;n.gold+=g;if(u.owner==0)gold=n.gold;what="a buried treasury: "+g+" gold";}
-  else if(roll==1&&n.research>=0){int gain=Math.Max(10,ResearchCost(n.research,u.owner)/2);n.progress[n.research]+=gain;what="old scrolls: +"+gain+" towards "+TechNames[n.research];}
+  var t=At(u.x,u.y);if(t==null||!t.ruin||IsNaval(u.type))return;t.ruin=false;var n=nations[u.owner];int roll=Math.Abs(seed*31+t.x*17+t.y*13+turn)%4;string what;int k=RealmBonus(t.realm);// relics in the parallel worlds are richer (x2, or x3 in the Ashen Waste and Infernal Depths)
+  if(roll==0){int g=(25+Math.Abs(t.x*7+t.y)%4*10)*k;n.gold+=g;if(u.owner==0)gold=n.gold;what="a buried treasury: "+g+" gold";}
+  else if(roll==1&&n.research>=0){int gain=Math.Max(10,ResearchCost(n.research,u.owner)/2)*k;n.progress[n.research]+=gain;what="old scrolls: +"+gain+" towards "+TechNames[n.research];}
   else if(roll==2){for(int dj=-6;dj<=6;dj++)for(int di=-6;di<=6;di++){var s=Step(u.x,u.y,di,dj);if(s!=null)LearnTile(u.owner,s);}what="an ancient map of the land around";}
-  else{if(Power[u.type]>0){u.victories=Math.Max(u.victories,2);u.promotion=Math.Max(u.promotion,1);what="a war shrine: the "+UnitNames[u.type]+" becomes a Veteran";}else{n.gold+=30;if(u.owner==0)gold=n.gold;what="old trade goods: 30 gold";}}
-  if(u.owner==0)Note(UnitNames[u.type]+" explored ancient ruins and found "+what+".");
+  else{if(Power[u.type]>0){u.victories=Math.Max(u.victories,2);u.promotion=Math.Max(u.promotion,1);what="a war shrine: the "+UnitNames[u.type]+" becomes a Veteran";}else{n.gold+=30*k;if(u.owner==0)gold=n.gold;what="old trade goods: "+(30*k)+" gold";}}
+  if(u.owner==0)Note(UnitNames[u.type]+" explored "+(t.realm>0?"a relic site of the "+RealmNames[t.realm]:"ancient ruins")+" and found "+what+".");
  }
 }
 }

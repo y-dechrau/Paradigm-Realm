@@ -23,8 +23,8 @@ public static void Run(){
      var polarSettler=ice.units.First(u=>u.owner==0&&u.type==0);ice.At(polarSettler.x,polarSettler.y).terrain=15;Check(ice.Found(polarSettler)==null,"glaciers cannot be settled");}
     Check(TechnologyCatalog.Index("astronomy")==TechnologyCatalog.Index("mysticism"),"astronomy (globe zoom) is part of Mysticism");
     // Land types (New Game): every type makes a valid world; archipelago has the most sea, lakes and inland seas the least.
-    {int[] share=new int[World.LandTypeNames.Length];for(int m=0;m<share.Length;m++){var lw=World.New(300+m,"Lands",m,1,1,0,1,1);Check(lw.Valid()&&lw.mapType==m,"land type "+World.LandTypeNames[m]+" makes a valid world");share[m]=lw.tiles.Count(t=>t.terrain==4||t.terrain==12)*100/lw.tiles.Length;
-      int clash=0;foreach(var a in lw.tiles)for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var b=lw.Step(a.x,a.y,dx,dy);if(b!=null&&b!=a&&lw.BiomeClash(a,b))clash++;}
+    {int[] share=new int[World.LandTypeNames.Length];for(int m=0;m<share.Length;m++){var lw=World.New(300+m,"Lands",m,1,1,0,1,1);Check(lw.Valid()&&lw.mapType==m,"land type "+World.LandTypeNames[m]+" makes a valid world");var lhome=lw.tiles.Where(t=>t.realm==0).ToArray();share[m]=lhome.Count(t=>t.terrain==4||t.terrain==12)*100/lhome.Length;
+      int clash=0;foreach(var a in lw.tiles.Where(t=>t.realm==0))for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var b=lw.Step(a.x,a.y,dx,dy);if(b!=null&&b!=a&&b.realm==0&&lw.BiomeClash(a,b))clash++;}
       Check(clash==0,"no desert beside ice or jungle beside tundra on "+World.LandTypeNames[m]+" ("+clash+" clashes)");}
      Check(share[2]>share[0]&&share[4]<share[0],"archipelago is mostly sea; lakes type has the most land");}
     // Sea resources: ten of them, on water only, with real yields.
@@ -48,8 +48,8 @@ public static void Run(){
      if(ruin!=null){var walker=ruined.Add(0,3,ruin.x,ruin.y);var from=new[]{-1,0,1}.SelectMany(dj=>new[]{-1,0,1}.Select(di=>ruined.Step(ruin.x,ruin.y,di,dj))).FirstOrDefault(t=>t!=null&&!(t.x==ruin.x&&t.y==ruin.y)&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain));
       if(from!=null){walker.x=from.x;walker.y=from.y;walker.moves=6;ruin.owner=-1;if(ruined.Move(walker,ruin.x,ruin.y))Check(!ruin.ruin,"a unit explores the ruins once");}}}
     // Mountain ranges are capped at about sqrt(tiles)/4 connected peaks, so small maps are not walled off.
-    {var peaks=World.New(9);int cap=Math.Max(4,(int)Math.Round(Math.Sqrt(peaks.tiles.Length)/4)),largest=0;var seen=new HashSet<Tile>();
-     foreach(var t in peaks.tiles.Where(t=>t.terrain==5||t.terrain==15)){if(!seen.Add(t))continue;int size=0;var stack=new Stack<Tile>();stack.Push(t);while(stack.Count>0){var a=stack.Pop();size++;for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var b=peaks.Step(a.x,a.y,dx,dy);if(b!=null&&(b.terrain==5||b.terrain==15)&&seen.Add(b))stack.Push(b);}}largest=Math.Max(largest,size);}
+    {var peaks=World.New(9);int cap=Math.Max(4,(int)Math.Round(Math.Sqrt(peaks.tiles.Count(t=>t.realm==0))/4)),largest=0;var seen=new HashSet<Tile>();
+     foreach(var t in peaks.tiles.Where(t=>t.realm==0&&(t.terrain==5||t.terrain==15))){if(!seen.Add(t))continue;int size=0;var stack=new Stack<Tile>();stack.Push(t);while(stack.Count>0){var a=stack.Pop();size++;for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var b=peaks.Step(a.x,a.y,dx,dy);if(b!=null&&b.realm==0&&(b.terrain==5||b.terrain==15)&&seen.Add(b))stack.Push(b);}}largest=Math.Max(largest,size);}
      Check(largest<=cap,"largest mountain range "+largest+" within cap "+cap);}
     // A version 4 save (12 original technologies) still upgrades all the way to keystones.
     var legacy=World.New(4);legacy.version=4;legacy.tech=new bool[12];legacy.tech[LegacyTechnologyCatalog.Index("engineering")]=true;legacy.research=4;legacy.science=23;
@@ -60,7 +60,7 @@ public static void Run(){
     Check(production.BuildReason(city,7).Contains("Agriculture"),"Granary requires Agriculture (Pottery)");production.tech[K("pottery")]=true;Check(production.BuildReason(city,7)=="","Agriculture unlocks Granary");
     int before=production.Yield(city)[2];production.tech[K("electricity")]=true;Check(production.Yield(city)[2]==before+3,"science bonus wired");
     production.tech[K("uploading")]=true;int food=production.Yield(city)[0];production.tech[K("uploading")]=false;Check(food-production.Yield(city)[0]==city.pop*2,"uploading removes food consumption");
-    production.tech[K("satellites")]=true;production.Reveal();Check(production.tiles.All(t=>t.seen),"Satellites reveals world");
+    production.tech[K("satellites")]=true;production.Reveal();Check(production.tiles.Where(t=>t.realm==0).All(t=>t.seen)&&production.tiles.Where(t=>t.realm!=0).All(t=>!t.seen),"Satellites reveal the home world, not the parallel worlds");
 }
 // 16-bit plan Stage 5: keystone technologies, costs, eras and edicts, and the version 13 conversion.
 static void StageFive(){
@@ -122,13 +122,13 @@ static void ReligionChecks(){
     int before=w.nations[0].faith;Check(w.MissionReason(0,other)==""&&w.SendMissionaries(0,other)&&w.nations[0].faith==before-World.MissionCost&&other.religion==3,"missionaries convert a known city within 12 tiles of a faithful city");
     Check(w.Valid(),"world with religion stays valid");
     // Border influence: a much stronger rival city slowly wins a contested tile; it takes many turns and flips at 90%.
-    var b=World.New(62);var a=new City{id=b.nextId++,owner=0,x=b.Width/2,y=b.Height/2,name="Weakton",pop=1};b.cities.Add(a);
+    var b=World.New(62);var a=new City{id=b.nextId++,owner=0,x=b.Width/2,y=b.MainHeight/2,name="Weakton",pop=1};b.cities.Add(a);
     var spot=b.tiles.First(t=>b.Distance(t.x,t.y,a.x,a.y)==4);var strong=new City{id=b.nextId++,owner=1,x=spot.x,y=spot.y,name="Grandcity",pop=20,age=200};strong.buildings.AddRange(new[]{36,42,60,61,62});b.cities.Add(strong);
     b.RebuildTerritory();var mid=b.tiles.First(t=>b.Distance(t.x,t.y,a.x,a.y)==2&&b.Distance(t.x,t.y,strong.x,strong.y)==2);var touch=b.tiles.First(t=>b.Distance(t.x,t.y,a.x,a.y)==1&&b.Distance(t.x,t.y,strong.x,strong.y)<=3);
     int mine=b.cities.Count(c=>c.owner==0);if(mid.owner!=0)mid.owner=0;int turns=0;while(mid.owner==0&&turns<100){b.SpreadInfluence();b.RebuildTerritory();turns++;}
     Check(mid.owner==1&&turns>=15&&turns<=45,"a contested tile changes hands slowly (took "+turns+" turns) to the stronger culture and faith");
     Check(touch.owner==0,"tiles next to a city never change hands");
-    var same=World.New(63);var c1=new City{id=same.nextId++,owner=0,x=same.Width/2,y=same.Height/2,name="Oneton",pop=4};same.cities.Add(c1);var s2=same.tiles.First(t=>same.Distance(t.x,t.y,c1.x,c1.y)==4);same.cities.Add(new City{id=same.nextId++,owner=0,x=s2.x,y=s2.y,name="Twoton",pop=4});same.RebuildTerritory();
+    var same=World.New(63);var c1=new City{id=same.nextId++,owner=0,x=same.Width/2,y=same.MainHeight/2,name="Oneton",pop=4};same.cities.Add(c1);var s2=same.tiles.First(t=>same.Distance(t.x,t.y,c1.x,c1.y)==4);same.cities.Add(new City{id=same.nextId++,owner=0,x=s2.x,y=s2.y,name="Twoton",pop=4});same.RebuildTerritory();
     Check(same.tiles.Where(t=>same.Distance(t.x,t.y,c1.x,c1.y)<=2||same.Distance(t.x,t.y,s2.x,s2.y)<=2).All(t=>t.owner==0),"two cities of one civilisation share one territory (their borders merge)");
     // Version 21 saves gain religion and influence fields.
     var v=World.New(64);v.version=21;v.nations[1].pantheon=5;foreach(var t in v.tiles)t.swayCiv=-7;v.UpgradeSave();Check(v.version==23&&v.Valid()&&v.nations.All(n=>n.pantheon==-1&&n.founded==-1&&n.faith==0)&&v.tiles.All(t=>t.swayCiv==-1),"version 21 saves upgrade to version 23");
@@ -171,6 +171,25 @@ static void CivilisationAndAgeChecks(){
     var fantasyGame=World.New(79,"",0,1,1,0,3,1,8,0);Check(!fantasyGame.realWorld&&Enumerable.Range(1,fantasyGame.civCount-1).All(o=>!CivilisationCatalog.IsReal(fantasyGame.nations[o].civ)),"a Fantasy game has fantasy rivals");
     var customReal=World.New(80,"Free Cantons",0,1,1,0,3,1,6,-1,"Mayor Tell",18,1,2,true);Check(customReal.realWorld&&customReal.nations[0].civ==-1&&Enumerable.Range(1,customReal.civCount-1).All(o=>CivilisationCatalog.IsReal(customReal.nations[o].civ))&&customReal.Valid(),"a custom civilisation in the Real World group meets real rivals");
     var oldSave=World.New(77);oldSave.version=22;foreach(var u in oldSave.units)u.faith=0;oldSave.UpgradeSave();Check(oldSave.version==23&&oldSave.units.All(u=>u.faith==-1)&&oldSave.Valid(),"version 22 saves upgrade to 23 (units carry no faith)");
+    RealmChecks();
+}
+// Owner request 31 Oct: ancient gateways and five parallel worlds below the home world.
+static void RealmChecks(){
+    var w=World.New(91);Check(w.HasRealms&&w.Height==w.MainHeight+World.RealmCount*(World.RealmHeight+World.RealmGap)&&w.tiles.Length==w.Width*w.Height&&w.Valid(),"new worlds carry five parallel worlds below the home world");
+    var homeGates=w.tiles.Where(t=>t.realm==0&&t.gateLink>0).ToList();Check(homeGates.Count==World.RealmCount&&homeGates.All(g=>w.GateTwin(w.GateTwin(g))==g)&&homeGates.Select(g=>w.GateTwin(g).realm).OrderBy(r=>r).SequenceEqual(new[]{1,2,3,4,5}),"one gateway pair per parallel world, linked both ways");
+    // The worlds are walled off: no tile of one world touches a tile of another, only impassable separator rows.
+    bool sealedOff=true;for(int r=1;r<=World.RealmCount&&sealedOff;r++)for(int y=w.RealmTop(r);y<w.RealmBottom(r)&&sealedOff;y++)for(int x=0;x<w.Width&&sealedOff;x++)for(int dj=-1;dj<=1;dj++)for(int di=-1;di<=1;di++){var n=w.Step(x,y,di,dj);if(n!=null&&n.realm!=r&&n.realm!=-1)sealedOff=false;}
+    Check(sealedOff&&w.tiles.Where(t=>t.realm==-1).All(t=>World.IsImpassable(t.terrain)),"parallel worlds are sealed off by impassable rows");
+    Check(w.RealmDiscovered(0,0)&&Enumerable.Range(1,5).All(r=>!w.RealmDiscovered(0,r)),"only the home world is known at the start");
+    // Stepping onto a gateway carries a land unit to the twin.
+    var gate=homeGates.First(g=>w.GateTwin(g).realm==3);var side=w.tiles.First(t=>t.realm==0&&w.Distance(t.x,t.y,gate.x,gate.y)==1&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain));
+    var walker=w.Add(0,2,side.x,side.y);w.Reveal();Check(w.Move(walker,gate.x,gate.y)&&w.RealmOf(walker.x,walker.y)==3&&walker.moves==0&&w.RealmDiscovered(0,3),"a warrior crosses into the Infernal Depths");
+    {var settler=w.Add(0,0,gate.x,gate.y);Check(w.FoundReason(settler).Contains("gateway"),"gateway tiles cannot be settled");w.units.Remove(settler);}
+    walker.hp=10;w.EndTurn();Check(walker.hp<=8,"the Infernal Depths burn units outside cities (hp "+walker.hp+")");
+    var marsh=homeGates.First(g=>w.GateTwin(g).realm==4);var twin=w.GateTwin(marsh);var sick=w.Add(0,2,twin.x,twin.y);w.EndTurn();Check(sick.plague==5,"units in the Plague Marshes catch plague");
+    var home=w.tiles.First(t=>t.realm==0&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&w.units.All(u=>w.Distance(u.x,u.y,t.x,t.y)>3));var hc=new City{id=w.nextId++,owner=0,x=home.x,y=home.y,name="Sickbay",pop=3};w.cities.Add(hc);
+    sick.x=home.x;sick.y=home.y;w.EndTurn();int sickFood=w.Yield(hc)[0],keep=hc.plague;hc.plague=0;int wellFood=w.Yield(hc)[0];hc.plague=keep;Check(keep>0&&sickFood==wellFood-2,"plague carried home costs a city 2 food a turn");
+    Check(w.Valid(),"world with travellers between worlds stays valid");
 }
 }
 }

@@ -243,7 +243,7 @@ namespace ParadigmRealm
             for(int size=0;size<World.SphereWidths.Length;size++){
                 string name=World.MapSizeNames[size];
                 var w=World.New(70+size,"Sphere Test",0,1,1,0,size,1);
-                Require(w.Sphere&&w.Staggered&&w.Width==World.SphereHeights[size]&&w.Height==World.SphereWidths[size]&&w.Height==2*w.Width&&w.tiles.Length==w.Width*w.Height,name+" globe is W columns by 2W half-height rows (a 2:1 picture)");
+                Require(w.Sphere&&w.Staggered&&w.Width==World.SphereHeights[size]&&w.MainHeight==World.SphereWidths[size]&&w.MainHeight==2*w.Width&&w.tiles.Length==w.Width*w.Height,name+" globe is W columns by 2W half-height rows (a 2:1 picture)");
                 Require(w.Valid(),"new "+name+" sphere is valid");
                 Require(w.cities.Count==2&&w.units.Count(u=>u.owner==0)==3,name+" sphere has the usual starting civilisations and units");
                 Require(w.units.Where(u=>u.owner==0).All(u=>!World.IsImpassable(w.At(u.x,u.y).terrain)),"player starts on passable land on the "+name+" sphere");
@@ -252,14 +252,14 @@ namespace ParadigmRealm
                 var start=w.cities.First(c=>c.owner==1);var reached=new HashSet<int>{start.y*w.Width+start.x};var queue=new Queue<Tile>();queue.Enqueue(w.At(start.x,start.y));
                 while(queue.Count>0){var t=queue.Dequeue();for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=w.Step(t.x,t.y,dx,dy);if(n==null||World.IsImpassable(n.terrain)||!reached.Add(n.y*w.Width+n.x))continue;queue.Enqueue(n);}}
                 Require(w.cities.All(c=>reached.Contains(c.y*w.Width+c.x))&&w.units.Where(u=>u.owner==0).All(u=>reached.Contains(u.y*w.Width+u.x)),"all "+name+" sphere starts are connected by land");
-                int land=w.tiles.Count(t=>t.terrain!=4&&t.terrain!=12&&t.terrain!=14);
-                Require(land*100>=w.tiles.Length*28&&land*100<=w.tiles.Length*50,name+" sphere has a believable land share ("+(land*100/w.tiles.Length)+"%)");
-                Require(w.tiles.Count(t=>t.terrain==14)>0&&w.tiles.Any(t=>t.terrain==8||t.terrain==13)&&w.tiles.Any(t=>t.terrain==0)&&w.tiles.Any(t=>t.terrain==1),name+" sphere has polar ice, cold land, grass and forest");
+                var homeTiles=w.tiles.Where(t=>t.realm==0).ToArray();int land=homeTiles.Count(t=>t.terrain!=4&&t.terrain!=12&&t.terrain!=14);
+                Require(land*100>=homeTiles.Length*28&&land*100<=homeTiles.Length*50,name+" sphere has a believable land share ("+(land*100/homeTiles.Length)+"%)");
+                Require(homeTiles.Count(t=>t.terrain==14)>0&&homeTiles.Any(t=>t.terrain==8||t.terrain==13)&&homeTiles.Any(t=>t.terrain==0)&&homeTiles.Any(t=>t.terrain==1),name+" sphere has polar ice, cold land, grass and forest");
                 int incoherent=0,maxStep=0;
                 for(int i=0;i<w.tiles.Length;i++){
-                    var a=w.tiles[i];
+                    var a=w.tiles[i];if(a.realm!=0)continue;
                     for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){
-                        var b=w.Step(a.x,a.y,dx,dy);if(b==null||(dx==0&&dy==0))continue;
+                        var b=w.Step(a.x,a.y,dx,dy);if(b==null||b.realm!=0||(dx==0&&dy==0))continue;
                         maxStep=Math.Max(maxStep,Math.Abs(w.climateTemperature[i]-w.climateTemperature[b.y*w.Width+b.x]));
                         bool hot=a.terrain==11||a.terrain==3||a.terrain==16,cold=b.terrain==8||b.terrain==13||b.terrain==14;
                         if(hot&&cold)incoherent++;
@@ -297,17 +297,17 @@ namespace ParadigmRealm
             for(int size=0;size<World.MapWidths.Length;size++){
                 string name=World.MapSizeNames[size];
                 var w=World.New(40+size,"Map Test",0,1,1,0,size);
-                Require(w.Width==World.MapWidths[size]&&w.Height==World.MapHeights[size]&&w.tiles.Length==w.Width*w.Height,name+" map has the right dimensions");
+                Require(w.Width==World.MapWidths[size]&&w.MainHeight==World.MapHeights[size]&&w.tiles.Length==w.Width*w.Height,name+" map has the right dimensions");
                 Require(w.Valid(),"new "+name+" world is valid");
                 Require(w.nations.All(n=>n.known.Length==w.tiles.Length),"known-tile arrays match the "+name+" map");
                 Require(w.cities.Count==2&&w.units.Count(u=>u.owner==0)==3,name+" map has the usual starting civilisations and units");
                 Require(w.units.Where(u=>u.owner==0).All(u=>!World.IsImpassable(w.At(u.x,u.y).terrain)),"player starts on passable land on the "+name+" map");
                 if(w.tiles.Length<=10000)for(int owner=0;owner<3;owner++)for(int i=0;i<w.tiles.Length;i++)if(w.nations[owner].known[i]!=w.VisibleTo(owner,i%w.Width,i/w.Width))throw new Exception("FAIL: incremental fog differs from full visibility on the "+name+" map");
             }
-            Require(World.New(9).Width==48&&World.New(9).Height==30,"default map stays Small 48 x 30");
+            Require(World.New(9).Width==48&&World.New(9).MainHeight==30,"default map stays Small 48 x 30");
             Require(World.New(9,"A",0,1,1,0,1).tiles.Select(t=>t.terrain).SequenceEqual(World.New(9).tiles.Select(t=>t.terrain)),"Small is the default size and repeatable by seed");
             var legacy=World.New(3);legacy.version=7;legacy.mapWidth=0;legacy.mapHeight=0;legacy.UpgradeSave();
-            Require(legacy.Width==48&&legacy.Height==30&&legacy.version==23&&legacy.Valid(),"version 7 saves upgrade to Small flat version 23");
+            Require(legacy.Width==48&&legacy.MainHeight==30&&legacy.version==23&&legacy.Valid(),"version 7 saves upgrade to Small flat version 23");
         }
     }
 }

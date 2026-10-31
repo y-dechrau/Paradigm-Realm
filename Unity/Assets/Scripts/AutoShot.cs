@@ -109,6 +109,10 @@ namespace ParadigmRealm
             // Zoomed all the way out once the world is known to be round (Mysticism folds in astronomy).
             world.tech[TechnologyCatalog.Index("mysticism")]=true;isoWidth=32;IsoZoom(-1);
             yield return Shot(folder,"7-globe.bmp");
+            // An ancient gateway, each parallel world beyond it and the Realms screen switcher (this throwaway game only).
+            {var g=world.tiles.FirstOrDefault(t=>t.realm==0&&t.gateLink>0);if(g!=null){globeZoom=false;diamondView=true;isoWidth=128;FocusTile(g.x,g.y);yield return Shot(folder,"9a-gateway.bmp");
+              foreach(int r in new[]{3,1,2,4,5}){var gate=world.tiles.FirstOrDefault(t=>t.realm==r&&t.gateLink>0);if(gate==null)continue;var visitor=world.Add(0,2,gate.x,gate.y);world.Reveal();selected=visitor.id;isoWidth=96;FocusTile(gate.x,gate.y);yield return Shot(folder,"9b-realm-"+r+".bmp");}
+              detailsScreen="Atlas";yield return Shot(folder,"9c-realms-screen.bmp");detailsScreen="";ShowRealm(0);isoWidth=96;}}
             // Classic view scrolled across the east-west seam.
             globeZoom=false;diamondView=false;tilePixels=48;mapScroll=new Vector2(world.Width*tilePixels-420,Mathf.Max(0,world.Height*tilePixels/2-300));
             yield return Shot(folder,"8-classic-wrap.bmp");

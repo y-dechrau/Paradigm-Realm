@@ -399,7 +399,7 @@ namespace ParadigmRealm
                     case 5:case 15:case 14:score-=2*w;break;
                 }
             }
-            if(climateTemperature!=null&&(climateTemperature[i]<3||climateTemperature[i]>6))score-=40;
+            if(climateTemperature!=null&&i<climateTemperature.Length&&(climateTemperature[i]<3||climateTemperature[i]>6))score-=40;
             return score;
         }
 

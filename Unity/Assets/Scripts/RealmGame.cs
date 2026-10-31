@@ -47,7 +47,7 @@ namespace ParadigmRealm
             if(cityScreen){DrawTopBar();DrawCityScreen();DrawSaveToast();return;}
             NavigationInput();
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen();
-            DrawMap();DrawHud();if(!guide)DrawTutorial();
+            FollowGateArrival();DrawMap();DrawHud();DrawRealmBanner();if(!guide)DrawTutorial();
             if(guide)DrawGuide();if(confirmNew){GUI.Box(new Rect(420,270,440,190),"");GUILayout.BeginArea(new Rect(445,290,390,145));GUILayout.Label("Start a new world?",heading);GUILayout.Label("Save first if you want to keep your current game.",body);if(Button("Start new game")){confirmNew=false;nameSetup=true;GUIUtility.ExitGUI();}if(Button("Cancel"))confirmNew=false;GUILayout.EndArea();}
             if(pendingUnit!=-1){DrawWarPrompt();return;}
             if(foundStage>0)DrawFoundPrompt();else if(tilePicker)DrawTilePicker();
@@ -268,7 +268,7 @@ namespace ParadigmRealm
             compositeBudgetOn=true;compositeClock.Reset();compositeClock.Start();
             int mapWidth=world.Width;viewTiles.Clear();viewVisible.Clear();int pooled=0;
             // Work out what the player knows about each visible tile once, instead of once per drawing pass.
-            foreach(var source in TilesInView()){
+            foreach(var source in TilesInView()){if(source.realm!=viewRealm)continue;
                 bool seenNow=world.Visible(source.x,source.y);Tile known=source;
                 if(source.seen&&!seenNow){if(pooled==knownPool.Count)knownPool.Add(new Tile());known=knownPool[pooled++];world.CopyKnown(source,known);}
                 viewTiles.Add(known);viewVisible.Add(seenNow);

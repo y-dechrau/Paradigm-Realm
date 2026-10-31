@@ -42,6 +42,7 @@ namespace ParadigmRealm {
    if(result!="")return "The game has ended.";
    if(u==null||!units.Contains(u)||u.type!=0)return "Select a Settler.";
    if(u.moves<=0)return "The Settler needs movement remaining.";
+   {var spot=At(u.x,u.y);if(spot!=null&&spot.gateLink>0)return "An ancient gateway stands here; settle beside it.";}
    return SiteReason(u.owner,u.x,u.y,false);
   }
   public SettlementReport AssessSettlement(int owner,int x,int y,int fromX,int fromY){
