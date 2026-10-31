@@ -35,6 +35,8 @@ namespace ParadigmRealm
         IEnumerator AutoShot(string folder)
         {
             Directory.CreateDirectory(folder);
+            // The player's own tutorial setting and progress are restored at the end (screenshots must not change them).
+            int keepTutorialOn=PlayerPrefs.GetInt("RealmTutorialOn",1),keepTutorialStep=PlayerPrefs.GetInt("RealmTutorialStep",-1);
             yield return Frames(5);
             mainMenu=false;nameSetup=true;setupPage=0;setupCiv=4;
             yield return Shot(folder,"0-new-game.bmp");
@@ -44,6 +46,7 @@ namespace ParadigmRealm
             setupCiv=0;setupPage=1;
             yield return Shot(folder,"0c-world.bmp");
             seedText="421";nameSetup=false;guide=false;StartGame();hasSession=true;guide=false;
+            tutorialOn=true;tutorialStep=0;tutorialMinimised=false;yield return Shot(folder,"1a-tutorial-welcome.bmp");tutorialStep=1;yield return Shot(folder,"1b-tutorial-step.bmp");tutorialOn=false;tutorialStep=-1;
             yield return Shot(folder,"1-map.bmp");
             var settler=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);
             if(settler!=null)world.Found(settler);
@@ -108,6 +111,7 @@ namespace ParadigmRealm
             // Classic view scrolled across the east-west seam.
             globeZoom=false;diamondView=false;tilePixels=48;mapScroll=new Vector2(world.Width*tilePixels-420,Mathf.Max(0,world.Height*tilePixels/2-300));
             yield return Shot(folder,"8-classic-wrap.bmp");
+            PlayerPrefs.SetInt("RealmTutorialOn",keepTutorialOn);PlayerPrefs.SetInt("RealmTutorialStep",keepTutorialStep);PlayerPrefs.Save();
             Application.Quit();
         }
     }

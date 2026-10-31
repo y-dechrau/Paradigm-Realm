@@ -16,7 +16,7 @@ namespace ParadigmRealm
         float tilePixels=56; readonly Color[] nations={new Color(.55f,.86f,.61f),new Color(.9f,.65f,.35f),new Color(.4f,.7f,.88f),new Color(.9f,.4f,.4f),new Color(.78f,.6f,.92f),new Color(.95f,.88f,.4f),new Color(.4f,.85f,.8f),new Color(.9f,.55f,.75f),new Color(.7f,.75f,.4f),new Color(.95f,.75f,.55f),new Color(.55f,.6f,.95f),new Color(.6f,.9f,.5f),new Color(.85f,.85f,.85f),new Color(.75f,.5f,.4f),new Color(.4f,.55f,.55f),new Color(.95f,.5f,.2f)};
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot(){if(FindFirstObjectByType<RealmGame>()==null)new GameObject("Paradigm Realm").AddComponent<RealmGame>();}
-        void Awake(){zoomSensitivity=PlayerPrefs.GetFloat("RealmZoomSensitivity",2f);tooltips=PlayerPrefs.GetInt("RealmTooltips",1)!=0;var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=UiBackground;camera.orthographic=true;Application.targetFrameRate=30;world=World.New(Environment.TickCount&int.MaxValue);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
+        void Awake(){zoomSensitivity=PlayerPrefs.GetFloat("RealmZoomSensitivity",2f);LoadTutorialSettings();tooltips=PlayerPrefs.GetInt("RealmTooltips",1)!=0;var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=UiBackground;camera.orthographic=true;Application.targetFrameRate=30;world=World.New(Environment.TickCount&int.MaxValue);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
         Unit Selected(){return world.units.Find(u=>u.owner==0&&u.id==selected);}
         void Center(){var u=Selected();if(u!=null&&diamondView){FocusTile(u.x,u.y);return;}if(u!=null)FocusTile(u.x,u.y);}
         string SavePath {get{return Path.Combine(Application.persistentDataPath,"earth-save.json");}}
@@ -42,12 +42,12 @@ namespace ParadigmRealm
             if(pauseMenu){GUI.enabled=false;DrawMap();GUI.enabled=true;DrawPauseMenu();DrawSaveToast();return;}
             MapKeyboardInput();
             BuildHudRects();
-            if(researchScreen){DrawTopBar();DrawResearchScreen();DrawSaveToast();return;}
+            if(researchScreen){tutorialResearchSeen=true;DrawTopBar();DrawResearchScreen();DrawSaveToast();return;}
             if(detailsScreen!=""){DrawTopBar();DrawDetailsScreen();DrawSaveToast();return;}
             if(cityScreen){DrawTopBar();DrawCityScreen();DrawSaveToast();return;}
             NavigationInput();
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen();
-            DrawMap();DrawHud();
+            DrawMap();DrawHud();if(!guide)DrawTutorial();
             if(guide)DrawGuide();if(confirmNew){GUI.Box(new Rect(420,270,440,190),"");GUILayout.BeginArea(new Rect(445,290,390,145));GUILayout.Label("Start a new world?",heading);GUILayout.Label("Save first if you want to keep your current game.",body);if(Button("Start new game")){confirmNew=false;nameSetup=true;GUIUtility.ExitGUI();}if(Button("Cancel"))confirmNew=false;GUILayout.EndArea();}
             if(pendingUnit!=-1){DrawWarPrompt();return;}
             if(foundStage>0)DrawFoundPrompt();else if(tilePicker)DrawTilePicker();
@@ -70,7 +70,8 @@ namespace ParadigmRealm
             int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; bool custom=setupCiv>=CivilisationCatalog.Count;world=World.New(chosenSeed,custom?proposedName:CivilisationCatalog.Names[setupCiv],setupMap,setupSpeed,1,0,setupSize,setupShape,setupCivs,custom?-1:setupCiv,customLeader,customPortrait,customTraitA,customTraitB);setupPage=0;ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
             selected=world.units.First(u=>u.owner==0).id;cityId=-1;
             sideScroll=Vector2.zero;researchScreen=false;detailsScreen="";cityScreen=false;pauseMenu=false;activeSavePath=null;Center();hasSession=true;mainMenu=false;
-            guide=true;confirmNew=false;status="Select your Settler, then Found city.";
+            // With the tutorial on, its guide replaces the opening help page.
+            guide=!tutorialOn;confirmNew=false;status="Select your Settler, then Found city.";StartTutorialForNewGame();
         }
         void QuitGame()
         {
