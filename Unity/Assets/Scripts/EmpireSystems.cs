@@ -72,24 +72,26 @@ public partial class World {
     void ExploreStep(Unit u){
         for(int guard=0;guard<12&&u.exploring&&u.moves>0&&units.Contains(u);guard++){
             if(VisibleThreat(u)){u.exploring=false;if(u.owner==0)Note(UnitNames[u.type]+" stopped exploring: enemy nearby.");return;}
-            var target=ExploreTarget(u);
+            // Nearest land tile beside undiscovered ground (owner request); one the unit cannot reach is skipped, not a reason to stop.
+            var skip=new HashSet<int>();Tile target=null;List<Tile> path=null;
+            for(int tries=0;tries<6;tries++){target=ExploreTarget(u,skip);if(target==null)break;path=Route(u,target.x,target.y);if(path.Count>0)break;skip.Add(target.y*Width+target.x);target=null;}
             if(target==null){u.exploring=false;if(u.owner==0)Note(UnitNames[u.type]+" has explored everything it can reach.");return;}
-            var path=Route(u,target.x,target.y);if(path.Count==0){u.exploring=false;return;}
             var t=path[0];if(u.moves<StepCost(u,u.x,u.y,t))return;
             if(!Move(u,t.x,t.y))return;
         }
     }
-    Tile ExploreTarget(Unit u){
+    Tile ExploreTarget(Unit u,HashSet<int> skip=null){
         var known=nations[u.owner].known;var seen=new HashSet<int>{u.y*Width+u.x};var queue=new Queue<Tile>();queue.Enqueue(At(u.x,u.y));int budget=4000;
         while(queue.Count>0&&budget-->0){
             var t=queue.Dequeue();
             if(t.x!=u.x||t.y!=u.y){bool frontier=false;for(int dy=-1;dy<=1&&!frontier;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n!=null&&!known[n.y*Width+n.x]){frontier=true;break;}}
-                if(frontier&&!units.Any(a=>a.owner!=u.owner&&a.x==t.x&&a.y==t.y))return t;}
+                if(frontier&&(skip==null||!skip.Contains(t.y*Width+t.x))&&!units.Any(a=>a.owner!=u.owner&&a.x==t.x&&a.y==t.y))return t;}
             for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){
                 if(dx==0&&dy==0)continue;var n=Step(t.x,t.y,dx,dy);if(n==null)continue;int idx=n.y*Width+n.x;
                 if(seen.Contains(idx)||!known[idx])continue;seen.Add(idx);
                 int terrain=u.owner==0&&!Visible(n.x,n.y)?KnownTerrain(n):n.terrain;
-                if((IsNaval(u.type)?!Passable(u,n,terrain):Barren(terrain))||!CanEnter(u.owner,n))continue;
+                // Land explorers keep to land: water is never a target or a way through.
+                if((IsNaval(u.type)?!Passable(u,n,terrain):Barren(terrain)||IsWater(terrain)||IsImpassable(terrain))||!CanEnter(u.owner,n))continue;
                 queue.Enqueue(n);
             }
         }

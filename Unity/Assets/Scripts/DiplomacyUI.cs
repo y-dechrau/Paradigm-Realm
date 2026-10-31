@@ -26,9 +26,9 @@ public partial class RealmGame {
   // Both leaders face each other, dressed for their own age, with the other civilisation's greeting.
   {var pn=world.nations[partner];var me=world.nations[0];var mine=Portrait(me.portrait,world.Era(0));var theirs=Portrait(pn.portrait,world.Era(partner));
    GUILayout.BeginHorizontal();
-   if(mine!=null)GUILayout.Label(mine,GUILayout.Width(120),GUILayout.Height(160));
+   if(mine!=null)DrawPortrait(GUILayoutUtility.GetRect(120,160),mine);
    GUILayout.Label("\n"+world.Greeting(partner)+"\n\n"+(string.IsNullOrEmpty(pn.leader)?"":"Led by "+pn.leader+".  ")+(pn.traits!=null&&pn.traits.Any(t=>t>=0)?CivilisationCatalog.TraitLine(pn.traits):""),body,GUILayout.Width(560));
-   if(theirs!=null)GUILayout.Label(theirs,GUILayout.Width(120),GUILayout.Height(160));
+   if(theirs!=null)DrawPortrait(GUILayoutUtility.GetRect(120,160),theirs);
    GUILayout.EndHorizontal();}
   GUILayout.Label(world.Personality(partner),small);GUILayout.Label(world.RelationshipBreakdown(partner,0),body);
   GUILayout.Label("War weariness: "+world.warWeariness[0]+"; your cities lose "+world.WarUnhappiness(0)+" content citizens. Peace recovers 2 weariness/turn.",small);

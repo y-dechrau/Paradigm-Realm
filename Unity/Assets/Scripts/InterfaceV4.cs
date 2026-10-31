@@ -68,8 +68,8 @@ namespace ParadigmRealm
             }else if(detailsScreen=="Victory"){DrawVictoryStatus();
             }else if(detailsScreen=="Identity"){
                 GUI.SetNextControlName("rename");renameText=GUILayout.TextField(renameText,32);if(Button("Apply civilisation name"))world.civilisationName=World.CleanName(renameText);
-                world.flag=GUILayout.SelectionGrid(world.flag,new[]{"Leaf","Star","Sun"},3);
-                {var me=world.nations[0];var face=Portrait(me.portrait);if(face!=null)GUILayout.Label(face,GUILayout.Width(150),GUILayout.Height(200));if(!string.IsNullOrEmpty(me.leader))GUILayout.Label("Led by "+me.leader,heading);GUILayout.Label(me.traits!=null&&me.traits.Any(t=>t>=0)?CivilisationCatalog.TraitLine(me.traits):"No traits.",body);}
+                DrawFlagDesigner();
+                {var me=world.nations[0];var face=Portrait(me.portrait);if(face!=null)DrawPortrait(GUILayoutUtility.GetRect(150,200),face);if(!string.IsNullOrEmpty(me.leader))GUILayout.Label("Led by "+me.leader,heading);GUILayout.Label(me.traits!=null&&me.traits.Any(t=>t>=0)?CivilisationCatalog.TraitLine(me.traits):"No traits.",body);}
             }else if(detailsScreen=="Diplomacy"){
                 DrawAdvancedDiplomacy();
             }else if(detailsScreen=="Atlas"){DrawAtlas();
@@ -84,9 +84,9 @@ namespace ParadigmRealm
         {
             if(tileLabel==null)tileLabel=new GUIStyle(small){fontSize=10,alignment=TextAnchor.MiddleCenter,wordWrap=false};
             foreach(var stack in world.units.Where(u=>u.owner==0||world.Visible(u.x,u.y)).GroupBy(u=>new {u.x,u.y})){
-                string label=World.StackLabel(stack);if(label=="")continue;var unit=stack.First();float x=unit.x*tilePixels,y=unit.y*tilePixels;
+                string label=World.StackLabel(stack);if(label=="")continue;var unit=stack.First();var cell=ClassicRect(unit.x,unit.y);float x=cell.x,y=cell.y;
                 if(x<mapScroll.x-tilePixels||x>mapScroll.x+MapW||y<mapScroll.y-tilePixels||y>mapScroll.y+MapH)continue;
-                float width=Mathf.Max(tilePixels,label.Length*6+6);var r=new Rect(x+(tilePixels-width)/2,y+tilePixels-2,width,14);
+                float width=Mathf.Max(tilePixels,label.Length*6+6);var r=new Rect(x+(tilePixels-width)/2,y+cell.height-2,width,14);
                 Fill(r,UiLabelBack);GUI.Label(r,label,tileLabel);
             }
         }

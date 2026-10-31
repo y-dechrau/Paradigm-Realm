@@ -23,6 +23,16 @@ namespace ParadigmRealm {
    if(era>=0){int key=1000+i*10+era;if(!portraits.TryGetValue(key,out t)){t=Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00")+"-e"+era);portraits[key]=t;}if(t!=null)return t;}
    if(!portraits.TryGetValue(i,out t)){t=Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00"));portraits[i]=t;}return t;
   }
+  // The portraits are 3:4 pictures, but Unity imports them padded to power-of-two sizes (300 x 400 arrives as 256 x 512), so
+  // their texture size cannot be trusted for shape. Every portrait is drawn at 3:4: crop fills the box keeping the top (the
+  // face), otherwise the whole picture is fitted inside the box.
+  const float PortraitAspect=300f/400f;
+  void DrawPortrait(Rect r,Texture2D tex,bool crop=true){
+   if(tex==null)return;float ra=r.width/r.height;
+   if(!crop){var fit=ra>PortraitAspect?new Rect(r.center.x-r.height*PortraitAspect/2,r.y,r.height*PortraitAspect,r.height):new Rect(r.x,r.center.y-r.width/PortraitAspect/2,r.width,r.width/PortraitAspect);GUI.DrawTexture(fit,tex,ScaleMode.StretchToFill,true);return;}
+   if(ra>PortraitAspect){float vh=PortraitAspect/ra;GUI.DrawTextureWithTexCoords(r,tex,new Rect(0,1-vh,1,vh));}
+   else{float uw=ra/PortraitAspect;GUI.DrawTextureWithTexCoords(r,tex,new Rect((1-uw)/2,0,uw,1));}
+  }
   // Civilisations waiting for portrait art join the game as soon as their picture is in Resources/Leaders.
   void EnableCivilisationsWithArt(){for(int i=0;i<CivilisationCatalog.Count;i++)if(CivilisationCatalog.AwaitingArt[i]&&Portrait(CivilisationCatalog.Portraits[i])!=null){CivilisationCatalog.Enabled[i]=true;CivilisationCatalog.AwaitingArt[i]=false;}}
   Texture2D Art(string name){Texture2D t;if(!visualArt.TryGetValue(name,out t)){t=Resources.Load<Texture2D>("Visuals/"+name);visualArt[name]=t;}return t;}
@@ -152,7 +162,7 @@ namespace ParadigmRealm {
    // Armies carry a banner in their owner's colour behind them, as in the owner's mockup.
    if(World.Power[u.type]>0&&!World.IsNaval(u.type)){float px=feet.x+size*.26f,top=feet.y-size*1.02f,pole=Mathf.Max(1,size*.025f);
     Fill(new Rect(px,top,pole,size*.9f),new Color(.32f,.22f,.12f));var ink=nations[u.owner];var flag=new Rect(px+pole,top+size*.02f,size*.2f,size*.24f);
-    Fill(flag,ink*.75f+new Color(0,0,0,.25f));Fill(new Rect(flag.x,flag.y,flag.width,flag.height*.18f),Color.Lerp(ink,Color.white,.35f));Fill(new Rect(flag.x+flag.width*.35f,flag.y+flag.height*.35f,flag.width*.3f,flag.height*.3f),new Color(.95f,.88f,.6f));}
+    var flagArt=FlagTexture(u.owner);if(flagArt!=null){flag.width=flag.height*1.5f;GUI.DrawTexture(flag,flagArt,ScaleMode.StretchToFill,true);}else Fill(flag,ink*.75f+new Color(0,0,0,.25f));}
    GUI.DrawTexture(new Rect(feet.x-size/2,feet.y-size*62f/64f,size,size),art,ScaleMode.ScaleToFit,true);
    // Health shows above the head, and only when the unit is hurt, so the map stays clean.
    if(u.hp<10){float h=Mathf.Max(3,r.width*.07f),bar=r.width*.8f,by=feet.y-size*60f/64f-h;

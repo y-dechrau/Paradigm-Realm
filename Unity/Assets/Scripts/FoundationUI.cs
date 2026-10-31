@@ -14,14 +14,16 @@ namespace ParadigmRealm
         Vector2 cityScroll,saveScroll;
         void ResetMapGesture(){dragUnit=-1;dragging=false;mapPointerDown=false;}
         // On a sphere the classic view pans east or west for ever: the scroll position wraps round the world width (owner request).
-        void ClampMapScroll(){if(world.Sphere){float wpx=world.Width*tilePixels;mapScroll.x=((mapScroll.x%wpx)+wpx)%wpx;mapScroll.y=Mathf.Clamp(mapScroll.y,0,Mathf.Max(0,world.Height*tilePixels-MapH));return;}mapScroll.x=Mathf.Clamp(mapScroll.x,0,Mathf.Max(0,world.Width*tilePixels-MapW));mapScroll.y=Mathf.Clamp(mapScroll.y,0,Mathf.Max(0,world.Height*tilePixels-MapH));}
+        void ClampMapScroll(){if(world.Sphere){float wpx=world.Width*tilePixels;mapScroll.x=((mapScroll.x%wpx)+wpx)%wpx;mapScroll.y=Mathf.Clamp(mapScroll.y,0,Mathf.Max(0,ClassicHeight()-MapH));return;}mapScroll.x=Mathf.Clamp(mapScroll.x,0,Mathf.Max(0,world.Width*tilePixels-MapW));mapScroll.y=Mathf.Clamp(mapScroll.y,0,Mathf.Max(0,ClassicHeight()-MapH));}
         void OpenCity(City c){cityId=c.id;selected=-1;cityScreen=true;cityScroll=Vector2.zero;cityMapScroll=new Vector2(Mathf.Max(0,(Math.Min(4,2+c.age/25)*2+1)*40-207),Mathf.Max(0,(Math.Min(4,2+c.age/25)*2+1)*40-147));builtScroll=Vector2.zero;unitQueueScroll=Vector2.zero;buildingQueueScroll=Vector2.zero;researchScreen=false;detailsScreen="";GUI.FocusControl(null);ResetMapGesture();GUIUtility.ExitGUI();}
         bool OrderTeam(Unit u,int x,int y){var team=world.WorkerTeam(u).ToList();bool ok=false;foreach(var member in team)ok=world.Order(member,x,y)||ok;status=ok?"Order issued. Travel continues each turn; new orders replace it.":"Cannot reach that destination.";return ok;}
         string UnitDescription(Unit u){return new[]{"Founds new cities","Builds roads and improvements","Basic close-combat infantry","Explores distant territory","Ranged infantry","Armoured mounted troops","Gunpowder infantry","Counters mounted troops","Fast mounted troops","Siege artillery","Helps nearby units heal","Establishes trade routes and supplies wonders"}[u.type];}
         void HandleGlobalInput(){var e=Event.current;if(e.type!=EventType.KeyDown)return;
             if(e.keyCode==KeyCode.S&&e.control){Save();e.Use();return;}
             if(e.keyCode!=KeyCode.Escape)return;
-            if(pauseQuit)pauseQuit=false;
+            if(foundStage>0)foundStage=0;
+            else if(tilePicker)tilePicker=false;
+            else if(pauseQuit)pauseQuit=false;
             else if(overwriteSave)overwriteSave=false;
             else if(saveAsScreen||settingsScreen){PersistSettings();saveAsScreen=false;settingsScreen=false;}
             else if(pauseMenu)pauseMenu=false;

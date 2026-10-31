@@ -1037,8 +1037,10 @@ namespace ParadigmRealm
                 {
                     double along=kind%2==0?(x+.5)/TW:(y+.5)/TH,wob=.035*Math.Sin(along*Math.PI)*Math.Sin(along*Math.PI*3+kind);
                     double e=EdgeE(kind,x,y)+wob,core=1-e;
-                    if(core<.045)cv.Set(x,y,Rgb(255,255,255));
-                    else if(core<.16)cv.Set(x,y,Rgb(255,255,255,(int)(150*(1-(core-.045)/.115))));
+                    // Owner request: firmer borders. A wider bright core, a dark rim on its inner side, then the soft halo.
+                    if(core<.075)cv.Set(x,y,Rgb(255,255,255));
+                    else if(core<.105)cv.Set(x,y,Rgb(70,70,70,235));
+                    else if(core<.24)cv.Set(x,y,Rgb(255,255,255,(int)(130*(1-(core-.105)/.135))));
                 }
                 else if(kind==4)
                 {
@@ -1046,6 +1048,7 @@ namespace ParadigmRealm
                     if(Math.Max(u,v)>.92&&(u>.7&&v>.55||u>.97||v>.95))cv.Set(x,y,Rgb(255,222,120));
                 }
                 else if(kind==5)cv.Set(x,y,FogBase);
+                else if(kind==9)cv.Set(x,y,Rgb(255,255,255));
                 else cv.Set(x,y,Rgb(4,8,20,110));
             }
             misc[kind]=cv;return cv;

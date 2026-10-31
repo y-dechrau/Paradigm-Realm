@@ -46,10 +46,34 @@ public partial class RealmGame {
   if(GUI.Button(new Rect(r.x,r.y,24,r.height),"−"))v=Math.Max(0,v-step);
   var field=GUI.TextField(new Rect(r.x+26,r.y,r.width-52,r.height),v.ToString(),5);int typed;if(int.TryParse(field,out typed))v=Math.Max(0,Math.Min(max,typed));else if(field=="")v=0;
   if(GUI.Button(new Rect(r.xMax-24,r.y,24,r.height),"+"))v=Math.Min(max,v+step);return v.ToString();}
+ // Drop-down boxes: the box shows the choice; clicking opens a list drawn over everything else. Clicks on an open list are
+ // taken at the start of the next screen draw, before the controls underneath can see them.
+ string dropOpen,dropPicked;int dropIndex;string[] dropNames;Rect dropBox,dropList;
+ int Dropdown(Rect r,string id,int value,string[] names){
+  if(dropPicked==id){dropPicked=null;value=dropIndex;}
+  value=Math.Max(0,Math.Min(names.Length-1,value));
+  Fill(r,new Color(.08f,.12f,.22f));var edge=new Color(.78f,.62f,.32f);Fill(new Rect(r.x,r.y,r.width,1),edge);Fill(new Rect(r.x,r.yMax-1,r.width,1),edge);Fill(new Rect(r.x,r.y,1,r.height),edge);Fill(new Rect(r.xMax-1,r.y,1,r.height),edge);
+  GUI.Label(new Rect(r.x+8,r.y,r.width-30,r.height),names[value],new GUIStyle(dipRow){fontSize=13,alignment=TextAnchor.MiddleLeft});GUI.Label(new Rect(r.xMax-22,r.y,18,r.height),dropOpen==id?"▲":"▼",new GUIStyle(dipRow){fontSize=11,alignment=TextAnchor.MiddleCenter});
+  if(dropOpen==null&&GUI.Button(r,"",GUIStyle.none)){dropOpen=id;dropNames=names;dropBox=r;float h=Math.Min(names.Length*24,24*9);dropList=r.yMax+h>790?new Rect(r.x,r.y-h,r.width,h):new Rect(r.x,r.yMax,r.width,h);}
+  return value;}
+ void DropdownClicks(){
+  var e=Event.current;if(dropOpen==null||e.type!=EventType.MouseDown)return;
+  if(dropList.Contains(e.mousePosition)){int k=(int)((e.mousePosition.y-dropList.y)/24)+dropScroll;if(k>=0&&k<dropNames.Length){dropPicked=dropOpen;dropIndex=k;}}
+  dropOpen=null;dropScroll=0;e.Use();}
+ int dropScroll;
+ void DrawOpenDropdown(){
+  if(dropOpen==null)return;var e=Event.current;int rows=(int)(dropList.height/24);
+  if(e.type==EventType.ScrollWheel&&dropList.Contains(e.mousePosition)){dropScroll=Math.Max(0,Math.Min(dropNames.Length-rows,dropScroll+(e.delta.y>0?1:-1)));e.Use();}
+  DipPanel(dropList,1);
+  for(int k=0;k<rows&&k+dropScroll<dropNames.Length;k++){var row=new Rect(dropList.x+1,dropList.y+k*24,dropList.width-2,24);if(row.Contains(e.mousePosition))Fill(row,new Color(.07f,.38f,.4f,.9f));GUI.Label(new Rect(row.x+8,row.y,row.width-16,24),dropNames[k+dropScroll],new GUIStyle(dipRow){fontSize=13});}}
+ // A picture whose true shape is aspect (width / height), filling the box and cropping the overflow evenly.
+ const float BackdropAspect=410f/452f;
+ void DrawCropped(Rect r,Texture2D tex,float aspect){float ra=r.width/r.height;if(ra>aspect){float vh=aspect/ra;GUI.DrawTextureWithTexCoords(r,tex,new Rect(0,(1-vh)/2,1,vh));}else{float uw=ra/aspect;GUI.DrawTextureWithTexCoords(r,tex,new Rect((1-uw)/2,0,uw,1));}}
  int Cycle(Rect r,int value,string[] names){if(GUI.Button(new Rect(r.x,r.y,24,r.height),"◀"))value=(value+names.Length-1)%names.Length;GUI.Label(new Rect(r.x+26,r.y,r.width-52,r.height),names[value],new GUIStyle(dipRow){alignment=TextAnchor.MiddleCenter,fontSize=13});if(GUI.Button(new Rect(r.xMax-24,r.y,24,r.height),"▶"))value=(value+1)%names.Length;return value;}
 
  void DrawDiplomacyScreen(){
   DiplomacyStyles();
+  DropdownClicks();
   Fill(new Rect(0,0,1280,800),new Color(.03f,.05f,.1f,.97f));
   // Title plaque.
   DipPanel(new Rect(450,6,380,60));GUI.Label(new Rect(450,8,380,34),"PARADIGM REALM",dipTitle);GUI.Label(new Rect(450,40,380,22),"—  D I P L O M A C Y  —",dipCaps);
@@ -60,18 +84,19 @@ public partial class RealmGame {
   // ---- Scene: the leader before the painted coast ----
   var scene=new Rect(14,74,800,500);DipPanel(scene,1);var inner=new Rect(scene.x+4,scene.y+4,scene.width-8,scene.height-8);
   var backdrop=Art("diplomacy-backdrop");
-  if(backdrop!=null)GUI.DrawTexture(inner,backdrop,ScaleMode.ScaleAndCrop);else{Fill(inner,new Color(.35f,.3f,.42f));Fill(new Rect(inner.x,inner.y+inner.height*.6f,inner.width,inner.height*.4f),new Color(.15f,.25f,.4f));}
+  if(backdrop!=null)DrawCropped(inner,backdrop,BackdropAspect);else{Fill(inner,new Color(.35f,.3f,.42f));Fill(new Rect(inner.x,inner.y+inner.height*.6f,inner.width,inner.height*.4f),new Color(.15f,.25f,.4f));}
   // The partner's banner hangs at the left edge in their colour.
-  Color ink=nations[partner];Fill(new Rect(inner.x+22,inner.y,46,150),new Color(ink.r*.8f,ink.g*.8f,ink.b*.8f,.95f));Fill(new Rect(inner.x+22,inner.y+150,23,14),new Color(ink.r*.8f,ink.g*.8f,ink.b*.8f,.95f));DrawIcon(PixelArt.IconDiplomacy,new Rect(inner.x+29,inner.y+48,32,32));
+  Color ink=nations[partner];
+  {var banner=FlagTexture(partner);var br=new Rect(inner.x+18,inner.y+10,66,44);if(banner!=null){Fill(new Rect(br.x-2,br.y-6,2,br.height+120),new Color(.32f,.22f,.12f));GUI.DrawTexture(br,banner,ScaleMode.StretchToFill,true);}}
   var face=Portrait(pn.portrait,world.Era(partner));
-  if(face!=null){float h=inner.height-36,w=h*face.width/(float)face.height;var frame=new Rect(inner.x+86,inner.y+18,w,h);DipPanel(new Rect(frame.x-4,frame.y-4,frame.width+8,frame.height+8),1);GUI.DrawTexture(frame,face,ScaleMode.ScaleAndCrop);}
+  if(face!=null){float h=inner.height-36,w=h*.9f;var frame=new Rect(inner.x+86,inner.y+18,w,h);DipPanel(new Rect(frame.x-4,frame.y-4,frame.width+8,frame.height+8),1);DrawPortrait(frame,face);}
   // ---- Civilisation cards ----
   float cw=Math.Min(260,(800-12*(known.Length-1))/(float)Math.Max(1,known.Length));
   for(int k=0;k<known.Length&&k<6;k++){
    int other=known[k];var card=new Rect(14+k*(cw+12),590,cw,196);bool chosen=other==partner;
    DipPanel(card,1);var pic=new Rect(card.x+4,card.y+4,card.width-8,card.height-38);
-   if(backdrop!=null)GUI.DrawTexture(pic,backdrop,ScaleMode.ScaleAndCrop);var oc=nations[other];Fill(pic,new Color(oc.r*.4f,oc.g*.4f,oc.b*.4f,.45f));
-   var small=Portrait(world.nations[other].portrait,world.Era(other));if(small!=null)GUI.DrawTexture(pic,small,ScaleMode.ScaleToFit,true);
+   if(backdrop!=null)DrawCropped(pic,backdrop,BackdropAspect);var oc=nations[other];Fill(pic,new Color(oc.r*.4f,oc.g*.4f,oc.b*.4f,.45f));
+   var small=Portrait(world.nations[other].portrait,world.Era(other));if(small!=null)DrawPortrait(pic,small);
    Fill(new Rect(card.x+4,card.yMax-34,card.width-8,30),new Color(.04f,.06f,.12f,.96f));GUI.Label(new Rect(card.x,card.yMax-34,card.width,30),world.NationName(other).ToUpperInvariant(),new GUIStyle(dipCaps){fontSize=14});
    if(chosen){var g=new Color(1f,.82f,.42f);for(int b=0;b<3;b++){Fill(new Rect(card.x-b,card.y-b,card.width+2*b,1),g);Fill(new Rect(card.x-b,card.yMax+b-1,card.width+2*b,1),g);Fill(new Rect(card.x-b,card.y-b,1,card.height+2*b),g);Fill(new Rect(card.xMax+b-1,card.y-b,1,card.height+2*b),g);}}
    if(GUI.Button(card,"",GUIStyle.none)&&other!=partner){diplomacyPartner=other;ResetDiplomacyUI();}
@@ -80,13 +105,15 @@ public partial class RealmGame {
   var side=new Rect(828,74,440,712);DipPanel(side);
   if(diplomacyDiscuss||diplomacyConfirmation!=""){
    // Full detail (every action, the inbox and confirmations) in the familiar scrolling layout.
-   GUILayout.BeginArea(new Rect(side.x+14,side.y+12,side.width-28,side.height-70));detailsScroll=GUILayout.BeginScrollView(detailsScroll);DrawAdvancedDiplomacy();GUILayout.EndScrollView();GUILayout.EndArea();
+   // Full width so every line fits; no scroll bars, the mouse wheel scrolls up and down.
+   var wide=new Rect(14,74,1254,712);DipPanel(wide);side=wide;
+   GUILayout.BeginArea(new Rect(wide.x+18,wide.y+12,wide.width-36,wide.height-70));detailsScroll=GUILayout.BeginScrollView(detailsScroll,false,false,GUIStyle.none,GUIStyle.none);detailsScroll.x=0;DrawAdvancedDiplomacy();GUILayout.EndScrollView();GUILayout.EndArea();
    if(DipButton(new Rect(side.x+14,side.yMax-52,side.width-28,40),"Back to negotiation",new Color(.1f,.16f,.3f))){diplomacyDiscuss=false;diplomacyConfirmation="";confirmingOffer=null;confirmingInbox=-1;}
    return;}
   float y=side.y+14;
   // Shield, name, subtitle and mood badge.
-  var shield=new Rect(side.x+16,y,64,80);Fill(new Rect(shield.x,shield.y,shield.width,shield.height-14),ink);Fill(new Rect(shield.x+10,shield.yMax-14,shield.width-20,8),ink);Fill(new Rect(shield.x+22,shield.yMax-6,shield.width-44,6),ink);
-  DrawIcon(PixelArt.IconDiplomacy,new Rect(shield.x+14,shield.y+16,36,36));
+  // Their flag in place of a shield.
+  {var theirFlag=FlagTexture(partner);var fr=new Rect(side.x+14,y+12,72,48);DipPanel(new Rect(fr.x-3,fr.y-3,fr.width+6,fr.height+6),1);if(theirFlag!=null)GUI.DrawTexture(fr,theirFlag,ScaleMode.StretchToFill,true);}
   GUI.Label(new Rect(side.x+92,y,240,40),world.NationName(partner),dipName);
   GUI.Label(new Rect(side.x+92,y+40,330,22),(string.IsNullOrEmpty(pn.leader)?"":pn.leader+" — ")+world.Personality(partner).Split(':')[0],new GUIStyle(dipRow){fontSize=14});
   Color moodInk;string mood=MoodText(partner,out moodInk);var badge=new Rect(side.xMax-140,y+6,124,26);Fill(badge,new Color(moodInk.r*.25f,moodInk.g*.25f,moodInk.b*.25f,.95f));Fill(new Rect(badge.x,badge.y,badge.width,1),moodInk);Fill(new Rect(badge.x,badge.yMax-1,badge.width,1),moodInk);var bs=new GUIStyle(dipBadge);bs.normal.textColor=moodInk;GUI.Label(badge,mood,bs);
@@ -106,8 +133,8 @@ public partial class RealmGame {
   y+=6;
   // Negotiate: agreement, length, and the two sides of the offer.
   DipHeading(new Rect(side.x+16,y,side.width-32,22),"Negotiate");y+=28;
-  diplomacyKind=Cycle(new Rect(side.x+16,y,side.width/2-22,26),diplomacyKind,DealKinds);
-  diplomacyDuration=Cycle(new Rect(side.x+side.width/2+6,y,side.width/2-22,26),diplomacyDuration,new[]{"10 turns","15 turns","30 turns"});y+=32;
+  diplomacyKind=Dropdown(new Rect(side.x+16,y,side.width/2-22,26),"kind",diplomacyKind,DealKinds);
+  diplomacyDuration=Dropdown(new Rect(side.x+side.width/2+6,y,side.width/2-22,26),"length",diplomacyDuration,new[]{"10 turns","15 turns","30 turns"});y+=32;
   bool recurring=diplomacyKind==4||diplomacyKind==5;float colW=(side.width-44)/2;
   for(int s=0;s<2;s++){
    var col=new Rect(side.x+16+s*(colW+12),y,colW,recurring?150:92);DipPanel(col,.9f);GUI.Label(new Rect(col.x,col.y+4,col.width,20),s==0?"YOUR OFFER":"THEIR OFFER",dipCaps);
@@ -116,7 +143,7 @@ public partial class RealmGame {
    if(recurring){GUI.Label(new Rect(col.x+10,col.y+60,80,24),"Per turn",dipRow);
     if(s==0)givePerTurn=Stepper(new Rect(col.x+86,col.y+60,col.width-94,24),givePerTurn,1,20);else askPerTurn=Stepper(new Rect(col.x+86,col.y+60,col.width-94,24),askPerTurn,1,20);
     GUI.Label(new Rect(col.x+10,col.y+90,col.width-20,20),"Resource access",hudSmall);
-    if(s==0)giveResource=Cycle(new Rect(col.x+8,col.y+112,col.width-16,26),giveResource,World.ResourceNames);else askResource=Cycle(new Rect(col.x+8,col.y+112,col.width-16,26),askResource,World.ResourceNames);}
+    if(s==0)giveResource=Dropdown(new Rect(col.x+8,col.y+112,col.width-16,26),"give",giveResource,World.ResourceNames);else askResource=Dropdown(new Rect(col.x+8,col.y+112,col.width-16,26),"ask",askResource,World.ResourceNames);}
    else GUI.Label(new Rect(col.x+10,col.y+60,col.width-20,24),s==0?"plus the agreement":"in return",hudSmall);
   }
   y+=(recurring?150:92)+8;
@@ -135,6 +162,7 @@ public partial class RealmGame {
   if(DipButton(new Rect(side.x+32+2*bw,side.yMax-54,bw,42),"Declare War",new Color(.45f,.08f,.07f))){pendingUnit=-2;pendingWars=new[]{partner};detailsScreen="";cityScreen=false;GUIUtility.ExitGUI();}
   GUI.enabled=enabled;
   if(warReason!=""&&new Rect(side.x+32+2*bw,side.yMax-54,bw,42).Contains(Event.current.mousePosition))GUI.Label(new Rect(side.x+16,side.yMax-128,side.width-32,20),warReason,hudSmall);
+  DrawOpenDropdown();
  }
 }
 }

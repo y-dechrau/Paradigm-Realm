@@ -151,6 +151,8 @@ namespace ParadigmRealm
                     ridge[y*W+x]=1-Math.Abs(2*Fbm(s+31,px*5+1,py*5+1,pz*5+1,3)-1);
                 }
             }
+            // Colliding plates lift land into ranges; spreading ones open rifts and seas.
+            double[] rift;var uplift=TectonicUplift(s,out rift);for(int i=0;i<n;i++)elev[i]+=.22*uplift[i]-.10*rift[i];
             var sorted=(double[])elev.Clone();Array.Sort(sorted);
             double sea=sorted[(int)(n*(mapType==2?.78:mapType==3?.64:mapType==4?.47:mapType==1?.6:.62))],top=sorted[n-1];
             var land=new bool[n];var hn=new double[n];
@@ -199,8 +201,10 @@ namespace ParadigmRealm
                 var tile=tiles[i];tile.resource=0;tile.road=false;tile.farm=false;tile.mine=false;tile.fort=false;tile.village=false;
                 if(!land[i]){tile.terrain=(tb[i]==0&&Math.Abs(lat[i/W])>1.2)?14:4;continue;}
                 double h=hn[i];int t2=tb[i],m2=mb[i];
-                if(h>.82||(h>.58&&ridge[i]>.72))tile.terrain=t2<=1?15:5;
-                else if(h>.5||(h>.36&&ridge[i]>.78))tile.terrain=t2>0?2:8;
+                // Mountains stand along converging plate boundaries (broken up by the ridge noise) or on the very highest ground;
+                // hills fringe the ranges and cover high plateaus.
+                if(h>.86||(uplift[i]>.55&&h>.22&&ridge[i]>.5))tile.terrain=t2<=1?15:5;
+                else if(h>.55||(uplift[i]>.3&&h>.12&&ridge[i]>.35))tile.terrain=t2>0?2:8;
                 else
                 {
                     int b=BiomeFor(t2,m2);
@@ -220,7 +224,8 @@ namespace ParadigmRealm
                 foreach(int j in SphereNeighbours(i)){int tj=tiles[j].terrain;if(tj==4||tj==12||tj==14)coast=true;if(tj==2||tj==5||tj==17)highNear=true;}
                 if(!coast)continue;
                 if(t.terrain==11||(tb[i]>=6&&mb[i]>=5&&t.terrain!=2))t.terrain=19;
-                else if(highNear||tb[i]<=2||Lattice(s+13,i%W,i/W,1)<.3)t.terrain=18;
+                // Rocky shores only where high ground meets the sea (cliffs), or on some cold coasts (owner request: fewer).
+                else if(highNear&&Lattice(s+13,i%W,i/W,1)<.55||tb[i]<=1&&Lattice(s+17,i%W,i/W,1)<.3)t.terrain=18;
             }
             // Coral reefs grow in shallow warm water; ice sheets cap cold seas (already set above).
             for(int i=0;i<n;i++)
@@ -232,6 +237,65 @@ namespace ParadigmRealm
             MakeRivers(s,land,hn,mb);
         }
 
+        // Land resources where they occur on Earth (owner request, 31 Oct): metal ores in hills and volcanic ground, strongest
+        // in the mountain belts; gold also in river gravels and old desert shields; horses on steppe, grassland and savanna
+        // (domesticated on the Eurasian steppe); wheat on temperate grassland and steppe, twice as likely beside fresh water;
+        // spices in the tropics (jungle, mangrove, wet savanna). Seeded, so a world is repeatable.
+        void PlaceLandResources(Random r)
+        {
+            foreach(var t in tiles)
+            {
+                if(t.resource!=0||IsWater(t.terrain)||Barren(t.terrain))continue;
+                bool mountainsNear=false,water=false;for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n==null)continue;if(n.terrain==5||n.terrain==15)mountainsNear=true;if(n.terrain==6||n.terrain==7)water=true;}
+                int roll=r.Next(1000);
+                switch(t.terrain)
+                {
+                    case 2:  t.resource=roll<(mountainsNear?330:220)?2:roll<(mountainsNear?420:265)?3:0;break;      // hills: iron, gold near ranges
+                    case 17: t.resource=roll<180?2:roll<230?3:0;break;                                              // volcanic: iron, some gold
+                    case 7:  t.resource=roll<45?3:roll<150?1:0;break;                                               // river: placer gold, wheat
+                    case 3:  t.resource=roll<40?3:0;break;                                                           // desert shields: rare gold
+                    case 20: t.resource=roll<150?4:roll<(water?250:200)?1:0;break;                                  // dry steppe: horses, wheat
+                    case 0:  t.resource=roll<(water?140:70)?1:roll<(water?200:130)?4:0;break;                       // grassland: wheat, horses
+                    case 16: t.resource=roll<70?4:roll<130?5:0;break;                                               // savanna: horses, spices
+                    case 11: t.resource=roll<160?5:0;break;                                                          // jungle: spices
+                    case 19: t.resource=roll<90?5:0;break;                                                           // mangrove: spices
+                }
+            }
+        }
+        // Plate tectonics (owner request, 31 Oct): 8-14 plates seeded on the globe, each turning about its own axis. A tile
+        // belongs to the nearest plate centre (with a little noise so borders wander). Where two plates move towards each other
+        // the crust is pushed up into long ranges, as along the Andes or the Himalaya; where they move apart it sinks into rifts
+        // and seas. Returns uplift 0..1 per tile (convergence, fading over three tiles from the boundary) and rift 0..1.
+        double[] TectonicUplift(int s,out double[] rift)
+        {
+            int n=tiles.Length;var rng=new Random(s^0x5eed);int plates=8+rng.Next(7);
+            var cx=new double[plates];var cy=new double[plates];var cz=new double[plates];var ax=new double[plates];var ay=new double[plates];var az=new double[plates];
+            for(int k=0;k<plates;k++){double u=rng.NextDouble()*2-1,a=rng.NextDouble()*Math.PI*2,r=Math.Sqrt(1-u*u);cx[k]=r*Math.Cos(a);cy[k]=u;cz[k]=r*Math.Sin(a);
+                double v=rng.NextDouble()*2-1,b=rng.NextDouble()*Math.PI*2,q=Math.Sqrt(1-v*v),speed=.5+rng.NextDouble();ax[k]=q*Math.Cos(b)*speed;ay[k]=v*speed;az[k]=q*Math.Sin(b)*speed;}
+            var plate=new int[n];var px=new double[n];var py=new double[n];var pz=new double[n];
+            for(int i=0;i<n;i++){double x,y,z;SpherePoint(i%Width,i/Width,out x,out y,out z);px[i]=x;py[i]=y;pz[i]=z;
+                double wx=x+(Fbm(s+211,x*3+2,y*3+2,z*3+2,2)-.5)*.35,wy=y+(Fbm(s+223,x*3+5,y*3+5,z*3+5,2)-.5)*.35,wz=z+(Fbm(s+227,x*3+8,y*3+8,z*3+8,2)-.5)*.35;
+                int best=0;double bd=double.MinValue;for(int k=0;k<plates;k++){double d=wx*cx[k]+wy*cy[k]+wz*cz[k];if(d>bd){bd=d;best=k;}}plate[i]=best;}
+            var conv=new double[n];var apart=new double[n];
+            for(int i=0;i<n;i++)foreach(int j in SphereNeighbours(i))
+            {
+                int a=plate[i],b=plate[j];if(a==b)continue;
+                // Surface velocity of each plate at the boundary (rotation axis x position); approaching when the relative
+                // velocity points from this tile towards the neighbour.
+                double vax=ay[a]*pz[i]-az[a]*py[i],vay=az[a]*px[i]-ax[a]*pz[i],vaz=ax[a]*py[i]-ay[a]*px[i];
+                double vbx=ay[b]*pz[j]-az[b]*py[j],vby=az[b]*px[j]-ax[b]*pz[j],vbz=ax[b]*py[j]-ay[b]*px[j];
+                double dx=px[j]-px[i],dy=py[j]-py[i],dz=pz[j]-pz[i],len=Math.Sqrt(dx*dx+dy*dy+dz*dz)+1e-9;
+                double c=((vax-vbx)*dx+(vay-vby)*dy+(vaz-vbz)*dz)/len;
+                if(c>0)conv[i]=Math.Max(conv[i],Math.Min(1,c));else apart[i]=Math.Max(apart[i],Math.Min(1,-c));
+            }
+            // Spread outwards from the boundary: full strength on it, then .7, .45, .25.
+            var uplift=new double[n];rift=new double[n];double[] fall={1,.7,.45,.25};
+            for(int i=0;i<n;i++){uplift[i]=conv[i];rift[i]=apart[i];}
+            for(int ring=1;ring<fall.Length;ring++){double m=fall[ring]/fall[ring-1];var nextU=(double[])uplift.Clone();var nextR=(double[])rift.Clone();
+                for(int i=0;i<n;i++)foreach(int j in SphereNeighbours(i)){nextU[i]=Math.Max(nextU[i],uplift[j]*m);nextR[i]=Math.Max(nextR[i],rift[j]*m*.8);}
+                uplift=nextU;rift=nextR;}
+            return uplift;
+        }
         // The relief noise is laid on the globe, so a range covers the same share of any map and dominates a small one (owner
         // request: massive ranges less likely on small maps). A connected range keeps at most about sqrt(tiles)/4 peaks (8 on
         // Tiny, more on bigger maps), the highest; the lower rest become hills (tundra where it is too cold for hills).

@@ -101,7 +101,8 @@ public partial class World {
  public int ConcordTargetFor(int owner){return HasTrait(owner,TraitDiplomatic)?15:ConcordTarget;}
  // Building and training cost for this city's owner: Monumental cuts wonders and Transcendence stages by a fifth,
  // Expansionist cuts Settlers by a third.
- public int CostFor(City c,int b){int cost=Cost(b);if(c==null)return cost;if((IsWonder(b)||IsProject(b))&&HasTrait(c.owner,TraitMonumental))cost-=cost/5;if(BuildUnit(b)==0&&HasTrait(c.owner,TraitExpansionist))cost-=cost/3;return cost;}
+ // Owner request (31 Oct): in the Dawn Age, buildings (not units, wonders or projects) take twice as long to build.
+ public int CostFor(City c,int b){int cost=Cost(b);if(c==null)return cost;if(BuildUnit(b)<0&&!IsWonder(b)&&!IsProject(b)&&Era(c.owner)==0)cost*=2;if((IsWonder(b)||IsProject(b))&&HasTrait(c.owner,TraitMonumental))cost-=cost/5;if(BuildUnit(b)==0&&HasTrait(c.owner,TraitExpansionist))cost-=cost/3;return cost;}
  bool CivilisationsValid(){return nations.All(n=>n!=null&&n.traits!=null&&n.traits.Length==2&&n.traits.All(t=>t>=-1&&t<CivilisationCatalog.TraitCount)&&n.civ>=-1&&n.civ<CivilisationCatalog.Count&&n.portrait>=-1&&n.portrait<CivilisationCatalog.PortraitCount);}
  // First contacts not yet shown to the player (the screen opens Diplomacy with each in turn). Not saved.
  [NonSerialized] public List<int> newContacts=new List<int>();

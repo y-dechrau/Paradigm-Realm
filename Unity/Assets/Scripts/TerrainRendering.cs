@@ -19,7 +19,7 @@ namespace ParadigmRealm { public partial class RealmGame {
  void PrepareTerrainView(){
   // Small maps refresh everything; large maps refresh only the visible window plus a margin for neighbour lookups.
   if(world.tiles.Length<=4000)PrepareTerrainRegion(0,0,world.Width-1,world.Height-1);
-  else PrepareTerrainRegion((int)(mapScroll.x/tilePixels)-4,(int)(mapScroll.y/tilePixels)-4,(int)((mapScroll.x+MapW)/tilePixels)+4,(int)((mapScroll.y+MapH)/tilePixels)+4);
+  else PrepareTerrainRegion((int)(mapScroll.x/tilePixels)-4,(int)(mapScroll.y/ClassicRowHeight())-4,(int)((mapScroll.x+MapW)/tilePixels)+4,(int)((mapScroll.y+MapH)/ClassicRowHeight())+4);
  }
  void PrepareTerrainRegion(int x0,int y0,int x1,int y1){
   if(terrainWorld!=world){ClearTerrainComposites();terrainWorld=world;}
@@ -29,10 +29,11 @@ namespace ParadigmRealm { public partial class RealmGame {
  }
  // Only tiles on screen are drawn, in the same row-by-row order as the full tile list.
  IEnumerable<Tile> TilesInView(){
-  int x0=Math.Max(0,(int)(mapScroll.x/tilePixels)-1),y0=Math.Max(0,(int)(mapScroll.y/tilePixels)-1);
-  int x1=Math.Min(world.Width-1,(int)((mapScroll.x+MapW)/tilePixels)+1),y1=Math.Min(world.Height-1,(int)((mapScroll.y+MapH)/tilePixels)+1);
+  int x0=Math.Max(0,(int)(mapScroll.x/tilePixels)-1),y0=Math.Max(0,(int)(mapScroll.y/ClassicRowHeight())-1);
+  int x1=Math.Min(world.Width-1,(int)((mapScroll.x+MapW)/tilePixels)+1),y1=Math.Min(world.Height-1,(int)((mapScroll.y+MapH)/ClassicRowHeight())+1);
   for(int y=y0;y<=y1;y++)for(int x=x0;x<=x1;x++)yield return world.tiles[y*world.Width+x];
  }
+ int StaggeredViewTerrain(Tile t,int dx,int dy){int y=t.y+dy;int x=(int)Math.Floor(t.x+(t.y&1)*.5+.5+dx-(y&1)*.5);return ViewTerrain(x,y);}
  int ViewTerrain(int x,int y){x=Math.Max(0,Math.Min(world.Width-1,x));y=Math.Max(0,Math.Min(world.Height-1,y));return terrainSnapshot[y*world.Width+x];}
  // Unknown neighbours are neutral grass; their hidden live type never affects art.
  int PaintTerrain(int x,int y){int t=ViewTerrain(x,y);return t<0?0:t;}
@@ -66,7 +67,8 @@ namespace ParadigmRealm { public partial class RealmGame {
  Texture2D TerrainAppearance(Tile t){
   if(terrainSnapshot==null||terrainWorld!=world)PrepareTerrainView();
   // 5x5 includes the river segments and warped corners influencing this tile.
-  var ids=compositeIds;int i=0;for(int y=-2;y<=2;y++)for(int x=-2;x<=2;x++)ids[i++]=ViewTerrain(t.x+x,t.y+y);
+  // Staggered maps: the neighbour on screen is the tile under the point dx tiles across and dy rows down.
+  var ids=compositeIds;int i=0;for(int y=-2;y<=2;y++)for(int x=-2;x<=2;x++)ids[i++]=world.Staggered?StaggeredViewTerrain(t,x,y):ViewTerrain(t.x+x,t.y+y);
   int ground0=-1;bool uniform=true,river=false;
   for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){int id=ids[(dy+2)*5+dx+2];if(id<0)id=0;if(id==7)river=true;int g=TerrainPainter.GroundOf(id);if(ground0<0)ground0=g;else if(g!=ground0)uniform=false;}
   uniform=uniform&&!river;

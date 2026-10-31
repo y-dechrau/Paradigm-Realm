@@ -47,7 +47,7 @@ namespace ParadigmRealm
             PixelCanvas cv=null;
             if(kind==1)cv=PixelArt.Sprite(a,b);else if(kind==6)cv=PixelArt.Hamlet(a,b);else if(kind==7)cv=PixelArt.PortSprite();else if(kind==8)cv=PixelArt.HudIcon(a);else if(kind==9)cv=PixelArt.CloudPuff(a);else if(kind==2)cv=PixelArt.Farm(a);else if(kind==3)cv=PixelArt.Road(a);else if(kind==5)cv=PixelArt.ResourceIcon(a);else cv=PixelArt.Misc(a);
             // Tile-shaped overlays (farms, roads, borders, selection, unexplored) are drawn as diamonds in the diagonal view.
-            if(cv!=null&&(kind==2||kind==3||kind==4&&a<=6))cv=PixelArt.ToDiamond(cv);
+            if(cv!=null&&(kind==2||kind==3||kind==4&&(a<=6||a==9)))cv=PixelArt.ToDiamond(cv);
             tex=cv==null?null:PixelTexture(cv);isoPictures[key]=tex;return tex;
         }
         void ClearIso()
@@ -60,8 +60,7 @@ namespace ParadigmRealm
         static int GroveVariant(int x,int y){unchecked{int h=x*83492791^y*1640531527;return (h&0x7fffffff)%8;}}
 
         // ---------- camera ----------
-        // The classic square view draws the old grid; staggered maps (shape 2) always use the pixel-art view.
-        void ToggleView(){if(world!=null&&world.Staggered){diamondView=true;status="The classic view is only available on older diagonal maps.";return;}diamondView=!diamondView;var u=Selected();if(u!=null)FocusTile(u.x,u.y);ResetMapGesture();}
+        void ToggleView(){diamondView=!diamondView;var u=Selected();if(u!=null)FocusTile(u.x,u.y);ResetMapGesture();}
         void ClampCamera()
         {
             if(world.Sphere){float w=world.Width;camI%=w;if(camI<0)camI+=w;}
@@ -113,7 +112,7 @@ namespace ParadigmRealm
         bool MapTileAt(Vector2 mouse,out int x,out int y)
         {
             if(diamondView)return IsoPick(mouse-new Vector2(MapX,MapY),out x,out y);
-            x=Mathf.FloorToInt((mouse.x-MapX+mapScroll.x)/tilePixels);y=Mathf.FloorToInt((mouse.y-MapY+mapScroll.y)/tilePixels);
+            return ClassicPick(mouse.x-MapX+mapScroll.x,mouse.y-MapY+mapScroll.y,out x,out y);
             var t=world.At(x,y);if(t==null)return false;x=t.x;y=t.y;return true;
         }
 
@@ -211,7 +210,8 @@ namespace ParadigmRealm
                 // Territory outline along edges that touch another owner or unknown ground.
                 if(t.owner>=0)
                 {
-                    Color ink=nations[t.owner];ink.a=.85f;int[] offI={0,1,0,-1},offJ={-1,0,1,0};
+                    // A faint wash of the owner's colour over every owned tile makes the whole territory readable, not just its edge.
+                    Color ink=nations[t.owner];ink.a=1f;GUI.color=new Color(ink.r,ink.g,ink.b,.13f);GUI.DrawTexture(ground,IsoPicture(4,9,0));int[] offI={0,1,0,-1},offJ={-1,0,1,0};
                     for(int k=0;k<4;k++)
                     {
                         var n=world.Step(source.x,source.y,offI[k],offJ[k]);
