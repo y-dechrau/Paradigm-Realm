@@ -10,7 +10,7 @@
 - **Rules:** clearing woodland needs Stone Tools (6 worker-turns), 4 with Bronze Working, 3 with Iron Working. The first Settler sees 4 tiles until it moves; a unit on a hill sees one tile further except past an adjacent hill or mountain (`SightRange`, `CanSee`).
 - **Workers:** Auto develop (More panel) hands a worker to the same planner the rivals use; R arms road mode, then a right-drag builds a road along the cheapest route (one tile at a time), R again builds on the spot (`Workers.cs`).
 - **World:** rare ancient ruins on open land (about one per 320 tiles), explored once by the first land unit for gold, research, a local map or veteran status (`SeedRuins`, `ExploreRuin`). Rivers are twice as common, rise on hills or mountains (or beside them), flow steepest-downhill and end in the sea, a lake or another river; one trapped in a hollow ends in a new lake.
-- **Interpretation to confirm with the owner:** "every 10 levels" is read as city size (2 at the start, 5 from size 30).
+- **Confirmed by the owner (31 Oct 2026):** "every 10 levels" means city size (2 at the start, 5 from size 30).
 - **Checked (31 Oct 2026, by Claude):** the UI harness and the engine harness pass; Unity RealmTools.Checks passes in batch mode; a Windows build runs its `-autoShot` sequence with no exceptions in Player.log, and the screenshots show the era research tabs, the smaller plates below cities with units on top, and the widened city land view. Not hand-played: right-drag orders, road mode, auto develop, ruins, overlap takeover, Ctrl+wheel tech zoom and the leader replies are compiled and covered by checks only where noted in ContentChecks.
 
 ## Owner requests 31 Oct (save version 20)
