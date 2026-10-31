@@ -30,7 +30,7 @@ namespace ParadigmRealm {
 // moves. A unit on a hill sees one tile further, except where the next tile towards the target is itself a hill or mountain:
 // then it sees only that tile in that direction.
 public partial class World {
- public int SightRange(Unit u){int r=u.type==3?4:2;if(u.type==0&&turn==1&&u.moves==Moves[0]&&!u.hasOrder)r=Math.Max(r,4);var here=At(u.x,u.y);if(here!=null&&here.terrain==2)r++;return r;}
+ public int SightRange(Unit u){int r=(u.type==3?4:2)+(CivId(u.owner)==30?1:0);if(u.type==0&&turn==1&&u.moves==Moves[0]&&!u.hasOrder)r=Math.Max(r,4);var here=At(u.x,u.y);if(here!=null&&here.terrain==2)r++;return r;}
  static bool HighGround(int terrain){return terrain==2||terrain==5||terrain==15||terrain==17;}
  public bool CanSee(Unit u,Tile t){
   if(t==null)return false;int d=Distance(u.x,u.y,t.x,t.y);if(d>SightRange(u))return false;if(d<=1)return true;

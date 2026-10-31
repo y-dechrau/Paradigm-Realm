@@ -35,7 +35,18 @@ public partial class World {
   new[]{"Baghdad","Mecca","Medina","Damascus","Basra","Kufa","Samarra","Raqqa","Mosul","Aleppo","Sana'a","Muscat"},
   new[]{"Pasargadae","Persepolis","Susa","Ecbatana","Sardis","Bactra","Ctesiphon","Isfahan","Shiraz","Tabriz","Nishapur","Merv"},
   new[]{"Pataliputra","Ujjain","Taxila","Varanasi","Sanchi","Mathura","Kaushambi","Tosali","Suvarnagiri","Ayodhya","Kanchipuram","Vidisha"},
-  new[]{"Babylon","Kish","Nippur","Sippar","Borsippa","Larsa","Ur","Uruk","Eridu","Lagash","Isin","Mari"}};
+  new[]{"Babylon","Kish","Nippur","Sippar","Borsippa","Larsa","Ur","Uruk","Eridu","Lagash","Isin","Mari"},
+  // Native peoples of the parallel worlds.
+  new[]{"Silverbough","Moonglade","Elarion","Thistlewood","Starfall Bower","Lirien","Dawnspring","Willowhall","Aelmere","Fernsong","Glimmerdell","Eventide"},
+  new[]{"High Aerie","Cloudnest","Stormperch","Windspire","Skyreach","Featherfall","Talon Rock","Gale Roost","Updraft","Eyrie Crown","Zephyr Ledge","Thunderwing"},
+  new[]{"Node Prime","Foundry Alpha","Core 7","Relay Theta","Gearhold","Array Sigma","Unit Cradle","Logic Vault","Spindle","Cog Nexus","Circuit Deep","Iron Lattice"},
+  new[]{"Ashforge","Stonedeep","Emberhold","Cinderdeep","Grimstone","Hammerfall","Coalgate","Anvilhome","Deepdelve","Slagmount","Runehall","Ironvein"},
+  new[]{"Throne of Cinders","Brimstone Gate","Malgoroth's Maw","Pyre Citadel","Ashen Spire","Searing Pit","Obsidian Keep","Hellmouth","Scorchreach","Flayed Tower","Sulphur Court","Wrathfire"},
+  new[]{"Gorefort","Bloodtusk Camp","Skullpile","Grukka's Hold","Bonecrag","Ironjaw","Redmaw","Smashgate","Wolfden Rock","Gutrot","Spikewall","Burnt Tusk"},
+  new[]{"Gnawhole","Rotden","Skritt's Nest","Burrowmire","Plaguewarren","Squeakvault","Gnawgate","Bilepit","Tunnelrot","Scurryhold","Verminhole","Ratspire"},
+  new[]{"Sporeheart","Mycel Ring","Capgrove","Gillhollow","Rootmeld","Moldmere","Puffball Rise","Hyphae Deep","Lichenveil","Mossbloom","Stalkhall","Fruiting Glade"},
+  new[]{"Coral Throne","Tidehaven","Pearlspire","Kelpmoor","Wavecrown","Shellreach","Abyssal Gate","Seafoam Court","Brinewell","Reefdeep","Undertow","Nautilus Hall"},
+  new[]{"Xoth's Pyramid","Sunscale","Coatlpan","Serpent Steps","Jadeclaw","Reef Temple","Venomgrove","Starscale","Old Sun","Basking Rock","Fangwater","Itzamal"}};
  static readonly string[] SharedCityNames={"Ashford","Brindlemoor","Cinderfall","Dunmere","Embervale","Farrowdale","Glenhallow","Hollowmere","Ironwood","Juniper Hill","Kestrel Point","Larkspur","Maplecross","Northwind","Oakridge","Pinehurst","Quarrystone","Redcliff","Stonebridge","Thistledown","Umberlee","Vinehold","Westmarch","Yarrowfield","Ambergate","Bramblewick","Coppervale","Deepwell","Eastmere","Foxhollow","Goldfurrow","Highcairn","Isleby","Jasper Ford","Knollwood","Lindenhall","Marrowby","Nettlebank","Orchard End","Pebblebrook","Riverwatch","Sablecrest","Tallowmere","Upperbrook","Valewood","Wrenfield","Yewbarrow","Zephyr Rise"};
  public string NewCityName(int owner){
   var used=new System.Collections.Generic.HashSet<string>(cities.Select(c=>c.name),StringComparer.OrdinalIgnoreCase);

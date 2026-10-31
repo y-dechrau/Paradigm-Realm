@@ -12,11 +12,13 @@ public partial class RealmGame {
  // The Diplomacy button first asks which leader to contact; the talk that follows is with that leader alone.
  void DrawLeaderChooser(int[] known){
   DipPanel(new Rect(400,84,480,44),.9f);GUI.Label(new Rect(400,88,480,34),"Choose a leader to contact",dipBig);
-  var backdrop=Art("diplomacy-backdrop");int cols=Math.Min(5,known.Length);float cw=220,ch=300,gap=18,x0=640-(cols*cw+(cols-1)*gap)/2;
+  var backdrop=Art("diplomacy-backdrop");
+  // Up to 15 leaders (with the native peoples): two rows of up to eight cards, smaller as more are known.
+  int cols=known.Length<=5?known.Length:Math.Min(8,(known.Length+1)/2);int rows=(known.Length+cols-1)/cols;float gap=14,cw=Math.Min(220,(1220-(cols-1)*gap)/cols),ch=Math.Min(300,(580-(rows-1)*gap)/rows),x0=640-(cols*cw+(cols-1)*gap)/2;
   for(int k=0;k<known.Length;k++){
-   int other=known[k];var card=new Rect(x0+(k%5)*(cw+gap),140+(k/5)*(ch+gap),cw,ch);DipPanel(card,1);var pic=new Rect(card.x+4,card.y+4,card.width-8,card.height-60);
+   int other=known[k];var card=new Rect(x0+(k%cols)*(cw+gap),140+(k/cols)*(ch+gap),cw,ch);DipPanel(card,1);var pic=new Rect(card.x+4,card.y+4,card.width-8,card.height-60);
    if(backdrop!=null)DrawCropped(pic,backdrop,BackdropAspect);var face=Portrait(world.nations[other].portrait,world.Era(other));if(face!=null)DrawPortrait(pic,face);
-   Fill(new Rect(card.x+4,card.yMax-56,card.width-8,52),new Color(.04f,.06f,.12f,.96f));GUI.Label(new Rect(card.x,card.yMax-54,card.width,24),world.NationName(other).ToUpperInvariant(),new GUIStyle(dipCaps){fontSize=14});
+   Fill(new Rect(card.x+4,card.yMax-56,card.width-8,52),new Color(.04f,.06f,.12f,.96f));FitLabel(new Rect(card.x+2,card.yMax-54,card.width-4,24),world.NationName(other).ToUpperInvariant(),new GUIStyle(dipCaps){fontSize=14},9);
    Color ink;GUI.Label(new Rect(card.x,card.yMax-30,card.width,22),MoodText(other,out ink),new GUIStyle(dipBadge){normal={textColor=ink}});
    int waiting=world.offers.Count(o=>o.to==0&&o.from==other&&o.status==0&&o.expires>world.turn);if(waiting>0){var b=new Rect(card.xMax-30,card.y+8,22,22);Fill(b,new Color(.75f,.18f,.14f));GUI.Label(b,waiting.ToString(),dipBadge);}
    if(card.Contains(Event.current.mousePosition))Fill(new Rect(card.x,card.y,card.width,2),new Color(1f,.82f,.42f));
@@ -123,7 +125,7 @@ public partial class RealmGame {
   // Shield, name, subtitle and mood badge.
   // Their flag in place of a shield.
   {var theirFlag=FlagTexture(partner);var fr=new Rect(side.x+14,y+12,72,48);DipPanel(new Rect(fr.x-3,fr.y-3,fr.width+6,fr.height+6),1);if(theirFlag!=null)GUI.DrawTexture(fr,theirFlag,ScaleMode.StretchToFill,true);}
-  GUI.Label(new Rect(side.x+92,y,240,40),world.NationName(partner),dipName);
+  FitLabel(new Rect(side.x+92,y,side.width-240,40),world.NationName(partner),dipName,14);
   GUI.Label(new Rect(side.x+92,y+40,330,22),(string.IsNullOrEmpty(pn.leader)?"":pn.leader+" — ")+world.Personality(partner).Split(':')[0],new GUIStyle(dipRow){fontSize=14});
   Color moodInk;string mood=MoodText(partner,out moodInk);var badge=new Rect(side.xMax-140,y+6,124,26);Fill(badge,new Color(moodInk.r*.25f,moodInk.g*.25f,moodInk.b*.25f,.95f));Fill(new Rect(badge.x,badge.y,badge.width,1),moodInk);Fill(new Rect(badge.x,badge.yMax-1,badge.width,1),moodInk);var bs=new GUIStyle(dipBadge);bs.normal.textColor=moodInk;GUI.Label(badge,mood,bs);
   Fill(new Rect(side.x+92,y+68,side.width-108,1),new Color(.78f,.62f,.32f,.7f));

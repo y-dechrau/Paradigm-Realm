@@ -16,7 +16,7 @@ namespace ParadigmRealm
         public void Over(int x,int y,uint c){if(x>=0&&y>=0&&x<w&&y<h&&(c>>24)>0)p[y*w+x]=c;}
     }
 
-    public static class PixelArt
+    public static partial class PixelArt
     {
         // TW x TH = one tile on screen at zoom 64; CW x CH = composed ground (the same size: land and water are level);
         // sprites are SW x SH with the tile centre at (AX,AY). Elev stays 0 (no step between land and sea, owner request).

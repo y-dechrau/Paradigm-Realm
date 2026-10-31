@@ -3,7 +3,7 @@ using System.Linq;
 namespace ParadigmRealm {
 public static class DiplomacyChecks {
  static void Check(bool yes,string why){if(!yes)throw new Exception("Diplomacy: "+why);}
- static World Setup(){var w=World.New(613);w.Found(w.units.First(u=>u.owner==0&&u.type==0));w.met[1]=w.met[2]=true;w.Relation(1,2).contact=true;w.gold=500;foreach(var n in w.nations)n.gold=500;
+ static World Setup(){var w=World.New(613,natives:false);w.Found(w.units.First(u=>u.owner==0&&u.type==0));w.met[1]=w.met[2]=true;w.Relation(1,2).contact=true;w.gold=500;foreach(var n in w.nations)n.gold=500;
   // Rival leader agendas (CivLore) move opinion; these checks measure the treaty rules alone, so the rivals here have none.
   for(int o=1;o<w.civCount;o++)w.nations[o].civ=-1;return w;}
  static void Next(World w){w.turn++;w.AdvanceDiplomacy();}

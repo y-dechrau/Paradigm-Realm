@@ -77,6 +77,8 @@ namespace ParadigmRealm
             world.newContacts.Add(1);world.met[1]=true;
             yield return Shot(folder,"4d-first-contact.bmp");
             diplomacyChooser=true;yield return Shot(folder,"4e-diplomacy-chooser.bmp");diplomacyChooser=false;
+            // The native peoples of the parallel worlds in diplomacy (this throwaway game only).
+            {int demons=Enumerable.Range(1,world.civCount-1).FirstOrDefault(o=>world.nations[o].civ==33);if(demons>0){for(int o=1;o<world.civCount;o++)if(world.IsNativeNation(o))world.met[o]=true;detailsScreen="Diplomacy";diplomacyChooser=true;yield return Shot(folder,"4f-natives-chooser.bmp");diplomacyChooser=false;diplomacyPartner=demons;ResetDiplomacyUI();yield return Shot(folder,"4g-demon-talks.bmp");for(int o=1;o<world.civCount;o++)if(world.IsNativeNation(o))world.met[o]=false;}}
             detailsScreen="";
             // A revealed, zoomed-out view so coastlines and banks are visible (this throwaway game only).
             detailsScreen="";foreach(var t in world.tiles){t.seen=true;t.rememberedTerrain=t.terrain;t.rememberedResource=t.resource;t.rememberedOwner=t.owner;t.rememberedRoad=t.road;t.rememberedFarm=t.farm;t.rememberedMine=t.mine;t.rememberedFort=t.fort;}

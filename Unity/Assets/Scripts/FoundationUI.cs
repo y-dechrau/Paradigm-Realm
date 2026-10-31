@@ -73,7 +73,8 @@ namespace ParadigmRealm
         {
             if(!world.Valid())throw new Exception("Game state did not pass validation; existing save preserved.");
             string temporary=path+".tmp";
-            File.WriteAllText(temporary,JsonUtility.ToJson(world,true));
+            // Compact JSON: with the parallel worlds a map is six times the size, so saves are written without indentation.
+            File.WriteAllText(temporary,JsonUtility.ToJson(world,false));
             if(File.Exists(path))File.Replace(temporary,path,path+".bak");else File.Move(temporary,path);
         }
         void AutoSave()
@@ -110,7 +111,7 @@ namespace ParadigmRealm
             GUILayout.Label((setupShape==1?World.SphereWidths[setupSize]:World.MapWidths[setupSize])+" x "+(setupShape==1?World.SphereHeights[setupSize]:World.MapHeights[setupSize])+" tiles. Bigger worlds take longer turns.",small);
             GUILayout.Space(6);GUILayout.Label("Land",body);setupMap=GUILayout.SelectionGrid(setupMap,World.LandTypeNames,3);GUILayout.Label(World.LandTypeTexts[setupMap],small);
             int maxCivs=World.MaxCivsBySize[setupSize];if(setupCivs>maxCivs)setupCivs=maxCivs;if(setupCivs<2)setupCivs=2;
-            GUILayout.Space(6);GUILayout.Label("Civilisations: "+setupCivs+" (you and "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+"; up to "+maxCivs+" on this size)",body);
+            GUILayout.Space(6);GUILayout.Label("Civilisations: "+setupCivs+" (you and "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+"; up to "+maxCivs+" on this size), plus "+Math.Min(10,16-setupCivs)+" native peoples in the parallel worlds",body);
             setupCivs=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupCivs,2,maxCivs));
             GUILayout.Space(6);tutorialOn=GUILayout.Toggle(tutorialOn," Play with the tutorial: "+GuideName+" talks you through the first turns");
             GUILayout.EndArea();

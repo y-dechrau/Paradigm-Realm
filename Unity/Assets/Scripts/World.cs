@@ -181,7 +181,7 @@ namespace ParadigmRealm
         public Unit Add(int owner,int type,int x,int y){var u=new Unit{id=nextId++,owner=owner,type=type,x=x,y=y};u.moves=MaxMoves(u);units.Add(u);return u;}
         // civChoice: -2 keeps the old single-trait setup (trait), 0-11 picks a premade civilisation, -1 a custom one (name, leader,
         // portrait and traitA/traitB). Rivals then take premade civilisations the player did not choose.
-        public static World New(int seed,string civilisationName="Verdant Union",int mapType=0,int speed=1,int difficulty=1,int trait=0,int mapSize=1,int mapShape=0,int civs=3,int civChoice=-2,string leader="",int portrait=0,int traitA=-1,int traitB=-1,bool realWorld=false)
+        public static World New(int seed,string civilisationName="Verdant Union",int mapType=0,int speed=1,int difficulty=1,int trait=0,int mapSize=1,int mapShape=0,int civs=3,int civChoice=-2,string leader="",int portrait=0,int traitA=-1,int traitB=-1,bool realWorld=false,bool natives=true)
         {
             // New globe games use staggered rows (shape 2): the same tile count as the diagonal globe, W columns by 2W rows,
             // which shows as a 2:1 picture because rows are half a tile tall.
@@ -225,7 +225,7 @@ namespace ParadigmRealm
             w.PlaceLandResources(r);
             for(int i=0;i<civs;i++){w.Step(sx[i],sy[i],-1,0).resource=1;w.Step(sx[i],sy[i],2,0).resource=4;var hill=w.Step(sx[i],sy[i],0,-2);hill.terrain=2;hill.resource=2;}
             w.HarmoniseBiomes();w.SeedSeaResources();
-            w.EnsureFlags();w.SeedVillages();w.SeedRuins();w.AddRealms();w.RebuildTerritory();w.Reveal();w.Note("Found a city, choose production and research. F1 opens the guide.");return w;
+            w.EnsureFlags();w.SeedVillages();w.SeedRuins();w.AddRealms();if(natives)w.AddNatives();w.RebuildTerritory();w.Reveal();w.Note("Found a city, choose production and research. F1 opens the guide.");return w;
         }
         [NonSerialized] bool[] visibleMask; [NonSerialized] bool visibleMaskOn;
         // The screen asks "is this tile visible to the player?" thousands of times per frame. For the length of one

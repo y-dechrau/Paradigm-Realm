@@ -8,7 +8,7 @@ namespace ParadigmRealm
     public static class FoundationChecks
     {
         static void Require(bool condition,string message){if(!condition)throw new Exception("FAIL: "+message);}
-        static World Flat(){var w=World.New(73);foreach(string id in new[]{"toolmaking","wheel","pottery"})w.tech[TechnologyCatalog.Index(id)]=true;foreach(var t in w.tiles){t.terrain=0;t.road=false;t.resource=0;t.seen=true;for(int n=0;n<3;n++)w.nations[n].known[t.y*w.Width+t.x]=true;}return w;}
+        static World Flat(){var w=World.New(73,natives:false);foreach(string id in new[]{"toolmaking","wheel","pottery"})w.tech[TechnologyCatalog.Index(id)]=true;foreach(var t in w.tiles){t.terrain=0;t.road=false;t.resource=0;t.seen=true;for(int n=0;n<3;n++)w.nations[n].known[t.y*w.Width+t.x]=true;}return w;}
         public static void Run()
         {
             var w=Flat();Require(w.Valid(),"new state validates");
@@ -199,7 +199,7 @@ namespace ParadigmRealm
             foreach(var plan in new[]{new[]{1,1,2},new[]{1,1,5},new[]{0,0,4},new[]{1,2,8},new[]{0,1,6}})
             {
                 int shape=plan[0],size=plan[1],civs=plan[2];
-                var w=World.New(900+civs,"Civ Test",0,1,1,0,size,shape,civs);
+                var w=World.New(900+civs,"Civ Test",0,1,1,0,size,shape,civs,natives:false);
                 string label=(shape==1?"sphere ":"flat ")+World.MapSizeNames[size]+" with "+civs+" civilisations";
                 Require(w.civCount==civs&&w.nations.Length==civs&&w.met.Length==civs&&w.war.Length==civs&&w.openBorders.Length==civs,label+": per-civilisation arrays match");
                 Require(w.diplomacy.Count==civs*(civs-1)/2&&w.Valid(),label+": diplomacy pairs and validity");
@@ -211,11 +211,11 @@ namespace ParadigmRealm
                 for(int i=0;i<6;i++)w.EndTurn();
                 Require(w.Valid(),label+": still valid after six turns");
             }
-            var clamped=World.New(5,"Clamp",0,1,1,0,0,1,16);
+            var clamped=World.New(5,"Clamp",0,1,1,0,0,1,16,natives:false);
             Require(clamped.civCount==World.MaxCivsBySize[0],"requests above the size limit are clamped");
-            var old=World.New(6,"Old",0,1,1,0,1,0,3);old.version=9;old.rivalWar=true;foreach(var p in old.diplomacy)p.atWar=false;old.UpgradeSave();
+            var old=World.New(6,"Old",0,1,1,0,1,0,3,natives:false);old.version=9;old.rivalWar=true;foreach(var p in old.diplomacy)p.atWar=false;old.UpgradeSave();
             Require(old.version==23&&old.civCount==3&&old.AtWar(1,2)&&!old.AtWar(0,1)&&old.Valid(),"version 9 saves upgrade with the old rival war flag preserved");
-            var peace=World.New(7,"Peace",0,1,1,0,1,0,3);peace.version=9;peace.rivalWar=false;peace.UpgradeSave();
+            var peace=World.New(7,"Peace",0,1,1,0,1,0,3,natives:false);peace.version=9;peace.rivalWar=false;peace.UpgradeSave();
             Require(!peace.AtWar(1,2)&&peace.Valid(),"version 9 peace between rivals preserved");
         }
         static void VictoryChecks()
@@ -245,13 +245,13 @@ namespace ParadigmRealm
                 var w=World.New(70+size,"Sphere Test",0,1,1,0,size,1);
                 Require(w.Sphere&&w.Staggered&&w.Width==World.SphereHeights[size]&&w.MainHeight==World.SphereWidths[size]&&w.MainHeight==2*w.Width&&w.tiles.Length==w.Width*w.Height,name+" globe is W columns by 2W half-height rows (a 2:1 picture)");
                 Require(w.Valid(),"new "+name+" sphere is valid");
-                Require(w.cities.Count==2&&w.units.Count(u=>u.owner==0)==3,name+" sphere has the usual starting civilisations and units");
+                Require(w.cities.Count(c=>w.RealmOf(c.x,c.y)==0)==2&&w.units.Count(u=>u.owner==0)==3,name+" sphere has the usual starting civilisations and units");
                 Require(w.units.Where(u=>u.owner==0).All(u=>!World.IsImpassable(w.At(u.x,u.y).terrain)),"player starts on passable land on the "+name+" sphere");
                 if(w.tiles.Length<=10000)for(int owner=0;owner<3;owner++)for(int i=0;i<w.tiles.Length;i++)if(w.nations[owner].known[i]!=w.VisibleTo(owner,i%w.Width,i/w.Width))throw new Exception("FAIL: incremental fog differs from full visibility on the "+name+" sphere");
                 // All three civilisations must share one landmass so conquest is possible without ships.
                 var start=w.cities.First(c=>c.owner==1);var reached=new HashSet<int>{start.y*w.Width+start.x};var queue=new Queue<Tile>();queue.Enqueue(w.At(start.x,start.y));
                 while(queue.Count>0){var t=queue.Dequeue();for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=w.Step(t.x,t.y,dx,dy);if(n==null||World.IsImpassable(n.terrain)||!reached.Add(n.y*w.Width+n.x))continue;queue.Enqueue(n);}}
-                Require(w.cities.All(c=>reached.Contains(c.y*w.Width+c.x))&&w.units.Where(u=>u.owner==0).All(u=>reached.Contains(u.y*w.Width+u.x)),"all "+name+" sphere starts are connected by land");
+                Require(w.cities.Where(c=>w.RealmOf(c.x,c.y)==0).All(c=>reached.Contains(c.y*w.Width+c.x))&&w.units.Where(u=>u.owner==0).All(u=>reached.Contains(u.y*w.Width+u.x)),"all "+name+" sphere starts are connected by land");
                 var homeTiles=w.tiles.Where(t=>t.realm==0).ToArray();int land=homeTiles.Count(t=>t.terrain!=4&&t.terrain!=12&&t.terrain!=14);
                 Require(land*100>=homeTiles.Length*28&&land*100<=homeTiles.Length*50,name+" sphere has a believable land share ("+(land*100/homeTiles.Length)+"%)");
                 Require(homeTiles.Count(t=>t.terrain==14)>0&&homeTiles.Any(t=>t.terrain==8||t.terrain==13)&&homeTiles.Any(t=>t.terrain==0)&&homeTiles.Any(t=>t.terrain==1),name+" sphere has polar ice, cold land, grass and forest");
@@ -289,7 +289,7 @@ namespace ParadigmRealm
             var climber=s.Add(0,2,4,0);climber.moves=4;
             Require(!s.Move(climber,4,-1)&&climber.x==4&&climber.y==0,"no step beyond the north pole on a staggered globe");
             // Saves migrate: version 8 becomes version 9 and stays flat.
-            var old=World.New(8);old.version=8;old.UpgradeSave();
+            var old=World.New(8,natives:false);old.version=8;old.UpgradeSave();
             Require(old.version==23&&old.mapShape==0&&old.Valid(),"version 8 saves upgrade to flat version 23");
         }
         static void MapSizeChecks()
@@ -300,13 +300,13 @@ namespace ParadigmRealm
                 Require(w.Width==World.MapWidths[size]&&w.MainHeight==World.MapHeights[size]&&w.tiles.Length==w.Width*w.Height,name+" map has the right dimensions");
                 Require(w.Valid(),"new "+name+" world is valid");
                 Require(w.nations.All(n=>n.known.Length==w.tiles.Length),"known-tile arrays match the "+name+" map");
-                Require(w.cities.Count==2&&w.units.Count(u=>u.owner==0)==3,name+" map has the usual starting civilisations and units");
+                Require(w.cities.Count(c=>w.RealmOf(c.x,c.y)==0)==2&&w.units.Count(u=>u.owner==0)==3,name+" map has the usual starting civilisations and units");
                 Require(w.units.Where(u=>u.owner==0).All(u=>!World.IsImpassable(w.At(u.x,u.y).terrain)),"player starts on passable land on the "+name+" map");
                 if(w.tiles.Length<=10000)for(int owner=0;owner<3;owner++)for(int i=0;i<w.tiles.Length;i++)if(w.nations[owner].known[i]!=w.VisibleTo(owner,i%w.Width,i/w.Width))throw new Exception("FAIL: incremental fog differs from full visibility on the "+name+" map");
             }
             Require(World.New(9).Width==48&&World.New(9).MainHeight==30,"default map stays Small 48 x 30");
             Require(World.New(9,"A",0,1,1,0,1).tiles.Select(t=>t.terrain).SequenceEqual(World.New(9).tiles.Select(t=>t.terrain)),"Small is the default size and repeatable by seed");
-            var legacy=World.New(3);legacy.version=7;legacy.mapWidth=0;legacy.mapHeight=0;legacy.UpgradeSave();
+            var legacy=World.New(3,natives:false);legacy.version=7;legacy.mapWidth=0;legacy.mapHeight=0;legacy.UpgradeSave();
             Require(legacy.Width==48&&legacy.MainHeight==30&&legacy.version==23&&legacy.Valid(),"version 7 saves upgrade to Small flat version 23");
         }
     }

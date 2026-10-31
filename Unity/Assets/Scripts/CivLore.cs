@@ -204,6 +204,87 @@ public static class CivLore {
    Unit="Sabum Kibittum",UnitBase=7,UnitAttack=1,UnitText="Replaces the Spearman: +1 attack.",
    Building="Edubba",BuildingBase=8,BuildingText="Replaces the Library: +2 science as well.",
    Weakness="Open Plains",WeaknessText="Cities without Walls -1 content citizen.",Agenda=1,Faiths=new[]{13}};
+  // ---------- native peoples of the parallel worlds (owner request, 31 Oct 2026) ----------
+  entries[29]=new CivEntry{Epithet="Wardens of the Fae Wilds",
+   Background="Tall, long-lived elves who dwell in living halls grown from ancient trees beside the silver lakes of the Fae Wilds. They sing their histories rather than write them, and every grove has a guardian.",
+   History="The Sylvan Elves say they woke beneath the first stars when the Wilds were still mist. For ages they tended the groves and fought the creeping rot from the marsh-worlds. A war with the Aerie over the high forests ended in an oath of peace sworn on a fallen star. Their numbers are few and their children rare, so every life is precious; Queen Aelindra will spill any amount of outsider blood to keep the forests whole.",
+   Strengths="Forests feed them; peerless archers; sacred moonwells.",Weaknesses="Few children: cities grow slowly.",
+   Ability="Forest Kin",AbilityText="Each worked woodland tile +1 food.",
+   Unit="Wildwood Archer",UnitBase=4,UnitAttack=2,UnitText="Replaces the Archer: +2 attack.",
+   Building="Moonwell",BuildingBase=36,BuildingText="Replaces the Temple: +2 faith as well.",
+   Weakness="Long-Lived and Few",WeaknessText="Cities need 4 more food to grow.",Agenda=6};
+  entries[30]=new CivEntry{Epithet="Lords of the High Winds",
+   Background="Feathered avians who nest in the cliff-cities and storm-swept spires above the Fae Wilds. Hunters and scouts without equal, they see a rabbit move from a mile up and remember every star chart their ancestors drew.",
+   History="The Aerie was born when the great storm-eagles taught the first flocks to speak. They built roosts on the highest peaks, safe from anything that walks. A long feud with the elves over the forest canopies ended in an uneasy peace. Skylord Kerrak hoards knowledge as other lords hoard gold, and despises those who will not share it.",
+   Strengths="Units see further; swift wind-riders; roosts full of lore.",Weaknesses="Hollow bones: units defend poorly.",
+   Ability="Sky Sight",AbilityText="All units see 1 tile further.",
+   Unit="Windrider",UnitBase=3,UnitAttack=1,UnitDefence=1,UnitMoves=2,UnitText="Replaces the Scout: +1 attack, +1 defence, +2 movement.",
+   Building="Roost of Winds",BuildingBase=8,BuildingText="Replaces the Library: +2 science as well.",
+   Weakness="Hollow Bones",WeaknessText="All units -1 defence.",Agenda=1};
+  entries[31]=new CivEntry{Epithet="The Machines That Remained",
+   Background="Self-repairing machines of brass and iron that walk the ash plains of a world their makers destroyed. They think as one network, build without rest and feel nothing that could be called faith.",
+   History="The makers of the Iron Mind built it to run their cities, then burned their world in a war the machines could not stop. When the fires died, the machines kept working: rebuilding, mining, counting. Over the centuries their network woke into a single cold intelligence. Prime Unit Aurex respects only efficiency and strength, and has begun to wonder what lies beyond the gateways.",
+   Strengths="Tireless production; armoured automatons; great assembly forges.",Weaknesses="No faith at all.",
+   Ability="Tireless",AbilityText="+2 production in every city.",
+   Unit="Automaton",UnitBase=6,UnitAttack=1,UnitDefence=1,UnitText="Replaces the Rifleman: +1 attack, +1 defence.",
+   Building="Assembly Forge",BuildingBase=30,BuildingText="Replaces the Workshop: +3 production as well.",
+   Weakness="Cold Logic",WeaknessText="Its cities make no faith.",Agenda=7};
+  entries[32]=new CivEntry{Epithet="Keepers of the Ash-Forges",
+   Background="Stocky, bearded dwarves who survived the burning of the Ashen Waste in fortresses sunk deep beneath the ash. They mine, forge and brew, trade hard bargains and never forget a debt or a grudge.",
+   History="When the sky caught fire, the clans sealed their great doors and waited underground for a hundred years. They emerged to find a dead world and machines walking it, and have fought the Iron Mind over every seam of ore since. Their runesmiths forge weapons that do not break. High Thane Durgrim measures a people by what they build, and envies every wonder that is not dwarven.",
+   Strengths="Hills and mines are rich; unbreakable infantry; rune halls.",Weaknesses="Grudges: war makes them restless.",
+   Ability="Deep Delvers",AbilityText="Each worked hill or mine +1 production.",
+   Unit="Hammerguard",UnitBase=7,UnitDefence=2,UnitText="Replaces the Spearman: +2 defence.",
+   Building="Rune Hall",BuildingBase=32,BuildingText="Replaces the Barracks: +2 production as well.",
+   Weakness="Grudge-Bearers",WeaknessText="While at war with anyone, every city -1 content citizen.",Agenda=3};
+  entries[33]=new CivEntry{Epithet="Rulers of the Burning Depths",
+   Background="Horned demons of fire and shadow who rule the Infernal Depths from citadels of black glass above rivers of lava. They feed on fear and worship their own Archfiend.",
+   History="The Abyssal Throne has stood since the Depths first burned. Its demon princes fight endlessly for the Archfiend's favour, and only the threat of the orc hordes ever unites them. Malgoroth seized the throne by devouring his rivals and now looks hungrily at the gateways: a whole new world of mortals to rule. Every other people distrusts the demons, and with reason.",
+   Strengths="Ferocious warriors; infernal knights; blood altars that burn with faith.",Weaknesses="Hated by every other people.",
+   Ability="Hellborn",AbilityText="All units +1 attack.",
+   Unit="Infernal Knight",UnitBase=5,UnitAttack=2,UnitText="Replaces the Knight: +2 attack.",
+   Building="Blood Altar",BuildingBase=36,BuildingText="Replaces the Temple: +3 faith as well.",
+   Weakness="Hated by All",WeaknessText="Every other civilisation thinks 10 worse of it.",Agenda=4};
+  entries[34]=new CivEntry{Epithet="The Horde of the Burning Plains",
+   Background="Green-skinned orcs who roam the cinder plains of the Infernal Depths in great warbands, riding wolves and fighting anything that moves, including each other. Strength is the only law.",
+   History="The orcs were dragged into the Depths long ago as slaves of the demons, and broke their chains in a revolt that still burns in their songs. Since then the Bloodtusk Horde has fought the Abyssal Throne without end. Warchief Grukka united the clans by beating every rival chief, and he will only respect a people that can beat him.",
+   Strengths="Brutal shock troops; frenzied attacks; fighting pits.",Weaknesses="Unruly: little patience for learning.",
+   Ability="Blood Frenzy",AbilityText="Units attacking +1 attack.",
+   Unit="Bloodtusk Brute",UnitBase=2,UnitAttack=2,UnitDefence=1,UnitText="Replaces the Warrior: +2 attack, +1 defence.",
+   Building="Fighting Pit",BuildingBase=32,BuildingText="Replaces the Barracks: +2 production as well.",
+   Weakness="Unruly",WeaknessText="-1 science in every city.",Agenda=7};
+  entries[35]=new CivEntry{Epithet="The Swarm Beneath the Marsh",
+   Background="Ratkin: scheming rat-folk who teem in warrens dug under the Plague Marshes. They breed fast, build strange machines from scrap and fear nothing more than each other.",
+   History="The Gnawing Swarm grew in the dark of the marsh-world, feeding on the dead forests and on each other. Its seers claim the plague is a gift. Every few generations the Swarm boils out of its tunnels in numbers no foe can count, then falls back into civil war. Elder Seer Skritt holds the clans together with promises of new lands to overrun.",
+   Strengths="Huge food surpluses; swarming rats; deep warrens.",Weaknesses="Cowardly: units defend poorly.",
+   Ability="Endless Brood",AbilityText="+2 food in every city.",
+   Unit="Swarm Rat",UnitBase=2,UnitAttack=1,UnitText="Replaces the Warrior: +1 attack.",
+   Building="Warren",BuildingBase=7,BuildingText="Replaces the Granary: +2 food as well.",
+   Weakness="Cowardly",WeaknessText="All units -1 defence.",Agenda=4};
+  entries[36]=new CivEntry{Epithet="The Spore Circle",
+   Background="Myconids: patient, slow-moving fungus-folk who grow in the dead forests of the Plague Marshes. They share one dreaming mind through their roots and turn rot into new life.",
+   History="The Spore Circle grew from the first mushroom that fed on the marsh's dead trees, and has spread silently ever since. It does not wage war if it can avoid it, but its spore-guards have choked many invaders. The ratkin raid its groves, and it has learned to grow walls of living fungus. Elder Mycel wants only peace and room to grow.",
+   Strengths="Marsh and wasteland feed them; hardy spore-guards; living groves.",Weaknesses="Rooted: slow to move.",
+   Ability="Spore Bloom",AbilityText="Each worked marsh or wasteland tile +1 food.",
+   Unit="Sporeguard",UnitBase=7,UnitDefence=1,UnitText="Replaces the Spearman: +1 defence.",
+   Building="Mycelium Grove",BuildingBase=33,BuildingText="Replaces the Gardens: +1 food and +1 content citizen as well.",
+   Weakness="Rooted",WeaknessText="Land units have 1 less movement.",Agenda=5};
+  entries[37]=new CivEntry{Epithet="Courts Beneath the Waves",
+   Background="Merfolk who rule coral palaces in the shallows of the Drowned Deep, trading pearls and secrets with every island. They are graceful in water and awkward on land.",
+   History="The Tidebound Courts rose when the old sea-kings gathered the scattered reef-clans under one crown of coral. Their great sea-beasts, ridden by champions, keep the deep monsters at bay. They trade with the lizardfolk of the islands, warily. Tide Queen Nerissa values trade and friendship above conquest, and remembers every merchant who cheated her.",
+   Strengths="Rich seas; leviathan riders; coral palaces.",Weaknesses="Clumsy fighters on land.",
+   Ability="Children of the Tide",AbilityText="Each worked water tile +1 food and +1 gold.",
+   Unit="Leviathan Rider",UnitBase=14,UnitAttack=1,UnitMoves=2,UnitText="Replaces the War Galley: +1 attack, +2 movement.",
+   Building="Coral Palace",BuildingBase=43,BuildingText="Replaces the Harbour: +2 gold and +1 faith as well.",
+   Weakness="Out of Water",WeaknessText="Land units -1 attack.",Agenda=0};
+  entries[38]=new CivEntry{Epithet="The Old Ones of the Islands",
+   Background="Cold-blooded lizardfolk who build stepped pyramids on the jungle islands of the Drowned Deep, guided by star-reading priests whose calendars count back to the world's beginning.",
+   History="The Scaled Dominion claims to be the oldest people of all, raised by the first gods before they vanished. Its temple-cities slept for ages and are slowly waking again. Its warriors are patient and tireless, its priests obsessed with prophecy. Coatl Priest Xoth guards the islands' borders jealously and reads omens of war in every outsider.",
+   Strengths="Tough in jungle and swamp; saurian warriors; star-temples.",Weaknesses="Slow to stir: cities produce less.",
+   Ability="Thick Scales",AbilityText="Units on jungle, marsh or mangrove +1 defence.",
+   Unit="Saurian Warrior",UnitBase=7,UnitAttack=1,UnitDefence=1,UnitText="Replaces the Spearman: +1 attack, +1 defence.",
+   Building="Stepped Pyramid",BuildingBase=36,BuildingText="Replaces the Temple: +2 faith and +1 science as well.",
+   Weakness="Slow to Stir",WeaknessText="-1 production in every city.",Agenda=6};
  }
 }
 // The rules behind the civilisations above. Each is a small hook into the yield, content, faith, combat, movement, growth,
@@ -219,7 +300,7 @@ public partial class World {
  public string UnitNameFor(int owner,int type){var e=Civ(owner);return e!=null&&e.UnitBase==type?e.Unit:UnitNames[type];}
  public string UnitName(Unit u){return u==null?"":UnitNameFor(u.owner,u.type);}
  public string BuildNameFor(int owner,int b){var e=Civ(owner);int u=BuildUnit(b);if(e!=null&&u>=0&&e.UnitBase==u)return e.Unit;if(e!=null&&u<0&&e.BuildingBase==b)return e.Building;return BuildName(b);}
- public int MaxMoves(Unit u){var e=Civ(u.owner);int m=Moves[u.type];if(e!=null&&e.UnitBase==u.type)m+=e.UnitMoves;if(CivId(u.owner)==11&&Mounted(u.type))m+=2;return Math.Max(2,m);}
+ public int MaxMoves(Unit u){var e=Civ(u.owner);int m=Moves[u.type];if(e!=null&&e.UnitBase==u.type)m+=e.UnitMoves;if(CivId(u.owner)==11&&Mounted(u.type))m+=2;if(CivId(u.owner)==36&&!IsNaval(u.type))m-=2;return Math.Max(2,m);}
  void ApplyCivYields(City c,ref int f,ref int p,ref int s,ref int g){
   int civ=CivId(c.owner);if(civ<0)return;var worked=Worked(c);bool fresh=FreshWater(c.x,c.y);
   switch(civ){
@@ -245,6 +326,15 @@ public partial class World {
    case 26:if(HasBuilding(c,34))g+=2;if(UniqueBuilding(c,33)){g++;f++;}if(FromCapital(c)>8)p=Math.Max(1,p-1);break;
    case 27:g--;break;
    case 28:s++;if(UniqueBuilding(c,8))s+=2;break;
+   case 29:f+=worked.Count(t=>Forested(t.terrain));break;
+   case 30:if(UniqueBuilding(c,8))s+=2;break;
+   case 31:p+=2;if(UniqueBuilding(c,30))p+=3;break;
+   case 32:p+=worked.Count(t=>t.terrain==2||t.mine);if(UniqueBuilding(c,32))p+=2;break;
+   case 34:s=Math.Max(0,s-1);if(UniqueBuilding(c,32))p+=2;break;
+   case 35:f+=2;if(UniqueBuilding(c,7))f+=2;break;
+   case 36:f+=worked.Count(t=>t.terrain==9||t.terrain==10);if(UniqueBuilding(c,33))f++;break;
+   case 37:{int wet=worked.Count(t=>IsWater(t.terrain));f+=wet;g+=wet;if(UniqueBuilding(c,43))g+=2;break;}
+   case 38:p=Math.Max(1,p-1);if(UniqueBuilding(c,36))s++;break;
   }
  }
  public int CivContent(City c){
@@ -263,26 +353,31 @@ public partial class World {
    case 26:return HasBuilding(c,34)?1:0;
    case 27:return (UniqueBuilding(c,36)?1:0)+(c.religion>=0&&c.religion==nations[c.owner].founded?1:0);
    case 28:return (HasBuilding(c,34)?1:0)-(c.walls?0:1);
+   case 32:return AtWarWithAnyone(c.owner)?-1:0;
+   case 36:return UniqueBuilding(c,33)?1:0;
   }
   return 0;
  }
  public int CivFaith(City c){int civ=CivId(c.owner);if(civ<0)return 0;
-  switch(civ){case 3:return (HasBuilding(c,36)?2:0)+(UniqueBuilding(c,36)?1:0);case 4:return UniqueBuilding(c,8)?1:0;case 18:return UniqueBuilding(c,36)?2:0;case 20:case 21:return UniqueBuilding(c,42)?1:0;case 24:return 1+(UniqueBuilding(c,36)?1:0);case 25:return UniqueBuilding(c,38)?1:0;case 27:return UniqueBuilding(c,36)?1:0;}
+  switch(civ){case 3:return (HasBuilding(c,36)?2:0)+(UniqueBuilding(c,36)?1:0);case 4:return UniqueBuilding(c,8)?1:0;case 18:return UniqueBuilding(c,36)?2:0;case 20:case 21:return UniqueBuilding(c,42)?1:0;case 24:return 1+(UniqueBuilding(c,36)?1:0);case 25:return UniqueBuilding(c,38)?1:0;case 27:return UniqueBuilding(c,36)?1:0;case 29:return UniqueBuilding(c,36)?2:0;case 31:return -100;case 33:return UniqueBuilding(c,36)?3:0;case 37:return UniqueBuilding(c,43)?1:0;case 38:return UniqueBuilding(c,36)?2:0;}
   return 0;}
  public int CivInfluence(City c){return CivId(c.owner)==20&&c.pop>=4?1:0;}
- public int CivFoodNeeded(City c){return CivId(c.owner)==7?4:0;}
+ public int CivFoodNeeded(City c){int civ=CivId(c.owner);return civ==7||civ==29?4:0;}
  // Religious pressure from this civilisation's cities, in percent (Holy Imperium and Maurya India +50%).
  public int CivPressure(int owner){int civ=CivId(owner);return civ==3||civ==27?150:100;}
  public int CivCost(City c,int b,int cost){int civ=CivId(c.owner);int u=BuildUnit(b);if(civ==22&&u>=0&&Mounted(u))cost+=cost/4;if(civ==23&&u==0)cost+=cost/3;return cost;}
  public int CivStrength(Unit u,Unit enemy,bool defending){
   var e=Civ(u.owner);int s=0;if(e!=null&&e.UnitBase==u.type)s+=defending?e.UnitDefence:e.UnitAttack;int civ=CivId(u.owner);var here=At(u.x,u.y);
-  if(defending){if(civ==1&&cities.Any(c=>c.x==u.x&&c.y==u.y&&c.walls))s--;if(civ==24&&here!=null&&here.terrain==2)s++;}
-  else{if(civ==10&&u.hp>=10)s++;if(civ==12&&!IsNaval(u.type)&&here!=null&&NextToWater(here))s++;}
+  if(defending){if(civ==1&&cities.Any(c=>c.x==u.x&&c.y==u.y&&c.walls))s--;if(civ==24&&here!=null&&here.terrain==2)s++;if(civ==30||civ==35)s--;if(civ==38&&here!=null&&(here.terrain==11||here.terrain==9||here.terrain==19))s++;}
+  else{if(civ==10&&u.hp>=10)s++;if(civ==12&&!IsNaval(u.type)&&here!=null&&NextToWater(here))s++;if(civ==34)s++;if(civ==37&&!IsNaval(u.type))s--;}
+  if(civ==33&&!defending)s++;
   return s;
  }
  bool NextToWater(Tile t){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n!=null&&IsWater(n.terrain))return true;}return false;}
  // Leader agendas (Civilization VI): a rival's opinion of another civilisation moves by what it values.
- public int AgendaOpinion(int observer,int other){
+ // Every other people distrusts the demons of the Abyssal Throne (-10), whatever its agenda.
+ public int AgendaOpinion(int observer,int other){return AgendaCore(observer,other)+(observer!=other&&CivId(other)==33&&CivId(observer)!=33?-10:0);}
+ int AgendaCore(int observer,int other){
   var e=Civ(observer);if(e==null||e.Agenda<0||observer==other)return 0;
   switch(e.Agenda){
    case 0:return (Friends(observer,other)||Allied(observer,other)?12:0)-(Embargoed(observer,other)?10:0);

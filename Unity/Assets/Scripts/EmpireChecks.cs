@@ -3,7 +3,7 @@ using System.Linq;
 namespace ParadigmRealm {
 public static class EmpireChecks {
  static void Check(bool ok,string name){if(!ok)throw new Exception("Empire: "+name);}
- static World Setup(){var w=World.New(917);foreach(var t in w.tiles){t.terrain=0;t.village=false;}var c=w.Found(w.units.First(u=>u.owner==0&&u.type==0));w.gold=w.nations[0].gold=1000;
+ static World Setup(){var w=World.New(917,natives:false);foreach(var t in w.tiles){t.terrain=0;t.village=false;}var c=w.Found(w.units.First(u=>u.owner==0&&u.type==0));w.gold=w.nations[0].gold=1000;
   // These checks measure the economy and treaty rules alone: rivals without leader agendas (CivLore).
   for(int o=1;o<w.civCount;o++)w.nations[o].civ=-1;return w;}
  static void Grant(World w,int owner,string id){w.nations[owner].tech[TechnologyCatalog.Index(id)]=true;}
@@ -156,7 +156,7 @@ public static class EmpireChecks {
   var g=World.New(701,"Pace",0,1,1,0,1,1,4);g.Found(g.units.First(u=>u.owner==0&&u.type==0));var eraOne=new int[g.civCount];
   for(int t=0;t<200&&g.result=="";t++){g.EndTurn();for(int o=1;o<g.civCount;o++)if(eraOne[o]==0&&g.Era(o)>=1)eraOne[o]=g.turn;}
   Check(g.result=="","no rival wins before turn 200 in a standard Small game ("+g.result+")");
-  Check(Enumerable.Range(1,g.civCount-1).All(o=>eraOne[o]>=25&&eraOne[o]<=60),"rivals complete the first era between turns 25 and 60 ("+string.Join(", ",Enumerable.Range(1,g.civCount-1).Select(o=>eraOne[o]))+")");
+  Check(Enumerable.Range(1,g.civCount-1).Where(o=>!g.IsNativeNation(o)).All(o=>eraOne[o]>=25&&eraOne[o]<=60),"home rivals complete the first era between turns 25 and 60 (all, natives included: "+string.Join(", ",Enumerable.Range(1,g.civCount-1).Select(o=>eraOne[o]))+")");
  }
  // Rivals use the sea: they link ports by road, hunt enemy ships at war, and ferry stranded settlers to other land.
  static World Islands(out City rival,out int bx){
@@ -200,12 +200,12 @@ public static class EmpireChecks {
   Check(rc.portLinked,"a rival worker builds the road that links its port (port "+w.PortTile(rc).x+","+w.PortTile(rc).y+" city "+rc.x+","+rc.y+"; workers "+string.Join(" ",w.units.Where(a=>a.owner==1&&a.type==1).Select(a=>a.x+","+a.y+" job"+a.job+(a.hasOrder?" ->"+a.destinationX+","+a.destinationY:"")))+")");
  }
  static void CivilisationChecks(){
-  int n=CivilisationCatalog.Count;Check(n==29&&CivilisationCatalog.Names.Distinct().Count()==n&&CivilisationCatalog.Portraits.Distinct().Count()==n&&CivilisationCatalog.Portraits.All(p=>p>=0&&p<CivilisationCatalog.PortraitCount),"29 civilisations (17 original, 12 real) with their own names and portraits");
+  int n=CivilisationCatalog.Count;Check(n==39&&CivilisationCatalog.Names.Distinct().Count()==n&&CivilisationCatalog.Portraits.Distinct().Count()==n&&CivilisationCatalog.Portraits.All(p=>p>=0&&p<CivilisationCatalog.PortraitCount),"39 civilisations (17 original, 12 real, 10 native peoples) with their own names and portraits");
   Check(CivilisationCatalog.Traits.All(t=>t.Length==2&&t[0]!=t[1])&&CivilisationCatalog.Traits.Select(t=>Math.Min(t[0],t[1])*100+Math.Max(t[0],t[1])).Distinct().Count()==n,"two different traits each, no two civilisations alike");
   for(int t=0;t<CivilisationCatalog.TraitCount;t++)Check(CivilisationCatalog.Traits.Count(p=>p.Contains(t))>=2,"trait "+CivilisationCatalog.TraitNames[t]+" belongs to at least two civilisations");
   // Crystal Dominion (2) and Sylvan Court (6) are set aside; Jade Dynasty (15) and Serpent League (16) wait for portraits.
   var offered=CivilisationCatalog.Offered().ToList();Check(offered.Count==25&&!offered.Contains(2)&&!offered.Contains(6)&&!offered.Contains(15)&&!offered.Contains(16),"25 civilisations offered; set-aside and art-less ones hidden");
-  for(int s=0;s<4;s++){var many=World.New(200+s,"",0,1,1,0,3,1,8,0);Check(Enumerable.Range(1,many.civCount-1).All(o=>offered.Contains(many.nations[o].civ))&&many.Valid(),"rivals only come from offered civilisations, seed "+s);}
+  for(int s=0;s<4;s++){var many=World.New(200+s,"",0,1,1,0,3,1,8,0);Check(Enumerable.Range(1,many.civCount-1).Where(o=>!many.IsNativeNation(o)).All(o=>offered.Contains(many.nations[o].civ))&&many.Valid(),"rivals only come from offered civilisations, seed "+s);}
   Check(!World.New(93).SetPlayerCivilisation(2,"","",0,-1,-1),"a set-aside civilisation cannot be chosen");
   CivilisationCatalog.Enabled[15]=true;Check(CivilisationCatalog.Offered().Contains(15),"art arriving enables a waiting civilisation");CivilisationCatalog.Enabled[15]=false;
   // First contact queues the diplomacy screen, and the other leader greets according to relations.
@@ -232,7 +232,7 @@ public static class EmpireChecks {
   var horse=w.Add(0,8,c.x+3,c.y+1);w.nations[0].traits=new[]{-1,-1};int a=w.Strength(horse,guard,false);w.nations[0].traits=new[]{World.TraitHorseLords,-1};Check(w.Strength(horse,guard,false)==a+1,"Horse Lords +1 attack for mounted units");
   w.nations[0].traits=new[]{World.TraitMilitaristic,-1};Grant(w,0,"toolmaking");c.buildings.Remove(32);w.ChooseProject(c,2,false);w.Produce(c,w.CostFor(c,2));var made=w.units.Last(u=>u.owner==0&&u.type==2);Check(made.promotion==1,"Militaristic: new military units start as Veterans");
   // Version 15 saves: the old trait becomes a matching new trait; rivals keep their names.
-  w=World.New(92);string rivalName=w.NationName(1);w.version=15;w.nations[0].trait=2;foreach(var nn in w.nations){nn.traits=null;nn.civ=7;}w.UpgradeSave();
+  w=World.New(92,natives:false);string rivalName=w.NationName(1);w.version=15;w.nations[0].trait=2;foreach(var nn in w.nations){nn.traits=null;nn.civ=7;}w.UpgradeSave();
   Check(w.version==23&&w.HasTrait(0,World.TraitScholarly)&&w.nations.All(nn=>nn.civ==-1&&nn.traits!=null)&&w.NationName(1)==rivalName&&w.Valid(),"version 15 saves convert traits and keep rival names");
   // Build lists show only what known technology allows; combat units can explore.
   w=Setup();c=w.cities.First(a=>a.owner==0);Check(!w.TechAllows(c,World.UnitBuild(5))&&w.TechAllows(c,World.UnitBuild(2))&&!w.TechAllows(c,8),"build list hides what technology does not yet allow");
@@ -262,7 +262,7 @@ public static class EmpireChecks {
   Check(w.ConvertSpecialist(c,0,2)&&c.scientists==0&&c.entertainers==2,"and back again");
   c.entertainers=0;c.scientists=0;c.merchants=0;Check(!w.ConvertSpecialist(c,2,0)&&c.scientists==0,"no conversion without an entertainer");
   // Version 14 saves gain empty lock lists.
-  w=World.New(81);w.version=14;foreach(var city in w.cities)city.locked=null;w.UpgradeSave();Check(w.version==23&&w.cities.All(a=>a.locked!=null&&a.locked.Count==0)&&w.Valid(),"version 14 saves gain empty lock lists");
+  w=World.New(81,natives:false);w.version=14;foreach(var city in w.cities)city.locked=null;w.UpgradeSave();Check(w.version==23&&w.cities.All(a=>a.locked!=null&&a.locked.Count==0)&&w.Valid(),"version 14 saves gain empty lock lists");
   w.cities[0].locked.Add(-3);Check(!w.Valid(),"invalid lock rejected");
  }
  // Stage 6: victory by capitals, Transcendence as a three-stage project, save version 14 (CORE-DESIGN-16BIT.md).
@@ -300,7 +300,7 @@ public static class EmpireChecks {
   Check(w.PreferredBuilding(rc)==70,"AI starts Transcendence in its best eligible city");
   var rn=w.nations[1];rn.projectCity=rc.id;rn.projectStage=3;rn.projectActivation=1;w.UpdateProjects();Check(w.result.Contains("has achieved Transcendence"),"a rival's third stage is a defeat");
   // Version 13 saves gain capitals and empty projects.
-  w=World.New(80);var keep=w.cities.First(a=>a.owner==1);w.version=13;foreach(var nn in w.nations){nn.capital=-5;nn.projectStage=2;nn.projectActivation=3;}w.UpgradeSave();
+  w=World.New(80,natives:false);var keep=w.cities.First(a=>a.owner==1);w.version=13;foreach(var nn in w.nations){nn.capital=-5;nn.projectStage=2;nn.projectActivation=3;}w.UpgradeSave();
   Check(w.version==23&&w.nations[1].capital==keep.id&&w.nations.All(nn=>nn.projectStage==0&&nn.projectActivation==0)&&w.nations[0].capital==-1&&w.Valid(),"version 13 saves gain capitals and empty projects");
   float[] bars;var text=w.VictoryText(out bars);Check(text.Length==3&&bars.All(v=>v>=0&&v<=1)&&text[1].Contains("Computing"),"three victory bars");
  }

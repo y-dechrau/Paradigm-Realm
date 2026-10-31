@@ -42,7 +42,7 @@ public static class RealmTools
         var restoredCity=loaded.cities.First(c=>c.owner==0);Require(restoredCity.build==1&&restoredCity.queue.Count==1&&restoredCity.buildingProject==7&&restoredCity.buildingProduction==3,"both production lines survive saving");
         var restored=loaded.units.First(u=>u.id==worker.id);Require(loaded.WorkerTeam(restored).Count==2&&restored.job==1,"worker team and shared work survive saving");
         Require(JsonUtility.ToJson(loaded)==json,"save preserves complete state");
-        var legacy=World.New(17);legacy.version=2;legacy.tech=new bool[6];legacy.tech[TechnologyCatalog.Index("agriculture")]=true;
+        var legacy=World.New(17,natives:false);legacy.version=2;legacy.tech=new bool[6];legacy.tech[TechnologyCatalog.Index("agriculture")]=true;
         legacy.UpgradeSave();Require(legacy.Valid()&&legacy.tech[TechnologyCatalog.Index("agriculture")],"legacy migration retains technology");
         Debug.Log("PASS: foundation engine checks, Unity JSON round trip and legacy save migration.");
     }

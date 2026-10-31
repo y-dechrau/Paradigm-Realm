@@ -13,11 +13,13 @@ namespace ParadigmRealm
         public const int ConcordTarget=20,ProjectSize=8,ProjectActivationBase=10;
         public int concordTurns;
         public bool Survives(int owner){return cities.Any(c=>c.owner==owner)||units.Any(u=>u.owner==owner);}
-        public List<int> SurvivingRivals(){var list=new List<int>();for(int o=1;o<civCount;o++)if(Survives(o))list.Add(o);return list;}
+        // The home world's rivals: the native peoples of the parallel worlds are not needed for Concord or conquest.
+        public List<int> SurvivingRivals(){var list=new List<int>();for(int o=1;o<civCount;o++)if(Survives(o)&&!CivilisationCatalog.IsNative(nations[o].civ))list.Add(o);return list;}
         public City Capital(int owner){int id=nations[owner].capital;return id<0?null:cities.Find(c=>c.id==id);}
         // A rival counts as conquered by owner when it is eliminated or owner holds its capital.
         public bool Conquered(int owner,int rival){if(!Survives(rival))return true;var cap=Capital(rival);return cap!=null&&cap.owner==owner;}
-        public bool ConquestAchieved(int owner){if(!Survives(owner))return false;bool any=false;for(int o=0;o<civCount;o++){if(o==owner)continue;any=true;if(!Conquered(owner,o))return false;}return any;}
+        public bool ConquestAchieved(int owner){if(!Survives(owner))return false;bool any=false;for(int o=0;o<civCount;o++){if(o==owner)continue;// Home civilisations need not conquer the native peoples of the parallel worlds.
+if(CivilisationCatalog.IsNative(nations[o].civ)&&!CivilisationCatalog.IsNative(nations[owner].civ))continue;any=true;if(!Conquered(owner,o))return false;}return any;}
         // Called once per turn after diplomacy has advanced.
         public void UpdateConcord()
         {

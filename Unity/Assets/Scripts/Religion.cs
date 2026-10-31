@@ -55,7 +55,7 @@ public partial class World {
  public int FoundingCost(){return 60+20*nations.Count(n=>n.founded>=0);}
  public int MaxReligions(){return Math.Min(8,Math.Max(3,civCount));}
  public bool IsHolyCity(City c){return nations.Any(n=>n.holyCity==c.id&&n.founded>=0);}
- public int FaithYield(City c){if(Disorder(c))return 0;var n=nations[c.owner];int f=n.capital==c.id?1:0;if(HasBuilding(c,36))f+=2;if(IsHolyCity(c))f+=3;if(n.pantheon==4)f++;if(ReligionCatalog.Tenet(c.religion)==5)f+=2;return f+CivFaith(c)+AgeFaith(c);}
+ public int FaithYield(City c){if(Disorder(c))return 0;var n=nations[c.owner];int f=n.capital==c.id?1:0;if(HasBuilding(c,36))f+=2;if(IsHolyCity(c))f+=3;if(n.pantheon==4)f++;if(ReligionCatalog.Tenet(c.religion)==5)f+=2;return Math.Max(0,f+CivFaith(c)+AgeFaith(c));}
  public int FaithPerTurn(int owner){return cities.Where(c=>c.owner==owner).Sum(FaithYield);}
  // Tenets help the cities that follow the faith; the pantheon helps every city of its civilisation.
  void ApplyReligionYields(City c,ref int f,ref int p,ref int s,ref int g){int pan=nations[c.owner].pantheon;if(pan==0)f++;else if(pan==1)p++;else if(pan==2)g+=2;else if(pan==3)s++;switch(ReligionCatalog.Tenet(c.religion)){case 0:f++;break;case 1:p++;break;case 2:g+=2;break;case 3:s+=2;break;}}
@@ -86,7 +86,7 @@ public partial class World {
  }
  void ReligionAI(int owner){var n=nations[owner];var r=new Random(seed+turn*131+owner*17);
   if(n.pantheon<0&&n.faith>=PantheonCost)ChoosePantheon(owner,r.Next(ReligionCatalog.PantheonNames.Length));
-  if(n.founded<0&&n.pantheon>=0){int wanted=PreferredFaith(owner);var options=Enumerable.Range(0,ReligionCatalog.Count).Where(f=>FoundingReason(owner,f)=="").ToList();if(wanted>=0)FoundReligion(owner,wanted);else if(options.Count>0)FoundReligion(owner,options[r.Next(options.Count)]);}
+  if(n.founded<0&&n.pantheon>=0&&!CivilisationCatalog.IsNative(n.civ)){int wanted=PreferredFaith(owner);var options=Enumerable.Range(0,ReligionCatalog.Count).Where(f=>FoundingReason(owner,f)=="").ToList();if(wanted>=0)FoundReligion(owner,wanted);else if(options.Count>0)FoundReligion(owner,options[r.Next(options.Count)]);}
   PriestBuyingAI(owner);
   if(n.founded>=0&&n.faith>=MissionCost+10){var home=cities.Where(c=>c.owner==owner&&c.religion==n.founded).ToList();var target=cities.Where(c=>c.religion!=n.founded&&home.Any(h=>Distance(h.x,h.y,c.x,c.y)<=12)).OrderBy(c=>c.owner==owner?0:1).ThenBy(c=>home.Min(h=>Distance(h.x,h.y,c.x,c.y))).FirstOrDefault();if(target!=null)SendMissionaries(owner,target);}
  }

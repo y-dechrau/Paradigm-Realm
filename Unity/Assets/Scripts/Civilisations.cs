@@ -10,7 +10,7 @@ public static class CivilisationCatalog {
  // 17 civilisations: Sylvan Court and Crystal Dominion are hidden for now (owner request), and the last two wait for their
  // portrait art (leader-15.png, leader-16.png); RealmGame enables them once the picture is found. Hidden or waiting
  // civilisations are never offered or used as rivals, and their indices stay fixed so saves keep working.
- public const int Count=29,TraitCount=12,PortraitCount=29;
+ public const int Count=39,TraitCount=12,PortraitCount=39;
  public static readonly string[] TraitNames={"Seafaring","Mercantile","Agrarian","Spiritual","Monumental","Diplomatic","Scholarly","Stalwart","Industrious","Militaristic","Horse Lords","Expansionist"};
  public static readonly string[] TraitTexts={
   "+1 food on every worked water tile",
@@ -25,22 +25,31 @@ public static class CivilisationCatalog {
   "New military units start as Veterans",
   "Horsemen and Knights +1 attack",
   "Settlers cost a third less"};
- public static readonly string[] Names={"Azure Crown","Oasis Sultanate","Sylvan Court","Holy Imperium","Sahel Empire","Hellenic League","Crystal Dominion","Frostpeak Realm","Aurelian Republic","Lutetian Empire","Rising Isles","Steppe Horde","Northmarch Kingdom","Sunspire Emirate","Lionmarch Kingdom","Jade Dynasty","Serpent League","China","Egypt","Rome","Greece","Aztec Empire","Inca Empire","Maya","Ethiopia","Arabia","Persia","India","Babylon"};
- public static readonly string[] Leaders={"King Aldric","Queen Samira","Queen Elowen","Emperor Constantin","Mansa Kanto","Strategos Kleon","Queen Nyxara","Queen Brynja","Consul Aurelius","Emperor Lucien","Lord Kaito","Khan Temur","King Halvard","Emir Rashid","King Aldous","Empress Mei","High King Itzel","Qin Shi Huang","Ramesses II","Augustus","Pericles","Moctezuma II","Pachacuti","Pakal the Great","Menelik II","Harun al-Rashid","Cyrus the Great","Ashoka","Hammurabi"};
- public static readonly int[] Portraits={0,1,3,11,10,9,4,2,12,5,6,14,7,8,13,15,16,17,18,19,20,21,22,23,24,25,26,27,28};
+ public static readonly string[] Names={"Azure Crown","Oasis Sultanate","Sylvan Court","Holy Imperium","Sahel Empire","Hellenic League","Crystal Dominion","Frostpeak Realm","Aurelian Republic","Lutetian Empire","Rising Isles","Steppe Horde","Northmarch Kingdom","Sunspire Emirate","Lionmarch Kingdom","Jade Dynasty","Serpent League","China","Egypt","Rome","Greece","Aztec Empire","Inca Empire","Maya","Ethiopia","Arabia","Persia","India","Babylon","Sylvan Elves","Aerie of Wings","The Iron Mind","Ashforge Clans","Abyssal Throne","Bloodtusk Horde","Gnawing Swarm","Spore Circle","Tidebound Courts","Scaled Dominion"};
+ public static readonly string[] Leaders={"King Aldric","Queen Samira","Queen Elowen","Emperor Constantin","Mansa Kanto","Strategos Kleon","Queen Nyxara","Queen Brynja","Consul Aurelius","Emperor Lucien","Lord Kaito","Khan Temur","King Halvard","Emir Rashid","King Aldous","Empress Mei","High King Itzel","Qin Shi Huang","Ramesses II","Augustus","Pericles","Moctezuma II","Pachacuti","Pakal the Great","Menelik II","Harun al-Rashid","Cyrus the Great","Ashoka","Hammurabi","Queen Aelindra","Skylord Kerrak","Prime Unit Aurex","High Thane Durgrim","Archfiend Malgoroth","Warchief Grukka","Elder Seer Skritt","Elder Mycel","Tide Queen Nerissa","Coatl Priest Xoth"};
+ public static readonly int[] Portraits={0,1,3,11,10,9,4,2,12,5,6,14,7,8,13,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38};
  public static readonly int[][] Traits={new[]{0,1},new[]{1,2},new[]{2,3},new[]{3,4},new[]{4,5},new[]{5,6},new[]{6,7},new[]{7,8},new[]{8,11},new[]{9,10},new[]{9,0},new[]{10,11},new[]{0,8},new[]{1,6},new[]{3,9},new[]{4,6},new[]{2,9},
   // Real civilisations: China, Egypt, Rome, Greece, Aztec, Inca, Maya, Ethiopia, Arabia, Persia, India, Babylon.
-  new[]{6,8},new[]{4,2},new[]{9,11},new[]{6,0},new[]{9,4},new[]{2,7},new[]{6,3},new[]{3,7},new[]{1,3},new[]{5,1},new[]{3,5},new[]{4,7}};
+  new[]{6,8},new[]{4,2},new[]{9,11},new[]{6,0},new[]{9,4},new[]{2,7},new[]{6,3},new[]{3,7},new[]{1,3},new[]{5,1},new[]{3,5},new[]{4,7},
+  // Native peoples of the parallel worlds (not offered as playable or home rivals): Elves, Avians, Machines, Dwarves, Demons, Orcs,
+  // Ratkin, Myconids, Merfolk, Lizardfolk.
+  new[]{2,6},new[]{5,11},new[]{4,8},new[]{1,7},new[]{8,9},new[]{7,10},new[]{6,11},new[]{2,11},new[]{0,3},new[]{0,7}};
  // Offered and used as rivals. 2 and 6 hidden for now; 15 and 16 until their portrait art exists.
- public static readonly bool[] Enabled={true,true,false,true,true,true,false,true,true,true,true,true,true,true,true,false,false,true,true,true,true,true,true,true,true,true,true,true,true};
- public static bool[] AwaitingArt={false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,false,false,false,false,false,false};
+ public static readonly bool[] Enabled={true,true,false,true,true,true,false,true,true,true,true,true,true,true,true,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,false,false,false,false,false,false};
+ public static bool[] AwaitingArt={false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false};
  public static IEnumerable<int> Offered(){return Enumerable.Range(0,Count).Where(i=>Enabled[i]);}
  // The New Game screen offers two groups (owner request): Fantasy Kingdoms (0-16) and Real World Civilisations (17 on).
  public const int FirstReal=17;
- public static bool IsReal(int civ){return civ>=FirstReal;}
- public static bool RealPortrait(int portrait){return portrait>=FirstReal;}
+ public const int FirstNative=29;
+ public static bool IsReal(int civ){return civ>=FirstReal&&civ<FirstNative;}
+ public static bool IsNative(int civ){return civ>=FirstNative&&civ<Count;}
+ public static bool RealPortrait(int portrait){return portrait>=FirstReal&&portrait<FirstNative;}
+ // Which parallel world each native people lives in (1 Fae Wilds ... 5 Drowned Deep), and the order they are placed in so that
+ // every world gets one people before any gets a second.
+ public static int NativeRealm(int civ){return IsNative(civ)?1+(civ-FirstNative)/2:0;}
+ public static readonly int[] NativeOrder={29,33,31,35,37,30,34,32,36,38};
  public static IEnumerable<int> Offered(bool real){return Offered().Where(i=>IsReal(i)==real);}
- public static readonly string[] PortraitTitles={"King of the coastal kingdom","Desert queen of the oasis","Mountain queen of the snow citadel","Enchanted forest queen","Void queen of the crystal realm","Emperor of the grand capital","Samurai lord","King of a coastal kingdom","Guardian of the golden citadel","Hellenistic commander","Emperor of the golden city","Emperor of the grand cathedral","Caesar of the eternal city","Crusader king","Steppe warlord","Empress of the jade court (art needed)","King of the serpent coast (art needed)","First Emperor of Qin","Pharaoh of the New Kingdom","First Emperor of Rome","Statesman of Athens","Huey Tlatoani of Tenochtitlan","Sapa Inca of Tawantinsuyu","Ajaw of Lakamha (Palenque)","Emperor of Ethiopia","Abbasid Caliph of Baghdad","King of Kings of Persia","Mauryan Emperor","King of Babylon"};
+ public static readonly string[] PortraitTitles={"King of the coastal kingdom","Desert queen of the oasis","Mountain queen of the snow citadel","Enchanted forest queen","Void queen of the crystal realm","Emperor of the grand capital","Samurai lord","King of a coastal kingdom","Guardian of the golden citadel","Hellenistic commander","Emperor of the golden city","Emperor of the grand cathedral","Caesar of the eternal city","Crusader king","Steppe warlord","Empress of the jade court (art needed)","King of the serpent coast (art needed)","First Emperor of Qin","Pharaoh of the New Kingdom","First Emperor of Rome","Statesman of Athens","Huey Tlatoani of Tenochtitlan","Sapa Inca of Tawantinsuyu","Ajaw of Lakamha (Palenque)","Emperor of Ethiopia","Abbasid Caliph of Baghdad","King of Kings of Persia","Mauryan Emperor","King of Babylon","Elf queen of the Fae Wilds","Avian lord of the high aeries","Machine mind of the Ashen Waste","Dwarf thane of the ash-forges","Demon lord of the Infernal Depths","Orc warchief of the burning plains","Ratkin seer of the Plague Marshes","Myconid elder of the spore groves","Merfolk queen of the Drowned Deep","Lizardfolk priest of the reef temples"};
  // What each leader says on meeting you (peace); war and friendship have their own lines in World.Greeting.
  public static readonly string[] Greetings={
   "The Azure Crown greets you. Our sails have found your shores; may our harbours trade in peace.",
@@ -71,7 +80,17 @@ public static class CivilisationCatalog {
   "Harun al-Rashid welcomes you to Baghdad. Bring us your scholars and your merchants, and they will be honoured.",
   "Cyrus, King of Kings, greets you. Every people in my realm keeps its gods and customs; yours may too, as friends.",
   "Ashoka greets you. I have seen what conquest costs; let our peoples meet through the law of dharma.",
-  "Hammurabi greets you. Our laws are written in stone so that the strong may not oppress the weak."};
+  "Hammurabi greets you. Our laws are written in stone so that the strong may not oppress the weak.",
+  "The trees whispered of you, outsider. Walk lightly in the Wilds and the Sylvan Elves may yet call you friend.",
+  "Kraa! The Aerie has watched you from the high winds. Speak quickly; the sky does not wait.",
+  "GREETING PROTOCOL ENGAGED. The Iron Mind registers your presence. State your function.",
+  "Hail, surface-walker. The Ashforge Clans keep long ledgers of friends and longer ones of grudges. Which will you be?",
+  "Mortal. You have wandered far from your little world. The Abyssal Throne will decide what you are worth.",
+  "Oi! You lot look soft. The Bloodtusk Horde only talks to the strong - so show us you are.",
+  "Yes-yes, welcome-welcome! The Swarm is many, the Swarm is everywhere. Friends? Friends, yes... for now.",
+  "The Spore Circle feels your coming through the roots. Rest, and let us grow together.",
+  "The tide brings strangers to our courts. Be welcome, land-dweller, while the waters are calm.",
+  "The stars foretold a warm-blooded visitor. The Scaled Dominion remembers when the world was young."};
  public static string TraitLine(int[] traits){return string.Join("  •  ",traits.Where(t=>t>=0&&t<TraitCount).Select(t=>TraitNames[t]+": "+TraitTexts[t]).ToArray());}
 }
 public partial class World {
