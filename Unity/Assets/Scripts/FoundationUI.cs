@@ -43,9 +43,9 @@ namespace ParadigmRealm
             if(saveAsScreen){DrawSaveAs();return;}
             if(settingsScreen){GUI.Box(new Rect(410,230,460,330),"");GUILayout.BeginArea(new Rect(440,250,400,280));GUILayout.Label("Settings",heading);GUILayout.Label("Mouse-wheel zoom sensitivity",body);zoomSensitivity=GUILayout.HorizontalSlider(zoomSensitivity,.5f,5f);tooltips=GUILayout.Toggle(tooltips,"Show map and unit tooltips");GUILayout.Label("Settings are saved on this computer.",small);if(Button("Back")){PersistSettings();settingsScreen=false;}GUILayout.EndArea();return;}
             GUI.Box(new Rect(440,205,400,390),"");GUILayout.BeginArea(new Rect(470,225,340,350));GUILayout.Label("Game menu",heading);
+            if(Button("Continue")){pauseMenu=false;GUI.FocusControl(null);}
             if(Button("Quick Save [Ctrl+S]"))Save();
             if(Button("Save As")){saveName=world.civilisationName+" - Turn "+world.turn;saveError="";overwriteSave=false;saveAsScreen=true;}
-            if(Button("Continue")){pauseMenu=false;GUI.FocusControl(null);}
             if(Button("Settings"))settingsScreen=true;
             if(Button("Quit"))pauseQuit=true;
             if(status.StartsWith("Could not save"))GUILayout.Label(status,small);

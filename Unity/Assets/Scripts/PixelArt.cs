@@ -201,6 +201,17 @@ namespace ParadigmRealm
         }
         static double[] P(double x,double y){return new[]{x,y};}
         static void RectFill(PixelCanvas cv,int x0,int y0,int x1,int y1,uint c){for(int y=y0;y<y1;y++)for(int x=x0;x<x1;x++)cv.Over(x,y,c);}
+        // Ancient ruins on a 64 x 64 scenery canvas (tile centre at 32,40): two broken columns, a fallen lintel and rubble,
+        // lit from the top left with dark outlines.
+        static PixelCanvas ruins;
+        public static PixelCanvas Ruins(){
+            if(ruins!=null)return ruins;var cv=new PixelCanvas(SW,SH);uint ink=Rgb(40,34,30),lit=Rgb(214,204,178),mid=Rgb(176,164,138),shade=Rgb(128,116,98),moss=Rgb(96,128,64);
+            foreach(var col in new[]{new[]{22,22,17},new[]{40,26,11}}){int x=col[0],top=col[1],h=col[2];RectFill(cv,x-4,top-1,x+4,44,ink);RectFill(cv,x-3,top,x+3,43,mid);RectFill(cv,x-3,top,x-1,43,lit);RectFill(cv,x+1,top,x+3,43,shade);for(int y=top+3;y<43;y+=4)cv.Set(x,y,shade);RectFill(cv,x-4,42,x+4,45,shade);cv.Set(x-2,top,moss);cv.Set(x+2,top+1,moss);}
+            RectFill(cv,24,45,46,49,ink);RectFill(cv,25,45,45,48,mid);RectFill(cv,25,45,45,46,lit);
+            foreach(var p in new[]{new[]{16,46},new[]{30,50},new[]{47,44},new[]{36,48}}){RectFill(cv,p[0]-2,p[1]-2,p[0]+3,p[1]+2,ink);RectFill(cv,p[0]-1,p[1]-1,p[0]+2,p[1]+1,shade);cv.Set(p[0]-1,p[1]-1,lit);}
+            for(int x=14;x<50;x+=3)cv.Over(x,44+((x*7)%3),moss);
+            return ruins=cv;
+        }
         static List<double[]> Spots(int seed,int n,double rx,double ry,double minSep)
         {
             var pts=new List<double[]>();int tries=0;

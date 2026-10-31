@@ -8,7 +8,22 @@ namespace ParadigmRealm {
 // civilisation along the bottom, and on the right their name and mood, greeting, active treaties, a two-sided offer and
 // Propose / Discuss / Leave / Declare War. Discuss opens the full detail panel (DrawAdvancedDiplomacy) with every action.
 public partial class RealmGame {
- bool diplomacyDiscuss;GUIStyle dipTitle,dipName,dipQuote,dipRow,dipBadge,dipCaps,dipBig;
+ bool diplomacyDiscuss,diplomacyChooser,diplomacyDirect;string dipReply="";int dipReplyPartner=-1;
+ // The Diplomacy button first asks which leader to contact; the talk that follows is with that leader alone.
+ void DrawLeaderChooser(int[] known){
+  GUI.Label(new Rect(240,90,800,34),"Choose a leader to contact",dipBig);
+  var backdrop=Art("diplomacy-backdrop");int cols=Math.Min(5,known.Length);float cw=220,ch=300,gap=18,x0=640-(cols*cw+(cols-1)*gap)/2;
+  for(int k=0;k<known.Length;k++){
+   int other=known[k];var card=new Rect(x0+(k%5)*(cw+gap),140+(k/5)*(ch+gap),cw,ch);DipPanel(card,1);var pic=new Rect(card.x+4,card.y+4,card.width-8,card.height-60);
+   if(backdrop!=null)DrawCropped(pic,backdrop,BackdropAspect);var face=Portrait(world.nations[other].portrait,world.Era(other));if(face!=null)DrawPortrait(pic,face);
+   Fill(new Rect(card.x+4,card.yMax-56,card.width-8,52),new Color(.04f,.06f,.12f,.96f));GUI.Label(new Rect(card.x,card.yMax-54,card.width,24),world.NationName(other).ToUpperInvariant(),new GUIStyle(dipCaps){fontSize=14});
+   Color ink;GUI.Label(new Rect(card.x,card.yMax-30,card.width,22),MoodText(other,out ink),new GUIStyle(dipBadge){normal={textColor=ink}});
+   int waiting=world.offers.Count(o=>o.to==0&&o.from==other&&o.status==0&&o.expires>world.turn);if(waiting>0){var b=new Rect(card.xMax-30,card.y+8,22,22);Fill(b,new Color(.75f,.18f,.14f));GUI.Label(b,waiting.ToString(),dipBadge);}
+   if(card.Contains(Event.current.mousePosition))Fill(new Rect(card.x,card.y,card.width,2),new Color(1f,.82f,.42f));
+   if(GUI.Button(card,"",GUIStyle.none)){diplomacyPartner=other;diplomacyChooser=false;ResetDiplomacyUI();}
+  }
+  if(DipButton(new Rect(560,730,160,44),"Leave",new Color(.1f,.16f,.3f))){detailsScreen="";GUIUtility.ExitGUI();}
+ }GUIStyle dipTitle,dipName,dipQuote,dipRow,dipBadge,dipCaps,dipBig;
  static readonly string[] DealKinds={"Open borders","Friendship","Defensive alliance","Research pact","Trade","Peace","Border promise","Joint war"};
  void DiplomacyStyles(){
   if(dipTitle!=null)return;
@@ -80,9 +95,10 @@ public partial class RealmGame {
   var known=Enumerable.Range(1,world.civCount-1).Where(i=>world.met[i]).ToArray();
   if(known.Length==0){DipPanel(new Rect(340,300,600,120));GUI.Label(new Rect(340,320,600,40),"No civilisations met yet",dipBig);GUI.Label(new Rect(340,360,600,30),"Explore to meet other civilisations.",new GUIStyle(dipRow){alignment=TextAnchor.MiddleCenter});
    if(DipButton(new Rect(560,440,160,44),"Leave",new Color(.1f,.16f,.3f))){detailsScreen="";GUIUtility.ExitGUI();}return;}
+  if(diplomacyChooser){DrawLeaderChooser(known);return;}
   if(!known.Contains(diplomacyPartner))diplomacyPartner=known[0];int partner=diplomacyPartner;var pn=world.nations[partner];
   // ---- Scene: the leader before the painted coast ----
-  var scene=new Rect(14,74,800,500);DipPanel(scene,1);var inner=new Rect(scene.x+4,scene.y+4,scene.width-8,scene.height-8);
+  var scene=new Rect(14,74,800,712);DipPanel(scene,1);var inner=new Rect(scene.x+4,scene.y+4,scene.width-8,scene.height-8);
   var backdrop=Art("diplomacy-backdrop");
   if(backdrop!=null)DrawCropped(inner,backdrop,BackdropAspect);else{Fill(inner,new Color(.35f,.3f,.42f));Fill(new Rect(inner.x,inner.y+inner.height*.6f,inner.width,inner.height*.4f),new Color(.15f,.25f,.4f));}
   // The partner's banner hangs at the left edge in their colour.
@@ -90,17 +106,7 @@ public partial class RealmGame {
   {var banner=FlagTexture(partner);var br=new Rect(inner.x+18,inner.y+10,66,44);if(banner!=null){Fill(new Rect(br.x-2,br.y-6,2,br.height+120),new Color(.32f,.22f,.12f));GUI.DrawTexture(br,banner,ScaleMode.StretchToFill,true);}}
   var face=Portrait(pn.portrait,world.Era(partner));
   if(face!=null){float h=inner.height-36,w=h*.9f;var frame=new Rect(inner.x+86,inner.y+18,w,h);DipPanel(new Rect(frame.x-4,frame.y-4,frame.width+8,frame.height+8),1);DrawPortrait(frame,face);}
-  // ---- Civilisation cards ----
-  float cw=Math.Min(260,(800-12*(known.Length-1))/(float)Math.Max(1,known.Length));
-  for(int k=0;k<known.Length&&k<6;k++){
-   int other=known[k];var card=new Rect(14+k*(cw+12),590,cw,196);bool chosen=other==partner;
-   DipPanel(card,1);var pic=new Rect(card.x+4,card.y+4,card.width-8,card.height-38);
-   if(backdrop!=null)DrawCropped(pic,backdrop,BackdropAspect);var oc=nations[other];Fill(pic,new Color(oc.r*.4f,oc.g*.4f,oc.b*.4f,.45f));
-   var small=Portrait(world.nations[other].portrait,world.Era(other));if(small!=null)DrawPortrait(pic,small);
-   Fill(new Rect(card.x+4,card.yMax-34,card.width-8,30),new Color(.04f,.06f,.12f,.96f));GUI.Label(new Rect(card.x,card.yMax-34,card.width,30),world.NationName(other).ToUpperInvariant(),new GUIStyle(dipCaps){fontSize=14});
-   if(chosen){var g=new Color(1f,.82f,.42f);for(int b=0;b<3;b++){Fill(new Rect(card.x-b,card.y-b,card.width+2*b,1),g);Fill(new Rect(card.x-b,card.yMax+b-1,card.width+2*b,1),g);Fill(new Rect(card.x-b,card.y-b,1,card.height+2*b),g);Fill(new Rect(card.xMax+b-1,card.y-b,1,card.height+2*b),g);}}
-   if(GUI.Button(card,"",GUIStyle.none)&&other!=partner){diplomacyPartner=other;ResetDiplomacyUI();}
-  }
+  // Talks are one on one (owner request): leader cards appear only on the chooser (DrawLeaderChooser), not here.
   // ---- Right panel ----
   var side=new Rect(828,74,440,712);DipPanel(side);
   if(diplomacyDiscuss||diplomacyConfirmation!=""){
@@ -120,7 +126,7 @@ public partial class RealmGame {
   Fill(new Rect(side.x+92,y+68,side.width-108,1),new Color(.78f,.62f,.32f,.7f));
   y+=90;
   // Greeting.
-  var quote=new Rect(side.x+14,y,side.width-28,62);DipPanel(quote,.9f);GUI.Label(new Rect(quote.x+14,quote.y+4,quote.width-28,quote.height-8),world.Greeting(partner),dipQuote);y+=74;
+  var quote=new Rect(side.x+14,y,side.width-28,62);DipPanel(quote,.9f);GUI.Label(new Rect(quote.x+14,quote.y+4,quote.width-28,quote.height-8),dipReplyPartner==partner&&!string.IsNullOrEmpty(dipReply)?dipReply:world.Greeting(partner),dipQuote);y+=74;
   // Pending proposals from this partner.
   var pending=world.offers.Where(o=>o.to==0&&o.status==0&&o.expires>world.turn).ToList();
   if(pending.Count>0){var strip=new Rect(side.x+14,y,side.width-28,30);Fill(strip,new Color(.5f,.38f,.12f,.9f));GUI.Label(new Rect(strip.x+10,strip.y,strip.width-110,30),pending.Count+" proposal"+(pending.Count==1?"":"s")+" awaiting your answer",dipRow);if(GUI.Button(new Rect(strip.xMax-96,strip.y+3,90,24),"Review")){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}y+=38;}

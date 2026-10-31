@@ -48,7 +48,7 @@ namespace ParadigmRealm
             }catch(Exception e){loadError="Could not delete: "+e.Message;}
             deleteCandidate=null;
         }
-        void OpenDetails(string name){detailsScreen=name;diplomacyDiscuss=false;researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
+        void OpenDetails(string name){detailsScreen=name;diplomacyDiscuss=false;diplomacyChooser=name=="Diplomacy"&&!diplomacyDirect;diplomacyDirect=false;researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
         void DrawDetailsScreen()
         {
             if(detailsScreen=="Diplomacy"){DrawDiplomacyScreen();return;}
@@ -116,20 +116,21 @@ namespace ParadigmRealm
         {
             GUI.Box(area,"");GUI.Label(new Rect(area.x+12,area.y+6,area.width-24,26),"The land around "+c.name,heading);
             var view=new Rect(area.x+8,area.y+36,area.width-16,374);
-            const float tw=96,th=tw*PixelArt.DH/PixelArt.DW,s=tw/64f;var worked=world.Worked(c);var e=Event.current;
+            // The view widens with the city's reach (one ring more at size 10, 20 and 30) and shrinks the tiles to fit.
+            int reach=World.WorkRadius(c),show=reach+1;float tw=Mathf.Min(96f,Mathf.Floor(2*374f/(2*show+1))),th=tw*PixelArt.DH/PixelArt.DW,s=tw/64f;var worked=world.Worked(c);var workable=world.Workable(c);var e=Event.current;
             int frame=(int)(Time.realtimeSinceStartup*2.5f)%3;string hover=null;Rect hoverRect=new Rect();
             GUI.BeginGroup(view);
             Fill(new Rect(0,0,view.width,view.height),new Color(.2f,.25f,.31f));
             float cx=view.width/2,cy=view.height/2;
             for(int pass=0;pass<2;pass++)
             // Diagonal layout, back to front by diagonal so scenery overlaps the tiles behind it.
-            for(int sum=-8;sum<=8;sum++)for(int dx=-4;dx<=4;dx++)
+            for(int sum=-2*show;sum<=2*show;sum++)for(int dx=-show;dx<=show;dx++)
             {
-                int dy=sum-dx;if(dy<-4||dy>4)continue;
+                int dy=sum-dx;if(dy<-show||dy>show)continue;
                 var t=world.Step(c.x,c.y,dx,dy);if(t==null)continue;
                 float sx=cx+(dx-dy)*tw/2,sy=cy+(dx+dy)*th/2;var r=new Rect(sx-tw/2,sy-th/2,tw,th);
                 if(r.xMax<0||r.x>view.width||r.yMax<0||r.y>view.height+th)continue;
-                bool ring=Math.Max(Math.Abs(dx),Math.Abs(dy))<=2&&world.Distance(c.x,c.y,t.x,t.y)<=2,mine=t.owner==c.owner;
+                bool ring=world.Distance(c.x,c.y,t.x,t.y)<=reach&&(dx!=0||dy!=0?workable.Contains(t):true),mine=t.owner==c.owner;
                 var known=t.seen?world.KnownTile(t):null;var old=GUI.color;
                 if(pass==0)
                 {
@@ -147,12 +148,14 @@ namespace ParadigmRealm
                 GUI.color=old;
                 // Resources around the city, with their own icons.
                 if(known.resource>0)DrawResource(known,new Rect(sx-tw/2+tw*.55f,sy-th/2+2,tw*.45f,tw*.45f));
-                if(!ring||!mine)continue;
+                // Tiles in reach that another of your cities works can be taken over by locking them here (owner request).
+                bool reachable=centre||world.InReach(c,t);if(!reachable||!mine)continue;
                 int[] v=centre?world.CityCentreYield(c):world.EffectiveTileYield(c,t);bool active=centre||worked.Contains(t),locked=world.IsLocked(c,t);
                 if(active)DrawYieldPips(new Rect(sx-tw/2+5,sy+th/2-14,tw-10,10),v);
                 if(locked){Fill(new Rect(sx+tw/2-16,sy-th/2+5,11,11),new Color(.08f,.16f,.3f,.9f));Fill(new Rect(sx+tw/2-14,sy-th/2+7,7,7),UiAccent);}
                 if(Mathf.Abs(e.mousePosition.x-sx)/(tw/2)+Mathf.Abs(e.mousePosition.y-sy)/(th/2)<=1&&e.mousePosition.y<=view.height){
                     hoverRect=r;hover=World.TerrainNames[known.terrain]+(known.resource>0?" with "+World.ResourceNames[known.resource]:"")+": "+v[0]+" food, "+v[1]+" shields, "+v[2]+" trade — "+(centre?"city centre":locked?"locked citizen (click to release)":active?"worked (click to lock)":"not worked (click to lock a citizen here)");
+                    if(!ring&&!centre){var ctl=world.TileController(t,c.owner);if(ctl!=null&&ctl!=c)hover+=" — worked by "+ctl.name+"; click to take it over";}
                     if(!centre&&e.type==EventType.MouseDown&&e.button==0&&GUI.enabled){bool ok=world.ToggleLock(c,t);status=ok?(world.IsLocked(c,t)?"Citizen locked on "+World.TerrainNames[known.terrain]+".":"Tile released to the Governor."):"Cannot lock: every working citizen is already locked here.";e.Use();}
                 }
             }

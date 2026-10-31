@@ -16,7 +16,8 @@ namespace ParadigmRealm {
    if(PortReach(owner)||FerryWanted.Contains(owner)){wanted.Add(TechnologyCatalog.Index("sailing"));wanted.Add(TechnologyCatalog.Index("engineering"));}
    if(Enumerable.Range(0,civCount).Any(other=>other!=owner&&Friends(owner,other))){wanted.Add(TechnologyCatalog.Index("writing"));wanted.Add(TechnologyCatalog.Index("laws"));}
    wanted=wanted.Where(t=>t>=0&&!nations[owner].tech[t]).ToList();
-   return available.OrderBy(t=>ResearchCost(t,owner)/(1.0+ (ActiveTechBenefits(t).Length>0?1:0)+wanted.Count(target=>LeadsTo(t,target))*4)).ThenBy(t=>t).First();
+   // Rivals favour keystones (they advance the era); minor technologies count as three times their cost.
+   return available.OrderBy(t=>ResearchCost(t,owner)*(TechnologyCatalog.IsKeystone(t)?1.0:3.0)/(1.0+ (ActiveTechBenefits(t).Length>0?1:0)+wanted.Count(target=>LeadsTo(t,target))*4)).ThenBy(t=>t).First();
   }
   void ImproveAI(Unit u){
    if(u.moves<=0)return;

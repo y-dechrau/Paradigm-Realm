@@ -336,9 +336,11 @@ namespace ParadigmRealm
         // Rivers start on high ground in wet country and run downhill until they meet the sea, a lake or another river.
         void MakeRivers(int s,bool[] land,double[] hn,int[] mb)
         {
-            int n=tiles.Length,wanted=Math.Max(2,land.Count(l=>l)/90);
+            // Owner request (31 Oct): more rivers, following the land: each rises on a hill or mountain (or right beside one), runs
+            // steepest-downhill and ends in the sea, a lake or another river; a river trapped in a hollow ends in a new lake there.
+            int n=tiles.Length,wanted=Math.Max(3,land.Count(l=>l)/45);
             var sources=new List<int>();
-            for(int i=0;i<n;i++)if(land[i]&&hn[i]>.4&&hn[i]<.9&&mb[i]>=3&&tiles[i].terrain!=15)sources.Add(i);
+            for(int i=0;i<n;i++){if(!land[i]||hn[i]<.3||mb[i]<2||tiles[i].terrain==15)continue;int tt=tiles[i].terrain;bool high=tt==2||tt==5||tt==17||SphereNeighbours(i).Any(j=>tiles[j].terrain==5||tiles[j].terrain==2);if(high)sources.Add(i);}
             sources.Sort((a,b)=>{int c=Lattice(s+61,a%Width,a/Width,5).CompareTo(Lattice(s+61,b%Width,b/Width,5));return c!=0?c:a.CompareTo(b);});
             int made=0;
             foreach(int source in sources)
@@ -350,7 +352,7 @@ namespace ParadigmRealm
                 {
                     int next=-1;double best=elevation[current];
                     foreach(int j in SphereNeighbours(current))if(elevation[j]<best){best=elevation[j];next=j;}
-                    if(next<0)break;
+                    if(next<0){if(path.Count>=3&&!Barren(tiles[current].terrain)&&tiles[current].terrain!=5&&tiles[current].terrain!=15){tiles[current].terrain=6;path.RemoveAt(path.Count-1);reached=true;}break;}
                     int tt=tiles[next].terrain;
                     if(tt==4||tt==12||tt==14||tt==6||tt==7){reached=true;break;}
                     path.Add(next);current=next;

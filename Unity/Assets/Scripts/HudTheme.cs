@@ -23,7 +23,9 @@ namespace ParadigmRealm
         const float RailItem=54;
         static Rect RailRect{get{return new Rect(0,44,72,RailScreens.Length*RailItem+8);}}
         readonly List<Rect> hudRects=new List<Rect>();
-        bool moreActions,moveMode;
+        bool moreActions,moveMode,roadMode;
+        // A label whose font shrinks (down to minimum) until the whole text fits the box (owner request: nothing cut off).
+        void FitLabel(Rect r,string text,GUIStyle style,int minimum=9){var s=new GUIStyle(style){wordWrap=false,clipping=TextClipping.Overflow};while(s.fontSize>minimum&&s.CalcSize(new GUIContent(text)).x>r.width)s.fontSize--;GUI.Label(r,text,s);}
         // Clicks and the mouse wheel reach the map only where no widget is drawn over it.
         bool OverHud(Vector2 p){foreach(var r in hudRects)if(r.Contains(p))return true;return false;}
         bool InMap(Vector2 p){return MapView.Contains(p)&&!OverHud(p);}
@@ -71,7 +73,7 @@ namespace ParadigmRealm
         {
             bool clicked=GUI.Button(r,"");
             if(active)Fill(new Rect(r.x+2,r.y+2,r.width-4,r.height-4),new Color(UiButtonActive.r,UiButtonActive.g,UiButtonActive.b,.9f));
-            DrawIcon(icon,new Rect(r.center.x-12,r.y+5,24,24));GUI.Label(new Rect(r.x,r.yMax-21,r.width,18),caption,hudCentre);
+            DrawIcon(icon,new Rect(r.center.x-12,r.y+5,24,24));FitLabel(new Rect(r.x+2,r.yMax-21,r.width-4,18),caption,hudCentre);
             return clicked;
         }
         int SciencePerTurn(){return world.cities.Where(c=>c.owner==0).Sum(c=>world.Yield(c)[2]);}
@@ -152,7 +154,7 @@ namespace ParadigmRealm
                 if(world.AtWar(0,o)){Fill(new Rect(r.x,r.y,r.width,2),new Color(.85f,.2f,.15f));Fill(new Rect(r.x,r.yMax-2,r.width,2),new Color(.85f,.2f,.15f));}
                 int opinion=world.Opinion(o,0);Color mood=opinion>10?new Color(.35f,.8f,.4f):opinion<-10?new Color(.9f,.3f,.25f):new Color(.95f,.78f,.3f);
                 DrawIcon(opinion>10?PixelArt.IconMoodGood:opinion<-10?PixelArt.IconMoodBad:PixelArt.IconMoodNeutral,new Rect(r.x+6,r.yMax-24,20,20));var score=new GUIStyle(hudLabel);score.normal.textColor=mood;GUI.Label(new Rect(r.x+30,r.yMax-23,r.width-34,20),(opinion>0?"+":"")+opinion,score);
-                if(clicked){diplomacyPartner=o;OpenDetails("Diplomacy");}
+                if(clicked){diplomacyPartner=o;diplomacyDirect=true;OpenDetails("Diplomacy");}
             }
         }
         void DrawNotices()
@@ -205,20 +207,20 @@ namespace ParadigmRealm
             if(u!=null)
             {
                 var art=unitSprites!=null&&unitSprites[u.type]!=null?unitSprites[u.type]:people[u.type];GUI.DrawTexture(new Rect(picture.x+4,picture.y+2,picture.width-8,picture.height-4),art,ScaleMode.ScaleToFit,true);
-                GUI.Label(new Rect(tx,r.y+8,tw,24),World.UnitNames[u.type].ToUpper(),hudTitle);
+                FitLabel(new Rect(tx,r.y+8,tw-6,24),World.UnitNames[u.type].ToUpper(),hudTitle);
                 Bar(new Rect(tx,r.y+36,tw-6,8),u.hp/10f,u.hp>6?UiAccent:u.hp>3?new Color(.95f,.75f,.3f):new Color(.9f,.3f,.25f));
                 DrawIcon(PixelArt.IconRoad,new Rect(tx,r.y+52,20,20));GUI.Label(new Rect(tx+26,r.y+52,120,22),"Movement",hudLabel);GUI.Label(new Rect(tx,r.y+52,tw-8,22),u.moves+" / "+World.Moves[u.type],hudNumber);
                 DrawIcon(PixelArt.IconMilitary,new Rect(tx,r.y+76,20,20));GUI.Label(new Rect(tx+26,r.y+76,120,22),"Strength",hudLabel);GUI.Label(new Rect(tx,r.y+76,tw-8,22),World.Attack[u.type]+" / "+World.Defence[u.type],hudNumber);
                 // What the unit is doing, on its own line (owner request), with the time left for jobs and journeys; rank below.
                 string doing=world.Activity(u);if(u.job>0||u.hasOrder)doing+=" — "+world.Remaining(u);
-                GUI.Label(new Rect(tx,r.y+97,tw-6,20),doing,new GUIStyle(hudLabel){fontSize=13,normal={textColor=UiGold}});
-                GUI.Label(new Rect(tx,r.y+117,tw-6,16),World.RankText(u),new GUIStyle(hudSmall){wordWrap=false,clipping=TextClipping.Clip});
+                FitLabel(new Rect(tx,r.y+97,tw-8,20),doing,new GUIStyle(hudLabel){fontSize=13,normal={textColor=UiGold}});
+                FitLabel(new Rect(tx,r.y+117,tw-8,16),World.RankText(u),hudSmall,8);
                 DrawUnitActions(u,new Rect(r.x+10,r.y+136,r.width-20,56));
             }
             else if(c!=null)
             {
                 GUI.DrawTexture(new Rect(picture.x,picture.y,picture.width,picture.height),SettlementTexture(CityVisualEra(c.owner),c.pop,SettlementFlags(c),c.id),ScaleMode.ScaleToFit,true);
-                GUI.Label(new Rect(tx,r.y+8,tw,24),c.name.ToUpper(),hudTitle);
+                FitLabel(new Rect(tx,r.y+8,tw-6,24),c.name.ToUpper(),hudTitle);
                 var y=world.Yield(c);GUI.Label(new Rect(tx,r.y+36,tw,22),"Size "+c.pop,hudLabel);
                 DrawIcon(PixelArt.IconFood,new Rect(tx,r.y+60,20,20));GUI.Label(new Rect(tx+24,r.y+60,40,22),(y[0]>=0?"+":"")+y[0],hudLabel);
                 DrawIcon(PixelArt.IconShields,new Rect(tx+70,r.y+60,20,20));GUI.Label(new Rect(tx+94,r.y+60,40,22),y[1].ToString(),hudLabel);
@@ -273,6 +275,9 @@ namespace ParadigmRealm
             {
                 GUILayout.Label("All orders",heading);
                 bool enabled=GUI.enabled;GUI.enabled=enabled&&world.result=="";
+                // Auto develop: the worker picks its own jobs each turn (roads, farms, mines, clearing) until told otherwise.
+                if(u.type==1&&Button(u.autoWork?"Stop auto develop":"Auto develop")){bool on=!u.autoWork;world.SetAutoWork(u,on);status=on?"Worker set to auto develop.":"Auto develop stopped.";}
+                if(u.type==1&&Button("Road to a destination [R, then right-drag]"))RoadKey(u);
                 if(u.type==1){string reason=world.WorkerTeam(u).Select(a=>world.JobReason(a,4)).FirstOrDefault(r=>r!="")??"";if(Button("Fort ("+((world.JobWork(u,4)+world.WorkerTeam(u).Count-1)/world.WorkerTeam(u).Count)+" turns)")){if(!world.StartJob(u,4))status=reason;}}
                 if(u.hasOrder){GUILayout.Label("Destination: "+u.destinationX+", "+u.destinationY,body);if(Button("Cancel movement order [X]"))world.CancelActivity(u);}
                 GUI.enabled=enabled;
@@ -290,6 +295,7 @@ namespace ParadigmRealm
             var v=world.TileYield(t);bool known=t.resource>0&&world.ResourceKnown(0,t.resource);if(t.resource>0&&!known){v[0]-=World.ResourceFood[t.resource];v[1]-=World.ResourceShields[t.resource];v[2]-=World.ResourceTrade[t.resource];}
             var features=new List<string>{World.TerrainNames[t.terrain]};if(t.road)features.Add(World.Forested(t.terrain)?"Trail":"Road");if(t.farm)features.Add("Farm");if(t.mine)features.Add("Mine");if(t.fort)features.Add("Fort");if(known)features.Add(World.ResourceNames[t.resource]);
             // Tribal villages (owner request): named on the card, with the civilisation they joined if any.
+            {var ruinTile=world.At(t.x,t.y);if(ruinTile!=null&&ruinTile.ruin)features.Add("Ancient ruins");}
             {var live=world.At(t.x,t.y);if(live!=null&&live.village)features.Add(live.villageOwner>=0?"Village (joined "+world.NationName(live.villageOwner)+")":"Tribal village");}
             GUI.Label(new Rect(TileCard.x,TileCard.y+4,TileCard.width,20),string.Join("  •  ",features.ToArray()),hudCentre);
             float cx=TileCard.center.x-96;
@@ -302,19 +308,23 @@ namespace ParadigmRealm
         GUIStyle plateLine;
         void DrawCityPlate(City c,string name,Vector2 top,Color ink)
         {
-            HudStyles();if(plateLine==null)plateLine=new GUIStyle(hudSmall){wordWrap=false,clipping=TextClipping.Clip,padding=new RectOffset(0,0,0,0),alignment=TextAnchor.MiddleLeft};bool own=c!=null&&c.owner==0;float w=own?190:154,h=own?52:26;var r=new Rect(top.x-w/2,top.y,w,h);
-            GUI.Box(r,"");Fill(new Rect(r.x+2,r.y+2,3,r.height-4),ink);
-            // The owner's flag flies at the plate's left end.
-            if(c!=null){var plateFlag=FlagTexture(c.owner);if(plateFlag!=null)GUI.DrawTexture(new Rect(r.x-22,r.y+3,21,14),plateFlag,ScaleMode.StretchToFill,true);}
+            // Owner request (31 Oct): a small see-through plate, name and size on one line plus a thin production bar for
+            // your cities; what is being built shows when the pointer is over the plate. Drawn in map order, so units on
+            // the tiles in front stay on top of it.
+            HudStyles();if(plateLine==null){plateLine=new GUIStyle(hudCaption){fontSize=11,wordWrap=false,clipping=TextClipping.Clip,alignment=TextAnchor.MiddleLeft,padding=new RectOffset(0,0,0,0)};}
+            bool own=c!=null&&c.owner==0;string label=name.ToUpper();float textW=plateLine.CalcSize(new GUIContent(label)).x;
+            float w=Mathf.Clamp(textW+46,70,190),h=own?20:17;var r=new Rect(top.x-w/2,top.y,w,h);
+            Fill(r,new Color(.04f,.06f,.12f,.72f));Fill(new Rect(r.x,r.y,2,r.height),ink);
+            if(c!=null){var plateFlag=FlagTexture(c.owner);if(plateFlag!=null)GUI.DrawTexture(new Rect(r.x+4,r.y+3,15,10),plateFlag,ScaleMode.StretchToFill,true);}
             bool capital=c!=null&&c.owner>=0&&world.nations[c.owner].capital==c.id;
-            DrawIcon(capital?PixelArt.IconCrown:PixelArt.IconCities,new Rect(r.x+8,r.y+4,18,18));
-            GUI.Label(new Rect(r.x+30,r.y+3,w-62,20),name.ToUpper(),hudCaption);
-            if(c!=null)GUI.Label(new Rect(r.xMax-34,r.y+3,26,20),c.pop.ToString(),hudNumber);
+            if(capital)DrawIcon(PixelArt.IconCrown,new Rect(r.x+20,r.y+2,12,12));
+            GUI.Label(new Rect(r.x+(capital?33:22),r.y+1,w-50,15),label,plateLine);
+            if(c!=null)GUI.Label(new Rect(r.xMax-22,r.y+1,18,15),c.pop.ToString(),new GUIStyle(plateLine){alignment=TextAnchor.MiddleRight});
             if(own)
             {
-                int b=c.buildingProject>=0?c.buildingProject:c.build;int progress=c.buildingProject>=0?c.buildingProduction:c.production;int perTurn=Math.Max(1,world.Yield(c)[1]);
-                string line=b<0?"Nothing in production":World.BuildName(b)+" ("+Math.Max(1,(world.CostFor(c,b)-progress+perTurn-1)/perTurn)+")";
-                GUI.Label(new Rect(r.x+30,r.y+24,w-40,18),line,plateLine);if(b>=0)Bar(new Rect(r.x+30,r.yMax-7,w-40,3),progress/(float)Math.Max(1,world.CostFor(c,b)),UiAccent);
+                int b=c.buildingProject>=0?c.buildingProject:c.build;int progress=c.buildingProject>=0?c.buildingProduction:c.production;
+                if(b>=0)Bar(new Rect(r.x+4,r.yMax-3,w-8,2),progress/(float)Math.Max(1,world.CostFor(c,b)),UiAccent);
+                if(r.Contains(Event.current.mousePosition)){int perTurn=Math.Max(1,world.Yield(c)[1]);string line=b<0?"Nothing in production":World.BuildName(b)+" ("+Math.Max(1,(world.CostFor(c,b)-progress+perTurn-1)/perTurn)+" turns)";var tip=new Rect(r.x,r.yMax+2,Mathf.Max(w,hudSmall.CalcSize(new GUIContent(line)).x+12),18);Fill(tip,new Color(.04f,.06f,.12f,.92f));GUI.Label(new Rect(tip.x+6,tip.y+1,tip.width-8,16),line,new GUIStyle(hudSmall){wordWrap=false});}
             }
         }
     }

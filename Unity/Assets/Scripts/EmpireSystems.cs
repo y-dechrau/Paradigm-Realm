@@ -17,7 +17,9 @@ public partial class World {
     public int ExtraHappiness(City c){var n=nations[c.owner];return c.entertainers*2+n.luxury*2+(n.government==1?1:0)+(HasBuilding(c,36)?2:0)+(HasBuilding(c,42)?3:0)+(OwnWonder(c.owner,61)?2:0)-(n.revolution>0?2:0)-(n.government==3&&units.Any(u=>u.owner==c.owner&&Power[u.type]>0&&At(u.x,u.y).owner>=0&&At(u.x,u.y).owner!=c.owner&&AtWar(c.owner,At(u.x,u.y).owner))?2:0);}
     public void NormaliseSpecialists(City c){while(c.scientists+c.merchants+c.entertainers>c.pop){if(c.scientists>0)c.scientists--;else if(c.merchants>0)c.merchants--;else c.entertainers--;}}
     public bool AdjustSpecialist(City c,int type,int delta){if(c==null||!cities.Contains(c)||result!=""||type<0||type>2||(delta!=1&&delta!=-1))return false;int value=type==0?c.scientists:type==1?c.merchants:c.entertainers;if(delta<0&&value==0||delta>0&&c.scientists+c.merchants+c.entertainers>=c.pop)return false;if(type==0)c.scientists+=delta;else if(type==1)c.merchants+=delta;else c.entertainers+=delta;return true;}
-    public int GrowthLimit(City c){return HasBuilding(c,41)?20:HasBuilding(c,37)?12:FreshWater(c.x,c.y)?8:6;}
+    // With a Sewer system cities grow to 20, to 30 with Electricity and 40 with Computing, so the work area keeps widening
+// to size 30 (owner request, 31 Oct).
+public int GrowthLimit(City c){return HasBuilding(c,41)?20+(HasTech(c.owner,"electricity")?10:0)+(HasTech(c.owner,"computers")?10:0):HasBuilding(c,37)?12:FreshWater(c.x,c.y)?8:6;}
     void ApplyEmpireYields(City c,ref int food,ref int production,ref int science,ref int goldYield){var n=nations[c.owner];science+=c.scientists*3+(n.capital==c.id?DiplomaticScience(c.owner):0);goldYield+=c.merchants*3;
         // Stage 8: flat building bonuses as the design states (University +3); research pacts count once, at the capital.
         if(HasBuilding(c,38))science+=3;if(HasBuilding(c,40))production=production*3/2;
@@ -97,7 +99,7 @@ public partial class World {
         }
         return null;
     }    bool VisibleThreat(Unit u){return units.Any(e=>AtWar(u.owner,e.owner)&&VisibleTo(u.owner,e.x,e.y)&&Distance(u.x,u.y,e.x,e.y)<=4);}
-    void ProcessEmpireOrders(int owner){foreach(var u in units.Where(a=>a.owner==owner).ToList()){if(u.sentry&&VisibleThreat(u)){u.sentry=false;if(owner==0)Note(UnitNames[u.type]+" sentry spotted an enemy.");}if(u.exploring)ExploreStep(u);}}
+    void ProcessEmpireOrders(int owner){foreach(var u in units.Where(a=>a.owner==owner).ToList()){if(u.roadOrder)RoadStep(u);else if(u.autoWork&&u.job==0&&!u.hasOrder&&u.moves>0)ImproveAI(u);if(u.sentry&&VisibleThreat(u)){u.sentry=false;if(owner==0)Note(UnitNames[u.type]+" sentry spotted an enemy.");}if(u.exploring)ExploreStep(u);}}
     void EmpireAI(int owner){var n=nations[owner];AIChooseEdicts(owner);if(n.government==0&&HasTech(owner,"laws"))ChangeGovernment(owner,1);n.luxury=cities.Any(c=>c.owner==owner&&Happiness(c)<0)&&n.gold>20?1:0;foreach(var c in cities.Where(c=>c.owner==owner)){if(c.build<0&&HasTech(owner,"currency")&&cities.Count(a=>a.owner==owner)>1&&units.Count(u=>u.owner==owner&&u.type==11)==0&&tradeRoutes.Count(r=>r.originOwner==owner)<2)ChooseProject(c,UnitBuild(11),false);}}
     void UpgradeEmpireSave(){if(tradeRoutes==null)tradeRoutes=new List<TradeRoute>();if(cities!=null)foreach(var c in cities)if(c!=null)NormaliseSpecialists(c);}
     bool EmpireValid(){if(tradeRoutes==null||nations==null||cities==null)return false;if(nations.Any(n=>n!=null&&(n.government<0||n.government>=Governments.Length||n.revolution<0||n.revolution>2||n.luxury<0||n.luxury>2)))return false;if(cities.Any(c=>c!=null&&(c.scientists<0||c.merchants<0||c.entertainers<0||c.scientists+c.merchants+c.entertainers>c.pop)))return false;return tradeRoutes.All(r=>r!=null&&r.origin!=r.destination&&r.originOwner>=0&&r.originOwner<civCount&&r.destinationOwner>=0&&r.destinationOwner<civCount&&cities.Any(c=>c.id==r.origin)&&cities.Any(c=>c.id==r.destination));}

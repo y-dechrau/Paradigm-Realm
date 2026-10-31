@@ -152,8 +152,10 @@ namespace ParadigmRealm
             GUI.EndGroup();
             world.EndVisibilityCache();
             HandleMapInput();
-            if(dragging){var m=Event.current.mousePosition;var u=world.units.Find(a=>a.id==dragUnit);if(u!=null){float sx,sy;IsoScreen(u.x,u.y,out sx,out sy);DrawOrderLine(new Vector2(MapX+sx,MapY+sy-6*isoWidth/64f),m);}GUI.Label(new Rect(m.x+15,m.y+12,220,30),"Release to issue destination",body);}
+            if(dragging){var m=Event.current.mousePosition;var u=world.units.Find(a=>a.id==dragUnit);if(u!=null){float sx,sy;IsoScreen(u.x,u.y,out sx,out sy);DrawOrderLine(new Vector2(MapX+sx,MapY+sy-6*isoWidth/64f),m);}GUI.Label(new Rect(m.x+15,m.y+12,220,30),roadMode?"Release to build a road there":"Release to send the unit here",body);}
         }
+        Texture2D ruinTexture;
+        readonly List<KeyValuePair<Unit,Rect>> isoUnitDraws=new List<KeyValuePair<Unit,Rect>>();readonly List<int> isoUnitCounts=new List<int>();
         readonly List<Vector3> isoFog=new List<Vector3>(),isoMist=new List<Vector3>();readonly List<Vector4> isoCells=new List<Vector4>();
         // Dark mist colours: the void and unexplored ground, the cloud banks over it, the veil over remembered land and its tint.
         static readonly Color MistDeep=new Color(.07f,.08f,.11f),MistBank=new Color(.17f,.19f,.24f,.97f),MistThin=new Color(.14f,.16f,.21f,.3f),Remembered=new Color(.58f,.61f,.68f,1);
@@ -172,7 +174,7 @@ namespace ParadigmRealm
             // Diagonal view: tiles go back to front by diagonal (i + j), so raised scenery overlaps the tiles behind it.
             // R covers every tile whose diamond can touch the view, with a margin for tall scenery below the bottom edge.
             int R=(int)Math.Ceiling(MapW/tw+MapH/th)+3,ci=(int)Math.Round(camI),cj=(int)Math.Round(camJ);
-            int pooled=0;isoResTiles.Clear();isoResPos.Clear();isoCityNames.Clear();isoCityPos.Clear();isoCityInk.Clear();isoCityRefs.Clear();
+            int pooled=0;isoUnitDraws.Clear();isoUnitCounts.Clear();isoResTiles.Clear();isoResPos.Clear();isoCityNames.Clear();isoCityPos.Clear();isoCityInk.Clear();isoCityRefs.Clear();
             // Staggered rows: draw row by row from the back (north); every tile of a row is level, so order within it is free.
             isoCells.Clear();
             if(world.Staggered)
@@ -229,6 +231,7 @@ namespace ParadigmRealm
                 if(portOf!=null&&!portOf.portLinked&&portOf.owner==0){var warn=new Rect(sx+8*s,gy-22*s,9*s,9*s);Fill(warn,new Color(.85f,.2f,.15f,.92f));GUI.Label(warn,"!",small);}
                 var improvement=new Rect(sx-18*s,gy-22*s,36*s,36*s);
                 if(t.mine)DrawArt("mine",improvement);if(t.fort)DrawArt("fort",improvement);
+                if(source.ruin){if(ruinTexture==null)ruinTexture=PixelTexture(PixelArt.Ruins());GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),ruinTexture);}
                 if(t.village&&visible){DrawArt("village",improvement);if(t.villageOwner>=0){var pole=new Rect(sx+10*s,gy-26*s,Mathf.Max(1,1.5f*s),12*s);Fill(pole,new Color(.3f,.22f,.14f));Fill(new Rect(pole.xMax,pole.y,7*s,5*s),nations[t.villageOwner]);}}
                 if(!visible&&!string.IsNullOrEmpty(t.rememberedCity)){GUI.DrawTexture(new Rect(sx-32*s,gy-44*s,64*s,64*s),SettlementTexture(CityVisualEra(0),3,0,t.x+t.y),ScaleMode.ScaleToFit,true);isoCityNames.Add(t.rememberedCity);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(.6f,.62f,.66f));isoCityRefs.Add(null);}
                 GUI.color=old;
@@ -240,7 +243,7 @@ namespace ParadigmRealm
                 // At sea the ship is drawn, not the units it carries.
                 if(picked==null&&water&&stackAt!=null){var ship=stackAt.Find(a=>World.IsNaval(a.type)&&(a.owner==0||visible));if(ship!=null)first=ship;}
                 var shown=picked??first;
-                if(shown!=null){DrawUnitArt(shown,new Rect(sx-20*s,gy-36*s,40*s,40*s),count);}
+                if(shown!=null){var unitRect=new Rect(sx-20*s,gy-36*s,40*s,40*s);DrawUnitArt(shown,unitRect,count);isoUnitDraws.Add(new KeyValuePair<Unit,Rect>(shown,unitRect));isoUnitCounts.Add(count);}
             }
             // Fog of war as dark mist (owner request): a thin drifting veil over land seen before but not watched now, and
             // thick dark banks (the cloud puffs, darkened) over unexplored land, spilling a little over the known world's edge.
@@ -251,8 +254,11 @@ namespace ParadigmRealm
             GUI.color=before;
             // Resource badges go on after every tile so the tiles in front can never cover them.
             for(int n=0;n<isoResTiles.Count;n++){var p=isoResPos[n];DrawResource(isoResTiles[n],new Rect(p.x-36*s,p.y+15*s-61*s,61*s,61*s));}
-            // City names sit just below each settlement, drawn last so neither tiles nor clouds cover them.
-            for(int n=0;n<isoCityNames.Count;n++)DrawCityPlate(isoCityRefs[n],isoCityNames[n],new Vector2(isoCityPos[n].x,isoCityPos[n].y+24*s),isoCityInk[n]);
+            // City plates go on after the tiles (so no ground covers them), then any unit standing over a plate is drawn again on
+            // top, so plates never hide units (owner request).
+            var plates=new List<Rect>();
+            for(int n=0;n<isoCityNames.Count;n++){var at=new Vector2(isoCityPos[n].x,isoCityPos[n].y+24*s);DrawCityPlate(isoCityRefs[n],isoCityNames[n],at,isoCityInk[n]);plates.Add(new Rect(at.x-95,at.y,190,22));}
+            for(int n=0;n<isoUnitDraws.Count;n++){var ur=isoUnitDraws[n].Value;if(plates.Any(p=>p.x<ur.x+ur.width&&ur.x<p.x+p.width&&p.y<ur.y+ur.height&&ur.y<p.y+p.height))DrawUnitArt(isoUnitDraws[n].Key,ur,isoUnitCounts[n]);}
             DrawIsoOverlay(s);
             compositeBudgetOn=false;
         }

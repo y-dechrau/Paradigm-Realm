@@ -102,6 +102,7 @@ namespace ParadigmRealm
         }        // Only active game effects are advertised as playable. Source unlocks are preserved separately.
         public static string[] ActiveTechBenefits(int id){
             var benefits=new System.Collections.Generic.List<string>();
+            if(!TechnologyCatalog.IsKeystone(id)&&id<TechnologyCatalog.Count&&!string.IsNullOrEmpty(TechnologyCatalog.Effects[id])){benefits.Add(TechnologyCatalog.EffectText(TechnologyCatalog.Effects[id]));return benefits.ToArray();}
             for(int i=0;i<UnitNames.Length;i++)if(UnitTech[i]==id)benefits.Add("Train "+UnitNames[i]);
             for(int i=0;i<BuildingIds.Length;i++)if(BuildingTech[i]==id)benefits.Add("Build "+BuildingNames[i]);
             for(int g=1;g<Governments.Length;g++)if(TechnologyCatalog.Index(GovernmentTech[g])==id)benefits.Add("Government: "+Governments[g]);

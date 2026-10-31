@@ -58,11 +58,11 @@ namespace ParadigmRealm
         void Update()
         {
             if(world==null||mainMenu||nameSetup||pauseMenu||guide||confirmNew||pendingUnit!=-1||cityScreen||researchScreen||detailsScreen!=""||world.result!="")return;
-            if(world.newContacts!=null&&world.newContacts.Count>0){int met=world.newContacts[0];world.newContacts.RemoveAt(0);if(met>0&&met<world.civCount){diplomacyPartner=met;detailsScreen="Diplomacy";researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();status="First contact: "+world.NationName(met)+".";}}
+            if(world.newContacts!=null&&world.newContacts.Count>0){int met=world.newContacts[0];world.newContacts.RemoveAt(0);if(met>0&&met<world.civCount){diplomacyPartner=met;diplomacyChooser=false;diplomacyDiscuss=false;detailsScreen="Diplomacy";researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();status="First contact: "+world.NationName(met)+".";}}
         }
         void MapKeyboardInput(){
             if(cityScreen||researchScreen||detailsScreen!=""||pauseMenu||mainMenu||loadScreen)return;
-            var ev=Event.current;if(!PromptOpen()&&GUI.GetNameOfFocusedControl()!="rename"&&GUI.GetNameOfFocusedControl()!="cityrename"&&ev.type==EventType.KeyDown&&!ev.control&&!ev.alt&&!ev.command&&world.result==""&&!guide&&!confirmNew&&pendingUnit==-1){var u=Selected();if(ev.keyCode==KeyCode.X&&u!=null){world.CancelActivity(u);ResetMapGesture();status="Activity and route cancelled.";ev.Use();}else if(ev.keyCode==KeyCode.Tab){NextUnit();ev.Use();}else if(ev.keyCode==KeyCode.Space){if(u!=null){world.SkipTurn(u);status=World.UnitNames[u.type]+" skips this turn.";}ev.Use();}else if(ev.keyCode==KeyCode.Return||ev.keyCode==KeyCode.KeypadEnter){EndTurn();ev.Use();}else if(ev.keyCode==KeyCode.B){Found();ev.Use();}else if(u!=null){int dx=ev.keyCode==KeyCode.LeftArrow?-1:ev.keyCode==KeyCode.RightArrow?1:0,dy=ev.keyCode==KeyCode.UpArrow?-1:ev.keyCode==KeyCode.DownArrow?1:0;if(dx!=0||dy!=0){var to=ArrowTarget(u,dx,dy);if(to!=null)IssueOrder(u,to.x,to.y);ev.Use();}}}
+            var ev=Event.current;if(!PromptOpen()&&GUI.GetNameOfFocusedControl()!="rename"&&GUI.GetNameOfFocusedControl()!="cityrename"&&ev.type==EventType.KeyDown&&!ev.control&&!ev.alt&&!ev.command&&world.result==""&&!guide&&!confirmNew&&pendingUnit==-1){var u=Selected();if(ev.keyCode==KeyCode.X&&u!=null){world.CancelActivity(u);ResetMapGesture();status="Activity and route cancelled.";ev.Use();}else if(ev.keyCode==KeyCode.Tab){NextUnit();ev.Use();}else if(ev.keyCode==KeyCode.Space){if(u!=null){world.SkipTurn(u);status=World.UnitNames[u.type]+" skips this turn.";}ev.Use();}else if(ev.keyCode==KeyCode.Return||ev.keyCode==KeyCode.KeypadEnter){EndTurn();ev.Use();}else if(ev.keyCode==KeyCode.B){Found();ev.Use();}else if(ev.keyCode==KeyCode.R){RoadKey(u);ev.Use();}else if(u!=null){int dx=ev.keyCode==KeyCode.LeftArrow?-1:ev.keyCode==KeyCode.RightArrow?1:0,dy=ev.keyCode==KeyCode.UpArrow?-1:ev.keyCode==KeyCode.DownArrow?1:0;if(dx!=0||dy!=0){var to=ArrowTarget(u,dx,dy);if(to!=null)IssueOrder(u,to.x,to.y);ev.Use();}}}
         }
 
         void StartGame()
@@ -260,7 +260,7 @@ namespace ParadigmRealm
             GUI.EndScrollView();
             world.EndVisibilityCache();
             HandleMapInput();
-            if(dragging){var m=Event.current.mousePosition;var u=world.units.Find(a=>a.id==dragUnit);if(u!=null)DrawOrderLine(new Vector2(MapX+ClassicRect(u.x,u.y).center.x-mapScroll.x,MapY+ClassicRect(u.x,u.y).center.y-mapScroll.y),m);GUI.Label(new Rect(m.x+15,m.y+12,220,30),"Release to issue destination",body);}
+            if(dragging){var m=Event.current.mousePosition;var u=world.units.Find(a=>a.id==dragUnit);if(u!=null)DrawOrderLine(new Vector2(MapX+ClassicRect(u.x,u.y).center.x-mapScroll.x,MapY+ClassicRect(u.x,u.y).center.y-mapScroll.y),m);GUI.Label(new Rect(m.x+15,m.y+12,220,30),roadMode?"Release to build a road there":"Release to send the unit here",body);}
         }
         void DrawMapContents()
         {
@@ -318,20 +318,17 @@ namespace ParadigmRealm
             // Move mode (the unit card's Move button): the next click on the map is the selected unit's destination.
             if(moveMode&&e.type==EventType.MouseDown&&e.button==0&&inside){var mover=Selected();moveMode=false;if(mover!=null&&!(mover.x==x&&mover.y==y))IssueOrder(mover,x,y);e.Use();return;}
             if(moveMode&&e.type==EventType.MouseDown&&e.button==1){moveMode=false;e.Use();return;}
+            // Owner request (31 Oct): the left button selects, the right button directs. Right-click a tile, or hold the right
+            // button and drag to it, to send the selected unit there (a worker in road mode builds a road along the way).
             if(e.type==EventType.MouseDown&&e.button==0&&inside){
                 var city=world.cities.Find(c=>c.owner==0&&c.x==x&&c.y==y);
                 if(e.clickCount==2&&city!=null){e.Use();OpenCity(city);return;}
-                mapPointerDown=true;pressX=x;pressY=y;pressMouse=e.mousePosition;dragging=false;
-                var own=world.units.Where(u=>u.owner==0&&u.x==x&&u.y==y).ToList();
-                var unit=own.Find(u=>u.id==selected)??own.FirstOrDefault();dragUnit=unit==null?-1:unit.id;e.Use();
+                mapPointerDown=true;pressX=x;pressY=y;pressMouse=e.mousePosition;e.Use();
             }
-            if(e.type==EventType.MouseDrag&&e.button==0&&mapPointerDown&&dragUnit>=0){
-                if((e.mousePosition-pressMouse).sqrMagnitude>16){dragging=true;selected=dragUnit;cityId=-1;}e.Use();
-            }
-            if(e.type==EventType.MouseUp&&e.button==0&&mapPointerDown){
-                if(inside){if(dragging&&dragUnit>=0)IssueOrder(world.units.Find(u=>u.id==dragUnit),x,y);else if(x==pressX&&y==pressY)Click(x,y);}
-                dragUnit=-1;dragging=false;mapPointerDown=false;e.Use();
-            }
+            if(e.type==EventType.MouseUp&&e.button==0&&mapPointerDown){if(inside&&x==pressX&&y==pressY)Click(x,y);mapPointerDown=false;e.Use();}
+            if(e.type==EventType.MouseDown&&e.button==1&&inside){var mover=Selected();if(mover!=null){dragUnit=mover.id;dragging=true;pressMouse=e.mousePosition;e.Use();}}
+            if(e.type==EventType.MouseDrag&&e.button==1&&dragging)e.Use();
+            if(e.type==EventType.MouseUp&&e.button==1&&dragging){var mover=world.units.Find(u=>u.id==dragUnit);dragUnit=-1;dragging=false;if(inside&&mover!=null&&!(mover.x==x&&mover.y==y)){if(roadMode&&mover.type==1)OrderRoad(mover,x,y);else IssueOrder(mover,x,y);}roadMode=false;e.Use();}
         }
         void IssueOrder(Unit u,int x,int y)
         {
@@ -366,7 +363,7 @@ namespace ParadigmRealm
             if(c!=null&&own.Count>0){OpenTilePicker(x,y);return;}
             if(c!=null&&cityId!=c.id){cityId=c.id;selected=-1;return;}
             if(own.Count>0){int i=own.FindIndex(u=>u.id==selected);selected=own[(i+1)%own.Count].id;cityId=-1;return;}
-            IssueOrder(Selected(),x,y);
+            // Left-clicking an empty tile only selects; orders are given with the right button.
         }
         void DrawGuide()
         {

@@ -17,17 +17,25 @@ namespace ParadigmRealm {
    return v;
   }
   bool NearRiver(Tile t){for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){var a=Step(t.x,t.y,x,y);if(a!=null&&a.terrain==7)return true;}return false;}
+  // Owner request (31 Oct): a city works tiles within 2 of its centre, one ring more at size 10, 20 and 30 (then no more).
+  public static int WorkRadius(City c){return 2+Math.Min(3,c.pop/10);}
+  // A tile this city could work: inside its reach, owned by its civilisation, not another city's centre.
+  public bool InReach(City c,Tile t,HashSet<int> centres=null){if(c==null||t==null||t.owner!=c.owner||(t.x==c.x&&t.y==c.y)||Distance(t.x,t.y,c.x,c.y)>WorkRadius(c))return false;if(centres!=null)return !centres.Contains(t.y*Width+t.x);foreach(var other in cities)if(other.x==t.x&&other.y==t.y)return false;return true;}
+  HashSet<int> CityCentres(){var s=new HashSet<int>();foreach(var o in cities)s.Add(o.y*Width+o.x);return s;}
+  // Where reaches overlap, the more dominant city (larger, then older) works the tile, unless another city that can reach it
+  // has locked it there (the player's manual override).
+  public City TileController(Tile t,int owner,HashSet<int> centres=null,List<City> own=null){
+   int key=t.y*Width+t.x;City best=null;bool bestLocked=false;if(centres==null)centres=CityCentres();
+   foreach(var o in own??cities){if(o.owner!=owner||!InReach(o,t,centres))continue;bool locked=o.locked!=null&&o.locked.Contains(key);
+    if(best==null||locked&&!bestLocked||locked==bestLocked&&(o.pop>best.pop||o.pop==best.pop&&o.id<best.id)){best=o;bestLocked=locked;}}
+   return best;
+  }
   public List<Tile> Workable(City c){
-   // Only the 5x5 block around the city can qualify, so nothing scans the whole map.
-   var result=new List<Tile>();
-   for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){
-    if(dx==0&&dy==0)continue;var t=Step(c.x,c.y,dx,dy);if(t==null||t.owner!=c.owner)continue;
-    if(Distance(t.x,t.y,c.x,c.y)>2||result.Contains(t))continue;
-    bool occupied=false;foreach(var other in cities)if(other.x==t.x&&other.y==t.y){occupied=true;break;}
-    if(occupied)continue;
-    City nearest=null;int nearestDistance=int.MaxValue;
-    foreach(var other in cities){if(other.owner!=c.owner)continue;int d=Distance(other.x,other.y,t.x,t.y);if(nearest==null||d<nearestDistance||(d==nearestDistance&&other.id<nearest.id)){nearest=other;nearestDistance=d;}}
-    if(nearest==c)result.Add(t);
+   // Only the block within the city's reach can qualify, so nothing scans the whole map.
+   var result=new List<Tile>();int reach=WorkRadius(c);var centres=CityCentres();var rivals=cities.Where(o=>o.owner==c.owner&&Distance(o.x,o.y,c.x,c.y)<=reach+5).ToList();
+   for(int dy=-reach;dy<=reach;dy++)for(int dx=-reach;dx<=reach;dx++){
+    if(dx==0&&dy==0)continue;var t=Step(c.x,c.y,dx,dy);if(t==null||result.Contains(t)||!InReach(c,t,centres))continue;
+    if(TileController(t,c.owner,centres,rivals)==c)result.Add(t);
    }
    result.Sort((p,q)=>(p.y*Width+p.x).CompareTo(q.y*Width+q.x));
    return result;
@@ -53,8 +61,10 @@ namespace ParadigmRealm {
   // Stage 7 (design): click a tile to lock a citizen onto it, click again to release. Locks are capped at the number of working
   // citizens; a lock on a tile the city can no longer work is simply ignored.
   public bool ToggleLock(City c,Tile t){
-   if(c==null||t==null||result!=""||!Workable(c).Contains(t))return false;if(c.locked==null)c.locked=new List<int>();int key=t.y*Width+t.x;
-   if(c.locked.Remove(key))return true;if(c.locked.Count(k=>Workable(c).Any(w=>w.y*Width+w.x==k))>=Workers(c))return false;c.locked.Add(key);return true;
+   if(c==null||t==null||result!=""||!InReach(c,t))return false;if(c.locked==null)c.locked=new List<int>();int key=t.y*Width+t.x;
+   if(c.locked.Remove(key))return true;if(c.locked.Count(k=>Workable(c).Any(w=>w.y*Width+w.x==k))>=Workers(c))return false;
+   // Locking a tile another of your cities works takes it over (that city's own lock on it is released).
+   foreach(var o in cities)if(o!=c&&o.owner==c.owner&&o.locked!=null)o.locked.Remove(key);c.locked.Add(key);return true;
   }
   public bool IsLocked(City c,Tile t){return c!=null&&t!=null&&c.locked!=null&&c.locked.Contains(t.y*Width+t.x);}
   // Citizens with no tile left to work become entertainers automatically (design).

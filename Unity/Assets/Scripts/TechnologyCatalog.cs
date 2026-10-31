@@ -6,8 +6,8 @@ namespace ParadigmRealm {
 // (LegacyTechnologyCatalog) is folded into exactly one keystone, so Index("chemistry") finds Chemistry and Index("steam")
 // finds Industry; existing unlocks and effects therefore keep working. Knowing 4 of an era's 6 keystones advances the era
 // (see Edicts.cs). Cost = 20 x era^2 + 5 x era x position, era and position counted from 1.
-public static class TechnologyCatalog {
-public const int Count=36,EraCount=6,PerEra=6,Start=0;
+public static partial class TechnologyCatalog {
+public const int Count=180,EraCount=6,PerEra=6,Start=0;
 public static readonly string[] EraNames={"Dawn Age","Classical Age","Medieval Age","Industrial Age","Modern Age","Dimensional Age"};
 // id (the earlier technology it is named after), name, earlier technologies folded in, prerequisites (keystone ids).
 static readonly string[][] Table={
@@ -58,9 +58,9 @@ public static readonly string[][] Folded=new string[Count][];
 public static readonly int[] LegacyMap=new int[LegacyTechnologyCatalog.Count];
 static readonly Dictionary<string,int> indexMap=new Dictionary<string,int>();
 static TechnologyCatalog(){
- for(int i=0;i<Count;i++){var row=Table[i];Ids[i]=row[0];Names[i]=row[1];indexMap[row[0]]=i;}
+ for(int i=0;i<KeystoneCount;i++){var row=Table[i];Ids[i]=row[0];Names[i]=row[1];indexMap[row[0]]=i;}
  for(int i=0;i<LegacyMap.Length;i++)LegacyMap[i]=-1;
- for(int i=0;i<Count;i++){
+ for(int i=0;i<KeystoneCount;i++){
   var row=Table[i];Eras[i]=i/PerEra;int e=Eras[i]+1,pos=i%PerEra+1;Costs[i]=20*e*e+5*e*pos;
   var folded=new[]{row[0]}.Concat(row[2].Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries)).ToArray();
   Folded[i]=folded;var unlocks=new List<string>();
@@ -70,6 +70,7 @@ static TechnologyCatalog(){
   Unlocks[i]=unlocks.ToArray();
   Requirements[i]=row[3].Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries).Select(id=>indexMap[id]).ToArray();
  }
+ AddMinors();
 }
 // Keystone index for a keystone id or for any earlier technology id folded into it; -1 if unknown.
 public static int Index(string id){int found;return id!=null&&indexMap.TryGetValue(id,out found)?found:-1;}

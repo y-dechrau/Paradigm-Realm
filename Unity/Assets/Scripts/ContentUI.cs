@@ -17,42 +17,52 @@ namespace ParadigmRealm
                 else if(terrain[i]==null){var fallback=Texture(new Color(.3f,.4f,.3f));fallback.Apply();terrain[i]=fallback;}
             }
         }
-        int TechDepth(int id){if(techDepth[id]>=0)return techDepth[id];return techDepth[id]=World.Requirements[id].Length==0?0:World.Requirements[id].Max(TechDepth)+1;}
+        // One era at a time (owner request, 31 Oct): columns follow prerequisites inside the era; technologies whose
+        // prerequisites lie in earlier eras start the first column. Laid out again when the shown era changes.
+        int researchEra=-1,techLayoutEra=-2;float techZoom=1f;
+        int TechDepth(int id){if(techDepth[id]>=0)return techDepth[id];var inside=World.Requirements[id].Where(p=>TechnologyCatalog.Eras[p]==TechnologyCatalog.Eras[id]).ToArray();return techDepth[id]=inside.Length==0?0:inside.Max(TechDepth)+1;}
         void LayoutTechnologyTree(){
-            if(techDepth!=null)return;techDepth=Enumerable.Repeat(-1,TechnologyCatalog.Count).ToArray();techRow=new int[TechnologyCatalog.Count];
-            for(int i=0;i<techDepth.Length;i++)TechDepth(i);
-            var rows=new Dictionary<int,int>();foreach(int i in Enumerable.Range(0,techDepth.Length).OrderBy(i=>TechnologyCatalog.Eras[i]).ThenBy(i=>i)){
-                int depth=techDepth[i];if(!rows.ContainsKey(depth))rows[depth]=0;techRow[i]=rows[depth]++;
-            }
+            if(researchEra<0)researchEra=world.Era(0);if(techDepth!=null&&techLayoutEra==researchEra)return;techLayoutEra=researchEra;
+            techDepth=Enumerable.Repeat(-1,TechnologyCatalog.Count).ToArray();techRow=new int[TechnologyCatalog.Count];
+            var rows=new Dictionary<int,int>();foreach(int i in EraTechs(researchEra).OrderBy(i=>TechnologyCatalog.IsKeystone(i)?0:1).ThenBy(i=>i)){int depth=TechDepth(i);if(!rows.ContainsKey(depth))rows[depth]=0;techRow[i]=rows[depth]++;}
         }
+        IEnumerable<int> EraTechs(int era){return Enumerable.Range(0,TechnologyCatalog.Count).Where(i=>TechnologyCatalog.Eras[i]==era);}
+        // An era can be opened once it is reached, or once a known technology leads into it.
+        bool EraViewable(int era){return era<=world.Era(0)||EraTechs(era).Any(t=>World.Requirements[t].Any(p=>world.tech[p]));}
         Rect ExpandedTechRect(int i){return new Rect(20+techDepth[i]*252,20+techRow[i]*230,220,200);}
-        void FocusTechnology(int i){inspectedTech=i;var r=ExpandedTechRect(i);researchScroll=new Vector2(Math.Max(0,r.x-20),Math.Max(0,r.y-20));techDetailScroll=Vector2.zero;}
+        void FocusTechnology(int i){if(!EraViewable(TechnologyCatalog.Eras[i]))return;researchEra=TechnologyCatalog.Eras[i];LayoutTechnologyTree();inspectedTech=i;var r=ExpandedTechRect(i);researchScroll=new Vector2(Math.Max(0,r.x*techZoom-20),Math.Max(0,r.y*techZoom-20));techDetailScroll=Vector2.zero;}
         void DrawTechnologyGlyph(Rect r,int id){
             // An era-coloured glyph with a unique seven-bit centre pattern for each technology.
             Fill(r,new Color(.10f,.18f,.22f));float cell=r.width/8;int bits=id+1;
             for(int y=0;y<8;y++)for(int x=0;x<8;x++)if(x==0||x==7||y==0||y==7||(y==3&&(bits&(1<<(x-1)))!=0)||(y==4&&x==2&&(bits&64)!=0)||(y==5&&x==1+TechnologyCatalog.Eras[id]%6))Fill(new Rect(r.x+x*cell,r.y+y*cell,cell,cell),new Color(.85f,.55f+TechnologyCatalog.Eras[id]*.02f,.35f));
         }
         void DrawExpandedResearch(){
-            LayoutTechnologyTree();if(inspectedTech<0)FocusTechnology(world.research>=0?world.research:0);
+            LayoutTechnologyTree();if(inspectedTech<0||TechnologyCatalog.Eras[inspectedTech]!=researchEra){inspectedTech=world.research>=0&&TechnologyCatalog.Eras[world.research]==researchEra?world.research:EraTechs(researchEra).First();}
             GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(42,110,960,32),"Research — "+(world.research<0?"Complete":World.TechNames[world.research]+" ("+world.science+" / "+world.ResearchCost(world.research)+")"),heading);
             if(GUI.Button(new Rect(1080,110,155,30),"Back",button)){researchScreen=false;GUIUtility.ExitGUI();}
+            // Era tabs: one era is shown at a time; a later era opens once a known technology leads into it.
             for(int e=0;e<TechnologyCatalog.EraNames.Length;e++){
-                int era=e;if(GUI.Button(new Rect(42+e%7*171,150+e/7*29,166,26),TechnologyCatalog.EraNames[e].Replace(" Age",""),button)){FocusTechnology(Enumerable.Range(0,TechnologyCatalog.Count).Where(i=>TechnologyCatalog.Eras[i]==era).OrderBy(i=>techDepth[i]).First());}
+                int era=e;bool open=EraViewable(era);var tab=new Rect(42+e%7*171,150+e/7*29,166,26);bool was=GUI.enabled;GUI.enabled=was&&open;
+                if(GUI.Button(tab,(era==researchEra?"▸ ":"")+TechnologyCatalog.EraNames[e].Replace(" Age","")+(open?"":" (locked)"),button)&&era!=researchEra){researchEra=era;LayoutTechnologyTree();inspectedTech=-1;researchScroll=Vector2.zero;GUI.enabled=was;GUIUtility.ExitGUI();}
+                GUI.enabled=was;if(era==researchEra)Fill(new Rect(tab.x,tab.yMax-2,tab.width,2),new Color(.86f,.7f,.39f));
             }
-            GUI.Label(new Rect(42,211,1165,26),TechnologyCatalog.Count+" technologies in "+TechnologyCatalog.EraCount+" eras • You are in the "+TechnologyCatalog.EraNames[world.Era(0)]+" • Knowing "+World.EraThreshold+" of an era's "+TechnologyCatalog.PerEra+" completes it and offers an edict • Every prerequisite is required.",small);
+            GUI.Label(new Rect(42,211,1165,26),TechnologyCatalog.Count+" technologies (6 keystones and 24 others per era) • Ctrl + wheel zooms • You are in the "+TechnologyCatalog.EraNames[world.Era(0)]+" • Knowing "+World.EraThreshold+" of an era's "+TechnologyCatalog.PerEra+" completes it and offers an edict • Every prerequisite is required.",small);
             // Hold the mouse wheel (middle button) and drag to pan around the tree.
-            var treeView=new Rect(40,243,790,465);var treeSize=new Vector2((techDepth.Max()+1)*252+20,(techRow.Max()+1)*230+20);var pan=Event.current;
+            var shown=EraTechs(researchEra).ToList();var treeView=new Rect(40,243,790,465);
+            // Hold Ctrl and turn the wheel to zoom the tree (owner request).
+            var wheel=Event.current;if(wheel.type==EventType.ScrollWheel&&wheel.control&&treeView.Contains(wheel.mousePosition)){techZoom=Mathf.Clamp(techZoom*(wheel.delta.y<0?1.12f:1/1.12f),.35f,1.6f);wheel.Use();}
+            var treeSize=new Vector2(((shown.Max(i=>techDepth[i])+1)*252+20)*techZoom,((shown.Max(i=>techRow[i])+1)*230+20)*techZoom);var pan=Event.current;
             if(pan.button==2&&treeView.Contains(pan.mousePosition)&&(pan.type==EventType.MouseDown||pan.type==EventType.MouseDrag)){
                 if(pan.type==EventType.MouseDrag)researchScroll=new Vector2(Mathf.Clamp(researchScroll.x-pan.delta.x,0,Mathf.Max(0,treeSize.x-treeView.width+16)),Mathf.Clamp(researchScroll.y-pan.delta.y,0,Mathf.Max(0,treeSize.y-treeView.height+16)));
                 pan.Use();}
-            researchScroll=GUI.BeginScrollView(treeView,researchScroll,new Rect(0,0,treeSize.x,treeSize.y));
+            researchScroll=GUI.BeginScrollView(treeView,researchScroll,new Rect(0,0,treeSize.x,treeSize.y));var unzoomed=GUI.matrix;GUIUtility.ScaleAroundPivot(new Vector2(techZoom,techZoom),Vector2.zero);
             // Draw only selected incoming/outgoing links so the large graph stays readable.
-            for(int i=0;i<TechnologyCatalog.Count;i++)foreach(int pre in World.Requirements[i])if(i==inspectedTech||pre==inspectedTech){
+            foreach(int i in shown)foreach(int pre in World.Requirements[i])if(TechnologyCatalog.Eras[pre]==researchEra&&(i==inspectedTech||pre==inspectedTech)){
                 Rect from=ExpandedTechRect(pre),to=ExpandedTechRect(i);float x=from.xMax+10,y=from.y+100,ty=to.y+100;
                 var colour=new Color(.8f,.65f,.3f);Fill(new Rect(from.xMax,y,10,2),colour);Fill(new Rect(x,Math.Min(y,ty),2,Math.Abs(ty-y)),colour);Fill(new Rect(x,ty,to.x-x,2),colour);GUI.Label(new Rect(to.x-12,ty-9,12,20),">",body);
             }
             var available=world.AvailableTech();int perTurn=Math.Max(1,world.cities.Where(c=>c.owner==0).Sum(c=>world.Yield(c)[2]));
-            for(int i=0;i<TechnologyCatalog.Count;i++){
+            foreach(int i in shown){
                 Rect r=ExpandedTechRect(i);Fill(r,world.tech[i]?new Color(.12f,.3f,.21f):inspectedTech==i?new Color(.25f,.29f,.4f):new Color(.10f,.15f,.18f));GUI.Box(r,"");DrawTechnologyGlyph(new Rect(r.x+8,r.y+10,24,24),i);
                 GUI.Label(new Rect(r.x+40,r.y+8,173,44),World.TechNames[i],body);
                 GUI.Label(new Rect(r.x+10,r.y+51,200,24),TechnologyCatalog.EraNames[TechnologyCatalog.Eras[i]],small);
@@ -63,7 +73,7 @@ namespace ParadigmRealm
                 if(available.Contains(i)&&world.research!=i&&world.result==""){int left=Math.Max(0,world.ResearchCost(i)-world.nations[0].progress[i]);if(GUI.Button(new Rect(r.x+10,r.y+165,140,27),"Research • "+Math.Max(1,(left+perTurn-1)/perTurn)+" turns",button)){world.SelectResearch(i);inspectedTech=i;}if(GUI.Button(new Rect(r.x+154,r.y+165,56,27),"Info",button)){inspectedTech=i;techDetailScroll=Vector2.zero;}}
                 else if(GUI.Button(new Rect(r.x+10,r.y+165,200,27),(world.research==i?"Researching — details":"Inspect "+World.TechNames[i]),button)){inspectedTech=i;techDetailScroll=Vector2.zero;}
             }
-            GUI.EndScrollView();DrawTechnologyDetails(available);
+            GUI.matrix=unzoomed;GUI.EndScrollView();DrawTechnologyDetails(available);
         }
         void DrawTechnologyDetails(List<int> available){
             int i=inspectedTech;GUI.Box(new Rect(845,243,390,465),"");GUILayout.BeginArea(new Rect(858,252,363,444));techDetailScroll=GUILayout.BeginScrollView(techDetailScroll);

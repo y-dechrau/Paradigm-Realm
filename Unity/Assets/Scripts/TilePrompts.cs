@@ -63,3 +63,15 @@ public partial class RealmGame {
   var t=world.At(x,y);if(t==null)return false;x=t.x;y=t.y;return true;}
 }
 }
+namespace ParadigmRealm {
+public partial class RealmGame {
+ void OrderRoad(Unit u,int x,int y){status=world.RoadRoute(u,x,y);}
+ // R: the first press arms road mode (then right-drag to a destination builds a road all the way); a second press, or R
+ // with no drag, builds a road on the worker's own tile.
+ void RoadKey(Unit u){
+  if(u==null||u.type!=1){status="Select a worker to build roads.";return;}
+  if(!roadMode){roadMode=true;status="Road mode: right-drag to a destination to build a road there, or press R again to build here.";return;}
+  roadMode=false;string reason=world.WorkerTeam(u).Select(m=>world.JobReason(m,1)).FirstOrDefault(s=>s!="")??"";status=world.StartJob(u,1)?"Building a road here.":reason;
+ }
+}
+}
