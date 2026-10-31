@@ -640,7 +640,7 @@ namespace ParadigmRealm
         public const int IconEmpire=0,IconResearch=1,IconDiplomacy=2,IconCities=3,IconMilitary=4,IconRealms=5,IconVictory=6,IconChronicle=7,IconIdentity=8,
             IconGold=9,IconScience=10,IconAge=11,IconOrder=12,IconTurn=13,IconMenu=14,IconCrown=15,IconFood=16,IconShields=17,IconExplore=18,IconSkip=19,
             IconFortify=20,IconFound=21,IconMore=22,IconZoomIn=23,IconZoomOut=24,IconLayers=25,IconSentry=26,IconRoad=27,IconTrade=28,IconHelp=29,IconNext=30,
-            IconMoodGood=31,IconMoodNeutral=32,IconMoodBad=33,IconMove=34;
+            IconMoodGood=31,IconMoodNeutral=32,IconMoodBad=33,IconMove=34,IconFaith=35,IconAxe=36;
         static readonly uint[] HudGold=Ramp(90,64,24,150,112,44,206,164,76,240,206,120,255,240,190),HudBlue=Ramp(20,50,100,40,90,160,70,130,210,120,180,240,190,225,255),
             HudSilver=Ramp(70,76,90,120,128,142,170,178,190,210,216,226,245,248,252),HudGreen=Ramp(20,70,30,40,110,40,70,150,60,120,190,90,180,230,150),
             HudRed=Ramp(90,20,20,150,40,30,200,70,50,235,120,90,250,180,150),HudWood=Ramp(60,36,20,92,58,32,128,86,48,164,118,70,196,152,100);
@@ -689,6 +689,8 @@ namespace ParadigmRealm
                 case IconRoad:Poly(cv,new[]{P(9,2),P(15,2),P(21,22),P(3,22)},(X,Y)=>RampPick(HudWood,.6+(Y)/60.0));for(int y=4;y<21;y+=5)RectFill(cv,11,y,13,y+2,Rgb(236,226,198));break;
                 case IconMoodGood:case IconMoodNeutral:case IconMoodBad:{var face=k==IconMoodGood?HudGreen:k==IconMoodNeutral?HudGold:HudRed;Disk(cv,12,12,9,9,face,.1);uint ink=Rgb(20,24,20);cv.Set(9,9,ink);cv.Set(9,10,ink);cv.Set(15,9,ink);cv.Set(15,10,ink);for(int x=8;x<=16;x++){int y=k==IconMoodGood?(x==8||x==16?14:15):k==IconMoodBad?(x==8||x==16?16:15):15;cv.Set(x,y,ink);}break;}
                 case IconMove:Poly(cv,new[]{P(3,9),P(13,9),P(13,4),P(21,12),P(13,20),P(13,15),P(3,15)},(X,Y)=>RampPick(HudSilver,.95-(Y-4)/20.0));break;
+                case IconFaith:Poly(cv,new[]{P(12,2),P(17,9),P(16,14),P(12,16),P(8,14),P(7,9)},(X,Y)=>RampPick(HudRed,.95-(Y-2)/16.0));Poly(cv,new[]{P(12,7),P(14,11),P(12,14),P(10,11)},(X,Y)=>RampPick(HudGold,.95));Poly(cv,new[]{P(5,16),P(19,16),P(16,21),P(8,21)},(X,Y)=>RampPick(HudGold,.85-(X-5)/20.0));break;
+                case IconAxe:Line(cv,6,20,16,6,1,HudWood);Poly(cv,new[]{P(13,3),P(21,6),P(19,13),P(15,9)},(X,Y)=>RampPick(HudSilver,.95-(X-13)/12.0));break;
                 case IconHelp:Disk(cv,12,12,9,9,HudBlue,.1);RectFill(cv,10,6,15,8,Rgb(240,236,226));RectFill(cv,13,8,15,12,Rgb(240,236,226));RectFill(cv,11,11,14,14,Rgb(240,236,226));RectFill(cv,11,16,14,19,Rgb(240,236,226));break;
             }
             Outline(cv,Rgb(12,16,24));iconCacheHud[k]=cv;return cv;

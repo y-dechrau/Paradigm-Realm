@@ -257,7 +257,7 @@ namespace ParadigmRealm
             // City plates go on after the tiles (so no ground covers them), then any unit standing over a plate is drawn again on
             // top, so plates never hide units (owner request).
             var plates=new List<Rect>();
-            for(int n=0;n<isoCityNames.Count;n++){var at=new Vector2(isoCityPos[n].x,isoCityPos[n].y+24*s);DrawCityPlate(isoCityRefs[n],isoCityNames[n],at,isoCityInk[n]);plates.Add(new Rect(at.x-95,at.y,190,22));}
+            for(int n=0;n<isoCityNames.Count;n++){var at=new Vector2(isoCityPos[n].x,isoCityPos[n].y+24*s);DrawCityPlate(isoCityRefs[n],isoCityNames[n],at,isoCityInk[n]);plates.Add(new Rect(at.x-120,at.y,240,22));}
             for(int n=0;n<isoUnitDraws.Count;n++){var ur=isoUnitDraws[n].Value;if(plates.Any(p=>p.x<ur.x+ur.width&&ur.x<p.x+p.width&&p.y<ur.y+ur.height&&ur.y<p.y+p.height))DrawUnitArt(isoUnitDraws[n].Key,ur,isoUnitCounts[n]);}
             DrawIsoOverlay(s);
             compositeBudgetOn=false;

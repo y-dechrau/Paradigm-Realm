@@ -27,7 +27,7 @@ public static class EmpireChecks {
  }
  // 16-bit plan Stage 3: production costs, Settler population cost, building tiers and upkeep (CORE-DESIGN-16BIT.md).
  static void StageThreeEconomy(){
-  int[] units={2,1,7,4,8,9,0},costs={10,20,20,20,25,40,30};
+  int[] units={2,1,7,4,8,9,0},costs={10,20,20,20,25,40,90}; // Settler tripled to 90 (owner request, 31 Oct 2026)
   for(int i=0;i<units.Length;i++)Check(World.BaseCost(World.UnitBuild(units[i]))==costs[i],World.UnitNames[units[i]]+" costs "+costs[i]);
   foreach(int b in World.BuildingIds.Where(id=>!World.IsProject(id))){int cost=World.BaseCost(b);if(World.IsWonder(b))Check(World.WonderEra(b)>=1&&World.WonderEra(b)<=6&&cost==100+50*World.WonderEra(b)&&World.BuildingUpkeep(b)==0,"wonder cost and free upkeep: "+World.BuildName(b));else Check((cost==40||cost==60||cost==80)&&World.BuildingUpkeep(b)==(cost>40?1:0),"building tier and upkeep: "+World.BuildName(b));}
   var w=Setup();var c=w.cities.First(a=>a.owner==0);w.speed=1;Grant(w,0,"agriculture");
@@ -58,7 +58,7 @@ public static class EmpireChecks {
   int income=w.Budget(0)[0];c.buildings.Add(31);Check(w.Budget(0)[0]==income+2,"Market adds 2 gold");
   w.SetScienceRate(0,50);int normal=w.ContentSlots(c);w.SetScienceRate(0,60);Check(w.ContentSlots(c)==normal+1,"60% science (low tax) adds a content slot");w.SetScienceRate(0,30);Check(w.ContentSlots(c)==normal-1,"30% science (high tax) removes a content slot");w.SetScienceRate(0,50);
   w.version=10;w.nations[0].tax=0;w.nations[1].tax=2;w.nations[2].tax=1;w.UpgradeSave();
-  Check(w.version==21&&w.nations[0].scienceRate==60&&w.nations[1].scienceRate==30&&w.nations[2].scienceRate==50&&w.Valid(),"version 10 tax setting migrates to a science rate");
+  Check(w.version==22&&w.nations[0].scienceRate==60&&w.nations[1].scienceRate==30&&w.nations[2].scienceRate==50&&w.Valid(),"version 10 tax setting migrates to a science rate");
   w.nations[0].scienceRate=55;Check(!w.Valid(),"off-step science rate rejected");
  }
  // Stage 3: content and unhappy citizens, disorder (CORE-DESIGN-16BIT.md).
@@ -94,7 +94,7 @@ public static class EmpireChecks {
   Check(w.Move(attacker,target.x,target.y)&&!w.units.Contains(target)&&attacker.victories==1,"killing a defender counts as a victory");
   // Version 11 saves: manual promotions cap at Elite and spare experience counts as Veteran.
   var a3=w.Add(0,2,c.x+2,c.y);a3.promotion=3;a3.victories=0;var a1=w.Add(0,2,c.x+2,c.y+1);a1.promotion=0;a1.experience=5;a1.victories=0;
-  w.version=11;w.UpgradeSave();Check(w.version==21&&a3.promotion==2&&a3.victories==5&&a1.promotion==1&&a1.victories==2&&w.Valid(),"version 11 ranks migrate");
+  w.version=11;w.UpgradeSave();Check(w.version==22&&a3.promotion==2&&a3.victories==5&&a1.promotion==1&&a1.victories==2&&w.Valid(),"version 11 ranks migrate");
   a3.promotion=3;Check(!w.Valid(),"rank above Elite rejected");
  }
  // Civilisations (owner request 29 Oct 2026): 12 premade with two traits each, custom civilisations, trait effects, save 16;
@@ -224,14 +224,14 @@ public static class EmpireChecks {
   w.nations[0].traits=new[]{World.TraitScholarly,World.TraitMercantile};y=w.Yield(c);Check(y[2]==plain[2]+1&&y[3]==plain[3]+2,"Scholarly +1 science, Mercantile +2 gold");
   w.nations[0].traits=new[]{World.TraitSpiritual,-1};Check(w.ContentSlots(c)==slots+1,"Spiritual +1 content citizen");
   var sea=w.Workable(c)[0];sea.terrain=4;w.nations[0].traits=new[]{-1,-1};int food=w.EffectiveTileYield(c,sea)[0];w.nations[0].traits=new[]{World.TraitSeafaring,-1};Check(w.EffectiveTileYield(c,sea)[0]==food+1,"Seafaring +1 food on water");
-  w.speed=1;w.nations[0].traits=new[]{World.TraitMonumental,World.TraitExpansionist};Check(w.CostFor(c,60)==w.Cost(60)-w.Cost(60)/5&&w.CostFor(c,70)==240&&w.CostFor(c,0)==20&&w.CostFor(c,2)==w.Cost(2),"Monumental: wonders and stages a fifth less; Expansionist: Settlers a third less");
+  w.speed=1;w.nations[0].traits=new[]{World.TraitMonumental,World.TraitExpansionist};Check(w.CostFor(c,60)==w.Cost(60)-w.Cost(60)/5&&w.CostFor(c,70)==240&&w.CostFor(c,0)==60&&w.CostFor(c,2)==w.Cost(2),"Monumental: wonders and stages a fifth less; Expansionist: Settlers a third less");
   w.met[1]=true;w.SetWar(1,true);var guard=w.Add(0,7,c.x+1,c.y);w.At(c.x+1,c.y).owner=0;var rider=w.Add(1,8,c.x+2,c.y);
   w.nations[0].traits=new[]{-1,-1};int d=w.Strength(guard,rider,true);w.nations[0].traits=new[]{World.TraitStalwart,-1};Check(w.Strength(guard,rider,true)==d+1,"Stalwart +1 defence inside your borders");
   var horse=w.Add(0,8,c.x+3,c.y+1);w.nations[0].traits=new[]{-1,-1};int a=w.Strength(horse,guard,false);w.nations[0].traits=new[]{World.TraitHorseLords,-1};Check(w.Strength(horse,guard,false)==a+1,"Horse Lords +1 attack for mounted units");
   w.nations[0].traits=new[]{World.TraitMilitaristic,-1};Grant(w,0,"toolmaking");c.buildings.Remove(32);w.ChooseProject(c,2,false);w.Produce(c,w.CostFor(c,2));var made=w.units.Last(u=>u.owner==0&&u.type==2);Check(made.promotion==1,"Militaristic: new military units start as Veterans");
   // Version 15 saves: the old trait becomes a matching new trait; rivals keep their names.
   w=World.New(92);string rivalName=w.NationName(1);w.version=15;w.nations[0].trait=2;foreach(var nn in w.nations){nn.traits=null;nn.civ=7;}w.UpgradeSave();
-  Check(w.version==21&&w.HasTrait(0,World.TraitScholarly)&&w.nations.All(nn=>nn.civ==-1&&nn.traits!=null)&&w.NationName(1)==rivalName&&w.Valid(),"version 15 saves convert traits and keep rival names");
+  Check(w.version==22&&w.HasTrait(0,World.TraitScholarly)&&w.nations.All(nn=>nn.civ==-1&&nn.traits!=null)&&w.NationName(1)==rivalName&&w.Valid(),"version 15 saves convert traits and keep rival names");
   // Build lists show only what known technology allows; combat units can explore.
   w=Setup();c=w.cities.First(a=>a.owner==0);Check(!w.TechAllows(c,World.UnitBuild(5))&&w.TechAllows(c,World.UnitBuild(2))&&!w.TechAllows(c,8),"build list hides what technology does not yet allow");
   Grant(w,0,"writing");Check(w.TechAllows(c,8),"a newly known technology shows its building");c.library=true;Check(!w.TechAllows(c,8),"a building already built is not listed");
@@ -260,7 +260,7 @@ public static class EmpireChecks {
   Check(w.ConvertSpecialist(c,0,2)&&c.scientists==0&&c.entertainers==2,"and back again");
   c.entertainers=0;c.scientists=0;c.merchants=0;Check(!w.ConvertSpecialist(c,2,0)&&c.scientists==0,"no conversion without an entertainer");
   // Version 14 saves gain empty lock lists.
-  w=World.New(81);w.version=14;foreach(var city in w.cities)city.locked=null;w.UpgradeSave();Check(w.version==21&&w.cities.All(a=>a.locked!=null&&a.locked.Count==0)&&w.Valid(),"version 14 saves gain empty lock lists");
+  w=World.New(81);w.version=14;foreach(var city in w.cities)city.locked=null;w.UpgradeSave();Check(w.version==22&&w.cities.All(a=>a.locked!=null&&a.locked.Count==0)&&w.Valid(),"version 14 saves gain empty lock lists");
   w.cities[0].locked.Add(-3);Check(!w.Valid(),"invalid lock rejected");
  }
  // Stage 6: victory by capitals, Transcendence as a three-stage project, save version 14 (CORE-DESIGN-16BIT.md).
@@ -299,7 +299,7 @@ public static class EmpireChecks {
   var rn=w.nations[1];rn.projectCity=rc.id;rn.projectStage=3;rn.projectActivation=1;w.UpdateProjects();Check(w.result.Contains("has achieved Transcendence"),"a rival's third stage is a defeat");
   // Version 13 saves gain capitals and empty projects.
   w=World.New(80);var keep=w.cities.First(a=>a.owner==1);w.version=13;foreach(var nn in w.nations){nn.capital=-5;nn.projectStage=2;nn.projectActivation=3;}w.UpgradeSave();
-  Check(w.version==21&&w.nations[1].capital==keep.id&&w.nations.All(nn=>nn.projectStage==0&&nn.projectActivation==0)&&w.nations[0].capital==-1&&w.Valid(),"version 13 saves gain capitals and empty projects");
+  Check(w.version==22&&w.nations[1].capital==keep.id&&w.nations.All(nn=>nn.projectStage==0&&nn.projectActivation==0)&&w.nations[0].capital==-1&&w.Valid(),"version 13 saves gain capitals and empty projects");
   float[] bars;var text=w.VictoryText(out bars);Check(text.Length==3&&bars.All(v=>v>=0&&v<=1)&&text[1].Contains("Computing"),"three victory bars");
  }
  // Stage 4: deterministic combat (CORE-DESIGN-16BIT.md).

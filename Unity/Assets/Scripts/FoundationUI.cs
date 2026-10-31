@@ -42,11 +42,13 @@ namespace ParadigmRealm
             if(pauseQuit){GUI.Box(new Rect(420,280,440,220),"");GUILayout.BeginArea(new Rect(450,300,380,180));GUILayout.Label("Are you sure?",heading);GUILayout.Label("Quit Paradigm Realm? Unsaved progress will be lost.",body);if(Button("Yes"))QuitGame();if(Button("No"))pauseQuit=false;GUILayout.EndArea();return;}
             if(saveAsScreen){DrawSaveAs();return;}
             if(settingsScreen){GUI.Box(new Rect(410,230,460,330),"");GUILayout.BeginArea(new Rect(440,250,400,280));GUILayout.Label("Settings",heading);GUILayout.Label("Mouse-wheel zoom sensitivity",body);zoomSensitivity=GUILayout.HorizontalSlider(zoomSensitivity,.5f,5f);tooltips=GUILayout.Toggle(tooltips,"Show map and unit tooltips");GUILayout.Label("Settings are saved on this computer.",small);if(Button("Back")){PersistSettings();settingsScreen=false;}GUILayout.EndArea();return;}
-            GUI.Box(new Rect(440,205,400,390),"");GUILayout.BeginArea(new Rect(470,225,340,350));GUILayout.Label("Game menu",heading);
+            GUI.Box(new Rect(440,180,400,440),"");GUILayout.BeginArea(new Rect(470,200,340,400));GUILayout.Label("Game menu",heading);
             if(Button("Continue")){pauseMenu=false;GUI.FocusControl(null);}
             if(Button("Quick Save [Ctrl+S]"))Save();
             if(Button("Save As")){saveName=world.civilisationName+" - Turn "+world.turn;saveError="";overwriteSave=false;saveAsScreen=true;}
             if(Button("Settings"))settingsScreen=true;
+            // Back to the title screen; the game stays open there under Resume Game (owner request).
+            if(Button("Return to Main Menu")){pauseMenu=false;mainMenu=true;GUI.FocusControl(null);GUIUtility.ExitGUI();}
             if(Button("Quit"))pauseQuit=true;
             if(status.StartsWith("Could not save"))GUILayout.Label(status,small);
             GUILayout.EndArea();

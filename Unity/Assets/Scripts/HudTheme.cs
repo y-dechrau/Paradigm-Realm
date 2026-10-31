@@ -17,9 +17,9 @@ namespace ParadigmRealm
         static readonly Rect TopBar=new Rect(0,0,1280,38),ResearchCard=new Rect(80,46,300,52),UnitCard=new Rect(8,592,410,200),
             TileCard=new Rect(472,742,336,52),MiniMap=new Rect(1060,590,178,138),MiniButtons=new Rect(1242,590,32,138),
             EndTurnRect=new Rect(1060,738,214,54),MorePanel=new Rect(8,246,410,340);
-        static readonly string[] RailScreens={"Economy","Research","Diplomacy","Cities","Military","Atlas","Victory","Chronicle","Identity"};
-        static readonly string[] RailLabels={"Empire","Research","Diplomacy","Cities","Military","Realms","Victory","Chronicle","Identity"};
-        static readonly int[] RailIcons={PixelArt.IconEmpire,PixelArt.IconResearch,PixelArt.IconDiplomacy,PixelArt.IconCities,PixelArt.IconMilitary,PixelArt.IconRealms,PixelArt.IconVictory,PixelArt.IconChronicle,PixelArt.IconIdentity};
+        static readonly string[] RailScreens={"Economy","Research","Diplomacy","Religion","Cities","Military","Atlas","Victory","Chronicle","Identity"};
+        static readonly string[] RailLabels={"Empire","Research","Diplomacy","Religion","Cities","Military","Realms","Victory","Chronicle","Identity"};
+        static readonly int[] RailIcons={PixelArt.IconEmpire,PixelArt.IconResearch,PixelArt.IconDiplomacy,PixelArt.IconFaith,PixelArt.IconCities,PixelArt.IconMilitary,PixelArt.IconRealms,PixelArt.IconVictory,PixelArt.IconChronicle,PixelArt.IconIdentity};
         const float RailItem=54;
         static Rect RailRect{get{return new Rect(0,44,72,RailScreens.Length*RailItem+8);}}
         readonly List<Rect> hudRects=new List<Rect>();
@@ -237,18 +237,20 @@ namespace ParadigmRealm
             var actions=new List<KeyValuePair<int,string>>();bool idle=GUI.enabled&&world.result=="";
             actions.Add(new KeyValuePair<int,string>(PixelArt.IconMove,"Move"));
             if(u.type==0)actions.Add(new KeyValuePair<int,string>(PixelArt.IconFound,"Found"));
-            // On woodland the farm button becomes Clear: the forest must be cut down first (Bronze Working).
-            if(u.type==1){actions.Add(new KeyValuePair<int,string>(PixelArt.IconRoad,"Road"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconFood,World.Forested(world.At(u.x,u.y).terrain)?"Clear":"Farm"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconShields,"Mine"));}
+            // Workers always show Road, Farm, Mine and Clear (woodland); a job the civilisation lacks the technology for is greyed
+            // out (owner request). Fort and the rest are in More.
+            if(u.type==1){actions.Add(new KeyValuePair<int,string>(PixelArt.IconRoad,"Road"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconFood,"Farm"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconShields,"Mine"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconAxe,"Clear"));}
             if(World.CanExplore(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconExplore,"Explore"));
             actions.Add(new KeyValuePair<int,string>(PixelArt.IconSkip,"Skip"));
             if(World.Power[u.type]>0&&!World.IsNaval(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconFortify,u.fortified?"Wake":"Fortify"));
             else if(u.type!=1)actions.Add(new KeyValuePair<int,string>(PixelArt.IconSentry,u.sentry?"Wake":"Sentry"));
-            actions=actions.Take(4).ToList();actions.Add(new KeyValuePair<int,string>(PixelArt.IconMore,moreActions?"Less":"More"));
+            actions=actions.Take(u.type==1?5:4).ToList();actions.Add(new KeyValuePair<int,string>(PixelArt.IconMore,moreActions?"Less":"More"));
             float w=(row.width-(actions.Count-1)*6)/actions.Count;
             for(int i=0;i<actions.Count;i++)
             {
                 var a=actions[i];bool active=a.Value=="Explore"&&u.exploring||a.Value=="Wake"||a.Value=="Less"||a.Value=="Move"&&moveMode;
-                bool enabled=GUI.enabled;GUI.enabled=enabled&&(idle||a.Key==PixelArt.IconMore);
+                int barJob=a.Value=="Road"?1:a.Value=="Farm"?2:a.Value=="Mine"?3:a.Value=="Clear"?5:0;
+                bool enabled=GUI.enabled;GUI.enabled=enabled&&(idle||a.Key==PixelArt.IconMore)&&(barJob==0||world.JobTechMissing(u.owner,barJob)=="");
                 if(HudButton(new Rect(row.x+i*(w+6),row.y,w,row.height),a.Key,a.Value,active))
                 {
                     switch(a.Value)
@@ -278,7 +280,8 @@ namespace ParadigmRealm
                 // Auto develop: the worker picks its own jobs each turn (roads, farms, mines, clearing) until told otherwise.
                 if(u.type==1&&Button(u.autoWork?"Stop auto develop":"Auto develop")){bool on=!u.autoWork;world.SetAutoWork(u,on);status=on?"Worker set to auto develop.":"Auto develop stopped.";}
                 if(u.type==1&&Button("Road to a destination [R, then right-drag]"))RoadKey(u);
-                if(u.type==1){string reason=world.WorkerTeam(u).Select(a=>world.JobReason(a,4)).FirstOrDefault(r=>r!="")??"";if(Button("Fort ("+((world.JobWork(u,4)+world.WorkerTeam(u).Count-1)/world.WorkerTeam(u).Count)+" turns)")){if(!world.StartJob(u,4))status=reason;}}
+                // Every worker activity stays listed; those needing an unknown technology are greyed out and say which (owner request).
+                if(u.type==1){GUILayout.Label("Worker activities",body);int team=world.WorkerTeam(u).Count;foreach(int job in new[]{1,2,3,5,4}){string missing=world.JobTechMissing(u.owner,job);bool was=GUI.enabled;GUI.enabled=was&&missing=="";string label=World.JobNames[job]+(missing!=""?" — "+missing:" ("+((world.JobWork(u,job)+team-1)/team)+" turns)");if(Button(label)){string reason=world.WorkerTeam(u).Select(a=>world.JobReason(a,job)).FirstOrDefault(r=>r!="")??"";if(!world.StartJob(u,job))status=reason;}GUI.enabled=was;}}
                 if(u.hasOrder){GUILayout.Label("Destination: "+u.destinationX+", "+u.destinationY,body);if(Button("Cancel movement order [X]"))world.CancelActivity(u);}
                 GUI.enabled=enabled;
             }
@@ -297,6 +300,8 @@ namespace ParadigmRealm
             // Tribal villages (owner request): named on the card, with the civilisation they joined if any.
             {var ruinTile=world.At(t.x,t.y);if(ruinTile!=null&&ruinTile.ruin)features.Add("Ancient ruins");}
             {var live=world.At(t.x,t.y);if(live!=null&&live.village)features.Add(live.villageOwner>=0?"Village (joined "+world.NationName(live.villageOwner)+")":"Tribal village");}
+            // Border influence: how far a rival has swung this tile (it changes hands at 90%).
+            {var live=world.At(t.x,t.y);if(live!=null&&live.swayCiv>=0&&live.sway>0)features.Add("Influence "+live.sway+"% to "+world.NationName(live.swayCiv));}
             GUI.Label(new Rect(TileCard.x,TileCard.y+4,TileCard.width,20),string.Join("  •  ",features.ToArray()),hudCentre);
             float cx=TileCard.center.x-96;
             DrawIcon(PixelArt.IconFood,new Rect(cx,TileCard.y+26,20,20));GUI.Label(new Rect(cx+22,TileCard.y+26,40,20),"+"+v[0],hudLabel);
@@ -312,13 +317,15 @@ namespace ParadigmRealm
             // your cities; what is being built shows when the pointer is over the plate. Drawn in map order, so units on
             // the tiles in front stay on top of it.
             HudStyles();if(plateLine==null){plateLine=new GUIStyle(hudCaption){fontSize=11,wordWrap=false,clipping=TextClipping.Clip,alignment=TextAnchor.MiddleLeft,padding=new RectOffset(0,0,0,0)};}
-            bool own=c!=null&&c.owner==0;string label=name.ToUpper();float textW=plateLine.CalcSize(new GUIContent(label)).x;
-            float w=Mathf.Clamp(textW+46,70,190),h=own?20:17;var r=new Rect(top.x-w/2,top.y,w,h);
+            bool own=c!=null&&c.owner==0;string label=name.ToUpper();bool capital=c!=null&&c.owner>=0&&world.nations[c.owner].capital==c.id;
+            // The whole name always shows: the plate widens to fit it, and only very long names step the type down (owner request).
+            var nameStyle=new GUIStyle(plateLine);float lead=capital?33:22,tail=c!=null?26:6;float textW=nameStyle.CalcSize(new GUIContent(label)).x;
+            while(nameStyle.fontSize>8&&lead+textW+tail>240){nameStyle.fontSize--;textW=nameStyle.CalcSize(new GUIContent(label)).x;}
+            float w=Mathf.Max(70,lead+textW+tail),h=own?20:17;var r=new Rect(top.x-w/2,top.y,w,h);
             Fill(r,new Color(.04f,.06f,.12f,.72f));Fill(new Rect(r.x,r.y,2,r.height),ink);
             if(c!=null){var plateFlag=FlagTexture(c.owner);if(plateFlag!=null)GUI.DrawTexture(new Rect(r.x+4,r.y+3,15,10),plateFlag,ScaleMode.StretchToFill,true);}
-            bool capital=c!=null&&c.owner>=0&&world.nations[c.owner].capital==c.id;
             if(capital)DrawIcon(PixelArt.IconCrown,new Rect(r.x+20,r.y+2,12,12));
-            GUI.Label(new Rect(r.x+(capital?33:22),r.y+1,w-50,15),label,plateLine);
+            GUI.Label(new Rect(r.x+lead,r.y+1,textW+4,15),label,nameStyle);
             if(c!=null)GUI.Label(new Rect(r.xMax-22,r.y+1,18,15),c.pop.ToString(),new GUIStyle(plateLine){alignment=TextAnchor.MiddleRight});
             if(own)
             {
