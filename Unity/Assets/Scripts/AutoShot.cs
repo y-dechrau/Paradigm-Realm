@@ -58,6 +58,7 @@ namespace ParadigmRealm
             detailsScreen="";foreach(var id in new[]{"agriculture","archery","bronze"})world.tech[TechnologyCatalog.Index(id)]=true;
             world.research=TechnologyCatalog.Index("writing");world.nations[0].research=world.research;inspectedTech=-1;researchScreen=true;
             yield return Shot(folder,"4b-research.bmp");
+            techZoom=.6f;researchScroll=Vector2.zero;yield return Shot(folder,"4b2-research-zoomed-out.bmp");techZoom=1.4f;yield return Shot(folder,"4b3-research-zoomed-in.bmp");techZoom=1f;
             researchScreen=false;
             // Victory screen with a stage-1 project activating (this throwaway game only).
             if(city!=null){world.tech[TechnologyCatalog.Index("computers")]=true;city.pop=8;var n=world.nations[0];n.projectCity=city.id;n.projectStage=1;n.projectActivation=6;}

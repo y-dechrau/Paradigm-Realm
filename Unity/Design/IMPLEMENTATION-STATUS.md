@@ -2,6 +2,9 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 31 Oct, follow-up (no save change)
+- **Technology zoom:** Ctrl + wheel now redraws the cards, text and buttons at the zoomed size (zooming around the pointer) instead of scaling the picture, which Unity clipped short inside the scroll view; cards now fill the whole tree area at any zoom and are cut only at its edge. The line above the tree is shorter and clipped to the panel. Checked in a 1920 x 1080 Windows build with automatic screenshots at 60% and 140% zoom (`AutoShot` 4b2, 4b3); not hand-played.
+
 ## Owner requests 31 Oct, second batch (save version 21)
 - **Controls:** the left button selects; the right button directs (right-click a tile, or hold and drag to it). The Move button still works. City plates are small and see-through (name, size, flag, a thin production bar; what is being built shows on hover) sit just below the city tile, drawn after the land, and any unit overlapping a plate is drawn again on top, so plates never hide units. Unit and city card text shrinks to fit instead of being cut off. Continue is first in the game menu.
 - **Diplomacy:** one leader at a time. The Diplomacy button opens a chooser of met leaders (mood and waiting proposals shown); the talk that follows has no switching; first contact and the leader portraits open the one-on-one talk directly. A leader answers each proposal in words (agree or refuse) in the greeting box (`World.LeaderReply`).

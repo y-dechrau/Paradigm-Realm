@@ -46,34 +46,39 @@ namespace ParadigmRealm
                 if(GUI.Button(tab,(era==researchEra?"▸ ":"")+TechnologyCatalog.EraNames[e].Replace(" Age","")+(open?"":" (locked)"),button)&&era!=researchEra){researchEra=era;LayoutTechnologyTree();inspectedTech=-1;researchScroll=Vector2.zero;GUI.enabled=was;GUIUtility.ExitGUI();}
                 GUI.enabled=was;if(era==researchEra)Fill(new Rect(tab.x,tab.yMax-2,tab.width,2),new Color(.86f,.7f,.39f));
             }
-            GUI.Label(new Rect(42,211,1165,26),TechnologyCatalog.Count+" technologies (6 keystones and 24 others per era) • Ctrl + wheel zooms • You are in the "+TechnologyCatalog.EraNames[world.Era(0)]+" • Knowing "+World.EraThreshold+" of an era's "+TechnologyCatalog.PerEra+" completes it and offers an edict • Every prerequisite is required.",small);
+            var header=new GUIStyle(small){clipping=TextClipping.Clip,wordWrap=false};
+            GUI.Label(new Rect(42,211,1190,26),TechnologyCatalog.Count+" technologies, "+(TechnologyCatalog.Count/6)+" per era • You are in the "+TechnologyCatalog.EraNames[world.Era(0)]+" • "+World.EraThreshold+" of an era's "+TechnologyCatalog.PerEra+" keystones complete it • Ctrl + wheel zooms, hold the wheel to pan",header);
             // Hold the mouse wheel (middle button) and drag to pan around the tree.
             var shown=EraTechs(researchEra).ToList();var treeView=new Rect(40,243,790,465);
-            // Hold Ctrl and turn the wheel to zoom the tree (owner request).
-            var wheel=Event.current;if(wheel.type==EventType.ScrollWheel&&wheel.control&&treeView.Contains(wheel.mousePosition)){techZoom=Mathf.Clamp(techZoom*(wheel.delta.y<0?1.12f:1/1.12f),.35f,1.6f);wheel.Use();}
+            // Hold Ctrl and turn the wheel to zoom the tree around the pointer (owner request). The cards are drawn at the zoomed
+            // size rather than through GUI.matrix, because Unity clips scaled content inside a scroll view in the wrong place.
+            var wheel=Event.current;if(wheel.type==EventType.ScrollWheel&&wheel.control&&treeView.Contains(wheel.mousePosition)){float was=techZoom;techZoom=Mathf.Clamp(techZoom*(wheel.delta.y<0?1.12f:1/1.12f),.35f,1.6f);var at=new Vector2(wheel.mousePosition.x-treeView.x,wheel.mousePosition.y-treeView.y);researchScroll=new Vector2(Math.Max(0,(researchScroll.x+at.x)*techZoom/was-at.x),Math.Max(0,(researchScroll.y+at.y)*techZoom/was-at.y));wheel.Use();}
+            float z=techZoom;Rect Z(Rect q)=>new Rect(q.x*z,q.y*z,q.width*z,q.height*z);
+            GUIStyle Zoomed(GUIStyle o,int normal){return new GUIStyle(o){fontSize=Math.Max(6,(int)Math.Round((o.fontSize>0?o.fontSize:normal)*z)),clipping=TextClipping.Clip};}
+            var zBody=Zoomed(body,15);var zSmall=Zoomed(small,12);var zButton=Zoomed(button,13);
             var treeSize=new Vector2(((shown.Max(i=>techDepth[i])+1)*252+20)*techZoom,((shown.Max(i=>techRow[i])+1)*230+20)*techZoom);var pan=Event.current;
             if(pan.button==2&&treeView.Contains(pan.mousePosition)&&(pan.type==EventType.MouseDown||pan.type==EventType.MouseDrag)){
                 if(pan.type==EventType.MouseDrag)researchScroll=new Vector2(Mathf.Clamp(researchScroll.x-pan.delta.x,0,Mathf.Max(0,treeSize.x-treeView.width+16)),Mathf.Clamp(researchScroll.y-pan.delta.y,0,Mathf.Max(0,treeSize.y-treeView.height+16)));
                 pan.Use();}
-            researchScroll=GUI.BeginScrollView(treeView,researchScroll,new Rect(0,0,treeSize.x,treeSize.y));var unzoomed=GUI.matrix;GUIUtility.ScaleAroundPivot(new Vector2(techZoom,techZoom),Vector2.zero);
+            researchScroll=GUI.BeginScrollView(treeView,researchScroll,new Rect(0,0,treeSize.x,treeSize.y));
             // Draw only selected incoming/outgoing links so the large graph stays readable.
             foreach(int i in shown)foreach(int pre in World.Requirements[i])if(TechnologyCatalog.Eras[pre]==researchEra&&(i==inspectedTech||pre==inspectedTech)){
                 Rect from=ExpandedTechRect(pre),to=ExpandedTechRect(i);float x=from.xMax+10,y=from.y+100,ty=to.y+100;
-                var colour=new Color(.8f,.65f,.3f);Fill(new Rect(from.xMax,y,10,2),colour);Fill(new Rect(x,Math.Min(y,ty),2,Math.Abs(ty-y)),colour);Fill(new Rect(x,ty,to.x-x,2),colour);GUI.Label(new Rect(to.x-12,ty-9,12,20),">",body);
+                var colour=new Color(.8f,.65f,.3f);Fill(Z(new Rect(from.xMax,y,10,2)),colour);Fill(Z(new Rect(x,Math.Min(y,ty),2,Math.Abs(ty-y))),colour);Fill(Z(new Rect(x,ty,to.x-x,2)),colour);GUI.Label(Z(new Rect(to.x-12,ty-9,12,20)),">",zBody);
             }
             var available=world.AvailableTech();int perTurn=Math.Max(1,world.cities.Where(c=>c.owner==0).Sum(c=>world.Yield(c)[2]));
             foreach(int i in shown){
-                Rect r=ExpandedTechRect(i);Fill(r,world.tech[i]?new Color(.12f,.3f,.21f):inspectedTech==i?new Color(.25f,.29f,.4f):new Color(.10f,.15f,.18f));GUI.Box(r,"");DrawTechnologyGlyph(new Rect(r.x+8,r.y+10,24,24),i);
-                GUI.Label(new Rect(r.x+40,r.y+8,173,44),World.TechNames[i],body);
-                GUI.Label(new Rect(r.x+10,r.y+51,200,24),TechnologyCatalog.EraNames[TechnologyCatalog.Eras[i]],small);
+                Rect r=ExpandedTechRect(i);Fill(Z(r),world.tech[i]?new Color(.12f,.3f,.21f):inspectedTech==i?new Color(.25f,.29f,.4f):new Color(.10f,.15f,.18f));GUI.Box(Z(r),"");DrawTechnologyGlyph(Z(new Rect(r.x+8,r.y+10,24,24)),i);
+                GUI.Label(Z(new Rect(r.x+40,r.y+8,173,44)),World.TechNames[i],zBody);
+                GUI.Label(Z(new Rect(r.x+10,r.y+51,200,24)),TechnologyCatalog.EraNames[TechnologyCatalog.Eras[i]],zSmall);
                 var benefits=World.ActiveTechBenefits(i);string summary=benefits.Length>0?string.Join("\n",benefits.Take(2).Select(v=>"• "+v).ToArray()):"• Advances the research tree\n• Content unlocks planned";
-                GUI.Label(new Rect(r.x+10,r.y+78,200,53),summary,small);
-                GUI.Label(new Rect(r.x+10,r.y+132,200,26),world.tech[i]?"Discovered":world.research==i?"Researching":available.Contains(i)?"Available • "+world.ResearchCost(i):"Locked • "+World.Requirements[i].Length+" prerequisites",small);
+                GUI.Label(Z(new Rect(r.x+10,r.y+78,200,53)),summary,zSmall);
+                GUI.Label(Z(new Rect(r.x+10,r.y+132,200,26)),world.tech[i]?"Discovered":world.research==i?"Researching":available.Contains(i)?"Available • "+world.ResearchCost(i):"Locked • "+World.Requirements[i].Length+" prerequisites",zSmall);
                 // Research straight from the card, but only when the technology can be researched now.
-                if(available.Contains(i)&&world.research!=i&&world.result==""){int left=Math.Max(0,world.ResearchCost(i)-world.nations[0].progress[i]);if(GUI.Button(new Rect(r.x+10,r.y+165,140,27),"Research • "+Math.Max(1,(left+perTurn-1)/perTurn)+" turns",button)){world.SelectResearch(i);inspectedTech=i;}if(GUI.Button(new Rect(r.x+154,r.y+165,56,27),"Info",button)){inspectedTech=i;techDetailScroll=Vector2.zero;}}
-                else if(GUI.Button(new Rect(r.x+10,r.y+165,200,27),(world.research==i?"Researching — details":"Inspect "+World.TechNames[i]),button)){inspectedTech=i;techDetailScroll=Vector2.zero;}
+                if(available.Contains(i)&&world.research!=i&&world.result==""){int left=Math.Max(0,world.ResearchCost(i)-world.nations[0].progress[i]);if(GUI.Button(Z(new Rect(r.x+10,r.y+165,140,27)),"Research • "+Math.Max(1,(left+perTurn-1)/perTurn)+" turns",zButton)){world.SelectResearch(i);inspectedTech=i;}if(GUI.Button(Z(new Rect(r.x+154,r.y+165,56,27)),"Info",zButton)){inspectedTech=i;techDetailScroll=Vector2.zero;}}
+                else if(GUI.Button(Z(new Rect(r.x+10,r.y+165,200,27)),(world.research==i?"Researching — details":"Inspect "+World.TechNames[i]),zButton)){inspectedTech=i;techDetailScroll=Vector2.zero;}
             }
-            GUI.matrix=unzoomed;GUI.EndScrollView();DrawTechnologyDetails(available);
+            GUI.EndScrollView();DrawTechnologyDetails(available);
         }
         void DrawTechnologyDetails(List<int> available){
             int i=inspectedTech;GUI.Box(new Rect(845,243,390,465),"");GUILayout.BeginArea(new Rect(858,252,363,444));techDetailScroll=GUILayout.BeginScrollView(techDetailScroll);
