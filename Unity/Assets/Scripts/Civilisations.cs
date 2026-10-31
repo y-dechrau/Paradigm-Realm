@@ -10,7 +10,7 @@ public static class CivilisationCatalog {
  // 17 civilisations: Sylvan Court and Crystal Dominion are hidden for now (owner request), and the last two wait for their
  // portrait art (leader-15.png, leader-16.png); RealmGame enables them once the picture is found. Hidden or waiting
  // civilisations are never offered or used as rivals, and their indices stay fixed so saves keep working.
- public const int Count=17,TraitCount=12,PortraitCount=17;
+ public const int Count=29,TraitCount=12,PortraitCount=29;
  public static readonly string[] TraitNames={"Seafaring","Mercantile","Agrarian","Spiritual","Monumental","Diplomatic","Scholarly","Stalwart","Industrious","Militaristic","Horse Lords","Expansionist"};
  public static readonly string[] TraitTexts={
   "+1 food on every worked water tile",
@@ -25,15 +25,17 @@ public static class CivilisationCatalog {
   "New military units start as Veterans",
   "Horsemen and Knights +1 attack",
   "Settlers cost a third less"};
- public static readonly string[] Names={"Azure Crown","Oasis Sultanate","Sylvan Court","Holy Imperium","Sahel Empire","Hellenic League","Crystal Dominion","Frostpeak Realm","Aurelian Republic","Lutetian Empire","Rising Isles","Steppe Horde","Northmarch Kingdom","Sunspire Emirate","Lionmarch Kingdom","Jade Dynasty","Serpent League"};
- public static readonly string[] Leaders={"King Aldric","Queen Samira","Queen Elowen","Emperor Constantin","Mansa Kanto","Strategos Kleon","Queen Nyxara","Queen Brynja","Consul Aurelius","Emperor Lucien","Lord Kaito","Khan Temur","King Halvard","Emir Rashid","King Aldous","Empress Mei","High King Itzel"};
- public static readonly int[] Portraits={0,1,3,11,10,9,4,2,12,5,6,14,7,8,13,15,16};
- public static readonly int[][] Traits={new[]{0,1},new[]{1,2},new[]{2,3},new[]{3,4},new[]{4,5},new[]{5,6},new[]{6,7},new[]{7,8},new[]{8,11},new[]{9,10},new[]{9,0},new[]{10,11},new[]{0,8},new[]{1,6},new[]{3,9},new[]{4,6},new[]{2,9}};
+ public static readonly string[] Names={"Azure Crown","Oasis Sultanate","Sylvan Court","Holy Imperium","Sahel Empire","Hellenic League","Crystal Dominion","Frostpeak Realm","Aurelian Republic","Lutetian Empire","Rising Isles","Steppe Horde","Northmarch Kingdom","Sunspire Emirate","Lionmarch Kingdom","Jade Dynasty","Serpent League","China","Egypt","Rome","Greece","Aztec Empire","Inca Empire","Maya","Ethiopia","Arabia","Persia","India","Babylon"};
+ public static readonly string[] Leaders={"King Aldric","Queen Samira","Queen Elowen","Emperor Constantin","Mansa Kanto","Strategos Kleon","Queen Nyxara","Queen Brynja","Consul Aurelius","Emperor Lucien","Lord Kaito","Khan Temur","King Halvard","Emir Rashid","King Aldous","Empress Mei","High King Itzel","Qin Shi Huang","Ramesses II","Augustus","Pericles","Moctezuma II","Pachacuti","Pakal the Great","Menelik II","Harun al-Rashid","Cyrus the Great","Ashoka","Hammurabi"};
+ public static readonly int[] Portraits={0,1,3,11,10,9,4,2,12,5,6,14,7,8,13,15,16,17,18,19,20,21,22,23,24,25,26,27,28};
+ public static readonly int[][] Traits={new[]{0,1},new[]{1,2},new[]{2,3},new[]{3,4},new[]{4,5},new[]{5,6},new[]{6,7},new[]{7,8},new[]{8,11},new[]{9,10},new[]{9,0},new[]{10,11},new[]{0,8},new[]{1,6},new[]{3,9},new[]{4,6},new[]{2,9},
+  // Real civilisations: China, Egypt, Rome, Greece, Aztec, Inca, Maya, Ethiopia, Arabia, Persia, India, Babylon.
+  new[]{6,8},new[]{4,2},new[]{9,11},new[]{6,0},new[]{9,4},new[]{2,7},new[]{6,3},new[]{3,7},new[]{1,3},new[]{5,1},new[]{3,5},new[]{4,7}};
  // Offered and used as rivals. 2 and 6 hidden for now; 15 and 16 until their portrait art exists.
- public static readonly bool[] Enabled={true,true,false,true,true,true,false,true,true,true,true,true,true,true,true,false,false};
- public static bool[] AwaitingArt={false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,true,true};
+ public static readonly bool[] Enabled={true,true,false,true,true,true,false,true,true,true,true,true,true,true,true,false,false,true,true,true,true,true,true,true,true,true,true,true,true};
+ public static bool[] AwaitingArt={false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,false,false,false,false,false,false};
  public static IEnumerable<int> Offered(){return Enumerable.Range(0,Count).Where(i=>Enabled[i]);}
- public static readonly string[] PortraitTitles={"King of the coastal kingdom","Desert queen of the oasis","Mountain queen of the snow citadel","Enchanted forest queen","Void queen of the crystal realm","Emperor of the grand capital","Samurai lord","King of a coastal kingdom","Guardian of the golden citadel","Hellenistic commander","Emperor of the golden city","Emperor of the grand cathedral","Caesar of the eternal city","Crusader king","Steppe warlord","Empress of the jade court (art needed)","King of the serpent coast (art needed)"};
+ public static readonly string[] PortraitTitles={"King of the coastal kingdom","Desert queen of the oasis","Mountain queen of the snow citadel","Enchanted forest queen","Void queen of the crystal realm","Emperor of the grand capital","Samurai lord","King of a coastal kingdom","Guardian of the golden citadel","Hellenistic commander","Emperor of the golden city","Emperor of the grand cathedral","Caesar of the eternal city","Crusader king","Steppe warlord","Empress of the jade court (art needed)","King of the serpent coast (art needed)","First Emperor of Qin","Pharaoh of the New Kingdom","First Emperor of Rome","Statesman of Athens","Huey Tlatoani of Tenochtitlan","Sapa Inca of Tawantinsuyu","Ajaw of Lakamha (Palenque)","Emperor of Ethiopia","Abbasid Caliph of Baghdad","King of Kings of Persia","Mauryan Emperor","King of Babylon"};
  // What each leader says on meeting you (peace); war and friendship have their own lines in World.Greeting.
  public static readonly string[] Greetings={
   "The Azure Crown greets you. Our sails have found your shores; may our harbours trade in peace.",
@@ -52,7 +54,19 @@ public static class CivilisationCatalog {
   "Welcome beneath the Sunspire. Knowledge and coin flow freely to friends of the Emirate.",
   "The Lion greets you. Keep faith with us, and our swords will keep faith with you.",
   "The Jade Court acknowledges you. Patience and learning are the roots of lasting peace.",
-  "The Serpent League sees you. Our fields feed many, and our warriors guard them well."};
+  "The Serpent League sees you. Our fields feed many, and our warriors guard them well.",
+  "The Son of Heaven receives you. All under heaven is one realm; show us whether you will be part of its order.",
+  "Ramesses, beloved of the gods, greets you. The Nile has carried our name across the ages; may yours prove worthy of it.",
+  "Augustus greets you in the name of the Senate and People of Rome. Peace is ours to give, to those who keep it.",
+  "Pericles of Athens welcomes you. Let us debate as free citizens before we take up the spear.",
+  "Moctezuma greets you. The Sun demands much of us; tell us what you will offer it.",
+  "Pachacuti, Earth-Shaker, greets you. Our roads cross the mountains; walk them as a friend.",
+  "Pakal of Lakamha greets you. The stars have counted your coming; let us see what the days will bring.",
+  "Menelik greets you. Our highlands have never bowed to invaders, but they are open to honest friends.",
+  "Harun al-Rashid welcomes you to Baghdad. Bring us your scholars and your merchants, and they will be honoured.",
+  "Cyrus, King of Kings, greets you. Every people in my realm keeps its gods and customs; yours may too, as friends.",
+  "Ashoka greets you. I have seen what conquest costs; let our peoples meet through the law of dharma.",
+  "Hammurabi greets you. Our laws are written in stone so that the strong may not oppress the weak."};
  public static string TraitLine(int[] traits){return string.Join("  •  ",traits.Where(t=>t>=0&&t<TraitCount).Select(t=>TraitNames[t]+": "+TraitTexts[t]).ToArray());}
 }
 public partial class World {
@@ -102,7 +116,7 @@ public partial class World {
  // Building and training cost for this city's owner: Monumental cuts wonders and Transcendence stages by a fifth,
  // Expansionist cuts Settlers by a third.
  // Owner request (31 Oct): in the Dawn Age, buildings (not units, wonders or projects) take twice as long to build.
- public int CostFor(City c,int b){int cost=Cost(b);if(c==null)return cost;if(BuildUnit(b)<0&&!IsWonder(b)&&!IsProject(b)&&Era(c.owner)==0)cost*=2;if((IsWonder(b)||IsProject(b))&&HasTrait(c.owner,TraitMonumental))cost-=cost/5;if(BuildUnit(b)==0&&HasTrait(c.owner,TraitExpansionist))cost-=cost/3;return cost;}
+ public int CostFor(City c,int b){int cost=Cost(b);if(c==null)return cost;if(BuildUnit(b)<0&&!IsWonder(b)&&!IsProject(b)&&Era(c.owner)==0)cost*=2;if((IsWonder(b)||IsProject(b))&&HasTrait(c.owner,TraitMonumental))cost-=cost/5;if(BuildUnit(b)==0&&HasTrait(c.owner,TraitExpansionist))cost-=cost/3;return CivCost(c,b,cost);}
  bool CivilisationsValid(){return nations.All(n=>n!=null&&n.traits!=null&&n.traits.Length==2&&n.traits.All(t=>t>=-1&&t<CivilisationCatalog.TraitCount)&&n.civ>=-1&&n.civ<CivilisationCatalog.Count&&n.portrait>=-1&&n.portrait<CivilisationCatalog.PortraitCount);}
  // First contacts not yet shown to the player (the screen opens Diplomacy with each in turn). Not saved.
  [NonSerialized] public List<int> newContacts=new List<int>();

@@ -29,6 +29,11 @@ public partial class RealmGame {
    if(founder==""&&me.founded<0){bool was=GUI.enabled;GUI.enabled=was&&reason=="";if(GUILayout.Button("Found",button,GUILayout.Width(110)))world.FoundReligion(0,r);GUI.enabled=was;}
    GUILayout.EndHorizontal();
    GUILayout.Label(ReligionCatalog.History(r)+" Followers today: "+ReligionCatalog.Adherents(r)+". Tenet — "+ReligionCatalog.TenetName(r)+": "+ReligionCatalog.TenetText(r),small);GUILayout.Space(4);}
+  // Priests: any of your cities that follows a faith and has a Temple can train one, or buy one here for faith.
+  {var temples=world.cities.Where(c=>c.owner==0&&c.religion>=0&&world.HasBuilding(c,36)).OrderBy(c=>c.name).ToList();GUILayout.Space(6);GUILayout.Label("Priests ("+World.PriestFaithCost+" faith, or 40 production in the city)",heading);
+   GUILayout.Label("A priest carries its city's faith. Preach in or next to a city for +"+World.PreachPressure+" pressure (two sermons, halved where a priest of another faith resides). In one of your cities it keeps a citizen content, and it heals your units beside it by 2 a turn.",small);
+   if(temples.Count==0)GUILayout.Label("None of your cities both follows a faith and has a Temple yet.",small);
+   foreach(var c in temples.Take(10)){GUILayout.BeginHorizontal();GUILayout.Label(c.name+" — "+ReligionCatalog.Name(c.religion),body,GUILayout.Width(560));string why=world.BuyPriestReason(0,c);bool was=GUI.enabled;GUI.enabled=was&&why=="";if(GUILayout.Button("Buy a Priest",button,GUILayout.Width(200)))world.BuyPriest(0,c);GUI.enabled=was;GUILayout.EndHorizontal();}}
   if(me.founded>=0){GUILayout.Space(6);GUILayout.Label("Missionaries ("+World.MissionCost+" faith each, +150 pressure)",heading);
    var targets=world.cities.Where(c=>c.religion!=me.founded&&world.At(c.x,c.y).seen&&world.MissionReason(0,c)!="Too far from your faithful cities (12 tiles).").OrderBy(c=>c.owner==0?0:1).ThenBy(c=>c.name).Take(16).ToList();
    if(targets.Count==0)GUILayout.Label("No known city within 12 tiles of your faithful cities needs converting.",small);

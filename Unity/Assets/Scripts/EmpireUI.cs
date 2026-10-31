@@ -66,7 +66,7 @@ public partial class RealmGame {
     void DrawMilitaryAdviser(){
         GUILayout.Label("Select a unit to centre the map. Each city supports "+World.FreeUnitsPerCity+" units free, plus your government's support; every unit beyond that costs 1 gold per turn.",body);
         foreach(var u in world.units.Where(u=>u.owner==0).ToList())
-            if(Button(World.UnitNames[u.type]+" #"+u.id+" | HP "+u.hp+" | "+world.Activity(u))){selected=u.id;cityId=-1;detailsScreen="";cityScreen=false;Center();GUIUtility.ExitGUI();}
+            if(Button(world.UnitName(u)+" #"+u.id+" | HP "+u.hp+" | "+world.Activity(u))){selected=u.id;cityId=-1;detailsScreen="";cityScreen=false;Center();GUIUtility.ExitGUI();}
     }
     Texture2D atlasTexture,globeTexture;Color[] atlasPixels;bool globeMode=true;float globeLon,globeLat,globeDrawnLon=-99,globeDrawnLat=-99;int globeDrawnAtlas;World atlasWorld;float atlasBuilt;readonly Color[] atlasColours=new Color[64];readonly bool[] atlasColourReady=new bool[64];
     Color AtlasColour(int id){

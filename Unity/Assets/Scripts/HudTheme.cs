@@ -104,7 +104,7 @@ namespace ParadigmRealm
             var items=new[]{
                 new KeyValuePair<int,string>(PixelArt.IconGold,"Gold  "+world.gold+"  ("+(budget>=0?"+":"")+budget+")"),
                 new KeyValuePair<int,string>(PixelArt.IconScience,"Science  +"+SciencePerTurn()),
-                new KeyValuePair<int,string>(PixelArt.IconAge,TechnologyCatalog.EraNames[world.Era(0)]),
+                new KeyValuePair<int,string>(PixelArt.IconAge,TechnologyCatalog.EraNames[world.Era(0)]+(world.AgeOf(0)!=World.AgeNormal?" · "+World.AgeNames[world.AgeOf(0)].Replace(" Age",""):"")),
                 new KeyValuePair<int,string>(PixelArt.IconOrder,"Order  "+(ownCities==0?"—":(calm*100/ownCities)+"%"))};
             float x=420;
             foreach(var item in items){DrawIcon(item.Key,new Rect(x,8,22,22));float w=hudLabel.CalcSize(new GUIContent(item.Value)).x;GUI.Label(new Rect(x+28,9,w+4,22),item.Value,hudLabel);x+=w+64;Fill(new Rect(x-16,10,1,18),new Color(UiGold.r,UiGold.g,UiGold.b,.45f));}
@@ -207,9 +207,9 @@ namespace ParadigmRealm
             if(u!=null)
             {
                 var art=unitSprites!=null&&unitSprites[u.type]!=null?unitSprites[u.type]:people[u.type];GUI.DrawTexture(new Rect(picture.x+4,picture.y+2,picture.width-8,picture.height-4),art,ScaleMode.ScaleToFit,true);
-                FitLabel(new Rect(tx,r.y+8,tw-6,24),World.UnitNames[u.type].ToUpper(),hudTitle);
+                FitLabel(new Rect(tx,r.y+8,tw-6,24),world.UnitName(u).ToUpper(),hudTitle);
                 Bar(new Rect(tx,r.y+36,tw-6,8),u.hp/10f,u.hp>6?UiAccent:u.hp>3?new Color(.95f,.75f,.3f):new Color(.9f,.3f,.25f));
-                DrawIcon(PixelArt.IconRoad,new Rect(tx,r.y+52,20,20));GUI.Label(new Rect(tx+26,r.y+52,120,22),"Movement",hudLabel);GUI.Label(new Rect(tx,r.y+52,tw-8,22),u.moves+" / "+World.Moves[u.type],hudNumber);
+                DrawIcon(PixelArt.IconRoad,new Rect(tx,r.y+52,20,20));GUI.Label(new Rect(tx+26,r.y+52,120,22),"Movement",hudLabel);GUI.Label(new Rect(tx,r.y+52,tw-8,22),u.moves+" / "+world.MaxMoves(u),hudNumber);
                 DrawIcon(PixelArt.IconMilitary,new Rect(tx,r.y+76,20,20));GUI.Label(new Rect(tx+26,r.y+76,120,22),"Strength",hudLabel);GUI.Label(new Rect(tx,r.y+76,tw-8,22),World.Attack[u.type]+" / "+World.Defence[u.type],hudNumber);
                 // What the unit is doing, on its own line (owner request), with the time left for jobs and journeys; rank below.
                 string doing=world.Activity(u);if(u.job>0||u.hasOrder)doing+=" — "+world.Remaining(u);
@@ -226,7 +226,7 @@ namespace ParadigmRealm
                 DrawIcon(PixelArt.IconShields,new Rect(tx+70,r.y+60,20,20));GUI.Label(new Rect(tx+94,r.y+60,40,22),y[1].ToString(),hudLabel);
                 DrawIcon(PixelArt.IconScience,new Rect(tx+140,r.y+60,20,20));GUI.Label(new Rect(tx+164,r.y+60,40,22),y[2].ToString(),hudLabel);
                 int b=c.buildingProject>=0?c.buildingProject:c.build;int progress=c.buildingProject>=0?c.buildingProduction:c.production;
-                GUI.Label(new Rect(tx,r.y+86,tw,22),b>=0?World.BuildName(b):"Nothing in production",hudSmall);if(b>=0)Bar(new Rect(tx,r.y+108,tw-6,6),progress/(float)Math.Max(1,world.CostFor(c,b)),UiAccent);
+                GUI.Label(new Rect(tx,r.y+86,tw,22),b>=0?world.BuildNameFor(c.owner,b):"Nothing in production",hudSmall);if(b>=0)Bar(new Rect(tx,r.y+108,tw-6,6),progress/(float)Math.Max(1,world.CostFor(c,b)),UiAccent);
                 var row=new Rect(r.x+10,r.y+136,r.width-20,56);
                 if(HudButton(new Rect(row.x,row.y,row.width/2-4,row.height),PixelArt.IconCities,"Open city"))OpenCity(c);
                 if(HudButton(new Rect(row.x+row.width/2+4,row.y,row.width/2-4,row.height),PixelArt.IconNext,"Next unit"))NextUnit();
@@ -240,6 +240,7 @@ namespace ParadigmRealm
             // Workers always show Road, Farm, Mine and Clear (woodland); a job the civilisation lacks the technology for is greyed
             // out (owner request). Fort and the rest are in More.
             if(u.type==1){actions.Add(new KeyValuePair<int,string>(PixelArt.IconRoad,"Road"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconFood,"Farm"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconShields,"Mine"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconAxe,"Clear"));}
+            if(u.type==World.PriestUnit)actions.Add(new KeyValuePair<int,string>(PixelArt.IconFaith,"Preach"));
             if(World.CanExplore(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconExplore,"Explore"));
             actions.Add(new KeyValuePair<int,string>(PixelArt.IconSkip,"Skip"));
             if(World.Power[u.type]>0&&!World.IsNaval(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconFortify,u.fortified?"Wake":"Fortify"));
@@ -255,11 +256,12 @@ namespace ParadigmRealm
                 {
                     switch(a.Value)
                     {
-                        case "Move":moveMode=!moveMode;status=moveMode?"Click a destination for the "+World.UnitNames[u.type]+" (right-click cancels).":"";break;
+                        case "Move":moveMode=!moveMode;status=moveMode?"Click a destination for the "+world.UnitName(u)+" (right-click cancels).":"";break;
                         case "Found":Found();break;
                         case "Road":case "Farm":case "Mine":case "Clear":{int job=a.Value=="Road"?1:a.Value=="Farm"?2:a.Value=="Clear"?5:3;string reason=world.WorkerTeam(u).Select(m=>world.JobReason(m,job)).FirstOrDefault(s=>s!="")??"";if(!world.StartJob(u,job))status=reason;break;}
+                        case "Preach":if(!world.Preach(u))status=world.PreachReason(u);break;
                         case "Explore":if(u.exploring)world.CancelActivity(u);else world.AutoExplore(u);break;
-                        case "Skip":world.SkipTurn(u);status=World.UnitNames[u.type]+" skips this turn.";break;
+                        case "Skip":world.SkipTurn(u);status=world.UnitName(u)+" skips this turn.";break;
                         case "Fortify":case "Wake":if(World.Power[u.type]>0&&!World.IsNaval(u.type)){bool fortify=!u.fortified;world.CancelActivity(u);u.fortified=fortify;}else{bool watch=!u.sentry;world.CancelActivity(u);u.sentry=watch;}break;
                         case "Sentry":world.CancelActivity(u);u.sentry=true;break;
                         default:moreActions=!moreActions;break;
@@ -331,7 +333,7 @@ namespace ParadigmRealm
             {
                 int b=c.buildingProject>=0?c.buildingProject:c.build;int progress=c.buildingProject>=0?c.buildingProduction:c.production;
                 if(b>=0)Bar(new Rect(r.x+4,r.yMax-3,w-8,2),progress/(float)Math.Max(1,world.CostFor(c,b)),UiAccent);
-                if(r.Contains(Event.current.mousePosition)){int perTurn=Math.Max(1,world.Yield(c)[1]);string line=b<0?"Nothing in production":World.BuildName(b)+" ("+Math.Max(1,(world.CostFor(c,b)-progress+perTurn-1)/perTurn)+" turns)";var tip=new Rect(r.x,r.yMax+2,Mathf.Max(w,hudSmall.CalcSize(new GUIContent(line)).x+12),18);Fill(tip,new Color(.04f,.06f,.12f,.92f));GUI.Label(new Rect(tip.x+6,tip.y+1,tip.width-8,16),line,new GUIStyle(hudSmall){wordWrap=false});}
+                if(r.Contains(Event.current.mousePosition)){int perTurn=Math.Max(1,world.Yield(c)[1]);string line=b<0?"Nothing in production":world.BuildNameFor(c.owner,b)+" ("+Math.Max(1,(world.CostFor(c,b)-progress+perTurn-1)/perTurn)+" turns)";var tip=new Rect(r.x,r.yMax+2,Mathf.Max(w,hudSmall.CalcSize(new GUIContent(line)).x+12),18);Fill(tip,new Color(.04f,.06f,.12f,.92f));GUI.Label(new Rect(tip.x+6,tip.y+1,tip.width-8,16),line,new GUIStyle(hudSmall){wordWrap=false});}
             }
         }
     }

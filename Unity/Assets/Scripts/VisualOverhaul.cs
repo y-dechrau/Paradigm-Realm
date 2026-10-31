@@ -23,7 +23,9 @@ namespace ParadigmRealm {
    // An age without its own picture borrows the nearest earlier one in its group (owner request, 31 Oct): Dawn and
    // Classical share the ancient look (e0), Industrial onwards the modern look (e3); the Medieval Age uses the base portrait.
    if(era>=0){for(int e=era;e>=(era>=3?3:era==2?2:0);e--){int key=1000+i*10+e;if(!portraits.TryGetValue(key,out t)){t=Crisp(Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00")+"-e"+e));portraits[key]=t;}if(t!=null)return t;}}
-   if(!portraits.TryGetValue(i,out t)){t=Crisp(Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00")));portraits[i]=t;}return t;
+   if(!portraits.TryGetValue(i,out t)){t=Crisp(Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00")));
+    // Real civilisations (portraits 17-28) use a generated placeholder until their painted portrait is supplied.
+    if(t==null&&i>=17)t=Crisp(PixelTexture(PixelArt.LeaderPlaceholder(i-17)));portraits[i]=t;}return t;
   }
   // Pixel-art portraits stay sharp when enlarged (owner request): each is doubled pixel for pixel (point sampling) into a
   // 600 x 800 copy with mipmaps, which is then drawn with smooth filtering. Edges stay crisp at any size on screen and
@@ -53,6 +55,7 @@ namespace ParadigmRealm {
     try{unitSprites[i]=PixelTexture(PixelArt.UnitSprite(ReadArtPixels(people[i]),people[i].width,people[i].height));}catch(Exception){unitSprites[i]=null;}}
    // Vessels are drawn by the pixel-art generator (no supplied art); the same picture serves the build list.
    for(int i=World.BoatUnit;i<=World.WarGalleyUnit&&i<people.Length;i++){if(Art("unit-"+i.ToString("00"))!=null)continue;unitSprites[i]=PixelTexture(PixelArt.ShipSprite(i-World.BoatUnit));people[i]=unitSprites[i];}
+   if(World.PriestUnit<people.Length&&Art("unit-15")==null){unitSprites[World.PriestUnit]=PixelTexture(PixelArt.PriestSprite());people[World.PriestUnit]=unitSprites[World.PriestUnit];}
    EnableCivilisationsWithArt();
    var city=Art("city-0-0");if(city!=null){Destroy(cityTexture);cityTexture=city;}
    var names=Resources.Load<TextAsset>("Visuals/gallery-names");galleryNames=names==null?new string[0]:names.text.Split(new[]{'\n'},StringSplitOptions.RemoveEmptyEntries);

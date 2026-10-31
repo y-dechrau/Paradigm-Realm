@@ -38,6 +38,7 @@ namespace ParadigmRealm
             yield return Frames(5);
             mainMenu=false;nameSetup=true;setupPage=0;setupCiv=4;
             yield return Shot(folder,"0-new-game.bmp");
+            setupCiv=17;yield return Shot(folder,"0a-real-civilisation.bmp");civLoreOpen=true;yield return Shot(folder,"0a2-civilisation-lore.bmp");setupCiv=26;yield return Shot(folder,"0a3-lore-persia.bmp");civLoreOpen=false;setupCiv=4;
             setupCiv=CivilisationCatalog.Count;proposedName="Ember Clans";customLeader="Chief Oru";customPortrait=13;customTraitA=2;customTraitB=9;
             yield return Shot(folder,"0b-custom.bmp");
             setupCiv=0;setupPage=1;
@@ -61,8 +62,8 @@ namespace ParadigmRealm
             techZoom=.6f;researchScroll=Vector2.zero;yield return Shot(folder,"4b2-research-zoomed-out.bmp");techZoom=1.4f;yield return Shot(folder,"4b3-research-zoomed-in.bmp");techZoom=1f;
             researchScreen=false;
             // Religion screen with a pantheon and a founded faith (this throwaway game only).
-            if(city!=null){var me=world.nations[0];foreach(var id in new[]{"mysticism","laws","philosophy"})world.tech[TechnologyCatalog.Index(id)]=true;if(!city.buildings.Contains(39))city.buildings.Add(39);me.faith=200;world.ChoosePantheon(0,0);world.FoundReligion(0,3);}
-            detailsScreen="Religion";yield return Shot(folder,"4b4-religion.bmp");religionAncient=true;yield return Shot(folder,"4b5-religion-ancient.bmp");religionAncient=false;detailsScreen="";
+            if(city!=null){var me=world.nations[0];foreach(var id in new[]{"mysticism","laws","philosophy"})world.tech[TechnologyCatalog.Index(id)]=true;if(!city.buildings.Contains(36))city.buildings.Add(36);me.faith=200;world.ChoosePantheon(0,0);world.FoundReligion(0,3);}
+            {var pr=world.BuyPriest(0,city);if(pr==null&&city!=null){pr=world.Add(0,World.PriestUnit,city.x,city.y);pr.faith=city.religion;pr.charges=2;}}detailsScreen="Religion";yield return Shot(folder,"4b4-religion.bmp");religionAncient=true;yield return Shot(folder,"4b5-religion-ancient.bmp");religionAncient=false;detailsScreen="";
             // Victory screen with a stage-1 project activating (this throwaway game only).
             if(city!=null){world.tech[TechnologyCatalog.Index("computers")]=true;city.pop=8;var n=world.nations[0];n.projectCity=city.id;n.projectStage=1;n.projectActivation=6;}
             detailsScreen="Victory";

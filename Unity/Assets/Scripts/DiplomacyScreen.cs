@@ -130,6 +130,8 @@ public partial class RealmGame {
   y+=90;
   // Greeting.
   var quote=new Rect(side.x+14,y,side.width-28,62);DipPanel(quote,.9f);GUI.Label(new Rect(quote.x+14,quote.y+4,quote.width-28,quote.height-8),dipReplyPartner==partner&&!string.IsNullOrEmpty(dipReply)?dipReply:world.Greeting(partner),dipQuote);y+=74;
+  // Their leader's agenda and how it judges you (Civilization VI agendas).
+  {string agenda=world.AgendaReason(partner,0);if(agenda!=""){GUI.Label(new Rect(side.x+16,y,side.width-32,40),agenda,new GUIStyle(dipRow){fontSize=12,wordWrap=true});y+=44;}}
   // Pending proposals from this partner.
   var pending=world.offers.Where(o=>o.to==0&&o.status==0&&o.expires>world.turn).ToList();
   if(pending.Count>0){var strip=new Rect(side.x+14,y,side.width-28,30);Fill(strip,new Color(.5f,.38f,.12f,.9f));GUI.Label(new Rect(strip.x+10,strip.y,strip.width-110,30),pending.Count+" proposal"+(pending.Count==1?"":"s")+" awaiting your answer",dipRow);if(GUI.Button(new Rect(strip.xMax-96,strip.y+3,90,24),"Review")){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}y+=38;}

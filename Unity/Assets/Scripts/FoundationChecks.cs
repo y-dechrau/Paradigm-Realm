@@ -62,7 +62,7 @@ namespace ParadigmRealm
             dual.ChooseProject(dc,2,false);for(int i=0;i<2;i++)dual.Add(0,2,dc.x,dc.y);dc.production=dual.Cost(2);dc.buildingProduction=dual.Cost(8);dual.Produce(dc,1);
             Require(dc.build==2&&dc.library,"blocked unit stack does not block building construction");
             var old=Flat();var oc=old.Found(old.units.First(v=>v.owner==0&&v.type==0));old.version=3;oc.build=8;oc.production=17;oc.queue=new System.Collections.Generic.List<int>{1,7,1,9};old.UpgradeSave();
-            Require(old.version==22&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
+            Require(old.version==23&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
             old.UpgradeSave();Require(oc.buildingProduction==17&&oc.queue.Count==1,"migration is idempotent");
             var upgrade=Flat();var uc=upgrade.Found(upgrade.units.First(v=>v.owner==0&&v.type==0));var troop=upgrade.units.First(v=>v.owner==0&&v.type==2);upgrade.tech[TechnologyCatalog.Index("bronze")]=true;upgrade.gold=100;
             Require(!upgrade.Upgrade(troop),"owned territory alone does not permit upgrades");troop.x=uc.x;troop.y=uc.y;Require(upgrade.Upgrade(troop)&&troop.type==7,"owned city permits eligible upgrade");
@@ -214,7 +214,7 @@ namespace ParadigmRealm
             var clamped=World.New(5,"Clamp",0,1,1,0,0,1,16);
             Require(clamped.civCount==World.MaxCivsBySize[0],"requests above the size limit are clamped");
             var old=World.New(6,"Old",0,1,1,0,1,0,3);old.version=9;old.rivalWar=true;foreach(var p in old.diplomacy)p.atWar=false;old.UpgradeSave();
-            Require(old.version==22&&old.civCount==3&&old.AtWar(1,2)&&!old.AtWar(0,1)&&old.Valid(),"version 9 saves upgrade with the old rival war flag preserved");
+            Require(old.version==23&&old.civCount==3&&old.AtWar(1,2)&&!old.AtWar(0,1)&&old.Valid(),"version 9 saves upgrade with the old rival war flag preserved");
             var peace=World.New(7,"Peace",0,1,1,0,1,0,3);peace.version=9;peace.rivalWar=false;peace.UpgradeSave();
             Require(!peace.AtWar(1,2)&&peace.Valid(),"version 9 peace between rivals preserved");
         }
@@ -290,7 +290,7 @@ namespace ParadigmRealm
             Require(!s.Move(climber,4,-1)&&climber.x==4&&climber.y==0,"no step beyond the north pole on a staggered globe");
             // Saves migrate: version 8 becomes version 9 and stays flat.
             var old=World.New(8);old.version=8;old.UpgradeSave();
-            Require(old.version==22&&old.mapShape==0&&old.Valid(),"version 8 saves upgrade to flat version 22");
+            Require(old.version==23&&old.mapShape==0&&old.Valid(),"version 8 saves upgrade to flat version 23");
         }
         static void MapSizeChecks()
         {
@@ -307,7 +307,7 @@ namespace ParadigmRealm
             Require(World.New(9).Width==48&&World.New(9).Height==30,"default map stays Small 48 x 30");
             Require(World.New(9,"A",0,1,1,0,1).tiles.Select(t=>t.terrain).SequenceEqual(World.New(9).tiles.Select(t=>t.terrain)),"Small is the default size and repeatable by seed");
             var legacy=World.New(3);legacy.version=7;legacy.mapWidth=0;legacy.mapHeight=0;legacy.UpgradeSave();
-            Require(legacy.Width==48&&legacy.Height==30&&legacy.version==22&&legacy.Valid(),"version 7 saves upgrade to Small flat version 22");
+            Require(legacy.Width==48&&legacy.Height==30&&legacy.version==23&&legacy.Valid(),"version 7 saves upgrade to Small flat version 23");
         }
     }
 }

@@ -3,12 +3,14 @@ using System.Linq;
 namespace ParadigmRealm {
 public static class DiplomacyChecks {
  static void Check(bool yes,string why){if(!yes)throw new Exception("Diplomacy: "+why);}
- static World Setup(){var w=World.New(613);w.Found(w.units.First(u=>u.owner==0&&u.type==0));w.met[1]=w.met[2]=true;w.Relation(1,2).contact=true;w.gold=500;foreach(var n in w.nations)n.gold=500;return w;}
+ static World Setup(){var w=World.New(613);w.Found(w.units.First(u=>u.owner==0&&u.type==0));w.met[1]=w.met[2]=true;w.Relation(1,2).contact=true;w.gold=500;foreach(var n in w.nations)n.gold=500;
+  // Rival leader agendas (CivLore) move opinion; these checks measure the treaty rules alone, so the rivals here have none.
+  for(int o=1;o<w.civCount;o++)w.nations[o].civ=-1;return w;}
  static void Next(World w){w.turn++;w.AdvanceDiplomacy();}
  static DiplomaticOffer Offer(World w,TreatyKind kind,int a=0,int b=1){return w.Propose(new DiplomaticOffer{from=a,to=b,kind=kind,duration=10});}
  static void Resource(World w,int owner,int res){var c=w.cities.First(x=>x.owner==owner);var t=w.At(c.x,c.y);t.resource=res;t.farm=t.mine=t.road=true;w.RebuildTerritory();}
  public static void Run(){
-  var w=Setup();Check(!w.AtWar(1,2),"new rivals begin at peace");w.version=6;w.war[1]=true;w.openBorders[2]=true;w.nations[2].relations=17;w.UpgradeSave();Check(w.version==22&&w.AtWar(1,2)&&w.AtWar(0,1)&&w.HasAccess(0,2)&&w.Opinion(2,0)==22&&w.Valid(),"v6 migration preserves old wars, borders and trust");w.UpgradeSave();Check(w.Opinion(2,0)==22,"migration is idempotent");
+  var w=Setup();Check(!w.AtWar(1,2),"new rivals begin at peace");w.version=6;w.war[1]=true;w.openBorders[2]=true;w.nations[2].relations=17;w.UpgradeSave();Check(w.version==23&&w.AtWar(1,2)&&w.AtWar(0,1)&&w.HasAccess(0,2)&&w.Opinion(2,0)==22&&w.Valid(),"v6 migration preserves old wars, borders and trust");w.UpgradeSave();Check(w.Opinion(2,0)==22,"migration is idempotent");
   w=Setup();w.met[1]=false;Check(!w.SendEmbassy(0,1)&&w.WarReason(0,1)!=""&&Offer(w,TreatyKind.Access).status==2,"first contact gates actions");w.met[1]=true;Check(w.SendEmbassy(0,1)&&w.gold==475&&!w.SendEmbassy(0,1)&&w.Opinion(1,0)==13,"embassy cost and one-off trust");Check(w.GiftGold(1)&&w.Opinion(1,0)==23,"gift connects to opinion");Check(Offer(w,TreatyKind.Friendship).status==1&&!w.DeclareWar(0,1),"negotiated friendship protects peace");Next(w);Check(w.EndTreaty(0,1,TreatyKind.Friendship)&&w.Grievances(1,0)==25&&w.DeclareWar(0,1),"breaking friendship has consequences before war");
   w=Setup();Check(Offer(w,TreatyKind.Friendship).status==2,"neutral friendship refused");Check(Offer(w,TreatyKind.Access).status==2,"one proposal per direction per turn");Next(w);Check(Offer(w,TreatyKind.Access).status==1&&w.HasAccess(0,1),"neutral access accepted");for(int i=0;i<10;i++)Next(w);Check(!w.HasAccess(0,1),"timed access expires");
   w=Setup();var inbound=Offer(w,TreatyKind.Access,1,0);Check(inbound.status==0&&!w.HasAccess(0,1),"AI proposal never accepts for player");Check(w.RespondToOffer(inbound.id,true)&&w.HasAccess(0,1)&&!w.RespondToOffer(inbound.id,true),"inbox accepts exactly once");Next(w);var stale=w.Propose(new DiplomaticOffer{from=2,to=0,kind=TreatyKind.Trade,askGold=450});w.gold=20;Check(!w.RespondToOffer(stale.id,true)&&stale.status==2,"stale treasury revalidated");

@@ -22,7 +22,20 @@ public partial class World {
   new[]{"Sunspire","Rashidabad","Goldminaret","Dawnspire","Lanternsouk","Brasswell","Sunhaven","Zephyria","Minaret Hill","Crescent Bay","Topaz Gate","Silkhaven"},
   new[]{"Lionmarch","Aldousgate","Pridehold","Goldmane","Roarwick","Lionsford","Manehaven","Sunlion","Valiant Keep","Heraldry","Crestfield","Brightmane"},
   new[]{"Jade Palace","Meiling","Lotus Gate","Silkriver","Pearlharbour","Dragonwell","Bamboo Grove","Celadon","Moon Terrace","Phoenix Hill","Lantern City","Plum Blossom"},
-  new[]{"Itzelan","Serpent Mound","Quetzalpan","Jaguar Rock","Obsidian Steps","Feather Lake","Sunstone","Cenote Deep","Maizefield","Skypyramid","Coatlan","Tlalocan"}};
+  new[]{"Itzelan","Serpent Mound","Quetzalpan","Jaguar Rock","Obsidian Steps","Feather Lake","Sunstone","Cenote Deep","Maizefield","Skypyramid","Coatlan","Tlalocan"},
+  // Real civilisations (owner request, 31 Oct 2026): historical cities, capital first.
+  new[]{"Xianyang","Chang'an","Luoyang","Kaifeng","Nanjing","Hangzhou","Beijing","Chengdu","Guangzhou","Suzhou","Yangzhou","Handan"},
+  new[]{"Thebes","Memphis","Pi-Ramesses","Heliopolis","Abydos","Akhetaten","Elephantine","Avaris","Tanis","Sais","Hermopolis","Buto"},
+  new[]{"Roma","Ostia","Capua","Ravenna","Mediolanum","Neapolis","Londinium","Lugdunum","Tarraco","Carthago Nova","Aquileia","Antiochia"},
+  new[]{"Athens","Sparta","Corinth","Argos","Delphi","Olympia","Miletus","Syracuse","Rhodes","Megara","Ephesus","Eretria"},
+  new[]{"Tenochtitlan","Texcoco","Tlacopan","Tlatelolco","Cholula","Xochimilco","Coyoacan","Azcapotzalco","Tula","Teotihuacan","Malinalco","Chalco"},
+  new[]{"Cusco","Machu Picchu","Quito","Ollantaytambo","Pisac","Cajamarca","Vilcabamba","Tumebamba","Huanuco Pampa","Vitcos","Choquequirao","Hatun Xauxa"},
+  new[]{"Lakamha","Mutal","Calakmul","Copan","Chichen Itza","Uxmal","Mayapan","Caracol","Yaxchilan","Piedras Negras","Tulum","Coba"},
+  new[]{"Aksum","Adulis","Lalibela","Gondar","Addis Ababa","Harar","Adwa","Debre Berhan","Magdala","Yeha","Ankober","Dessie"},
+  new[]{"Baghdad","Mecca","Medina","Damascus","Basra","Kufa","Samarra","Raqqa","Mosul","Aleppo","Sana'a","Muscat"},
+  new[]{"Pasargadae","Persepolis","Susa","Ecbatana","Sardis","Bactra","Ctesiphon","Isfahan","Shiraz","Tabriz","Nishapur","Merv"},
+  new[]{"Pataliputra","Ujjain","Taxila","Varanasi","Sanchi","Mathura","Kaushambi","Tosali","Suvarnagiri","Ayodhya","Kanchipuram","Vidisha"},
+  new[]{"Babylon","Kish","Nippur","Sippar","Borsippa","Larsa","Ur","Uruk","Eridu","Lagash","Isin","Mari"}};
  static readonly string[] SharedCityNames={"Ashford","Brindlemoor","Cinderfall","Dunmere","Embervale","Farrowdale","Glenhallow","Hollowmere","Ironwood","Juniper Hill","Kestrel Point","Larkspur","Maplecross","Northwind","Oakridge","Pinehurst","Quarrystone","Redcliff","Stonebridge","Thistledown","Umberlee","Vinehold","Westmarch","Yarrowfield","Ambergate","Bramblewick","Coppervale","Deepwell","Eastmere","Foxhollow","Goldfurrow","Highcairn","Isleby","Jasper Ford","Knollwood","Lindenhall","Marrowby","Nettlebank","Orchard End","Pebblebrook","Riverwatch","Sablecrest","Tallowmere","Upperbrook","Valewood","Wrenfield","Yewbarrow","Zephyr Rise"};
  public string NewCityName(int owner){
   var used=new System.Collections.Generic.HashSet<string>(cities.Select(c=>c.name),StringComparer.OrdinalIgnoreCase);

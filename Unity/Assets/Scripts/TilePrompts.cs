@@ -46,7 +46,7 @@ public partial class RealmGame {
   var e=Event.current;if(e.type==EventType.MouseDown&&!box.Contains(e.mousePosition)){tilePicker=false;e.Use();return;}
   GUI.Box(box,"");GUI.Label(new Rect(box.x+12,box.y+6,box.width-24,22),"Select",heading);float y=box.y+34;
   if(c!=null){if(GUI.Button(new Rect(box.x+10,y,box.width-20,30),"City: "+c.name,button)){cityId=c.id;selected=-1;tilePicker=false;}y+=34;}
-  foreach(var u in own){if(GUI.Button(new Rect(box.x+10,y,box.width-20,30),World.UnitNames[u.type]+" — "+world.Activity(u),button)){selected=u.id;cityId=-1;tilePicker=false;}y+=34;}
+  foreach(var u in own){if(GUI.Button(new Rect(box.x+10,y,box.width-20,30),world.UnitName(u)+" — "+world.Activity(u),button)){selected=u.id;cityId=-1;tilePicker=false;}y+=34;}
  }
 }
 }

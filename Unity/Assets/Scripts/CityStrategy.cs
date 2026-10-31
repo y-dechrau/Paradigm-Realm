@@ -57,7 +57,7 @@ namespace ParadigmRealm {
    }
    return chosen.Select(t=>t.Tile).ToList();
   }
-  public int FoodNeeded(City c){return 10+c.pop*4;}
+  public int FoodNeeded(City c){return 10+c.pop*4+CivFoodNeeded(c);}
   // Stage 7 (design): click a tile to lock a citizen onto it, click again to release. Locks are capped at the number of working
   // citizens; a lock on a tile the city can no longer work is simply ignored.
   public bool ToggleLock(City c,Tile t){

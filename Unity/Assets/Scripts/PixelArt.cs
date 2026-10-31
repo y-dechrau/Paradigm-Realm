@@ -811,6 +811,50 @@ namespace ParadigmRealm
             }
             Outline(cv,Ink);return cv;
         }
+        // Priest (owner request, 31 Oct 2026): a hooded figure in a long robe with a staff and a small flame, outlined like the
+        // other unit sprites; drawn because no painted picture exists yet (slot Visuals/unit-15).
+        public static PixelCanvas PriestSprite()
+        {
+            var cv=new PixelCanvas(64,64);uint[] robe=Ramp(70,28,40,110,40,56,150,58,72,186,86,92,214,128,120),gold=HudGold;
+            Poly(cv,new[]{P(24,22),P(40,22),P(46,56),P(18,56)},(X,Y)=>RampPick(robe,.85-(X-18)/34.0-(Y-22)/120.0));
+            Poly(cv,new[]{P(30,22),P(34,22),P(36,56),P(28,56)},(X,Y)=>RampPick(gold,.7));
+            for(int y=10;y<=24;y++)for(int x=24;x<=40;x++){double dx=(x-32)/8.0,dy=(y-17)/7.5;if(dx*dx+dy*dy<=1)cv.Set(x,y,RampPick(robe,.75-dx*.25-dy*.2));}
+            for(int y=14;y<=21;y++)for(int x=28;x<=35;x++){double dx=(x-31.5)/4.2,dy=(y-17.5)/4.2;if(dx*dx+dy*dy<=1)cv.Set(x,y,Rgb(214,170,130));}
+            Line(cv,47,14,47,58,1,HudWood);
+            for(int y=6;y<=13;y++)for(int x=44;x<=50;x++){double dx=(x-47)/3.4,dy=(y-10)/4.0;if(dx*dx+dy*dy<=1)cv.Set(x,y,y<9?Rgb(255,236,150):Rgb(245,150,60));}
+            Outline(cv,Ink);return cv;
+        }
+        // Placeholder leader portraits for the real civilisations until painted ones exist (Resources/Leaders/leader-17..28):
+        // a dark bust against a sky in the civilisation's colours, rim-lit in gold, wearing headgear of its culture.
+        // k: 0 China, 1 Egypt, 2 Rome, 3 Greece, 4 Aztec, 5 Inca, 6 Maya, 7 Ethiopia, 8 Arabia, 9 Persia, 10 India, 11 Babylon.
+        public static PixelCanvas LeaderPlaceholder(int k)
+        {
+            int W=150,H=200;var cv=new PixelCanvas(W,H);
+            uint[][] skies={Ramp(60,16,20,120,30,30,170,60,40,214,120,60,240,190,110),Ramp(40,30,70,90,60,120,170,110,90,230,170,90,250,220,150),Ramp(50,20,30,110,30,40,160,60,60,200,120,90,236,200,160),
+             Ramp(20,40,80,40,80,140,80,130,190,140,180,220,210,230,245),Ramp(30,60,50,40,110,90,70,160,120,210,170,70,245,220,120),Ramp(60,40,30,120,80,40,180,130,60,220,180,90,245,225,150),
+             Ramp(20,60,40,30,100,60,60,140,90,140,180,110,210,220,170),Ramp(30,60,30,60,110,50,200,170,50,220,60,40,245,200,120),Ramp(20,50,40,40,90,70,170,150,90,230,200,120,250,235,190),
+             Ramp(40,20,70,80,40,120,140,80,150,210,150,90,245,215,150),Ramp(70,30,20,150,60,30,220,120,40,240,170,80,250,220,160),Ramp(30,40,80,60,70,140,120,110,170,210,170,110,245,220,160)};
+            var sky=skies[k%skies.Length];uint skin=Rgb(26,22,30),rim=Rgb(236,196,110);
+            for(int y=0;y<H;y++)for(int x=0;x<W;x++){double v=.95-y/(double)H*.75+(VNoise(x/18.0,y/14.0,900+k)-.5)*.18;cv.Set(x,y,RampPick(sky,v));}
+            Func<int,int,bool> body=(x,y)=>{double hx=(x-75)/27.0,hy=(y-92)/33.0;if(hx*hx+hy*hy<=1)return true;if(y>118&&y<132&&Math.Abs(x-75)<12)return true;double sx=(x-75)/(55.0+(y-150)*.55),sy=(y-178)/48.0;return y>=130&&sx*sx+sy*sy<=1;};
+            Func<int,int,bool> hat=(x,y)=>{int dx=x-75;switch(k){
+             case 0:return y>=48&&y<62&&Math.Abs(dx)<32||y>=40&&y<48&&Math.Abs(dx)<14;
+             case 1:return y>=52&&y<84&&Math.Abs(dx)<30+(y-52)/2||y>=84&&y<128&&Math.Abs(dx)>=24&&Math.Abs(dx)<36;
+             case 2:return y>=60&&y<70&&Math.Abs(dx)<30&&(x+y)%5<3;
+             case 3:return y>=38&&y<76&&Math.Abs(dx)<29||y>=22&&y<40&&Math.Abs(dx)<5+(40-y)/3&&Math.Abs(dx)<12;
+             case 4:return y>=16&&y<66&&Math.Abs(dx)<20+(66-y)&&(y>=56||Math.Abs(dx)%9<5);
+             case 5:return y>=58&&y<68&&Math.Abs(dx)<30||y>=40&&y<58&&Math.Abs(dx)<4;
+             case 6:return y>=20&&y<66&&Math.Abs(dx-(66-y)/3)<18;
+             case 7:return y>=40&&y<64&&Math.Abs(dx)<24+(y-40)/4||y>=30&&y<40&&Math.Abs(dx)<6;
+             case 8:return y>=46&&y<74&&Math.Abs(dx)<31||y>=74&&y<140&&Math.Abs(dx)>=26&&Math.Abs(dx)<34;
+             case 9:return y>=24&&y<72&&Math.Abs(dx)<20+(y-24)/6;
+             case 10:return y>=44&&y<74&&Math.Abs(dx)<31+(y-44)/8||y>=36&&y<46&&Math.Abs(dx-8)<5;
+             default:return y>=30&&y<72&&Math.Abs(dx)<22;}};
+            for(int y=0;y<H;y++)for(int x=0;x<W;x++)if(body(x,y)||hat(x,y))cv.Set(x,y,hat(x,y)?Rgb(52,40,30):skin);
+            for(int y=1;y<H;y++)for(int x=1;x<W;x++){bool inside=body(x,y)||hat(x,y);if(inside&&!(body(x-1,y-1)||hat(x-1,y-1)))cv.Set(x,y,rim);}
+            for(int x=0;x<W;x++){cv.Set(x,0,rim);cv.Set(x,H-1,rim);}for(int y=0;y<H;y++){cv.Set(0,y,rim);cv.Set(W-1,y,rim);}
+            return cv;
+        }
         static readonly Dictionary<int,PixelCanvas> spriteCache=new Dictionary<int,PixelCanvas>();
         // Returns null for terrain with no raised scenery.
         public static PixelCanvas Sprite(int t,int variant)

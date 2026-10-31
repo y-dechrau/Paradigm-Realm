@@ -62,7 +62,7 @@ namespace ParadigmRealm
         }
         void MapKeyboardInput(){
             if(cityScreen||researchScreen||detailsScreen!=""||pauseMenu||mainMenu||loadScreen)return;
-            var ev=Event.current;if(!PromptOpen()&&GUI.GetNameOfFocusedControl()!="rename"&&GUI.GetNameOfFocusedControl()!="cityrename"&&ev.type==EventType.KeyDown&&!ev.control&&!ev.alt&&!ev.command&&world.result==""&&!guide&&!confirmNew&&pendingUnit==-1){var u=Selected();if(ev.keyCode==KeyCode.X&&u!=null){world.CancelActivity(u);ResetMapGesture();status="Activity and route cancelled.";ev.Use();}else if(ev.keyCode==KeyCode.Tab){NextUnit();ev.Use();}else if(ev.keyCode==KeyCode.Space){if(u!=null){world.SkipTurn(u);status=World.UnitNames[u.type]+" skips this turn.";}ev.Use();}else if(ev.keyCode==KeyCode.Return||ev.keyCode==KeyCode.KeypadEnter){EndTurn();ev.Use();}else if(ev.keyCode==KeyCode.B){Found();ev.Use();}else if(ev.keyCode==KeyCode.R){RoadKey(u);ev.Use();}else if(u!=null){int dx=ev.keyCode==KeyCode.LeftArrow?-1:ev.keyCode==KeyCode.RightArrow?1:0,dy=ev.keyCode==KeyCode.UpArrow?-1:ev.keyCode==KeyCode.DownArrow?1:0;if(dx!=0||dy!=0){var to=ArrowTarget(u,dx,dy);if(to!=null)IssueOrder(u,to.x,to.y);ev.Use();}}}
+            var ev=Event.current;if(!PromptOpen()&&GUI.GetNameOfFocusedControl()!="rename"&&GUI.GetNameOfFocusedControl()!="cityrename"&&ev.type==EventType.KeyDown&&!ev.control&&!ev.alt&&!ev.command&&world.result==""&&!guide&&!confirmNew&&pendingUnit==-1){var u=Selected();if(ev.keyCode==KeyCode.X&&u!=null){world.CancelActivity(u);ResetMapGesture();status="Activity and route cancelled.";ev.Use();}else if(ev.keyCode==KeyCode.Tab){NextUnit();ev.Use();}else if(ev.keyCode==KeyCode.Space){if(u!=null){world.SkipTurn(u);status=world.UnitName(u)+" skips this turn.";}ev.Use();}else if(ev.keyCode==KeyCode.Return||ev.keyCode==KeyCode.KeypadEnter){EndTurn();ev.Use();}else if(ev.keyCode==KeyCode.B){Found();ev.Use();}else if(ev.keyCode==KeyCode.R){RoadKey(u);ev.Use();}else if(u!=null){int dx=ev.keyCode==KeyCode.LeftArrow?-1:ev.keyCode==KeyCode.RightArrow?1:0,dy=ev.keyCode==KeyCode.UpArrow?-1:ev.keyCode==KeyCode.DownArrow?1:0;if(dx!=0||dy!=0){var to=ArrowTarget(u,dx,dy);if(to!=null)IssueOrder(u,to.x,to.y);ev.Use();}}}
         }
 
         void StartGame()
@@ -139,7 +139,7 @@ namespace ParadigmRealm
         bool CustomValid(){return setupCiv<CivilisationCatalog.Count||(!string.IsNullOrWhiteSpace(proposedName)&&customTraitA!=customTraitB);}
         void DrawNameSetup()
         {
-            GUI.Box(new Rect(160,60,960,680),"");
+            GUI.Box(setupPage==0?new Rect(56,60,1168,680):new Rect(160,60,960,680),"");
             if(setupPage==0){DrawCivilisationChoice();return;}
             GUI.Label(new Rect(190,74,900,44),"New game — the world",title);
             GUI.Box(new Rect(185,125,430,500),"");GUI.Box(new Rect(665,125,430,500),"");
@@ -158,21 +158,15 @@ namespace ParadigmRealm
             if(setupCiv<CivilisationCatalog.Count&&!CivilisationCatalog.Enabled[setupCiv])setupCiv=cards[0];
             for(int k=0;k<cards.Count;k++)
             {
-                int i=cards[k],col=k%8,row=k/8;var r=new Rect(185+col*114,124+row*206,108,200);
+                int i=cards[k],col=k%13,row=k/13;var r=new Rect(68+col*88,116+row*160,84,152);
                 if(setupCiv==i)Fill(new Rect(r.x-4,r.y-4,r.width+8,r.height+8),UiAccent);
                 GUI.Box(r,"");
                 var tex=Portrait(i<CivilisationCatalog.Count?CivilisationCatalog.Portraits[i]:customPortrait);
-                if(tex!=null)DrawPortrait(new Rect(r.x+4,r.y+4,100,155),tex);
-                GUI.Label(new Rect(r.x+3,r.y+161,102,38),i<CivilisationCatalog.Count?CivilisationCatalog.Names[i]:"Custom civilisation",cardLabel);
+                if(tex!=null)DrawPortrait(new Rect(r.x+3,r.y+3,78,104),tex);
+                GUI.Label(new Rect(r.x+2,r.y+109,80,42),i<CivilisationCatalog.Count?CivilisationCatalog.Names[i]:"Custom civilisation",cardLabel);
                 if(e.type==EventType.MouseDown&&e.button==0&&r.Contains(e.mousePosition)){setupCiv=i;if(i<CivilisationCatalog.Count)proposedName=CivilisationCatalog.Names[i];e.Use();}
             }
-            if(setupCiv<CivilisationCatalog.Count)
-            {
-                GUI.Label(new Rect(185,544,910,30),CivilisationCatalog.Names[setupCiv]+" — led by "+CivilisationCatalog.Leaders[setupCiv],heading);
-                var traits=CivilisationCatalog.Traits[setupCiv];
-                for(int k=0;k<2;k++)GUI.Label(new Rect(185,578+k*28,910,26),CivilisationCatalog.TraitNames[traits[k]]+" — "+CivilisationCatalog.TraitTexts[traits[k]],body);
-                GUI.Label(new Rect(185,638,910,24),"Rivals are drawn from the other civilisations, each with its own leader and traits.",small);
-            }
+            if(setupCiv<CivilisationCatalog.Count){DrawCivilisationSummary(setupCiv);if(civLoreOpen){DrawCivilisationLore(setupCiv);return;}}
             else
             {
                 GUI.Label(new Rect(185,532,260,20),"Civilisation name",small);GUI.SetNextControlName("customname");proposedName=GUI.TextField(new Rect(185,552,260,28),proposedName,32);
