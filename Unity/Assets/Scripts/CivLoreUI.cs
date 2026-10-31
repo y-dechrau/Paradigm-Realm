@@ -29,7 +29,6 @@ public partial class RealmGame {
   GUILayout.Label("In play",heading);var traits=CivilisationCatalog.Traits[civ];GUILayout.Label("Traits — "+CivilisationCatalog.TraitLine(traits)+"\n"+CivRules(e),body);
   GUILayout.Label("As a rival",heading);GUILayout.Label(CivLore.AgendaNames[e.Agenda]+" — "+CivLore.AgendaTexts[e.Agenda],body);
   GUILayout.Label("Faiths",heading);GUILayout.Label(CivFaiths(e),body);
-  if(civ>=17)GUILayout.Label("The portrait is a placeholder until a painted one is added (Resources/Leaders/leader-"+CivilisationCatalog.Portraits[civ].ToString("00")+".png).",small);
   GUILayout.EndScrollView();GUILayout.EndArea();
   if(GUI.Button(new Rect(84,690,300,40),"Close",button)){civLoreOpen=false;GUIUtility.ExitGUI();}
  }
