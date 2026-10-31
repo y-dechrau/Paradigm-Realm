@@ -2,6 +2,11 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 31 Oct, diplomacy look (no save change)
+- **Sharper leader portraits:** the 300 x 400 pixel-art portraits were imported resized to 256 x 512, compressed and mipmapped. `Assets/Editor/LeaderImport.cs` now imports `Resources/Leaders` at true size, uncompressed and point-filtered (the picture files are unchanged; their `.meta` import settings changed, GUIDs kept), and `RealmGame.Crisp` draws each from a 2x pixel-for-pixel copy with mipmaps, so they stay crisp when enlarged and shrink cleanly on cards.
+- **Diplomacy background:** the leader chooser and the talks are drawn over the painted title landscape under a navy veil instead of plain black, and the chooser heading sits on a panel.
+- **Checked:** Unity reimport and RealmTools.Checks pass; a 1920 x 1080 Windows build ran `-autoShot` with no exceptions; screenshots `4d-first-contact` and the new `4e-diplomacy-chooser` show the crisp portrait and the painted background. Not hand-played.
+
 ## Owner requests 31 Oct, fourth batch (no save version change; Tile.cleared is a new field that defaults to false)
 - **City not growing (owner's game, turn 120):** Temur's Camp at size 1 had its only citizen as a scientist, so no tile was worked and food was +0. The city screen now has "Specialist → back to work" (entertainer first, then scientist, then tax collector) next to "Worker → Entertainer" (`World.ReturnToWork`), and the growth line says when specialists are why food has stalled. Loading the owner's autosave in the harness: without the scientist the city makes +8 food and grows in 2 turns.
 - **City plates:** taller (24 px for your cities, 20 for others) and the name is never clipped vertically.

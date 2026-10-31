@@ -22,8 +22,17 @@ namespace ParadigmRealm {
    if(i<0||i>=CivilisationCatalog.PortraitCount)return null;Texture2D t;
    // An age without its own picture borrows the nearest earlier one in its group (owner request, 31 Oct): Dawn and
    // Classical share the ancient look (e0), Industrial onwards the modern look (e3); the Medieval Age uses the base portrait.
-   if(era>=0){for(int e=era;e>=(era>=3?3:era==2?2:0);e--){int key=1000+i*10+e;if(!portraits.TryGetValue(key,out t)){t=Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00")+"-e"+e);portraits[key]=t;}if(t!=null)return t;}}
-   if(!portraits.TryGetValue(i,out t)){t=Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00"));portraits[i]=t;}return t;
+   if(era>=0){for(int e=era;e>=(era>=3?3:era==2?2:0);e--){int key=1000+i*10+e;if(!portraits.TryGetValue(key,out t)){t=Crisp(Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00")+"-e"+e));portraits[key]=t;}if(t!=null)return t;}}
+   if(!portraits.TryGetValue(i,out t)){t=Crisp(Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00")));portraits[i]=t;}return t;
+  }
+  // Pixel-art portraits stay sharp when enlarged (owner request): each is doubled pixel for pixel (point sampling) into a
+  // 600 x 800 copy with mipmaps, which is then drawn with smooth filtering. Edges stay crisp at any size on screen and
+  // small cards shrink it cleanly. The loaded picture itself is left as it is.
+  Texture2D Crisp(Texture2D src){
+   if(src==null)return null;int w=src.width*2,h=src.height*2;var was=src.filterMode;src.filterMode=FilterMode.Point;
+   var rt=RenderTexture.GetTemporary(w,h,0,RenderTextureFormat.ARGB32,RenderTextureReadWrite.sRGB);var previous=RenderTexture.active;Graphics.Blit(src,rt);RenderTexture.active=rt;
+   var big=new Texture2D(w,h,TextureFormat.RGBA32,true);big.ReadPixels(new Rect(0,0,w,h),0,0);big.Apply(true);RenderTexture.active=previous;RenderTexture.ReleaseTemporary(rt);src.filterMode=was;
+   big.filterMode=FilterMode.Trilinear;big.wrapMode=TextureWrapMode.Clamp;return big;
   }
   // The portraits are 3:4 pictures, but Unity imports them padded to power-of-two sizes (300 x 400 arrives as 256 x 512), so
   // their texture size cannot be trusted for shape. Every portrait is drawn at 3:4: crop fills the box keeping the top (the

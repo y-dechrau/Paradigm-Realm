@@ -11,7 +11,7 @@ public partial class RealmGame {
  bool diplomacyDiscuss,diplomacyChooser,diplomacyDirect;string dipReply="";int dipReplyPartner=-1;
  // The Diplomacy button first asks which leader to contact; the talk that follows is with that leader alone.
  void DrawLeaderChooser(int[] known){
-  GUI.Label(new Rect(240,90,800,34),"Choose a leader to contact",dipBig);
+  DipPanel(new Rect(400,84,480,44),.9f);GUI.Label(new Rect(400,88,480,34),"Choose a leader to contact",dipBig);
   var backdrop=Art("diplomacy-backdrop");int cols=Math.Min(5,known.Length);float cw=220,ch=300,gap=18,x0=640-(cols*cw+(cols-1)*gap)/2;
   for(int k=0;k<known.Length;k++){
    int other=known[k];var card=new Rect(x0+(k%5)*(cw+gap),140+(k/5)*(ch+gap),cw,ch);DipPanel(card,1);var pic=new Rect(card.x+4,card.y+4,card.width-8,card.height-60);
@@ -89,7 +89,10 @@ public partial class RealmGame {
  void DrawDiplomacyScreen(){
   DiplomacyStyles();
   DropdownClicks();
-  Fill(new Rect(0,0,1280,800),new Color(.03f,.05f,.1f,.97f));
+  // A painted world behind the talks instead of plain black (owner request): the title landscape under a navy veil, darker
+  // towards the top and bottom edges so the panels and cards stand out.
+  {var full=new Rect(0,0,1280,800);var painting=Art("title-world");Fill(full,new Color(.03f,.05f,.1f,1f));if(painting!=null)GUI.DrawTexture(full,painting,ScaleMode.ScaleAndCrop);
+   Fill(full,new Color(.03f,.05f,.11f,diplomacyChooser?.5f:.62f));for(int band=0;band<8;band++){float a=.09f*(8-band)/8f;Fill(new Rect(0,band*14,1280,14),new Color(.02f,.03f,.07f,a));Fill(new Rect(0,800-(band+1)*14,1280,14),new Color(.02f,.03f,.07f,a));}}
   // Title plaque.
   DipPanel(new Rect(450,6,380,60));GUI.Label(new Rect(450,8,380,34),"PARADIGM REALM",dipTitle);GUI.Label(new Rect(450,40,380,22),"—  D I P L O M A C Y  —",dipCaps);
   var known=Enumerable.Range(1,world.civCount-1).Where(i=>world.met[i]).ToArray();

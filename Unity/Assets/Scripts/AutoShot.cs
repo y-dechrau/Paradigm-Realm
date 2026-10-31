@@ -71,6 +71,7 @@ namespace ParadigmRealm
             // First contact opens Diplomacy by itself, with both leaders and a greeting.
             world.newContacts.Add(1);world.met[1]=true;
             yield return Shot(folder,"4d-first-contact.bmp");
+            diplomacyChooser=true;yield return Shot(folder,"4e-diplomacy-chooser.bmp");diplomacyChooser=false;
             detailsScreen="";
             // A revealed, zoomed-out view so coastlines and banks are visible (this throwaway game only).
             detailsScreen="";foreach(var t in world.tiles){t.seen=true;t.rememberedTerrain=t.terrain;t.rememberedResource=t.resource;t.rememberedOwner=t.owner;t.rememberedRoad=t.road;t.rememberedFarm=t.farm;t.rememberedMine=t.mine;t.rememberedFort=t.fort;}
