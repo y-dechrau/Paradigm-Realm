@@ -207,7 +207,10 @@ namespace ParadigmRealm
             if(GUI.Button(new Rect(x,y,half,26),"Scientist → Entertainer",button))world.ConvertSpecialist(c,0,2);
             if(GUI.Button(new Rect(x+half+6,y,half,26),"Tax collector → Entertainer",button))world.ConvertSpecialist(c,1,2);y+=30;
             GUI.enabled=enabled;
-            if(GUI.Button(new Rect(x,y,w,26),"Make a worker an entertainer",button))world.AdjustSpecialist(c,2,1);y+=32;
+            // Specialists can always be sent back to work the land (owner request: a size 1 city with its only citizen a
+            // specialist works no tile and cannot grow).
+            GUI.enabled=enabled&&world.Workers(c)>0;if(GUI.Button(new Rect(x,y,half,26),"Worker → Entertainer",button))world.AdjustSpecialist(c,2,1);
+            GUI.enabled=enabled&&c.entertainers+c.scientists+c.merchants>0;if(GUI.Button(new Rect(x+half+6,y,half,26),"Specialist → back to work",button))world.ReturnToWork(c);GUI.enabled=enabled;y+=32;
             GUI.Label(new Rect(x,y,w,36),"Entertainers +2 content • Scientists +3 science\nTax collectors +3 gold",small);y+=38;
             GUI.Label(new Rect(x,y,w,24),"Buildings",heading);y+=26;
             var buildings=World.BuildingIds.Where(b=>world.HasBuilding(c,b)).Select(World.BuildName).ToArray();

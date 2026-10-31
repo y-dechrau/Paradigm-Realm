@@ -128,6 +128,32 @@ namespace ParadigmRealm
                 else if(VNoise(x/5.0,y/3.0,s+13)>.62&&Hsh(x>>1,y,s+14)>.86&&(y+frame)%3==0)c=Rgb(200,232,250);
                 return c;
             }
+            // Grassland, river meadows and hill turf (owner request, 31 Oct 2026: more natural, like a painting): soft broad patches
+            // of warmer and cooler green, diagonal brush strokes, short grass-blade dabs and a few wild flowers, instead of
+            // per-pixel speckle.
+            if(t==0||t==7||t==2)
+            {
+                double broad=VNoise(x/15.0,y/9.0,s+41),stroke=VNoise((x+y*.7)/6.5,(y-x*.35)/2.6,s+43),fine=VNoise(x/2.6,y/1.7,s+45);
+                double gv=.18+.8*(.44*broad+.36*stroke+.14*fine+.06*Hsh(x,y,s+2))+(Bay(x,y)-.5)*.08;
+                uint g=RampPick(Grass,gv);
+                if(broad>.66)g=MixC(g,Rgb(176,184,82),(broad-.66)*1.3);else if(broad<.32)g=MixC(g,Rgb(36,84,52),(.32-broad)*1.1);
+                double blade=Hsh(x,y,s+47);
+                if(blade>.975)g=MixC(g,Grass[4],.45);else if(Hsh(x,y-1,s+47)>.975)g=MixC(g,Grass[0],.45);
+                if(t!=2&&Hsh(x,y,s+21)>.996)g=Flowers[(int)(Hsh(x,y,s+22)*4)%4];
+                return g;
+            }
+            // Dry steppe: pale straw and sage grass combed by the wind into long horizontal streaks, with bare earth showing
+            // through in patches and dark dry tufts.
+            if(t==20)
+            {
+                double broad=VNoise(x/17.0,y/8.0,s+51),streak=VNoise(x/10.0,y/1.7,s+53),fine=VNoise(x/2.3,y/1.9,s+55);
+                double sv=.12+.82*(.42*broad+.38*streak+.2*fine)+(Bay(x,y)-.5)*.08;
+                uint g=RampPick(Steppe,sv);
+                double earth=VNoise(x/7.0,y/4.0,s+57);if(earth>.68)g=MixC(g,Rgb(168,142,98),Math.Min(.6,(earth-.68)*3));
+                if(broad<.35)g=MixC(g,Rgb(120,140,92),.3);
+                double tuft=Hsh(x,y,s+59);if(tuft>.985)g=MixC(g,Rgb(104,108,56),.7);else if(Hsh(x,y+1,s+59)>.985)g=MixC(g,Rgb(232,222,160),.6);
+                return g;
+            }
             double q=.45*VNoise(x/4.0,y/3.0,s)+.3*VNoise(x/1.8,y/1.4,s+1)+.25*Hsh(x,y,s+2);
             double val=q+(Bay(x,y)-.5)*.30;
             if(t==3)val=.55*val+.45*(.5+.5*Math.Sin((x+y*1.4)*.45+VNoise(x/8.0,y/6.0,s)*4));
@@ -764,6 +790,27 @@ namespace ParadigmRealm
             foreach(var q in spots){int hx=(int)q[0],hy=(int)q[1];if(i==spots.Count-1&&variant%3!=0)Broadleaf(cv,hx,hy,4,Tree0);else House(cv,hx,hy,style,variant+i);i++;}
             Outline(cv,Ink);hamletCache[key]=cv;return cv;
         }
+        // Hills (owner request, 31 Oct 2026: hills must look like hills): two or three grassy mounds rising from the tile, lit
+        // from the north-west with a pale crest, olive shadow on the far side, a few tufts and the usual dark outline.
+        static readonly int[][] HillMounds={new[]{21,45,15,10,40,49,17,12},new[]{30,46,21,14,48,52,10,6},new[]{17,49,12,8,33,44,15,10,47,51,13,8}};
+        static PixelCanvas HillSprite(int variant)
+        {
+            var cv=new PixelCanvas(SW,SH);var m=HillMounds[variant%HillMounds.Length];
+            for(int k=0;k<m.Length;k+=4)
+            {
+                double cx=m[k],by=m[k+1],rw=m[k+2],rh=m[k+3];
+                for(int y=(int)(by-rh);y<=by+1;y++)for(int x=(int)(cx-rw);x<=cx+rw;x++)
+                {
+                    double nx=(x-cx)/rw,ny=(y-by)/rh;if(nx*nx+ny*ny>1||ny>.12)continue;
+                    double lit=.62-.38*nx-.42*ny-.18*(1-Math.Sqrt(Math.Max(0,1-nx*nx-ny*ny)));
+                    uint c=RampPick(Grass,lit+(Hsh(x,y,707)-.5)*.1);
+                    if(lit<.42)c=MixC(c,Rgb(84,96,52),Math.Min(.4,(.42-lit)*1.6));
+                    if(Hsh(x,y,709)>.96&&ny<-.2)c=lit>.6?Grass[4]:Grass[1];
+                    cv.Set(x,y,c);
+                }
+            }
+            Outline(cv,Ink);return cv;
+        }
         static readonly Dictionary<int,PixelCanvas> spriteCache=new Dictionary<int,PixelCanvas>();
         // Returns null for terrain with no raised scenery.
         public static PixelCanvas Sprite(int t,int variant)
@@ -773,7 +820,7 @@ namespace ParadigmRealm
             {
                 case 1:case 13:case 11:case 19:cv=ForestSprite(t,variant);break;
                 case 0:cv=GroveSprite(variant);break;
-                case 2:cv=null;break; // hills are drawn as shaded relief in the ground (Compose), not as a sprite
+                case 2:cv=HillSprite(variant);break; // grassy mounds over the shaded relief in the ground (Compose)
                 case 5:cv=MountainSprite(variant);break;
                 case 17:cv=null;break; // volcanoes are relief in the ground (Compose)
                 case 15:cv=GlacierSprite(variant);break;
@@ -807,6 +854,20 @@ namespace ParadigmRealm
             double oy=(VNoise(gx/26.0,gy/26.0,107)-.5)*2*WarpBroad+(VNoise(gx/7.0,gy/7.0,109)-.5)*2*WarpFine;
             double sx=lx+ox,sy=ly+oy;int tx=sx<0?-1:sx>=TW?1:0,ty=sy<0?-1:sy>=TH?1:0;
             int t=n9[(ty+1)*3+tx+1];return t<0?n9[4]:t;
+        }
+        // Hills (owner request, 31 Oct 2026: look like hills): rounded grassy mounds. Dome centres sit on a jittered world-space
+        // grid, each an ellipse squashed for the 3/4 view with a smooth (smoothstep) profile; the tallest dome at a pixel wins.
+        static double HillDomes(int gx,int gy)
+        {
+            // Soft overlapping rises (gaussian bumps summed, then eased), so neighbouring hills run into each other in long
+            // rolling slopes instead of meeting in creases.
+            double sum=0;int ci0=(int)Math.Floor(gx/44.0),cj0=(int)Math.Floor(gy/38.0);
+            for(int j=-1;j<=2;j++)for(int i=-1;i<=2;i++)
+            {
+                int ci=ci0+i,cj=cj0+j;double px=(ci+.1+.8*Hsh(ci,cj,611))*44,py=(cj+.1+.8*Hsh(ci,cj,613))*38,rx=17+9*Hsh(ci,cj,617),ry=rx*(.7+.25*Hsh(ci,cj,621));
+                double dx=(gx-px)/rx,dy=(gy-py)/ry;sum+=(.65+.35*Hsh(ci,cj,619))*Math.Exp(-(dx*dx+dy*dy)*1.6);
+            }
+            return 1-Math.Exp(-sum*1.4);
         }
         static double HillHeight(int gx,int gy){return .78*VNoise(gx/16.0,gy/11.5,301)+.22*VNoise(gx/6.5,gy/4.8,303);}
         static bool Relief(int t){return t==2||t==5||t==17;}
@@ -930,8 +991,12 @@ namespace ParadigmRealm
                 uint c=Ground(t,gx,gy,frame);
                 // Hills: shaded relief (hillshading, light from the north-west), fading in from the hills' edge so they rise
                 // out of the surrounding grassland instead of sitting on it. Crests catch the light and hollows sit in shade.
-                if(t==2){double m=Math.Min(1,(hillEdge>98?6:hillEdge)/5.5);double hl=HillHeight(gx-1,gy),hr=HillHeight(gx+1,gy),hu=HillHeight(gx,gy-1),hd=HillHeight(gx,gy+1),hc=HillHeight(gx,gy);
-                    double shade=1+m*((hr-hl)+(hd-hu))*4.8-m*(hc<.36?.1:hc<.44?.04:0);if(m>.5&&hc>.64)c=MixC(c,Grass[4],hc>.72?.38:.22);c=Shade(c,Math.Max(.62,Math.Min(1.36,shade)));}
+                // Lit from the north-west: faces turned that way are bright, the far side falls into olive shadow, crests catch the
+                // light and each mound has a dark foot on its southern side, so the hills read as raised ground.
+                if(t==2){double m=Math.Min(1,(hillEdge>98?6:hillEdge)/4.5);double hc=HillDomes(gx,gy)*m,nw=HillDomes(gx-1,gy-1)*m,se=HillDomes(gx+1,gy+1)*m,up=HillDomes(gx,gy-2)*m;
+                    double shade=1+(se-nw)*4.6+(hc-.45)*.16;
+                    c=MixC(c,Rgb(118,130,64),.22*m);if(hc>.8)c=MixC(c,Grass[4],.25);
+                    if(shade<1)c=MixC(c,Rgb(84,96,52),Math.Min(.3,(1-shade)*.9));c=Shade(c,Math.Max(.72,Math.Min(1.3,shade)));}
                 else if(t==5)c=MountainPixel(n9,wx,wy,gx,gy,hillEdge);
                 else if(t==17)c=VolcanoPixel(n9,wx,wy,gx,gy,hillEdge);
                 if(!water)

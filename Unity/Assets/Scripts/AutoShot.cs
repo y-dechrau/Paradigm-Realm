@@ -79,6 +79,13 @@ namespace ParadigmRealm
             var coast=world.tiles.FirstOrDefault(t=>!PixelArt.IsWater(t.terrain)&&world.At(t.x,t.y+1)!=null&&PixelArt.IsWater(world.At(t.x,t.y+1).terrain)&&world.At(t.x-1,t.y)!=null&&!PixelArt.IsWater(world.At(t.x-1,t.y).terrain));
             if(coast!=null){isoWidth=96;FocusTile(coast.x,coast.y);}
             yield return Shot(folder,"6-coast-close.bmp");
+            // Close views of hills and dry steppe in full daylight (this throwaway game only; Satellites shows every tile).
+            {int sat=TechnologyCatalog.Index("satellites");bool had=world.tech[sat];world.tech[sat]=true;
+             var hill=world.tiles.Where(t=>t.terrain==2).OrderByDescending(t=>Enumerable.Range(0,9).Count(k=>{var n=world.Step(t.x,t.y,k%3-1,k/3-1);return n!=null&&n.terrain==2;})).FirstOrDefault();
+             if(hill!=null){isoWidth=128;FocusTile(hill.x,hill.y);yield return Shot(folder,"6a-hills.bmp");}
+             var steppe=world.tiles.Where(t=>t.terrain==20||t.terrain==0).OrderByDescending(t=>Enumerable.Range(0,9).Count(k=>{var n=world.Step(t.x,t.y,k%3-1,k/3-1);return n!=null&&n.terrain==t.terrain;})*10+(t.terrain==20?5:0)).FirstOrDefault();
+             if(steppe!=null){isoWidth=128;FocusTile(steppe.x,steppe.y);yield return Shot(folder,"6a2-open-land.bmp");}
+             world.tech[sat]=had;}
             // A grown, walled medieval capital with farmsteads around it (this throwaway game only).
             if(city!=null){city.pop=11;city.walls=true;city.granary=true;city.library=true;if(!city.buildings.Contains(36))city.buildings.Add(36);if(!city.buildings.Contains(31))city.buildings.Add(31);
                 world.tech[TechnologyCatalog.Index("feudalism")]=true;for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=world.Step(city.x,city.y,dx,dy);if(n!=null)n.owner=0;}

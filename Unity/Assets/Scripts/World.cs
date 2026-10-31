@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace ParadigmRealm
 {
-    [Serializable] public class Tile { public int x,y,terrain,resource,owner=-1; public bool seen,road,farm,mine,fort,village,ruin; public int villageOwner=-1; public int swayCiv=-1,sway; public int rememberedTerrain,rememberedResource,rememberedOwner=-1; public bool rememberedRoad,rememberedFarm,rememberedMine,rememberedFort; public string rememberedCity=""; }
+    [Serializable] public class Tile { public int x,y,terrain,resource,owner=-1; public bool seen,road,farm,mine,fort,village,ruin,cleared; public int villageOwner=-1; public int swayCiv=-1,sway; public int rememberedTerrain,rememberedResource,rememberedOwner=-1; public bool rememberedRoad,rememberedFarm,rememberedMine,rememberedFort; public string rememberedCity=""; }
     [Serializable] public class Unit { public int homeCity; public bool exploring,sentry; public int id,owner,x,y,type,hp=10,moves=4,experience,promotion,job,jobTurns,workerGroup; public int victories; public bool hasOrder,fortified; public int destinationX,destinationY;
         // Save version 21: workers that develop land on their own, and road routes (build a road on every tile to roadX, roadY).
         public bool autoWork,roadOrder; public int roadX,roadY; }
@@ -233,6 +233,7 @@ namespace ParadigmRealm
             else{
                 foreach(var u in units)if(u.owner==0)SeeAround(u,t=>visibleMask[t.y*Width+t.x]=true);
                 foreach(var c in cities)if(c.owner==0)MarkVisible(c.x,c.y,3);
+                for(int i=0;i<n;i++)if(Developed(0,tiles[i]))visibleMask[i]=true;
             }
             visibleMaskOn=true;
         }
@@ -240,8 +241,10 @@ namespace ParadigmRealm
         void MarkVisible(int cx,int cy,int radius){for(int dy=-radius;dy<=radius;dy++)for(int dx=-radius;dx<=radius;dx++){var t=Step(cx,cy,dx,dy);if(t!=null)visibleMask[t.y*Width+t.x]=true;}}
         public bool VisibleTo(int owner,int x,int y){
             if(visibleMaskOn&&owner==0){var cell=At(x,y);if(cell!=null)return visibleMask[cell.y*Width+cell.x];}
-            return HasTech(owner,"satellites")||units.Any(u=>u.owner==owner&&Distance(x,y,u.x,u.y)<=SightRange(u)&&CanSee(u,At(x,y)))||cities.Any(c=>c.owner==owner&&Distance(x,y,c.x,c.y)<=3);
+            return HasTech(owner,"satellites")||units.Any(u=>u.owner==owner&&Distance(x,y,u.x,u.y)<=SightRange(u)&&CanSee(u,At(x,y)))||cities.Any(c=>c.owner==owner&&Distance(x,y,c.x,c.y)<=3)||Developed(owner,At(x,y));
         }
+        // Roads and improvements inside a civilisation's own territory are always in view, never under the clouds (owner request).
+        public bool Developed(int owner,Tile t){return t!=null&&t.owner==owner&&(t.road||t.farm||t.mine||t.fort);}
         public bool Visible(int x,int y){return VisibleTo(0,x,y);}
         void LearnAround(int owner,int cx,int cy,int radius,HashSet<int> done){for(int dy=-radius;dy<=radius;dy++)for(int dx=-radius;dx<=radius;dx++){var t=Step(cx,cy,dx,dy);if(t==null)continue;if(done.Add(t.y*Width+t.x))LearnTile(owner,t);}}
         void LearnTile(int owner,Tile t){nations[owner].known[t.y*Width+t.x]=true;if(owner==0){t.seen=true;t.rememberedTerrain=t.terrain;t.rememberedResource=t.resource;t.rememberedOwner=t.owner;t.rememberedRoad=t.road;t.rememberedFarm=t.farm;t.rememberedMine=t.mine;t.rememberedFort=t.fort;var city=cities.Find(c=>c.x==t.x&&c.y==t.y);t.rememberedCity=city==null?"":city.name;}}
@@ -251,6 +254,7 @@ namespace ParadigmRealm
                 var done=new HashSet<int>();
                 foreach(var u in units)if(u.owner==owner)SeeAround(u,t=>{if(done.Add(t.y*Width+t.x))LearnTile(owner,t);});
                 foreach(var c in cities)if(c.owner==owner)LearnAround(owner,c.x,c.y,3,done);
+                foreach(var t in tiles)if(Developed(owner,t)&&done.Add(t.y*Width+t.x))LearnTile(owner,t);
             }
             for(int i=1;i<civCount;i++)if(!met[i]&&(units.Any(u=>u.owner==i&&Visible(u.x,u.y))||cities.Any(c=>c.owner==i&&Visible(c.x,c.y)))){met[i]=true;Note("First contact: "+NationName(i)+".");if(newContacts==null)newContacts=new List<int>();newContacts.Add(i);}}
         public bool AtWar(int a,int b){return a>=0&&b>=0&&a<civCount&&b<civCount&&a!=b&&(a!=0&&b!=0?RivalWar(a,b):war[a==0?b:a]);}
@@ -289,7 +293,7 @@ namespace ParadigmRealm
         public bool Connected(City c){return Network(c.owner).Contains(c.y*Width+c.x);}
         public Tile KnownTile(Tile t){if(t==null||!t.seen||Visible(t.x,t.y))return t;return new Tile{x=t.x,y=t.y,seen=true,terrain=t.rememberedTerrain,resource=t.rememberedResource,owner=t.rememberedOwner,road=t.rememberedRoad,farm=t.rememberedFarm,mine=t.rememberedMine,fort=t.rememberedFort,rememberedCity=t.rememberedCity};}
         // Allocation-free variants for the draw loop and pathfinding.
-        public void CopyKnown(Tile t,Tile dest){dest.x=t.x;dest.y=t.y;dest.seen=true;dest.terrain=t.rememberedTerrain;dest.resource=t.rememberedResource;dest.owner=t.rememberedOwner;dest.road=t.rememberedRoad;dest.farm=t.rememberedFarm;dest.mine=t.rememberedMine;dest.fort=t.rememberedFort;dest.village=false;dest.rememberedCity=t.rememberedCity;}
+        public void CopyKnown(Tile t,Tile dest){dest.x=t.x;dest.y=t.y;dest.seen=true;dest.terrain=t.rememberedTerrain;dest.resource=t.rememberedResource;dest.owner=t.rememberedOwner;dest.road=t.rememberedRoad;dest.farm=t.rememberedFarm;dest.mine=t.rememberedMine;dest.fort=t.rememberedFort;dest.cleared=t.cleared;dest.village=false;dest.rememberedCity=t.rememberedCity;}
         public Tile KnownTileInto(Tile t,Tile dest){if(t==null||!t.seen||Visible(t.x,t.y))return t;CopyKnown(t,dest);return dest;}
         public int KnownTerrain(Tile t){return !t.seen||Visible(t.x,t.y)?t.terrain:t.rememberedTerrain;}
         public int KnownOwner(Tile t){return t.seen&&!Visible(t.x,t.y)?t.rememberedOwner:t.owner;}
@@ -549,7 +553,7 @@ namespace ParadigmRealm
         public int UpgradeTarget(Unit u){return u.type==2?7:u.type==7?6:u.type==8?5:-1;}
         public bool Upgrade(Unit u){if(u==null||u.moves<=0)return false;int t=UpgradeTarget(u);if(t<0||!cities.Any(c=>c.owner==u.owner&&c.x==u.x&&c.y==u.y)||!nations[u.owner].tech[UnitTech[t]]||!HasResource(u.owner,UnitResource[t]))return false;int price=(UnitCosts[t]-UnitCosts[u.type])*2;if(u.owner==0)nations[0].gold=gold;if(nations[u.owner].gold<price)return false;nations[u.owner].gold-=price;if(u.owner==0)gold=nations[0].gold;u.type=t;u.moves=0;CancelOrder(u);return true;}
         public bool Improve(Unit u,bool farm){return StartJob(u,farm?2:1);}
-        public string JobReason(Unit u,int job){if(u==null||u.type!=1||u.moves<=0)return "Worker needs movement.";var t=At(u.x,u.y);if(Barren(t.terrain))return "Requires passable land free of polar ice.";if(job==1&&!HasTech(u.owner,"wheel"))return "Requires The Wheel.";if(job==1)return !CanEnter(u.owner,t)?"Requires access to this territory.":t.road?"Road already built.":"";if(t.owner!=u.owner)return "Requires your territory.";if(job==5){if(!Forested(t.terrain))return "No forest to clear.";return !HasTech(u.owner,"toolmaking")?"Requires Stone Tools.":"";}if((job==2||job==3)&&Forested(t.terrain))return "Clear the forest first.";if(job==2){if(!HasTech(u.owner,"agriculture"))return "Requires Agriculture.";return t.farm||t.mine||!Farmable(t.terrain)?"Tile cannot support a farm/pasture.":"";}if(job==3){if(!HasTech(u.owner,"mining"))return "Requires Mining.";return t.mine||t.farm||!(t.terrain==2||t.resource==2||t.resource==3)?"Requires hills or a mineral deposit.":"";}if(job==4)return !HasTech(u.owner,"engineering")?"Requires Engineering.":t.fort?"Fort already built.":"";return "Unknown job.";}
+        public string JobReason(Unit u,int job){if(u==null||u.type!=1||u.moves<=0)return "Worker needs movement.";var t=At(u.x,u.y);if(Barren(t.terrain))return "Requires passable land free of polar ice.";if(job==1&&!HasTech(u.owner,"wheel"))return "Requires The Wheel.";if(job==1)return !CanEnter(u.owner,t)?"Requires access to this territory.":t.road?"Road already built.":"";if(t.owner!=u.owner)return "Requires your territory.";if(job==5){if(!Wooded(t))return "No trees to clear.";return !HasTech(u.owner,"toolmaking")?"Requires Stone Tools.":"";}if((job==2||job==3)&&Wooded(t))return "Clear the trees first.";if(job==2){if(!HasTech(u.owner,"agriculture"))return "Requires Agriculture.";return t.farm||t.mine||!Farmable(t.terrain)?"Tile cannot support a farm/pasture.":"";}if(job==3){if(!HasTech(u.owner,"mining"))return "Requires Mining.";return t.mine||t.farm||!(t.terrain==2||t.resource==2||t.resource==3)?"Requires hills or a mineral deposit.":"";}if(job==4)return !HasTech(u.owner,"engineering")?"Requires Engineering.":t.fort?"Fort already built.":"";return "Unknown job.";}
         // The technology a worker job needs, or "" when the civilisation has it: activity buttons stay listed but are greyed out
         // until then (owner request).
         public static readonly string[] JobNames={"","Road","Farm","Mine","Fort","Clear woodland"};
@@ -577,7 +581,7 @@ namespace ParadigmRealm
                 var t=At(u.x,u.y);if(IsImpassable(t.terrain)||(u.job==1?!CanEnter(owner,t):t.owner!=owner)){foreach(var a in team)CancelOrder(a);continue;}
                 int job=u.job,remaining=Math.Max(0,team.Min(a=>a.jobTurns)-team.Count);
                 foreach(var a in team)a.jobTurns=remaining;
-                if(remaining==0){if(job==1)t.road=true;if(job==2)t.farm=true;if(job==3)t.mine=true;if(job==4)t.fort=true;if(job==5&&Forested(t.terrain)){t.terrain=Cleared(t.terrain);t.farm=false;}foreach(var a in team)a.job=0;networks=null;if(owner==0)Note(job==5?"Workers cleared the forest.":"Workers completed an improvement.");}
+                if(remaining==0){if(job==1)t.road=true;if(job==2)t.farm=true;if(job==3)t.mine=true;if(job==4)t.fort=true;if(job==5&&Wooded(t)){if(Forested(t.terrain))t.terrain=Cleared(t.terrain);else t.cleared=true;t.farm=false;}foreach(var a in team)a.job=0;networks=null;if(owner==0)Note(job==5?"Workers cleared the trees.":"Workers completed an improvement.");}
             }
         }
         public bool Pillage(Unit u){if(u==null||Power[u.type]==0||u.moves<=0)return false;var t=At(u.x,u.y);if(t.owner<0||!AtWar(u.owner,t.owner)||!(t.road||t.farm||t.mine||t.fort))return false;Grieve(t.owner,u.owner,6);t.road=t.farm=t.mine=t.fort=false;u.moves=0;networks=null;return true;}

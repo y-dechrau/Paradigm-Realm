@@ -42,7 +42,8 @@ namespace ParadigmRealm
             if(isoPictures.TryGetValue(key,out tex))return tex;
             // Supplied art (Resources/Sprites, e.g. from SpriteCook) replaces the drawn pictures; see Design/ART-SLOTS.md.
             // Cloud puffs carry their variant in a (cloud-V); the other slots in b.
-            string slot=kind==1?"terrain-"+a.ToString("00"):kind==6?"hamlet-"+a:kind==7?"port":kind==9?"cloud":null;
+            // Hills use the drawn mounds rather than the supplied boulder picture (owner request); the file is kept.
+            string slot=kind==1&&a==2?null:kind==1?"terrain-"+a.ToString("00"):kind==6?"hamlet-"+a:kind==7?"port":kind==9?"cloud":null;
             if(slot!=null){var supplied=SpriteSlot(slot+"-"+(kind==9?a:b))??SpriteSlot(slot);if(supplied!=null){isoPictures[key]=supplied;return supplied;}}
             PixelCanvas cv=null;
             if(kind==1)cv=PixelArt.Sprite(a,b);else if(kind==6)cv=PixelArt.Hamlet(a,b);else if(kind==7)cv=PixelArt.PortSprite();else if(kind==8)cv=PixelArt.HudIcon(a);else if(kind==9)cv=PixelArt.CloudPuff(a);else if(kind==2)cv=PixelArt.Farm(a);else if(kind==3)cv=PixelArt.Road(a);else if(kind==5)cv=PixelArt.ResourceIcon(a);else cv=PixelArt.Misc(a);
@@ -223,11 +224,14 @@ namespace ParadigmRealm
                     GUI.color=visible?old:Remembered;
                 }
                 // Grassland groves use eight variants so lone trees do not repeat in a pattern; none on farms, roads or cities.
-                bool meadow=t.terrain==0;bool built=t.farm||t.road||viewCities.ContainsKey(t.y*width+t.x);
-                var sprite=water||meadow&&built?null:IsoPicture(1,t.terrain,meadow?GroveVariant(t.x,t.y):IsoVariant(t.x,t.y));
-                City suburbOf;if(!water&&suburbCells.TryGetValue(t.y*width+t.x,out suburbOf)&&(visible||suburbOf.owner==0))sprite=HamletTexture(suburbOf,t.x,t.y);
+                // A farm replaces whatever stood on the tile (owner request), and cleared savanna or grassland has no trees left.
+                bool meadow=t.terrain==0;bool built=t.farm||t.road||viewCities.ContainsKey(t.y*width+t.x);bool bare=t.farm||t.cleared&&(meadow||t.terrain==16);
+                var sprite=water||bare||meadow&&built?null:IsoPicture(1,t.terrain,meadow?GroveVariant(t.x,t.y):IsoVariant(t.x,t.y));
+                City suburbOf;bool hamlet=false;if(!water&&suburbCells.TryGetValue(t.y*width+t.x,out suburbOf)&&(visible||suburbOf.owner==0)){sprite=HamletTexture(suburbOf,t.x,t.y);hamlet=true;}
                 City portOf=null;if(!water&&portCells.TryGetValue(t.y*width+t.x,out portOf)&&(visible||portOf.owner==0))sprite=IsoPicture(7,0,0);else portOf=null;
-                if(sprite!=null)GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),sprite);
+                // Savanna acacias are drawn at 60% so they read as scattered trees on grassland, not woodland (owner request).
+                float treeScale=t.terrain==16&&!hamlet&&portOf==null?.6f:1f;
+                if(sprite!=null)GUI.DrawTexture(new Rect(sx-PixelArt.AX*s*treeScale,gy-PixelArt.AY*s*treeScale,64*s*treeScale,64*s*treeScale),sprite);
                 if(portOf!=null&&!portOf.portLinked&&portOf.owner==0){var warn=new Rect(sx+8*s,gy-22*s,9*s,9*s);Fill(warn,new Color(.85f,.2f,.15f,.92f));GUI.Label(warn,"!",small);}
                 var improvement=new Rect(sx-18*s,gy-22*s,36*s,36*s);
                 if(t.mine)DrawArt("mine",improvement);if(t.fort)DrawArt("fort",improvement);
@@ -252,12 +256,14 @@ namespace ParadigmRealm
             foreach(var f in isoMist){float drift=Mathf.Sin(clock*.35f+f.z*1.7f+f.x*.013f)*5*s;GUI.color=MistThin;GUI.DrawTexture(new Rect(f.x-48*s+drift,f.y-36*s,96*s,64*s),IsoPicture(9,(int)f.z,0));}
             foreach(var f in isoFog){float drift=Mathf.Sin(clock*.25f+f.z*2.1f+f.y*.011f)*4*s;GUI.color=MistBank;GUI.DrawTexture(new Rect(f.x-48*s*1.1f+drift,f.y-38*s*1.1f,96*s*1.1f,64*s*1.1f),IsoPicture(9,(int)f.z,0));}
             GUI.color=before;
+            // Units stand in front of the cloud banks of unexplored land next to them (owner request): drawn again over the mist.
+            for(int n=0;n<isoUnitDraws.Count;n++)DrawUnitArt(isoUnitDraws[n].Key,isoUnitDraws[n].Value,isoUnitCounts[n]);
             // Resource badges go on after every tile so the tiles in front can never cover them.
             for(int n=0;n<isoResTiles.Count;n++){var p=isoResPos[n];DrawResource(isoResTiles[n],new Rect(p.x-36*s,p.y+15*s-61*s,61*s,61*s));}
             // City plates go on after the tiles (so no ground covers them), then any unit standing over a plate is drawn again on
             // top, so plates never hide units (owner request).
             var plates=new List<Rect>();
-            for(int n=0;n<isoCityNames.Count;n++){var at=new Vector2(isoCityPos[n].x,isoCityPos[n].y+24*s);DrawCityPlate(isoCityRefs[n],isoCityNames[n],at,isoCityInk[n]);plates.Add(new Rect(at.x-120,at.y,240,22));}
+            for(int n=0;n<isoCityNames.Count;n++){var at=new Vector2(isoCityPos[n].x,isoCityPos[n].y+24*s);DrawCityPlate(isoCityRefs[n],isoCityNames[n],at,isoCityInk[n]);plates.Add(new Rect(at.x-120,at.y,240,26));}
             for(int n=0;n<isoUnitDraws.Count;n++){var ur=isoUnitDraws[n].Value;if(plates.Any(p=>p.x<ur.x+ur.width&&ur.x<p.x+p.width&&p.y<ur.y+ur.height&&ur.y<p.y+p.height))DrawUnitArt(isoUnitDraws[n].Key,ur,isoUnitCounts[n]);}
             DrawIsoOverlay(s);
             compositeBudgetOn=false;

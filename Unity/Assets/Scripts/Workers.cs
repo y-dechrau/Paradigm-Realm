@@ -63,3 +63,12 @@ public partial class World {
  }
 }
 }
+namespace ParadigmRealm {
+// Trees count as woodland wherever they stand (owner request, 31 Oct 2026): forests, jungle, arctic forest and mangrove, the
+// acacias of the savanna and the groves on some grassland. A worker clears them before a farm or mine; savanna and grassland
+// keep their terrain and lose only the trees (Tile.cleared).
+public partial class World {
+ public static bool GroveTrees(int x,int y){unchecked{int h=x*83492791^y*1640531527;return (h&0x7fffffff)%8<4;}}
+ public static bool Wooded(Tile t){return t!=null&&(Forested(t.terrain)||!t.cleared&&!t.farm&&(t.terrain==16||t.terrain==0&&!t.road&&GroveTrees(t.x,t.y)));}
+}
+}

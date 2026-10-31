@@ -2,6 +2,18 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 31 Oct, fourth batch (no save version change; Tile.cleared is a new field that defaults to false)
+- **City not growing (owner's game, turn 120):** Temur's Camp at size 1 had its only citizen as a scientist, so no tile was worked and food was +0. The city screen now has "Specialist → back to work" (entertainer first, then scientist, then tax collector) next to "Worker → Entertainer" (`World.ReturnToWork`), and the growth line says when specialists are why food has stalled. Loading the owner's autosave in the harness: without the scientist the city makes +8 food and grows in 2 turns.
+- **City plates:** taller (24 px for your cities, 20 for others) and the name is never clipped vertically.
+- **Trees are woodland:** savanna acacias and the tree groves on some grassland count as woodland like forests (`World.Wooded`): a worker clears them (Clear) before a farm or mine. Savanna and grassland keep their terrain and only lose the trees (`Tile.cleared`).
+- **Farms replace the scenery:** a farmed tile shows only the farmland, with no grove, acacias or other scenery on it.
+- **Savanna:** acacias drawn at 60% so the tile reads as grassland with scattered trees.
+- **Clouds and units:** units are drawn again over the cloud banks of unexplored land, so clouds never cover them.
+- **Developed land always visible:** tiles in your territory with a road, farm, mine or fort are always in view, never under the mist (`World.Developed`; also for rivals' own view).
+- **Hills:** grassy mounds (2-3 per tile, lit from the north-west, `PixelArt.HillSprite`) over soft rolling relief in the ground (`HillDomes`); the supplied boulder picture `terrain-02` is no longer drawn for hills (file kept).
+- **Grassland and steppe:** painterly ground: broad warm and cool patches, diagonal brush strokes and occasional blade dabs for grass; wind-combed straw streaks, bare earth patches and dry tufts for steppe.
+- **Checked:** engine harness passes (all sections); UI harness passes; Unity RealmTools.Checks passes; a Windows build ran the `-autoShot` sequence with no exceptions, including new close-ups of hills (`6a-hills`) and open land (`6a2-open-land`). Not hand-played. Windows Smart App Control blocked a scratch preview tool once; it was not worked around.
+
 ## Owner requests 31 Oct, third batch (save version 22)
 - **Menu:** the game menu has Return to Main Menu; the game stays open there under Resume Game.
 - **City names on the map:** plates widen to fit the whole name; only very long names step the type down (to 8 pt at the smallest).

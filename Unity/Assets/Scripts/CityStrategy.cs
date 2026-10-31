@@ -70,6 +70,8 @@ namespace ParadigmRealm {
   // Citizens with no tile left to work become entertainers automatically (design).
   public void AutoEntertainers(City c){int idle=Workers(c)-Workable(c).Count;if(idle>0)c.entertainers+=idle;}
   // One click turns an entertainer into a scientist or tax collector, or back (types: 0 scientist, 1 tax collector, 2 entertainer).
+  // Sends one specialist back to work the land: an entertainer first, then a scientist, then a tax collector.
+  public bool ReturnToWork(City c){if(c==null)return false;foreach(int type in new[]{2,0,1})if(AdjustSpecialist(c,type,-1))return true;return false;}
   public bool ConvertSpecialist(City c,int from,int to){if(c==null||from==to||from<0||from>2||to<0||to>2)return false;if(!AdjustSpecialist(c,from,-1))return false;if(AdjustSpecialist(c,to,1))return true;AdjustSpecialist(c,from,1);return false;}
   public string GrowthStatus(City c){
    int net=Yield(c)[0];
@@ -78,6 +80,7 @@ namespace ParadigmRealm {
    if(net<0)return "Food shortage: "+(-net)+"/turn. "+(c.food/(-net)+1)+" turns until stores run out; reduce specialists or improve food tiles.";
    if(c.pop>=GrowthLimit(c))return "Growth blocked: population limit "+GrowthLimit(c)+". "+(HasBuilding(c,41)?"Maximum city size reached.":HasBuilding(c,37)?"Build a Sewer system.":"Build an Aqueduct.");
    if(c.food>=FoodNeeded(c))return "Population will grow next turn.";
+   if(net<=0&&c.scientists+c.merchants+c.entertainers>0&&Workers(c)<Workable(c).Count)return "No food surplus: "+(c.scientists+c.merchants+c.entertainers)+" of "+c.pop+" citizens are specialists and work no land. Use Specialist → back to work.";
    if(net==0)return "No food surplus: growth is stalled.";
    return "Growth in "+Math.Max(1,(FoodNeeded(c)-c.food+net-1)/net)+" turns ("+c.food+" / "+FoodNeeded(c)+" food).";
   }

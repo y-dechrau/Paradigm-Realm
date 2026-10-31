@@ -319,14 +319,14 @@ namespace ParadigmRealm
             HudStyles();if(plateLine==null){plateLine=new GUIStyle(hudCaption){fontSize=11,wordWrap=false,clipping=TextClipping.Clip,alignment=TextAnchor.MiddleLeft,padding=new RectOffset(0,0,0,0)};}
             bool own=c!=null&&c.owner==0;string label=name.ToUpper();bool capital=c!=null&&c.owner>=0&&world.nations[c.owner].capital==c.id;
             // The whole name always shows: the plate widens to fit it, and only very long names step the type down (owner request).
-            var nameStyle=new GUIStyle(plateLine);float lead=capital?33:22,tail=c!=null?26:6;float textW=nameStyle.CalcSize(new GUIContent(label)).x;
+            var nameStyle=new GUIStyle(plateLine){clipping=TextClipping.Overflow};float lead=capital?33:22,tail=c!=null?26:6;float textW=nameStyle.CalcSize(new GUIContent(label)).x;
             while(nameStyle.fontSize>8&&lead+textW+tail>240){nameStyle.fontSize--;textW=nameStyle.CalcSize(new GUIContent(label)).x;}
-            float w=Mathf.Max(70,lead+textW+tail),h=own?20:17;var r=new Rect(top.x-w/2,top.y,w,h);
+            float w=Mathf.Max(70,lead+textW+tail),h=own?24:20;var r=new Rect(top.x-w/2,top.y,w,h);
             Fill(r,new Color(.04f,.06f,.12f,.72f));Fill(new Rect(r.x,r.y,2,r.height),ink);
-            if(c!=null){var plateFlag=FlagTexture(c.owner);if(plateFlag!=null)GUI.DrawTexture(new Rect(r.x+4,r.y+3,15,10),plateFlag,ScaleMode.StretchToFill,true);}
-            if(capital)DrawIcon(PixelArt.IconCrown,new Rect(r.x+20,r.y+2,12,12));
-            GUI.Label(new Rect(r.x+lead,r.y+1,textW+4,15),label,nameStyle);
-            if(c!=null)GUI.Label(new Rect(r.xMax-22,r.y+1,18,15),c.pop.ToString(),new GUIStyle(plateLine){alignment=TextAnchor.MiddleRight});
+            if(c!=null){var plateFlag=FlagTexture(c.owner);if(plateFlag!=null)GUI.DrawTexture(new Rect(r.x+4,r.y+5,15,10),plateFlag,ScaleMode.StretchToFill,true);}
+            if(capital)DrawIcon(PixelArt.IconCrown,new Rect(r.x+20,r.y+4,12,12));
+            GUI.Label(new Rect(r.x+lead,r.y+1,textW+4,19),label,nameStyle);
+            if(c!=null)GUI.Label(new Rect(r.xMax-22,r.y+1,18,19),c.pop.ToString(),new GUIStyle(plateLine){alignment=TextAnchor.MiddleRight});
             if(own)
             {
                 int b=c.buildingProject>=0?c.buildingProject:c.build;int progress=c.buildingProject>=0?c.buildingProduction:c.production;
