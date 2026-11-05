@@ -36,7 +36,7 @@ public partial class RealmGame {
  }
  // Arrow keys: on staggered maps up and down are straight north and south (two rows), left and right the next column;
  // on diagonal maps they keep their grid steps.
- Tile ArrowTarget(Unit u,int dx,int dy){if(!world.Staggered)return world.At(u.x+dx,u.y+dy);return dy!=0?world.At(u.x,u.y+2*dy):world.At(u.x+dx,u.y);}
+ Tile ArrowTarget(Unit u,int dx,int dy){if(world.Hex)return dy==0?world.At(u.x+dx,u.y):world.Step(u.x,u.y,dy>0?(dx>0?0:-1):(dx<0?0:1),dy);if(!world.Staggered)return world.At(u.x+dx,u.y+dy);return dy!=0?world.At(u.x,u.y+2*dy):world.At(u.x+dx,u.y);}
  // City or unit: one button for the city and one per unit on the tile, beside the pointer.
  void OpenTilePicker(int x,int y){tilePicker=true;pickerX=x;pickerY=y;pickerAt=Event.current.mousePosition;}
  void DrawTilePicker(){

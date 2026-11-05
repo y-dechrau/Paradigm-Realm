@@ -387,7 +387,7 @@ namespace ParadigmRealm
             if(Barren(t.terrain)||t.terrain==2||t.terrain==17)return -1;
             for(int dy=-3;dy<=3;dy++)for(int dx=-3;dx<=3;dx++)
             {
-                var n=Step(t.x,t.y,dx,dy);if(n==null)continue;
+                var n=StepIn(t.x,t.y,dx,dy,3);if(n==null)continue;
                 int r=Math.Max(Math.Abs(dx),Math.Abs(dy));int w=r<=1?3:r==2?2:1;
                 switch(n.terrain)
                 {

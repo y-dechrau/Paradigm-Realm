@@ -97,7 +97,7 @@ static void StageFive(){
     old.tech=old.nations[0].tech;foreach(var id in new[]{"toolmaking","agriculture","pottery","masonry","steam"})old.tech[LegacyTechnologyCatalog.Index(id)]=true;
     old.nations[0].progress[LegacyTechnologyCatalog.Index("sailing")]=11;old.nations[0].progress[LegacyTechnologyCatalog.Index("shipbuilding")]=7;old.research=LegacyTechnologyCatalog.Index("sailing");old.science=11;
     old.UpgradeSave();
-    Check(old.version==24&&old.Valid(),"version 12 converts to a valid version 24");
+    Check(old.version==25&&old.Valid(),"version 12 converts to a valid version 25");
     Check(old.HasTech(0,"pottery")&&old.HasTech(0,"masonry")&&old.HasTech(0,"steam")&&old.HasTech(0,"engineering"),"any known folded technology keeps its keystone, with prerequisites");
     Check(old.research==K("sailing")&&old.science==18,"research and progress move to the keystone (Sailing 11 + Shipbuilding 7)");
     Check(old.nations.All(n=>n.edicts!=null&&n.edicts.Length==6),"edict slots added");
@@ -107,7 +107,7 @@ static void StageFive(){
 static void ReligionChecks(){
     Check(ReligionCatalog.Count==23&&ReligionCatalog.Name(0)=="Christianity"&&ReligionCatalog.Name(12)=="Egyptian Religion"&&Enumerable.Range(0,ReligionCatalog.Count).All(r=>TechnologyCatalog.Index(ReligionCatalog.Tech(r))>=0&&ReligionCatalog.Tenet(r)>=0&&ReligionCatalog.Tenet(r)<=6),"23 faiths (12 living, 11 ancient), each with a real founding technology and a tenet");
     Check(World.UnitCosts[0]==90,"settlers cost three times as much (90)");
-    var w=World.New(61);var founder=w.units.First(u=>u.owner==0&&u.type==0);var home=w.Found(founder);Check(home!=null&&w.Valid()&&w.version==24,"new games are valid version 24");
+    var w=World.New(61);var founder=w.units.First(u=>u.owner==0&&u.type==0);var home=w.Found(founder);Check(home!=null&&w.Valid()&&w.version==25,"new games are valid version 25");
     Check(w.JobTechMissing(0,1)=="Requires The Wheel."&&w.JobTechMissing(0,5)=="","worker jobs report a missing technology (Road needs The Wheel; clearing has Stone Tools)");
     Check(w.FaithYield(home)==1&&w.ChoosePantheon(0,4)==false,"a capital gives 1 faith; a pantheon needs 25 faith");
     w.nations[0].faith=300;Check(w.ChoosePantheon(0,4)&&w.nations[0].pantheon==4&&w.nations[0].faith==275,"pantheon adopted for 25 faith");
@@ -131,10 +131,10 @@ static void ReligionChecks(){
     var same=World.New(63);var c1=new City{id=same.nextId++,owner=0,x=same.Width/2,y=same.MainHeight/2,name="Oneton",pop=4};same.cities.Add(c1);var s2=same.tiles.First(t=>same.Distance(t.x,t.y,c1.x,c1.y)==4);same.cities.Add(new City{id=same.nextId++,owner=0,x=s2.x,y=s2.y,name="Twoton",pop=4});same.RebuildTerritory();
     Check(same.tiles.Where(t=>same.Distance(t.x,t.y,c1.x,c1.y)<=2||same.Distance(t.x,t.y,s2.x,s2.y)<=2).All(t=>t.owner==0),"two cities of one civilisation share one territory (their borders merge)");
     // Version 21 saves gain religion and influence fields.
-    var v=World.New(64);v.version=21;v.nations[1].pantheon=5;foreach(var t in v.tiles)t.swayCiv=-7;v.UpgradeSave();Check(v.version==24&&v.Valid()&&v.nations.All(n=>n.pantheon==-1&&n.founded==-1&&n.faith==0)&&v.tiles.All(t=>t.swayCiv==-1),"version 21 saves upgrade to version 24");
+    var v=World.New(64);v.version=21;v.nations[1].pantheon=5;foreach(var t in v.tiles)t.swayCiv=-7;v.UpgradeSave();Check(v.version==25&&v.Valid()&&v.nations.All(n=>n.pantheon==-1&&n.founded==-1&&n.faith==0)&&v.tiles.All(t=>t.swayCiv==-1),"version 21 saves upgrade to version 25");
     CivilisationAndAgeChecks();
 }
-// Owner requests 31 Oct, fifth batch: civilisations in full, real civilisations, priests, era score and ages (save version 24).
+// Owner requests 31 Oct, fifth batch: civilisations in full, real civilisations, priests, era score and ages (save version 25).
 static void CivilisationAndAgeChecks(){
     int full=Enumerable.Range(0,CivilisationCatalog.Count).Count(CivLore.Full);Check(full==32,"32 civilisations with full lore (10 premade, 12 real, 10 native peoples), found "+full);
     foreach(int civ in Enumerable.Range(0,CivilisationCatalog.Count).Where(CivLore.Full)){var e=CivLore.Of(civ);Check(e.Background.Length>100&&e.History.Length>200&&e.Strengths!=""&&e.Weaknesses!=""&&e.Ability!=""&&e.Unit!=""&&e.Building!=""&&e.Weakness!=""&&e.UnitBase>=0&&e.UnitBase<World.UnitNames.Length&&Array.IndexOf(World.BuildingIds,e.BuildingBase)>=0&&e.Agenda>=0&&e.Agenda<CivLore.AgendaNames.Length&&e.Faiths.All(f=>f>=0&&f<ReligionCatalog.Count),CivilisationCatalog.Names[civ]+" is complete");}
@@ -170,8 +170,45 @@ static void CivilisationAndAgeChecks(){
     var realGame=World.New(78,"",0,1,1,0,3,1,8,17);Check(realGame.realWorld&&Enumerable.Range(1,realGame.civCount-1).Where(o=>!realGame.IsNativeNation(o)).All(o=>CivilisationCatalog.IsReal(realGame.nations[o].civ)),"a Real World game has real rivals");
     var fantasyGame=World.New(79,"",0,1,1,0,3,1,8,0);Check(!fantasyGame.realWorld&&Enumerable.Range(1,fantasyGame.civCount-1).Where(o=>!fantasyGame.IsNativeNation(o)).All(o=>!CivilisationCatalog.IsReal(fantasyGame.nations[o].civ)),"a Fantasy game has fantasy rivals");
     var customReal=World.New(80,"Free Cantons",0,1,1,0,3,1,6,-1,"Mayor Tell",18,1,2,true);Check(customReal.realWorld&&customReal.nations[0].civ==-1&&Enumerable.Range(1,customReal.civCount-1).Where(o=>!customReal.IsNativeNation(o)).All(o=>CivilisationCatalog.IsReal(customReal.nations[o].civ))&&customReal.Valid(),"a custom civilisation in the Real World group meets real rivals");
-    var oldSave=World.New(77);oldSave.version=22;foreach(var u in oldSave.units)u.faith=0;oldSave.UpgradeSave();Check(oldSave.version==24&&oldSave.units.All(u=>u.faith==-1)&&oldSave.Valid(),"version 22 saves upgrade to 23 (units carry no faith)");
-    RealmChecks();
+    var oldSave=World.New(77);oldSave.version=22;foreach(var u in oldSave.units)u.faith=0;oldSave.UpgradeSave();Check(oldSave.version==25&&oldSave.units.All(u=>u.faith==-1)&&oldSave.Valid(),"version 22 saves upgrade to 23 (units carry no faith)");
+    RealmChecks();HexChecks();
+}
+// Owner request 5 Nov: the hex grid. Geometry, picture mapping and whole games on both map shapes.
+static void HexChecks(){
+    foreach(int shape in new[]{0,2}){
+     var w=World.New(120+shape,"Hexes",0,1,1,0,1,shape,4,hex:true);string name=shape==2?"globe":"flat";
+     Check(w.Hex&&w.Valid()&&w.tiles.Length==w.Width*w.Height,name+" hex world is valid");
+     // Every tile away from the edge has exactly six neighbours, each one step away, and each neighbour leads back.
+     foreach(var t in w.tiles.Where(t=>t.realm==0&&t.y>1&&t.y<w.MainHeight-2&&t.x>1&&t.x<w.Width-2)){
+      var around=new List<Tile>();for(int dj=-1;dj<=1;dj++)for(int di=-1;di<=1;di++){if(di==0&&dj==0)continue;var n=w.Step(t.x,t.y,di,dj);if(n!=null)around.Add(n);}
+      if(around.Count!=6||around.Distinct().Count()!=6)Check(false,name+" tile "+t.x+","+t.y+" has "+around.Count+" neighbours");
+      foreach(var n in around)if(w.Distance(t.x,t.y,n.x,n.y)!=1||w.Distance(n.x,n.y,t.x,t.y)!=1)Check(false,name+" neighbour distance at "+t.x+","+t.y);
+      for(int k=0;k<6;k++){var n=w.Step(t.x,t.y,World.HexDi[k],World.HexDj[k]);if(n==null||w.Step(n.x,n.y,World.HexDi[(k+3)%6],World.HexDj[(k+3)%6])!=t)Check(false,name+" opposite directions at "+t.x+","+t.y);}
+     }
+     // Distance agrees with walking the grid, and a wide loop is exactly the hexagon of that radius.
+     {var o=w.tiles.First(t=>t.realm==0&&t.x==w.Width/2&&t.y==w.MainHeight/2);var depth=new Dictionary<Tile,int>{{o,0}};var q=new Queue<Tile>();q.Enqueue(o);
+      while(q.Count>0){var a=q.Dequeue();if(depth[a]>=8)continue;for(int k=0;k<6;k++){var n=w.Step(a.x,a.y,World.HexDi[k],World.HexDj[k]);if(n!=null&&!depth.ContainsKey(n)){depth[n]=depth[a]+1;q.Enqueue(n);}}}
+      foreach(var kv in depth)if(w.Distance(o.x,o.y,kv.Key.x,kv.Key.y)!=kv.Value)Check(false,name+" distance differs from walking at "+kv.Key.x+","+kv.Key.y);
+      for(int r=1;r<=5;r++){var seen=new HashSet<Tile>();for(int dj=-r;dj<=r;dj++)for(int di=-r;di<=r;di++){var t=w.StepIn(o.x,o.y,di,dj,r);if(t!=null)seen.Add(t);}Check(seen.Count==3*r*(r+1)+1&&seen.All(t=>w.Distance(o.x,o.y,t.x,t.y)<=r),name+" radius "+r+" hexagon has "+seen.Count+" tiles");}}
+     // A whole game keeps every rule valid; rivals expand and every unit stands on a real tile.
+     for(int turn=0;turn<40;turn++)w.EndTurn();
+     Check(w.Valid()&&w.result==""&&w.units.All(u=>w.At(u.x,u.y)!=null),name+" hex world stays valid for 40 turns");
+     Check(Enumerable.Range(1,w.civCount-1).All(o=>w.cities.Count(c=>c.owner==o)>=2),name+" every people has expanded by turn 40 ("+string.Join(",",Enumerable.Range(1,w.civCount-1).Select(o=>w.cities.Count(c=>c.owner==o)))+")");
+    }
+    // East-west wrap on a globe: the last column touches the first.
+    {var g=World.New(123,"Round",0,1,1,0,1,2,3,hex:true);var e=g.At(g.Width-1,5);var n=g.Step(e.x,e.y,1,0);Check(n.x==0&&n.y==5&&g.Distance(e.x,e.y,n.x,n.y)==1,"a hex globe wraps east to west");Check(g.Distance(0,4,g.Width/2,4)==g.Width/2,"the way round is the short way");}
+    // Edges of a flat map stop.
+    {var f=World.New(124,"Edge",0,1,1,0,1,0,3,hex:true);Check(f.Step(0,4,-1,0)==null&&f.Step(0,0,0,-1)==null,"a flat hex map has edges");}
+    // Every point on screen picks a tile whose hexagon holds it, and neighbours sit where the art expects.
+    {double tw=64,row=tw*PixelArt.HR/PixelArt.HW;
+     for(int y=4;y<8;y++)for(int x=4;x<8;x++){double sx,sy;PixelArt.HexScreenOf(x,y,5.3,5.4,tw,out sx,out sy);foreach(var off in new[]{new[]{0.0,0},new[]{30.0,0},new[]{-30.0,0},new[]{0,18.0},new[]{0,-18.0},new[]{15.0,10},new[]{-15.0,-10}}){int px,py;PixelArt.HexPickOf(sx+off[0],sy+off[1],5.3,5.4,tw,out px,out py);Check(px==x&&py==y,"hex pick round trip "+x+","+y+" got "+px+","+py);}}
+     var w=World.New(125,"Art",0,1,1,0,1,2,3,hex:true);double x0,y0;PixelArt.HexScreenOf(6,6,0,0,tw,out x0,out y0);for(int k=0;k<6;k++){var n=w.Step(6,6,World.HexDi[k],World.HexDj[k]);double x1,y1;PixelArt.HexScreenOf(n.x,n.y,0,0,tw,out x1,out y1);Check(Math.Abs(Math.Abs(x1-x0)-(World.HexDj[k]==0?tw:tw/2))<1e-9&&Math.Abs(Math.Abs(y1-y0)-(World.HexDj[k]==0?0:row))<1e-9,"neighbour "+k+" is one hexagon away on screen");}}
+    // Pictures fill the hexagon, leave its corners clear and leave no gaps between neighbours.
+    {var n9=Enumerable.Repeat(0,9).ToArray();n9[0]=-1;n9[8]=-1;var hex=PixelArt.ComposeHex(n9,10,5,0,0);Check(hex.w==PixelArt.HW&&hex.h==PixelArt.HH&&(hex.Get(32,20)>>24)==255&&(hex.Get(0,0)>>24)==0&&(hex.Get(63,39)>>24)==0&&(hex.Get(0,20)>>24)==255&&(hex.Get(32,0)>>24)==255,"a hex tile picture is hexagon shaped");
+     for(int y=-10;y<=10;y++)for(int x=-32;x<=32;x++){bool any=false;foreach(var c in new[]{new[]{0,0},new[]{64,0},new[]{-64,0},new[]{32,30},new[]{-32,30},new[]{32,-30},new[]{-32,-30}}){int px=x-c[0]+32,py=y-c[1]+20;if(px>=0&&py>=0&&px<64&&py<40&&(hex.Get(px,py)>>24)!=0)any=true;}Check(any,"no gap at "+x+","+y);}
+     Check((PixelArt.HexEdge(0).Get(62,20)>>24)!=0&&(PixelArt.HexEdge(3).Get(62,20)>>24)==0&&(PixelArt.HexRoad(1).Get(32,20)>>24)!=0,"hex borders and roads sit on the right edges");}
+    // An old square save keeps its layout.
+    {var old=World.New(126,natives:false);old.version=24;old.UpgradeSave();Check(old.version==25&&!old.Hex&&old.Valid(),"a version 24 save keeps its square map");}
 }
 // Owner request 31 Oct: ancient gateways and five parallel worlds below the home world.
 static void RealmChecks(){
@@ -200,9 +237,9 @@ static void RealmChecks(){
     Check(natives.All(o=>w.cities.Any(c=>c.owner==o&&w.RealmOf(c.x,c.y)==CivilisationCatalog.NativeRealm(w.nations[o].civ))),"each native people starts with a city in its own world");
     Check(Enumerable.Range(1,World.RealmCount).All(r=>natives.Count(o=>CivilisationCatalog.NativeRealm(w.nations[o].civ)==r)==2),"two native peoples in every parallel world");
     {var crowded=World.New(93,"",0,1,1,0,5,1,14);Check(Enumerable.Range(0,crowded.civCount).Count(crowded.IsNativeNation)==2&&crowded.civCount==16,"a 14-civilisation game has room for two native peoples");}
-    // Save version 24 locks the gates and sends stray land units back; a colony's garrison stays.
+    // Save version 25 locks the gates and sends stray land units back; a colony's garrison stays.
     {var old=World.New(95);old.version=23;old.gatesLocked=false;var g3=old.tiles.First(t=>t.realm==0&&t.gateLink>0&&old.GateTwin(t).realm==3);var far=old.GateTwin(g3);var stray=old.Add(0,2,far.x,far.y);
-     old.UpgradeSave();Check(old.version==24&&old.gatesLocked&&old.RealmOf(stray.x,stray.y)==0&&old.Distance(stray.x,stray.y,g3.x,g3.y)<=1&&old.Valid(),"an older save locks the gates and brings stray units home");}
+     old.UpgradeSave();Check(old.version==25&&old.gatesLocked&&old.RealmOf(stray.x,stray.y)==0&&old.Distance(stray.x,stray.y,g3.x,g3.y)<=1&&old.Valid(),"an older save locks the gates and brings stray units home");}
     // The land of the sealed worlds feeds its own peoples and keeps its danger for outsiders.
     {var land=World.New(96);var ash=land.tiles.First(t=>t.realm==3&&t.terrain==17&&t.resource==0&&!t.farm&&!t.mine&&!t.road);ash.owner=-1;var fed=land.TileYield(ash);Check(fed[0]==3&&fed[1]==2&&fed[2]==1,"volcanic land feeds its native people");
      ash.owner=0;var outsider=land.TileYield(ash);Check(outsider[0]==0&&outsider[1]==3&&outsider[2]==0,"volcanic land stays hard on an outsider");ash.owner=-1;}

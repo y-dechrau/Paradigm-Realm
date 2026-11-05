@@ -30,14 +30,14 @@ namespace ParadigmRealm {
    else {
     if(cities.Any(c=>c.owner==owner&&Distance(x,y,c.x,c.y)<4))return "Keep at least 4 tiles between city centres.";
     for(int dy=-3;dy<=3;dy++)for(int dx=-3;dx<=3;dx++){
-     var near=Step(x,y,dx,dy);var k=near==null?null:SettlementTile(owner,near.x,near.y);if(k==null)continue;
+     var near=StepIn(x,y,dx,dy,3);var k=near==null?null:SettlementTile(owner,near.x,near.y);if(k==null)continue;
      bool visible=VisibleTo(owner,k.x,k.y);
      if(visible?cities.Any(c=>c.x==k.x&&c.y==k.y):owner==0&&!string.IsNullOrEmpty(k.rememberedCity))return "Too close to a known city; scout again if the information is old.";
     }
    }
    return "";
   }
-  int UnknownAround(int owner,Tile centre){int count=0;for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){var a=Step(centre.x,centre.y,dx,dy);if(a!=null&&Distance(centre.x,centre.y,a.x,a.y)<=2&&!nations[owner].known[a.y*Width+a.x])count++;}return count;}
+  int UnknownAround(int owner,Tile centre){int count=0;for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){var a=StepIn(centre.x,centre.y,dx,dy,2);if(a!=null&&Distance(centre.x,centre.y,a.x,a.y)<=2&&!nations[owner].known[a.y*Width+a.x])count++;}return count;}
   public string FoundReason(Unit u){
    if(result!="")return "The game has ended.";
    if(u==null||!units.Contains(u)||u.type!=0)return "Select a Settler.";
@@ -51,7 +51,7 @@ namespace ParadigmRealm {
    var centre=SettlementTile(owner,x,y);var central=CentreYield(centre.terrain);
    var yields=new List<int[]>();var resources=new HashSet<int>();
    for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){
-    var actual=Step(x,y,dx,dy);if(actual==null)continue;
+    var actual=StepIn(x,y,dx,dy,2);if(actual==null)continue;
     var t=SettlementTile(owner,actual.x,actual.y);if(t==null){report.unknownTiles++;continue;}report.knownTiles++;
     if(Math.Abs(dx)<=1&&Math.Abs(dy)<=1){if(t.terrain==6||t.terrain==7)report.freshWater=true;if(t.terrain==4||t.terrain==12)report.coastal=true;}
     if(t.owner>=0&&t.owner!=owner)continue;
@@ -76,7 +76,7 @@ namespace ParadigmRealm {
    // Local planning is bounded. The adviser can be reopened after moving/exploring.
    var scanned=new HashSet<int>();
    for(int sy=-12;sy<=12;sy++)for(int sx=-12;sx<=12;sx++){
-    var cell=Step(u.x,u.y,sx,sy);if(cell==null||!scanned.Add(cell.y*Width+cell.x))continue;
+    var cell=StepIn(u.x,u.y,sx,sy,12);if(cell==null||!scanned.Add(cell.y*Width+cell.x))continue;
     var t=SettlementTile(u.owner,cell.x,cell.y);if(t==null||IsImpassable(t.terrain))continue;
     var r=AssessSettlement(u.owner,cell.x,cell.y,u.x,u.y);if(r.Suitable&&!r.threat&&(u.owner==0||r.diplomacyWarning==""))reports.Add(r);
    }
@@ -116,7 +116,7 @@ namespace ParadigmRealm {
    // No known legal site: explore a safe, reachable local frontier rather than stall.
    var frontierTiles=new List<Tile>();var frontierSeen=new HashSet<int>();
    for(int fy=-4;fy<=4;fy++)for(int fx=-4;fx<=4;fx++){
-    var ft=Step(u.x,u.y,fx,fy);if(ft==null||!frontierSeen.Add(ft.y*Width+ft.x))continue;
+    var ft=StepIn(u.x,u.y,fx,fy,4);if(ft==null||!frontierSeen.Add(ft.y*Width+ft.x))continue;
     int fd=Distance(u.x,u.y,ft.x,ft.y);
     if(fd>0&&fd<=4&&SettlementTile(u.owner,ft.x,ft.y)!=null&&!IsImpassable(ft.terrain)&&CanEnter(u.owner,ft)&&!SettlementThreat(u.owner,ft.x,ft.y))frontierTiles.Add(ft);
    }

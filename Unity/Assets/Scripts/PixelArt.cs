@@ -37,6 +37,69 @@ namespace ParadigmRealm
                 if(m<best){best=m;x=c;y=r;}
             }
         }
+        // Hex grid: a pointed-top hexagon HW wide and HH tall, foreshortened for the three-quarter view; rows are HR apart.
+        public const int HW=64,HH=40,HR=30;
+        const double HexYScale=HW*0.8660254/HR; // stretches y so hexagons become regular: nearest centre is then the tile under a point
+        public static void HexScreenOf(double x,int y,double cx,double cy,double tw,out double sx,out double sy){sx=(x+(y&1)*.5-cx)*tw;sy=(y-cy)*tw*HR/HW;}
+        public static void HexPickOf(double dx,double dy,double cx,double cy,double tw,out int x,out int y)
+        {
+            double row=tw*HR/HW,fy=cy+dy/row,best=double.MaxValue;x=0;y=(int)Math.Round(fy);
+            for(int r=(int)Math.Floor(fy)-1;r<=(int)Math.Floor(fy)+2;r++)
+            {
+                int c=(int)Math.Round(cx+dx/tw-(r&1)*.5);double ox=(c+(r&1)*.5-cx)*tw-dx,oy=((r-cy)*row-dy)*HexYScale,m=ox*ox+oy*oy;
+                if(m<best){best=m;x=c;y=r;}
+            }
+        }
+        // Inside a hexagon of screen width tw, for a point relative to its centre.
+        public static bool InHex(double dx,double dy,double tw,double reach=0){double k=tw/HW;return Math.Abs(dy)+Math.Abs(dx)*10.0/32<=20*k+reach&&Math.Abs(dx)<=32*k+reach;}
+        // Reshapes a square tile picture (farms, fog, tints) into the hexagon, nearest pixel.
+        public static PixelCanvas ToHex(PixelCanvas square)
+        {
+            var d=new PixelCanvas(HW,HH);
+            for(int py=0;py<HH;py++)for(int px=0;px<HW;px++)
+            {
+                if(!InHex(px+.5-HW/2.0,py+.5-HH/2.0,HW,.6))continue;
+                d.Set(px,py,square.Get(Math.Min(square.w-1,(px*square.w)/HW),Math.Min(square.h-1,(py*square.h)/HH)));
+            }
+            return d;
+        }
+        static readonly int[] HexEdgeX={32,16,-16,-32,-16,16},HexEdgeY={0,15,15,0,-15,-15}; // edge midpoints: E, SE, SW, W, NW, NE
+        // How far along towards an edge a point is: 0 at the centre, 1 on the edge.
+        static double HexReach(double x,double y,int k){double ny=HexEdgeY[k]*HexYScale,nx=HexEdgeX[k];return (x*nx+y*HexYScale*ny)/(nx*nx+ny*ny);}
+        static readonly Dictionary<int,PixelCanvas> hexMisc=new Dictionary<int,PixelCanvas>();
+        // Border along one edge (0..5: E, SE, SW, W, NW, NE; white, tinted when drawn), or 6 the selection outline.
+        public static PixelCanvas HexEdge(int kind)
+        {
+            PixelCanvas cv;if(hexMisc.TryGetValue(kind,out cv))return cv;cv=new PixelCanvas(HW,HH);
+            for(int py=0;py<HH;py++)for(int px=0;px<HW;px++)
+            {
+                double x=px+.5-HW/2.0,y=py+.5-HH/2.0;if(!InHex(x,y,HW,.6))continue;
+                double top=0;int side=0;for(int k=0;k<6;k++){double e=HexReach(x,y,k);if(e>top){top=e;side=k;}}
+                if(kind==6){if(top>.9)cv.Set(px,py,Rgb(255,222,120));continue;}
+                if(side!=kind)continue;double core=1-top;
+                if(core<.075)cv.Set(px,py,Rgb(255,255,255));
+                else if(core<.105)cv.Set(px,py,Rgb(70,70,70,235));
+                else if(core<.24)cv.Set(px,py,Rgb(255,255,255,(int)(130*(1-(core-.105)/.135))));
+            }
+            hexMisc[kind]=cv;return cv;
+        }
+        static readonly Dictionary<int,PixelCanvas> hexRoads=new Dictionary<int,PixelCanvas>();
+        // mask bits follow the six directions E, SE, SW, W, NW, NE.
+        public static PixelCanvas HexRoad(int mask)
+        {
+            PixelCanvas cv;if(hexRoads.TryGetValue(mask,out cv))return cv;cv=new PixelCanvas(HW,HH);
+            for(int layer=0;layer<2;layer++)
+            {
+                uint col=layer==0?Rgb(70,52,32):Rgb(214,184,126);int rad=layer==0?2:1;
+                for(int k=0;k<6;k++)
+                {
+                    if((mask&(1<<k))==0)continue;
+                    for(int s=0;s<=24;s++){double t=s/24.0;int x=(int)(HW/2+HexEdgeX[k]*t),y=(int)(HH/2+HexEdgeY[k]*t);for(int dy=-rad;dy<=rad;dy++)for(int dx=-rad;dx<=rad;dx++)cv.Set(x+dx,y+dy,col);}
+                }
+                for(int dy=-rad;dy<=rad;dy++)for(int dx=-rad;dx<=rad;dx++)cv.Set(HW/2+dx,HH/2+dy,col);
+            }
+            hexRoads[mask]=cv;return cv;
+        }
         public static void ScreenOf(double i,double j,double camI,double camJ,double tw,out double sx,out double sy){double di=i-camI,dj=j-camJ;sx=(di-dj)*tw/2;sy=(di+dj)*tw*DH/DW/2;}
         public static void PickOf(double dx,double dy,double camI,double camJ,double tw,out int i,out int j){double a=dx/(tw/2),b=dy/(tw*DH/DW/2);i=(int)Math.Floor(camI+(a+b)/2+.5);j=(int)Math.Floor(camJ+(b-a)/2+.5);}
         // Reshapes a square grid-space tile picture (ground, roads, farms, borders) into its DW x DH diamond, nearest pixel, so
@@ -940,7 +1003,7 @@ namespace ParadigmRealm
         static double Massif(int[] n9,int wx,int wy,int gx,int gy,int terrain,double rx,double ry)
         {
             double best=0;
-            for(int k=0;k<9;k++){if(n9[k]!=terrain)continue;double cx=(wx+k%3-1)*TW+TW/2.0,cy=(wy+k/3-1)*TH+TH/2.0;
+            for(int k=0;k<9;k++){if(n9[k]!=terrain)continue;double cx,cy;CentreOf(k,wx,wy,out cx,out cy);
                 double dx=(gx-cx)/rx,dy=(gy-cy)/ry,d=Math.Sqrt(dx*dx+dy*dy);best=Math.Max(best,1-d);}
             return Math.Max(0,best);
         }
@@ -974,7 +1037,7 @@ namespace ParadigmRealm
         {
             double fade=Math.Min(1,(edge>98?7:edge)/5.0);
             double cx=0,cy=0,best=9;
-            for(int k=0;k<9;k++){if(n9[k]!=17)continue;double x0=(wx+k%3-1)*TW+TW/2.0,y0=(wy+k/3-1)*TH+TH/2.0+3;double dx=(gx-x0)/24.0,dy=(gy-y0)/18.0,d0=Math.Sqrt(dx*dx+dy*dy);if(d0<best){best=d0;cx=x0;cy=y0;}}
+            for(int k=0;k<9;k++){if(n9[k]!=17)continue;double x0,y0;CentreOf(k,wx,wy,out x0,out y0);y0+=3;double dx=(gx-x0)/24.0,dy=(gy-y0)/18.0,d0=Math.Sqrt(dx*dx+dy*dy);if(d0<best){best=d0;cx=x0;cy=y0;}}
             Func<int,int,double> height=(x,y)=>{double dx=(x-cx)/24.0,dy=(y-cy)/18.0,d=Math.Sqrt(dx*dx+dy*dy);double cone=Math.Pow(Math.Max(0,1-d),1.6);
                 double a=Math.Atan2(dy,dx),gully=.5+.5*Math.Sin(a*13+VNoise(x/8.0,y/8.0,421)*4);
                 double crater=d<.17?(.17-d)*2.2:0;return fade*(cone-crater-(d>.2?.05*gully*cone:0))+(1-fade)*.05*VNoise(x/5.0,y/5.0,423);};
@@ -1030,15 +1093,10 @@ namespace ParadigmRealm
         static readonly Dictionary<int,PixelCanvas> riverCache=new Dictionary<int,PixelCanvas>();
         static PixelCanvas River(int mask,int variant){int key=mask*10+variant;PixelCanvas cv;if(!riverCache.TryGetValue(key,out cv)){cv=RiverOverlay(mask,variant);riverCache[key]=cv;}return cv;}
 
-        // n9: the known terrain of the 3 x 3 block centred on this tile (row by row, -1 = unknown); (wx,wy) the tile's map position.
-        public static PixelCanvas Compose(int[] n9,int wx,int wy,int frame,int riverMask)
+        // One pixel of ground at field position (fx,fy), world pixel (gx,gy): the shared work of both layouts.
+        static uint GroundPixel(int[] field,int W,int fx,int fy,int gx,int gy,int frame,int[] n9,int wx,int wy)
         {
-            BuildOffsets();int W=TW+2*Margin,H=TH+2*Margin;var field=new int[W*H];
-            for(int y=0;y<H;y++)for(int x=0;x<W;x++)field[y*W+x]=WarpedTerrain(n9,wx,wy,x-Margin,y-Margin);
-            var cv=new PixelCanvas(CW,CH);
-            for(int y=0;y<TH;y++)for(int x=0;x<TW;x++)
-            {
-                int fx=x+Margin,fy=y+Margin,t=field[fy*W+fx],gx=wx*TW+x,gy=wy*TH+y;bool water=IsWater(t);
+                int t=field[fy*W+fx];bool water=IsWater(t);
                 // Nearest pixel of the other class (land or water) and nearest pixel of another land group.
                 double shore=99,border=99,hillEdge=Relief(t)?99:0;int other=-1;
                 for(int k=0;k<distanceLengths.Length&&(shore>98||border>98||hillEdge>98);k++)
@@ -1089,7 +1147,74 @@ namespace ParadigmRealm
                     if(shore<=2.3&&Hsh((gx+frame)>>1,gy>>1,frame+7)>.22)c=shore<=1.5?Rgb(242,249,252):Rgb(192,229,242);
                     else c=MixC(c,Rgb(84,204,226),.55*(1-(shore-2)/4.2));
                 }
-                cv.Set(x,y,c);
+                return c;
+        }
+        // Hex layout: the world pixel of each tile follows its place on screen and the warped point looks up the nearest centre
+        // among the tile and its six neighbours, so borders and coasts meander across the six edges.
+        static bool hexCompose;
+        // World pixel of the centre of entry k of the 3 x 3 block.
+        static void CentreOf(int k,int wx,int wy,out double cx,out double cy)
+        {
+            int di=k%3-1,dj=k/3-1;
+            if(hexCompose){cx=(wx+(wy&1)*.5+di+dj*.5)*HW;cy=(wy+dj)*HR;return;}
+            cx=(wx+di)*TW+TW/2.0;cy=(wy+dj)*TH+TH/2.0;
+        }
+        static int WarpedHexTerrain(int[] n9,double gx,double gy,double lx,double ly)
+        {
+            double ox=(VNoise(gx/26.0,gy/26.0,101)-.5)*2*WarpBroad+(VNoise(gx/7.0,gy/7.0,103)-.5)*2*WarpFine;
+            double oy=(VNoise(gx/26.0,gy/26.0,107)-.5)*2*WarpBroad+(VNoise(gx/7.0,gy/7.0,109)-.5)*2*WarpFine;
+            double sx=lx+ox,sy=(ly+oy*.65)*HexYScale,best=sx*sx+sy*sy;int t=n9[4];
+            for(int k=0;k<6;k++){double ex=sx-2*HexEdgeX[k],ey=sy-2*HexEdgeY[k]*HexYScale,d=ex*ex+ey*ey;if(d<best){best=d;t=n9[(World.HexDj[k]+1)*3+World.HexDi[k]+1];}}
+            return t<0?n9[4]:t;
+        }
+        public static PixelCanvas ComposeHex(int[] n9,int wx,int wy,int frame,int riverMask)
+        {
+            BuildOffsets();int W=HW+2*Margin,H=HH+2*Margin;var field=new int[W*H];int ox=(wx*2+(wy&1))*HW/2-HW/2,oy=wy*HR-HH/2;
+            for(int y=0;y<H;y++)for(int x=0;x<W;x++)field[y*W+x]=WarpedHexTerrain(n9,ox+x-Margin,oy+y-Margin,x-Margin-HW/2.0,y-Margin-HH/2.0);
+            var cv=new PixelCanvas(HW,HH);hexCompose=true;
+            try{for(int y=0;y<HH;y++)for(int x=0;x<HW;x++)if(InHex(x+.5-HW/2.0,y+.5-HH/2.0,HW,.6))cv.Set(x,y,GroundPixel(field,W,x+Margin,y+Margin,ox+x,oy+y,frame,n9,wx,wy));}
+            finally{hexCompose=false;}
+            if(n9[4]==7)
+            {
+                var ov=HexRiver(riverMask,(wx*7+wy*3)%3);
+                for(int y=0;y<HH;y++)for(int x=0;x<HW;x++){uint c=ov.Get(x,y);if((c>>24)!=0&&(cv.Get(x,y)>>24)!=0)cv.Set(x,y,c);}
+            }
+            return cv;
+        }
+        static readonly Dictionary<int,PixelCanvas> hexRivers=new Dictionary<int,PixelCanvas>();
+        // A river's arms run from the centre to the edges in the mask, bending gently and fixed at both ends so that they join.
+        static PixelCanvas HexRiver(int mask,int variant)
+        {
+            int key=mask*10+variant;PixelCanvas o;if(hexRivers.TryGetValue(key,out o))return o;
+            var cv=new PixelCanvas(HW,HH);uint wet=Rgb(40,110,160);bool any=false;
+            for(int k=0;k<6;k++)
+            {
+                if((mask&(1<<k))==0)continue;any=true;double bend=(3.0+variant)*(k%2==0?1:-1),len=Math.Sqrt(HexEdgeX[k]*HexEdgeX[k]+HexEdgeY[k]*HexEdgeY[k]),px=-HexEdgeY[k]/len,py=HexEdgeX[k]/len;
+                for(int s=0;s<=48;s++)
+                {
+                    double t=s/48.0,wob=Math.Sin(t*Math.PI)*bend*Math.Cos(t*Math.PI*.9),bx=HW/2.0+HexEdgeX[k]*t+px*wob,by=HH/2.0+HexEdgeY[k]*t+py*wob*.7,r=2.2+.7*Math.Sin(t*Math.PI);
+                    for(int dy=-3;dy<=3;dy++)for(int dx=-4;dx<=4;dx++)if(dx*dx+dy*dy*1.5<=r*r)cv.Set((int)Math.Round(bx)+dx,(int)Math.Round(by)+dy,wet);
+                }
+            }
+            if(!any)for(int dy=-3;dy<=3;dy++)for(int dx=-5;dx<=5;dx++)if(dx*dx/25.0+dy*dy/9.0<=1)cv.Set(HW/2+dx,HH/2+dy,wet);
+            o=new PixelCanvas(HW,HH);
+            for(int y=0;y<HH;y++)for(int x=0;x<HW;x++)
+            {
+                if((cv.Get(x,y)>>24)==0)continue;
+                bool rim=(cv.Get(x+1,y)>>24)==0||(cv.Get(x-1,y)>>24)==0||(cv.Get(x,y+1)>>24)==0||(cv.Get(x,y-1)>>24)==0;
+                o.Set(x,y,rim?Rgb(24,70,110):Hsh(x,y,5)>.9?Rgb(86,164,200):((x+y)%7!=0?Rgb(52,128,176):Rgb(64,140,184)));
+            }
+            hexRivers[key]=o;return o;
+        }
+        // n9: the known terrain of the 3 x 3 block centred on this tile (row by row, -1 = unknown); (wx,wy) the tile's map position.
+        public static PixelCanvas Compose(int[] n9,int wx,int wy,int frame,int riverMask)
+        {
+            BuildOffsets();int W=TW+2*Margin,H=TH+2*Margin;var field=new int[W*H];
+            for(int y=0;y<H;y++)for(int x=0;x<W;x++)field[y*W+x]=WarpedTerrain(n9,wx,wy,x-Margin,y-Margin);
+            var cv=new PixelCanvas(CW,CH);
+            for(int y=0;y<TH;y++)for(int x=0;x<TW;x++)
+            {
+                cv.Set(x,y,GroundPixel(field,W,x+Margin,y+Margin,wx*TW+x,wy*TH+y,frame,n9,wx,wy));
             }
             if(n9[4]==7)
             {

@@ -158,7 +158,7 @@ public partial class RealmGame {
             if(globeMode){DrawGlobe();return;}
         }
         // Staggered rows are a quarter of a tile width apart and odd rows sit half a tile east.
-        bool brick=world.Staggered;float cell=Mathf.Min(768f/(world.Width+(brick?.5f:0)),480f/(ViewRows*(brick?.25f:1f))),cellH=brick?cell/4:cell;
+        bool brick=world.Rows;float rowShare=world.Hex?PixelArt.HR/(float)PixelArt.HW:brick?.25f:1f,cell=Mathf.Min(768f/(world.Width+(brick?.5f:0)),480f/(ViewRows*rowShare)),cellH=cell*rowShare;
         var area=new Rect(0,35,(world.Width+(brick?.5f:0))*cell,ViewRows*cellH);
         if(world.tiles.Length<=4000){
             for(int y=ViewTop;y<ViewTop+ViewRows;y++)for(int x=0;x<world.Width;x++){

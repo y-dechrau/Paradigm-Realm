@@ -38,7 +38,7 @@ public partial class World {
   Tile next=null;int best=int.MaxValue;for(int dj=-1;dj<=1;dj++)for(int di=-1;di<=1;di++){if(di==0&&dj==0)continue;var n=Step(u.x,u.y,di,dj);if(n==null)continue;int nd=Distance(n.x,n.y,t.x,t.y);if(nd<best){best=nd;next=n;}}
   return next==null||!HighGround(next.terrain);
  }
- void SeeAround(Unit u,Action<Tile> seen){int r=SightRange(u);for(int dj=-r;dj<=r;dj++)for(int di=-r;di<=r;di++){var t=Step(u.x,u.y,di,dj);if(t!=null&&CanSee(u,t))seen(t);}}
+ void SeeAround(Unit u,Action<Tile> seen){int r=SightRange(u);for(int dj=-r;dj<=r;dj++)for(int di=-r;di<=r;di++){var t=StepIn(u.x,u.y,di,dj,r);if(t!=null&&CanSee(u,t))seen(t);}}
 }
 }
 namespace ParadigmRealm {
@@ -57,7 +57,7 @@ public partial class World {
   var t=At(u.x,u.y);if(t==null||!t.ruin||IsNaval(u.type))return;t.ruin=false;var n=nations[u.owner];int roll=Math.Abs(seed*31+t.x*17+t.y*13+turn)%4;string what;int k=RealmBonus(t.realm);// relics in the parallel worlds are richer (x2, or x3 in the Ashen Waste and Infernal Depths)
   if(roll==0){int g=(25+Math.Abs(t.x*7+t.y)%4*10)*k;n.gold+=g;if(u.owner==0)gold=n.gold;what="a buried treasury: "+g+" gold";}
   else if(roll==1&&n.research>=0){int gain=Math.Max(10,ResearchCost(n.research,u.owner)/2)*k;n.progress[n.research]+=gain;what="old scrolls: +"+gain+" towards "+TechNames[n.research];}
-  else if(roll==2){for(int dj=-6;dj<=6;dj++)for(int di=-6;di<=6;di++){var s=Step(u.x,u.y,di,dj);if(s!=null)LearnTile(u.owner,s);}what="an ancient map of the land around";}
+  else if(roll==2){for(int dj=-6;dj<=6;dj++)for(int di=-6;di<=6;di++){var s=StepIn(u.x,u.y,di,dj,6);if(s!=null)LearnTile(u.owner,s);}what="an ancient map of the land around";}
   else{if(Power[u.type]>0){u.victories=Math.Max(u.victories,2);u.promotion=Math.Max(u.promotion,1);what="a war shrine: the "+UnitNames[u.type]+" becomes a Veteran";}else{n.gold+=30*k;if(u.owner==0)gold=n.gold;what="old trade goods: "+(30*k)+" gold";}}
   if(u.owner==0)Note(UnitNames[u.type]+" explored "+(t.realm>0?"a relic site of the "+RealmNames[t.realm]:"ancient ruins")+" and found "+what+".");
  }

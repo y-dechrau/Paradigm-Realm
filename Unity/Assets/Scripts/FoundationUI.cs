@@ -108,7 +108,7 @@ namespace ParadigmRealm
             GUILayout.Label("Shape",body);setupShape=GUILayout.SelectionGrid(setupShape,new[]{"Flat","Sphere"},2);
             GUILayout.Label(setupShape==1?"A globe: travel wraps east to west and routes can cross the poles.":"A flat map with edges, as in older versions.",small);
             GUILayout.Space(6);GUILayout.Label("Size",body);setupSize=GUILayout.SelectionGrid(setupSize,World.MapSizeNames,3);
-            GUILayout.Label((setupShape==1?World.SphereWidths[setupSize]:World.MapWidths[setupSize])+" x "+(setupShape==1?World.SphereHeights[setupSize]:World.MapHeights[setupSize])+" tiles. Bigger worlds take longer turns.",small);
+            {int hexes=setupShape==1?World.SphereWidths[setupSize]*World.SphereHeights[setupSize]:World.MapWidths[setupSize]*World.MapHeights[setupSize],across=World.HexColumns(hexes);GUILayout.Label(across+" x "+hexes/across+" hexes. Bigger worlds take longer turns.",small);}
             GUILayout.Space(6);GUILayout.Label("Land",body);setupMap=GUILayout.SelectionGrid(setupMap,World.LandTypeNames,3);GUILayout.Label(World.LandTypeTexts[setupMap],small);
             int maxCivs=World.MaxCivsBySize[setupSize];if(setupCivs>maxCivs)setupCivs=maxCivs;if(setupCivs<2)setupCivs=2;
             GUILayout.Space(6);GUILayout.Label("Civilisations: "+setupCivs+" (you and "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+"; up to "+maxCivs+" on this size), plus "+Math.Min(10,16-setupCivs)+" native peoples in the parallel worlds",body);

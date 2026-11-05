@@ -11,7 +11,9 @@ namespace ParadigmRealm
     // above water and shows a bank face where water lies in front of it.
     public partial class RealmGame
     {
-        bool diamondView=true;
+        // Hex games always use the pixel-art view; the classic view only draws square tiles.
+        bool classicView;
+        bool diamondView{get{return world==null||world.Hex||!classicView;}set{classicView=!value;}}
         float camI=20,camJ=15;
         int isoWidth=64;
         static readonly int[] IsoWidths={32,48,64,96,128};
@@ -38,7 +40,7 @@ namespace ParadigmRealm
         // kind: 1 sprite, 2 farm, 3 road, 4 misc, 5 sea resource icon. Small shared pictures, never evicted.
         Texture2D IsoPicture(int kind,int a,int b)
         {
-            long key=((long)kind<<40)|((long)a<<8)|(long)b;Texture2D tex;
+            bool hexShape=world!=null&&world.Hex;long key=((long)(kind+(hexShape?64:0))<<40)|((long)a<<8)|(long)b;Texture2D tex;
             if(isoPictures.TryGetValue(key,out tex))return tex;
             // Supplied art (Resources/Sprites, e.g. from SpriteCook) replaces the drawn pictures; see Design/ART-SLOTS.md.
             // Cloud puffs carry their variant in a (cloud-V); the other slots in b.
@@ -48,7 +50,8 @@ namespace ParadigmRealm
             PixelCanvas cv=null;
             if(kind==1)cv=PixelArt.Sprite(a,b);else if(kind==6)cv=PixelArt.Hamlet(a,b);else if(kind==7)cv=PixelArt.PortSprite();else if(kind==8)cv=PixelArt.HudIcon(a);else if(kind==9)cv=PixelArt.CloudPuff(a);else if(kind==2)cv=PixelArt.Farm(a);else if(kind==3)cv=PixelArt.Road(a);else if(kind==5)cv=PixelArt.ResourceIcon(a);else cv=PixelArt.Misc(a);
             // Tile-shaped overlays (farms, roads, borders, selection, unexplored) are drawn as diamonds in the diagonal view.
-            if(cv!=null&&(kind==2||kind==3||kind==4&&(a<=6||a==9)))cv=PixelArt.ToDiamond(cv);
+            if(kind==10)cv=PixelArt.HexEdge(a);else if(kind==11)cv=PixelArt.HexRoad(a);
+            else if(cv!=null&&(kind==2||kind==3||kind==4&&(a<=6||a==9)))cv=hexShape?PixelArt.ToHex(cv):PixelArt.ToDiamond(cv);
             tex=cv==null?null:PixelTexture(cv);isoPictures[key]=tex;return tex;
         }
         void ClearIso()
@@ -57,11 +60,23 @@ namespace ParadigmRealm
             foreach(var t in isoTiles.Values)Destroy(t);foreach(var t in isoPictures.Values)if(t!=null&&!spriteSlots.ContainsValue(t))Destroy(t);
             isoTiles.Clear();isoTileOrder.Clear();isoPictures.Clear();isoShown.Clear();
         }
+        // The ground rectangle of a tile centred at (sx,sy), the selection outline, and the road picture for a tile.
+        Rect TileRect(float sx,float sy,float s){if(!world.Hex)return new Rect(sx-32*s,sy-PixelArt.DH/2*s,64*s,PixelArt.DH*s);float h=PixelArt.HH*s;return new Rect(sx-32*s-.5f,sy-h/2-.5f,64*s+1,h+1);}// a pixel of overlap, so rounding leaves no dark seam between hexes
+        Texture2D SelectionPicture(){return world.Hex?IsoPicture(10,6,0):IsoPicture(4,4,0);}
+        Texture2D RoadPicture(Tile t)
+        {
+            int mask=0;
+            if(world.Hex){for(int k=0;k<6;k++)if(world.RoadConnects(t,World.HexDi[k],World.HexDj[k]))mask|=1<<k;return IsoPicture(11,mask,0);}
+            for(int k=0;k<8;k++)if(world.RoadConnects(t,RoadDx[k],RoadDy[k]))mask|=1<<k;
+            return IsoPicture(3,mask,0);
+        }
+        // Screen pixels from one row of tiles to the next at width tw.
+        float RowPixels(float tw){return world.Hex?tw*PixelArt.HR/PixelArt.HW:tw*PixelArt.DH/PixelArt.DW/2;}
         static int IsoVariant(int x,int y){unchecked{int h=x*73856093^y*19349663;return (h&0x7fffffff)%3;}}
         static int GroveVariant(int x,int y){unchecked{int h=x*83492791^y*1640531527;return (h&0x7fffffff)%8;}}
 
         // ---------- camera ----------
-        void ToggleView(){diamondView=!diamondView;var u=Selected();if(u!=null)FocusTile(u.x,u.y);ResetMapGesture();}
+        void ToggleView(){if(world!=null&&world.Hex){status="The classic view draws square tiles, so it is not available on a hex map.";return;}diamondView=!diamondView;var u=Selected();if(u!=null)FocusTile(u.x,u.y);ResetMapGesture();}
         void ClampCamera()
         {
             if(world.Sphere){float w=world.Width;camI%=w;if(camI<0)camI+=w;}
@@ -74,14 +89,14 @@ namespace ParadigmRealm
             {var ft=world.At(x,y);if(ft!=null&&ft.realm>=0&&ft.realm!=viewRealm){viewRealm=ft.realm;atlasTexture=null;if(viewRealm!=0)globeZoom=false;}}
             if(!diamondView){if(world.Staggered){mapScroll=new Vector2((x+(y&1)*.5f)*tilePixels-MapW/2,y*tilePixels/2f-MapH/2);ClampMapScroll();return;}mapScroll=new Vector2(x*tilePixels-MapW/2,y*tilePixels-MapH/2);ClampMapScroll();return;}
             // Staggered rows: the camera is in columns (with the odd-row half step) and rows.
-            float i=x+(world.Staggered?(y&1)*.5f:0);if(world.Sphere){float w=world.Width;i=i+w*(float)Math.Round((camI-i)/w);}
+            float i=x+(world.Rows?(y&1)*.5f:0);if(world.Sphere){float w=world.Width;i=i+w*(float)Math.Round((camI-i)/w);}
             camI=i;camJ=y;ClampCamera();
         }
         void IsoPan(float dx,float dy)
         {
             float tw=isoWidth,th=tw*PixelArt.DH/PixelArt.DW;
             // Staggered rows pan straight: right is east, down is south.
-            if(world.Staggered){camI+=dx/tw;camJ+=dy/(th/2);ClampCamera();return;}
+            if(world.Rows){camI+=dx/tw;camJ+=dy/RowPixels(tw);ClampCamera();return;}
             // Screen movement of (dx,dy) pixels moves the camera by whole and part tiles, through the diagonal projection.
             float a=dx/(tw/2),b=dy/(th/2);
             camI+=(a+b)/2;camJ+=(b-a)/2;ClampCamera();
@@ -98,7 +113,7 @@ namespace ParadigmRealm
             float i=x;
             if(world.Sphere){float w=world.Width;i=x+w*(float)Math.Round((camI-x)/w);}
             double dx,dy;
-            if(world.Staggered)PixelArt.StaggerScreenOf(i,y,camI,camJ,isoWidth,out dx,out dy);else PixelArt.ScreenOf(i,y,camI,camJ,isoWidth,out dx,out dy);
+            if(world.Hex)PixelArt.HexScreenOf(i,y,camI,camJ,isoWidth,out dx,out dy);else if(world.Staggered)PixelArt.StaggerScreenOf(i,y,camI,camJ,isoWidth,out dx,out dy);else PixelArt.ScreenOf(i,y,camI,camJ,isoWidth,out dx,out dy);
             sx=IsoCentreX+(float)dx;sy=IsoCentreY+(float)dy;
         }
         // Which map tile is under a point given in map-view coordinates (0,0 = top left of the view).
@@ -106,7 +121,7 @@ namespace ParadigmRealm
         {
             // Land and water are level, so the tile under the pointer is simply the diamond it falls in.
             int i,j;
-            if(world.Staggered)PixelArt.StaggerPickOf(local.x-IsoCentreX,local.y-IsoCentreY,camI,camJ,isoWidth,out i,out j);
+            if(world.Hex)PixelArt.HexPickOf(local.x-IsoCentreX,local.y-IsoCentreY,camI,camJ,isoWidth,out i,out j);else if(world.Staggered)PixelArt.StaggerPickOf(local.x-IsoCentreX,local.y-IsoCentreY,camI,camJ,isoWidth,out i,out j);
             else PixelArt.PickOf(local.x-IsoCentreX,local.y-IsoCentreY,camI,camJ,isoWidth,out i,out j);
             var t=world.At(i,j);if(t==null){x=-1;y=-1;return false;}
             x=t.x;y=t.y;return true;
@@ -129,8 +144,8 @@ namespace ParadigmRealm
             int mask=0;bool anyWater=false;
             // Neighbours by grid step from the tile itself, so the same picture serves diagonal and staggered maps.
             for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){int n=IsoKnownTerrain(world.Step(t.x,t.y,dx,dy));if(dx==0&&dy==0)n=t.terrain;isoN9[(dy+1)*3+dx+1]=n;if(n>=0&&PixelArt.IsWater(n))anyWater=true;}
-            if(t.terrain==7){int[] offI={0,1,0,-1},offJ={-1,0,1,0};for(int k=0;k<4;k++){int n=IsoKnownTerrain(world.Step(t.x,t.y,offI[k],offJ[k]));if(n>=0&&(n==7||PixelArt.IsWater(n)))mask|=1<<k;}}
-            int fr=anyWater?frame:0;int sig=17;unchecked{foreach(int n in isoN9)sig=sig*31+n+1;sig=sig*31+mask;}
+            if(t.terrain==7){int[] offI=world.Hex?World.HexDi:new[]{0,1,0,-1},offJ=world.Hex?World.HexDj:new[]{-1,0,1,0};for(int k=0;k<offI.Length;k++){int n=IsoKnownTerrain(world.Step(t.x,t.y,offI[k],offJ[k]));if(n>=0&&(n==7||PixelArt.IsWater(n)))mask|=1<<k;}}
+            int fr=anyWater?frame:0;int sig=world.Hex?19:17;unchecked{foreach(int n in isoN9)sig=sig*31+n+1;sig=sig*31+mask;}
             int index=t.y*world.Width+t.x;long key=((long)(uint)sig<<32)|(uint)(index*4+fr);
             Texture2D tex;
             if(isoTiles.TryGetValue(key,out tex)){Texture2D cur;if(!isoShown.TryGetValue(index,out cur)||cur!=tex)isoShown[index]=tex;return tex;}
@@ -139,7 +154,7 @@ namespace ParadigmRealm
                 Texture2D previous;
                 if(isoShown.TryGetValue(index,out previous)&&previous!=null)return previous;
             }
-            tex=PixelTexture(PixelArt.ToDiamond(PixelArt.Compose(isoN9,t.x,t.y,fr,mask)));
+            tex=PixelTexture(world.Hex?PixelArt.ComposeHex(isoN9,t.x,t.y,fr,mask):PixelArt.ToDiamond(PixelArt.Compose(isoN9,t.x,t.y,fr,mask)));
             if(isoTiles.Count>=6000){long oldest=isoTileOrder.Dequeue();Texture2D gone;if(isoTiles.TryGetValue(oldest,out gone)){Destroy(gone);isoTiles.Remove(oldest);}}
             isoTiles[key]=tex;isoTileOrder.Enqueue(key);isoShown[index]=tex;return tex;
         }
@@ -181,11 +196,11 @@ namespace ParadigmRealm
             int pooled=0;isoUnitDraws.Clear();isoUnitCounts.Clear();isoResTiles.Clear();isoResPos.Clear();isoCityNames.Clear();isoCityPos.Clear();isoCityInk.Clear();isoCityRefs.Clear();
             // Staggered rows: draw row by row from the back (north); every tile of a row is level, so order within it is free.
             isoCells.Clear();
-            if(world.Staggered)
+            if(world.Rows)
             {
-                int top=(int)Math.Floor(camJ-MapH/th)-2,bottom=(int)Math.Ceiling(camJ+MapH/th+64*s/(th/2))+1;int left=(int)Math.Floor(camI-MapW/2/tw)-2,right=(int)Math.Ceiling(camI+MapW/2/tw)+2;
+                float rowH=RowPixels(tw);int top=(int)Math.Floor(camJ-MapH/2/rowH)-2,bottom=(int)Math.Ceiling(camJ+MapH/2/rowH+64*s/rowH)+1;int left=(int)Math.Floor(camI-MapW/2/tw)-2,right=(int)Math.Ceiling(camI+MapW/2/tw)+2;
                 for(int j=Math.Max(world.RealmTop(viewRealm),top);j<=Math.Min(world.RealmBottom(viewRealm)-1,bottom);j++)for(int i=left;i<=right;i++)
-                {float sx=IsoCentreX+(i+(j&1)*.5f-camI)*tw,sy=IsoCentreY+(j-camJ)*th/2;if(sx<-tw||sx>MapW+tw||sy<-th||sy>MapH+64*s)continue;isoCells.Add(new Vector4(i,j,sx,sy));}
+                {float sx=IsoCentreX+(i+(j&1)*.5f-camI)*tw,sy=IsoCentreY+(j-camJ)*rowH;if(sx<-tw||sx>MapW+tw||sy<-th||sy>MapH+64*s)continue;isoCells.Add(new Vector4(i,j,sx,sy));}
             }
             else for(int sum=-2*R;sum<=2*R;sum++)for(int di=-R;di<=R;di++)
             {
@@ -201,28 +216,27 @@ namespace ParadigmRealm
                 var source=world.At(i,j);if(source==null||source.realm!=viewRealm)continue;
                 bool visible=world.Visible(source.x,source.y);Tile t=source;
                 if(source.seen&&!visible){if(pooled==knownPool.Count)knownPool.Add(new Tile());t=knownPool[pooled++];world.CopyKnown(source,t);}
-                if(!source.seen){var keep=GUI.color;GUI.color=MistDeep;GUI.DrawTexture(new Rect(sx-32*s,sy-PixelArt.DH/2*s,64*s,PixelArt.DH*s),IsoPicture(4,5,0));GUI.color=keep;isoFog.Add(new Vector3(sx,sy,(i*7+j*13)&3));continue;}
+                if(!source.seen){var keep=GUI.color;GUI.color=MistDeep;GUI.DrawTexture(TileRect(sx,sy,s),IsoPicture(4,5,0));GUI.color=keep;isoFog.Add(new Vector3(sx,sy,(i*7+j*13)&3));continue;}
                 bool water=PixelArt.IsWater(t.terrain);float gy=sy;
                 if(!visible)isoMist.Add(new Vector3(sx,sy,(i*5+j*11)&3));
                 var old=GUI.color;if(!visible)GUI.color=Remembered;
-                var ground=new Rect(sx-32*s,sy-PixelArt.DH/2*s,64*s,PixelArt.DH*s);
+                var ground=TileRect(sx,sy,s);
                 GUI.DrawTexture(ground,IsoGround(t,i,j,frame));
                 if(!water&&t.farm){var farm=IsoPicture(2,IsoVariant(t.x,t.y),0);if(farm!=null)GUI.DrawTexture(ground,farm);}
                 if(t.road)
                 {
-                    int roadMask=0;for(int k=0;k<8;k++)if(world.RoadConnects(t,RoadDx[k],RoadDy[k]))roadMask|=1<<k;
-                    var road=IsoPicture(3,roadMask,0);if(road!=null)GUI.DrawTexture(ground,road);
+                    var road=RoadPicture(t);if(road!=null)GUI.DrawTexture(ground,road);
                 }
                 // Territory outline along edges that touch another owner or unknown ground.
                 if(t.owner>=0)
                 {
                     // A faint wash of the owner's colour over every owned tile makes the whole territory readable, not just its edge.
-                    Color ink=nations[t.owner];ink.a=1f;GUI.color=new Color(ink.r,ink.g,ink.b,.13f);GUI.DrawTexture(ground,IsoPicture(4,9,0));int[] offI={0,1,0,-1},offJ={-1,0,1,0};
-                    for(int k=0;k<4;k++)
+                    Color ink=nations[t.owner];ink.a=1f;GUI.color=new Color(ink.r,ink.g,ink.b,.13f);GUI.DrawTexture(ground,IsoPicture(4,9,0));int[] offI=world.Hex?World.HexDi:new[]{0,1,0,-1},offJ=world.Hex?World.HexDj:new[]{-1,0,1,0};
+                    for(int k=0;k<offI.Length;k++)
                     {
                         var n=world.Step(source.x,source.y,offI[k],offJ[k]);
                         if(n!=null&&n.seen&&world.KnownOwner(n)==t.owner)continue;
-                        GUI.color=ink;GUI.DrawTexture(ground,IsoPicture(4,k,0));
+                        GUI.color=ink;GUI.DrawTexture(ground,world.Hex?IsoPicture(10,k,0):IsoPicture(4,k,0));
                     }
                     GUI.color=visible?old:Remembered;
                 }
@@ -278,7 +292,7 @@ namespace ParadigmRealm
         {
             if(cloudTexture==null){cloudTexture=PixelTexture(PixelArt.CloudShadows());cloudTexture.wrapMode=TextureWrapMode.Repeat;}
             float tile=128*3*s,t=Time.realtimeSinceStartup;
-            float offX=(-(world.Staggered?camI*2:camI-camJ)*isoWidth/2+t*9f)%tile,offY=(-(world.Staggered?camJ:camI+camJ)*isoWidth*PixelArt.DH/PixelArt.DW/2+t*4f)%tile;if(offX>0)offX-=tile;if(offY>0)offY-=tile;
+            float offX=(-(world.Rows?camI*2:camI-camJ)*isoWidth/2+t*9f)%tile,offY=(-(world.Rows?camJ:camI+camJ)*RowPixels(isoWidth)+t*4f)%tile;if(offX>0)offX-=tile;if(offY>0)offY-=tile;
             for(float y=offY;y<MapH;y+=tile)for(float x=offX;x<MapW;x+=tile)GUI.DrawTexture(new Rect(x,y,tile,tile),cloudTexture);
         }
         // How far a tile's surface is raised on screen: land (as the player knows it) stands Elev pixels above water.
@@ -291,7 +305,7 @@ namespace ParadigmRealm
             if(chosen!=null)
             {
                 IsoScreen(chosen.x,chosen.y,out sx,out sy);sy-=Lift(chosen.x,chosen.y,s);
-                GUI.DrawTexture(new Rect(sx-32*s,sy-PixelArt.DH/2*s,64*s,PixelArt.DH*s),IsoPicture(4,4,0));
+                GUI.DrawTexture(TileRect(sx,sy,s),SelectionPicture());
                 if(chosen.hasOrder)
                 {
                     IsoScreen(chosen.destinationX,chosen.destinationY,out sx,out sy);
@@ -301,7 +315,7 @@ namespace ParadigmRealm
             else if(cityId>=0)
             {
                 var city=world.cities.Find(a=>a.id==cityId);
-                if(city!=null){IsoScreen(city.x,city.y,out sx,out sy);sy-=Lift(city.x,city.y,s);GUI.DrawTexture(new Rect(sx-32*s,sy-PixelArt.DH/2*s,64*s,PixelArt.DH*s),IsoPicture(4,4,0));}
+                if(city!=null){IsoScreen(city.x,city.y,out sx,out sy);sy-=Lift(city.x,city.y,s);GUI.DrawTexture(TileRect(sx,sy,s),SelectionPicture());}
             }
         }
     }

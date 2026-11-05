@@ -120,18 +120,19 @@ namespace ParadigmRealm
             GUI.Box(area,"");GUI.Label(new Rect(area.x+12,area.y+6,area.width-24,26),"The land around "+c.name,heading);
             var view=new Rect(area.x+8,area.y+36,area.width-16,374);
             // The view widens with the city's reach (one ring more at size 10, 20 and 30) and shrinks the tiles to fit.
-            int reach=World.WorkRadius(c),show=reach+1;float tw=Mathf.Min(96f,Mathf.Floor(2*374f/(2*show+1))),th=tw*PixelArt.DH/PixelArt.DW,s=tw/64f;var worked=world.Worked(c);var workable=world.Workable(c);var e=Event.current;
+            int reach=World.WorkRadius(c),show=reach+1;float tw=world.Hex?Mathf.Min(96f,Mathf.Floor(Mathf.Min(view.width/(2*show+1),374f/(2*show*PixelArt.HR/(float)PixelArt.HW+PixelArt.HH/(float)PixelArt.HW)))):Mathf.Min(96f,Mathf.Floor(2*374f/(2*show+1))),th=world.Hex?tw*PixelArt.HH/PixelArt.HW:tw*PixelArt.DH/PixelArt.DW,s=tw/64f;var worked=world.Worked(c);var workable=world.Workable(c);var e=Event.current;
             int frame=(int)(Time.realtimeSinceStartup*2.5f)%3;string hover=null;Rect hoverRect=new Rect();
             GUI.BeginGroup(view);
             Fill(new Rect(0,0,view.width,view.height),new Color(.2f,.25f,.31f));
             float cx=view.width/2,cy=view.height/2;
             for(int pass=0;pass<2;pass++)
             // Diagonal layout, back to front by diagonal so scenery overlaps the tiles behind it.
-            for(int sum=-2*show;sum<=2*show;sum++)for(int dx=-show;dx<=show;dx++)
+            // Hex maps go row by row instead.
+            for(int sum=world.Hex?-show:-2*show;sum<=(world.Hex?show:2*show);sum++)for(int dx=-show;dx<=show;dx++)
             {
-                int dy=sum-dx;if(dy<-show||dy>show)continue;
-                var t=world.Step(c.x,c.y,dx,dy);if(t==null)continue;
-                float sx=cx+(dx-dy)*tw/2,sy=cy+(dx+dy)*th/2;var r=new Rect(sx-tw/2,sy-th/2,tw,th);
+                int dy=world.Hex?sum:sum-dx;if(dy<-show||dy>show)continue;
+                var t=world.StepIn(c.x,c.y,dx,dy,show);if(t==null)continue;
+                float sx=world.Hex?cx+(dx+dy*.5f)*tw:cx+(dx-dy)*tw/2,sy=world.Hex?cy+dy*tw*PixelArt.HR/PixelArt.HW:cy+(dx+dy)*th/2;var r=new Rect(sx-tw/2,sy-th/2,tw,th);
                 if(r.xMax<0||r.x>view.width||r.yMax<0||r.y>view.height+th)continue;
                 bool ring=world.Distance(c.x,c.y,t.x,t.y)<=reach&&(dx!=0||dy!=0?workable.Contains(t):true),mine=t.owner==c.owner;
                 var known=t.seen?world.KnownTile(t):null;var old=GUI.color;
@@ -139,7 +140,7 @@ namespace ParadigmRealm
                 {
                     if(known==null){Fill(r,new Color(.24f,.3f,.37f));continue;}
                     GUI.DrawTexture(r,IsoGround(known,c.x+dx,c.y+dy,frame));
-                    if(known.road){int m=0;for(int k=0;k<8;k++)if(world.RoadConnects(known,RoadDx[k],RoadDy[k]))m|=1<<k;var road=IsoPicture(3,m,0);if(road!=null)GUI.DrawTexture(r,road);}
+                    if(known.road){var road=RoadPicture(known);if(road!=null)GUI.DrawTexture(r,road);}
                     GUI.color=old;continue;
                 }
                 // Second pass: scenery, the city, and markers, so they stand over the row behind.
@@ -156,7 +157,7 @@ namespace ParadigmRealm
                 int[] v=centre?world.CityCentreYield(c):world.EffectiveTileYield(c,t);bool active=centre||worked.Contains(t),locked=world.IsLocked(c,t);
                 if(active)DrawYieldPips(new Rect(sx-tw/2+5,sy+th/2-14,tw-10,10),v);
                 if(locked){Fill(new Rect(sx+tw/2-16,sy-th/2+5,11,11),new Color(.08f,.16f,.3f,.9f));Fill(new Rect(sx+tw/2-14,sy-th/2+7,7,7),UiAccent);}
-                if(Mathf.Abs(e.mousePosition.x-sx)/(tw/2)+Mathf.Abs(e.mousePosition.y-sy)/(th/2)<=1&&e.mousePosition.y<=view.height){
+                if((world.Hex?PixelArt.InHex(e.mousePosition.x-sx,e.mousePosition.y-sy,tw):Mathf.Abs(e.mousePosition.x-sx)/(tw/2)+Mathf.Abs(e.mousePosition.y-sy)/(th/2)<=1)&&e.mousePosition.y<=view.height){
                     hoverRect=r;hover=World.TerrainNames[known.terrain]+(known.resource>0?" with "+World.ResourceNames[known.resource]:"")+": "+v[0]+" food, "+v[1]+" shields, "+v[2]+" trade — "+(centre?"city centre":locked?"locked citizen (click to release)":active?"worked (click to lock)":"not worked (click to lock a citizen here)");
                     if(!ring&&!centre){var ctl=world.TileController(t,c.owner);if(ctl!=null&&ctl!=c)hover+=" — worked by "+ctl.name+"; click to take it over";}
                     if(!centre&&e.type==EventType.MouseDown&&e.button==0&&GUI.enabled){bool ok=world.ToggleLock(c,t);status=ok?(world.IsLocked(c,t)?"Citizen locked on "+World.TerrainNames[known.terrain]+".":"Tile released to the Governor."):"Cannot lock: every working citizen is already locked here.";e.Use();}

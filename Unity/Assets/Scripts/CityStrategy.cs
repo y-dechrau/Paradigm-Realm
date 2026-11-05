@@ -34,7 +34,7 @@ namespace ParadigmRealm {
    // Only the block within the city's reach can qualify, so nothing scans the whole map.
    var result=new List<Tile>();int reach=WorkRadius(c);var centres=CityCentres();var rivals=cities.Where(o=>o.owner==c.owner&&Distance(o.x,o.y,c.x,c.y)<=reach+5).ToList();
    for(int dy=-reach;dy<=reach;dy++)for(int dx=-reach;dx<=reach;dx++){
-    if(dx==0&&dy==0)continue;var t=Step(c.x,c.y,dx,dy);if(t==null||result.Contains(t)||!InReach(c,t,centres))continue;
+    if(dx==0&&dy==0)continue;var t=StepIn(c.x,c.y,dx,dy,reach);if(t==null||result.Contains(t)||!InReach(c,t,centres))continue;
     if(TileController(t,c.owner,centres,rivals)==c)result.Add(t);
    }
    result.Sort((p,q)=>(p.y*Width+p.x).CompareTo(q.y*Width+q.x));

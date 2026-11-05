@@ -64,7 +64,7 @@ public int GrowthLimit(City c){return HasBuilding(c,41)?20+(HasTech(c.owner,"ele
         if(u.owner==0)Note("The tribe shares its knowledge of the land around it and pledges allegiance"+(before>=0?" (won over from "+NationName(before)+")":"")+"; it pays "+VillageTax+" gold a turn while within 4 tiles of your borders.");
         else if(before==0)Note("A tribal village has been won over by "+NationName(u.owner)+".");}
     public const int VillageTax=2;
-    public bool VillageInReach(int owner,Tile t){if(t.owner==owner)return true;for(int dy=-4;dy<=4;dy++)for(int dx=-4;dx<=4;dx++){var n=Step(t.x,t.y,dx,dy);if(n!=null&&n.owner==owner)return true;}return false;}
+    public bool VillageInReach(int owner,Tile t){if(t.owner==owner)return true;for(int dy=-4;dy<=4;dy++)for(int dx=-4;dx<=4;dx++){var n=StepIn(t.x,t.y,dx,dy,4);if(n!=null&&n.owner==owner)return true;}return false;}
     public int VillageTribute(int owner){int sum=0;foreach(var t in tiles)if(t.village&&t.villageOwner==owner&&VillageInReach(owner,t))sum+=VillageTax;return sum;}
     // Scouts and every combat unit can explore on their own (owner request); exploring stops when an enemy comes near.
     public static bool CanExplore(int type){return type==3||Power[type]>0||IsNaval(type);}

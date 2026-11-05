@@ -84,7 +84,7 @@ public partial class World {
    int o=home+i,civ=CivilisationCatalog.NativeOrder[i],r=CivilisationCatalog.NativeRealm(civ);var n=nations[o];
    n.civ=civ;n.name=CivilisationCatalog.Names[civ];n.leader=CivilisationCatalog.Leaders[civ];n.portrait=CivilisationCatalog.Portraits[civ];n.traits=(int[])CivilisationCatalog.Traits[civ].Clone();n.known=new bool[tiles.Length];
    var gate=RealmTiles(r).FirstOrDefault(t=>t.gateLink>0);
-   Func<Tile,int> room=t=>{int land=0;for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){var q=Step(t.x,t.y,dx,dy);if(q!=null&&q.realm==r&&!IsWater(q.terrain)&&!IsImpassable(q.terrain))land++;}return land;};
+   Func<Tile,int> room=t=>{int land=0;for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){var q=StepIn(t.x,t.y,dx,dy,2);if(q!=null&&q.realm==r&&!IsWater(q.terrain)&&!IsImpassable(q.terrain))land++;}return land;};
    var start=RealmTiles(r).Where(t=>!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&!Barren(t.terrain)&&t.gateLink==0&&t.y>=RealmTop(r)+3&&t.y<RealmBottom(r)-3
      &&(gate==null||Distance(t.x,t.y,gate.x,gate.y)>=6)&&placed.All(p=>Distance(p.x,p.y,t.x,t.y)>=Math.Max(8,Width/3))).OrderByDescending(room).ThenBy(t=>Lattice(seed+civ,t.x,t.y,5)).FirstOrDefault();
    if(start==null)continue;placed.Add(start);start.ruin=false;start.village=false;

@@ -33,7 +33,7 @@ namespace ParadigmRealm
                 int x=c.x,y=c.y;
                 for(int step=0;step<6;step++)
                 {
-                    int dx=Math.Sign(DeltaX(x,port.x)),dy=Math.Sign(port.y-y);x+=dx;y+=dy;var t=At(x,y);if(t==null)break;x=t.x;y=t.y;
+                    int dx=Math.Sign(DeltaX(x,port.x)),dy=Math.Sign(port.y-y);var t=Hex?StepToward(x,y,port.x,port.y):At(x+dx,y+dy);if(t==null)break;x=t.x;y=t.y;
                     if(x==port.x&&y==port.y)break;
                     if(!t.road&&!Barren(t.terrain))needs.Add(t.y*Width+t.x);
                 }
@@ -112,10 +112,10 @@ namespace ParadigmRealm
             var candidates=new List<Tile>();
             for(int dy=-15;dy<=15;dy++)for(int dx=-15;dx<=15;dx++)
             {
-                var t=Step(x,y,dx,dy);if(t==null||IsWater(t.terrain)||!nations[owner].known[t.y*Width+t.x]||!NextToSea(t.x,t.y))continue;
+                var t=StepIn(x,y,dx,dy,15);if(t==null||IsWater(t.terrain)||!nations[owner].known[t.y*Width+t.x]||!NextToSea(t.x,t.y))continue;
                 // Land seen before (not necessarily in sight now), legal to settle, with room around it; the settler plans properly once ashore.
                 if(SiteReason(owner,t.x,t.y,false)!=""||SettlementThreat(owner,t.x,t.y))continue;
-                int room=0;for(int ry=-2;ry<=2;ry++)for(int rx=-2;rx<=2;rx++){var k=Step(t.x,t.y,rx,ry);if(k!=null&&!IsWater(k.terrain)&&nations[owner].known[k.y*Width+k.x])room++;}
+                int room=0;for(int ry=-2;ry<=2;ry++)for(int rx=-2;rx<=2;rx++){var k=StepIn(t.x,t.y,rx,ry,2);if(k!=null&&!IsWater(k.terrain)&&nations[owner].known[k.y*Width+k.x])room++;}
                 if(room>=6)candidates.Add(t);
             }
             return candidates.OrderBy(t=>Distance(x,y,t.x,t.y)).ThenBy(t=>t.y*Width+t.x).FirstOrDefault();
@@ -157,7 +157,7 @@ namespace ParadigmRealm
             Tile best=null;int bestLength=int.MaxValue;
             for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++)
             {
-                var t=Step(target.x,target.y,dx,dy);if(t==null||IsWater(t.terrain)||IsImpassable(t.terrain)||!NextToSea(t.x,t.y))continue;
+                var t=StepIn(target.x,target.y,dx,dy,2);if(t==null||IsWater(t.terrain)||IsImpassable(t.terrain)||!NextToSea(t.x,t.y))continue;
                 if(t.x==target.x&&t.y==target.y)continue;if(units.Any(a=>a.owner!=owner&&a.x==t.x&&a.y==t.y))continue;
                 var water=AdjacentWater(t,ship);if(water==null)continue;int length=(water.x==ship.x&&water.y==ship.y?0:Route(ship,water.x,water.y).Count)*10+Distance(t.x,t.y,target.x,target.y);
                 if(length<bestLength){bestLength=length;best=t;}

@@ -47,7 +47,7 @@ namespace ParadigmRealm
             Tile best=null;int bestDistance=99;
             for(int dy=-3;dy<=3;dy++)for(int dx=-3;dx<=3;dx++)
             {
-                var t=Step(c.x,c.y,dx,dy);if(t==null||t.owner!=c.owner||IsWater(t.terrain)||Barren(t.terrain)||!NextToSea(t.x,t.y))continue;
+                var t=StepIn(c.x,c.y,dx,dy,3);if(t==null||t.owner!=c.owner||IsWater(t.terrain)||Barren(t.terrain)||!NextToSea(t.x,t.y))continue;
                 if(cities.Any(o=>o.x==t.x&&o.y==t.y))continue;int d=Distance(c.x,c.y,t.x,t.y);if(d<bestDistance){bestDistance=d;best=t;}
             }
             return best;

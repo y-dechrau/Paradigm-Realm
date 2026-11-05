@@ -107,7 +107,7 @@ public partial class World {
  public void SpreadInfluence(){
   int n=tiles.Length;var own=new float[n];var near=new bool[n];var rivals=new Dictionary<int,Dictionary<int,float>>();
   foreach(var c in cities){float s=CityInfluence(c);int radius=TerritoryRadius(c);
-   for(int dy=-radius;dy<=radius;dy++)for(int dx=-radius;dx<=radius;dx++){var t=Step(c.x,c.y,dx,dy);if(t==null)continue;int d=Distance(t.x,t.y,c.x,c.y);if(d>radius)continue;int i=t.y*Width+t.x;if(d<=1){near[i]=true;continue;}float p=s/(1+d);
+   for(int dy=-radius;dy<=radius;dy++)for(int dx=-radius;dx<=radius;dx++){var t=StepIn(c.x,c.y,dx,dy,radius);if(t==null)continue;int d=Distance(t.x,t.y,c.x,c.y);if(d>radius)continue;int i=t.y*Width+t.x;if(d<=1){near[i]=true;continue;}float p=s/(1+d);
     if(t.owner==c.owner)own[i]+=p;else{Dictionary<int,float> m;if(!rivals.TryGetValue(i,out m)){m=new Dictionary<int,float>();rivals[i]=m;}float was;m.TryGetValue(c.owner,out was);m[c.owner]=was+p;}}}
   bool changed=false;int lost=0,gained=0;string taker="";
   for(int i=0;i<n;i++){var t=tiles[i];Dictionary<int,float> m;if(t.owner<0||near[i]||!rivals.TryGetValue(i,out m)){if(t.sway>0){t.sway=Math.Max(0,t.sway-3);if(t.sway==0)t.swayCiv=-1;}continue;}
