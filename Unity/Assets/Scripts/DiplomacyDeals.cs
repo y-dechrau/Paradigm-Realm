@@ -57,7 +57,7 @@ public partial class World {
   foreach(var o in offers.Where(o=>o.status==0&&o.expires<=turn)){o.status=3;o.answer="Expired.";}
  }
  public void DiplomacyAI(){
-  foreach(var pair in diplomacy)if(pair.a!=0&&!pair.contact&&(units.Any(u=>u.owner==pair.b&&VisibleTo(pair.a,u.x,u.y))||cities.Any(c=>c.owner==pair.b&&VisibleTo(pair.a,c.x,c.y))||units.Any(u=>u.owner==pair.a&&VisibleTo(pair.b,u.x,u.y))))pair.contact=true;
+  foreach(var pair in diplomacy)if(pair.a!=0&&!pair.contact&&!SealedApart(pair.a,pair.b)&&(units.Any(u=>u.owner==pair.b&&VisibleTo(pair.a,u.x,u.y))||cities.Any(c=>c.owner==pair.b&&VisibleTo(pair.a,c.x,c.y))||units.Any(u=>u.owner==pair.a&&VisibleTo(pair.b,u.x,u.y))))pair.contact=true;
   for(int a=1;a<civCount;a++){if(turn%5!=a%5||!cities.Any(c=>c.owner==a))continue;for(int b=0;b<civCount;b++){if(!HasContact(a,b)||offers.Any(o=>o.status==0&&SamePair(o.from,o.to,a,b)))continue;var p=Relation(a,b);DiplomaticOffer offer=null;
    if(AtWar(a,b)){if(turn-p.warStarted>=6)offer=new DiplomaticOffer{from=a,to=b,kind=TreatyKind.Peace};}
    else if(Opinion(a,b)<-20&&!Friends(a,b)&&p.peaceUntil<=turn){if(FormalWarAvailable(a,b)&&KnownMilitary(a,a)>KnownMilitary(a,b)*3/2)DeclareWar(a,b);else Denounce(a,b);}
@@ -66,9 +66,9 @@ public partial class World {
   }}
  }
  bool DiplomacyValid(){if(diplomacy==null||diplomacy.Count!=civCount*(civCount-1)/2||offers==null||contracts==null||warWeariness==null||warWeariness.Length!=civCount||warWeariness.Any(x=>x<0||x>60)||nextDiplomaticId<1)return false;
-  var keys=new System.Collections.Generic.HashSet<int>();foreach(var p in diplomacy){if(p==null||p.a<0||p.b>=civCount||p.a>=p.b||!keys.Add(p.a*32+p.b)||p.events==null||p.events.Count>12||p.events.Any(x=>x==null)||Math.Abs((long)p.trustA)>100||Math.Abs((long)p.trustB)>100||p.grievanceA<0||p.grievanceB<0||p.grievanceA>200||p.grievanceB>200||new[]{p.accessUntil,p.friendUntil,p.allianceUntil,p.researchUntil,p.peaceUntil,p.warStarted,p.promiseAUntil,p.promiseBUntil,p.embargoUntil}.Any(x=>x<0)||p.denounceA< -1||p.denounceB< -1)return false;}
+  var keys=new System.Collections.Generic.HashSet<int>();foreach(var p in diplomacy){if(p==null||p.a<0||p.b>=civCount||p.a>=p.b||!keys.Add(p.a*1000+p.b)||p.events==null||p.events.Count>12||p.events.Any(x=>x==null)||Math.Abs((long)p.trustA)>100||Math.Abs((long)p.trustB)>100||p.grievanceA<0||p.grievanceB<0||p.grievanceA>200||p.grievanceB>200||new[]{p.accessUntil,p.friendUntil,p.allianceUntil,p.researchUntil,p.peaceUntil,p.warStarted,p.promiseAUntil,p.promiseBUntil,p.embargoUntil}.Any(x=>x<0)||p.denounceA< -1||p.denounceB< -1)return false;}
   var ids=new System.Collections.Generic.HashSet<int>();foreach(var o in offers){if(o==null||o.id<1||o.id>=nextDiplomaticId||!ids.Add(o.id)||o.from<0||o.to<0||o.from>=civCount||o.to>=civCount||o.from==o.to||o.status<0||o.status>3||o.created<1||o.expires<=o.created||o.answer==null||(int)o.kind<0||(int)o.kind>7||o.duration<5||o.duration>30||o.giveGold<0||o.askGold<0||o.giveGold>10000||o.askGold>10000||!ValidRecurring(o.givePerTurn,o.askPerTurn,o.giveResource,o.askResource)||o.kind==TreatyKind.JointWar&&(o.target<0||o.target>=civCount||o.target==o.from||o.target==o.to))return false;}
-  keys.Clear();foreach(var c in contracts)if(c==null||c.id<1||c.id>=nextDiplomaticId||!ids.Add(c.id)||c.from<0||c.to<0||c.from>=civCount||c.to>=civCount||c.from==c.to||c.start<1||c.end<=c.start||!keys.Add(Math.Min(c.from,c.to)*32+Math.Max(c.from,c.to))||!ValidRecurring(c.givePerTurn,c.askPerTurn,c.giveResource,c.askResource))return false;return true;
+  keys.Clear();foreach(var c in contracts)if(c==null||c.id<1||c.id>=nextDiplomaticId||!ids.Add(c.id)||c.from<0||c.to<0||c.from>=civCount||c.to>=civCount||c.from==c.to||c.start<1||c.end<=c.start||!keys.Add(Math.Min(c.from,c.to)*1000+Math.Max(c.from,c.to))||!ValidRecurring(c.givePerTurn,c.askPerTurn,c.giveResource,c.askResource))return false;return true;
  }
  static bool ValidRecurring(int give,int ask,int resource,int requested){return give>=0&&ask>=0&&give<=20&&ask<=20&&resource>=0&&resource<=5&&requested>=0&&requested<=5;}
 }

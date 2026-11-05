@@ -10,7 +10,16 @@ public static class CivilisationCatalog {
  // 17 civilisations: Sylvan Court and Crystal Dominion are hidden for now (owner request), and the last two wait for their
  // portrait art (leader-15.png, leader-16.png); RealmGame enables them once the picture is found. Hidden or waiting
  // civilisations are never offered or used as rivals, and their indices stay fixed so saves keep working.
- public const int Count=39,TraitCount=12,PortraitCount=39;
+ public const int Count=79,TraitCount=12,PortraitCount=79;
+ // The forty later peoples of the sealed worlds (SealedPeoples) follow the first thirty-nine in every table.
+ static CivilisationCatalog(){
+  var more=SealedPeoples.People;
+  Names=Names.Concat(more.Select(p=>p.Name)).ToArray();Leaders=Leaders.Concat(more.Select(p=>p.Leader)).ToArray();
+  Portraits=Portraits.Concat(Enumerable.Range(SealedPeoples.First,more.Count)).ToArray();Traits=Traits.Concat(more.Select(p=>p.Traits)).ToArray();
+  Enabled=Enabled.Concat(more.Select(p=>false)).ToArray();AwaitingArt=AwaitingArt.Concat(more.Select(p=>false)).ToArray();
+  PortraitTitles=PortraitTitles.Concat(more.Select(p=>p.LeaderTitle)).ToArray();Greetings=Greetings.Concat(more.Select(p=>p.Greeting)).ToArray();
+  var order=new List<int>(NativeOrder);for(int j=0;j<SealedPeoples.PerWorld;j++)foreach(int r in new[]{1,3,2,4,5})order.Add(SealedPeoples.First+(r-1)*SealedPeoples.PerWorld+j);NativeOrder=order.ToArray();
+ }
  public static readonly string[] TraitNames={"Seafaring","Mercantile","Agrarian","Spiritual","Monumental","Diplomatic","Scholarly","Stalwart","Industrious","Militaristic","Horse Lords","Expansionist"};
  public static readonly string[] TraitTexts={
   "+1 food on every worked water tile",
@@ -46,7 +55,9 @@ public static class CivilisationCatalog {
  public static bool RealPortrait(int portrait){return portrait>=FirstReal&&portrait<FirstNative;}
  // Which parallel world each native people lives in (1 Fae Wilds ... 5 Drowned Deep), and the order they are placed in so that
  // every world gets one people before any gets a second.
- public static int NativeRealm(int civ){return IsNative(civ)?1+(civ-FirstNative)/2:0;}
+ public static int NativeRealm(int civ){return !IsNative(civ)?0:civ<SealedPeoples.First?1+(civ-FirstNative)/2:1+(civ-SealedPeoples.First)/SealedPeoples.PerWorld;}
+ // The ten peoples of one world.
+ public static IEnumerable<int> PeoplesOf(int realm){return Enumerable.Range(FirstNative,Count-FirstNative).Where(c=>NativeRealm(c)==realm);}
  public static readonly int[] NativeOrder={29,33,31,35,37,30,34,32,36,38};
  public static IEnumerable<int> Offered(bool real){return Offered().Where(i=>IsReal(i)==real);}
  public static readonly string[] PortraitTitles={"King of the coastal kingdom","Desert queen of the oasis","Mountain queen of the snow citadel","Enchanted forest queen","Void queen of the crystal realm","Emperor of the grand capital","Samurai lord","King of a coastal kingdom","Guardian of the golden citadel","Hellenistic commander","Emperor of the golden city","Emperor of the grand cathedral","Caesar of the eternal city","Crusader king","Steppe warlord","Empress of the jade court (art needed)","King of the serpent coast (art needed)","First Emperor of Qin","Pharaoh of the New Kingdom","First Emperor of Rome","Statesman of Athens","Huey Tlatoani of Tenochtitlan","Sapa Inca of Tawantinsuyu","Ajaw of Lakamha (Palenque)","Emperor of Ethiopia","Abbasid Caliph of Baghdad","King of Kings of Persia","Mauryan Emperor","King of Babylon","Elf queen of the Fae Wilds","Avian lord of the high aeries","Machine mind of the Ashen Waste","Dwarf thane of the ash-forges","Demon lord of the Infernal Depths","Orc warchief of the burning plains","Ratkin seer of the Plague Marshes","Myconid elder of the spore groves","Merfolk queen of the Drowned Deep","Lizardfolk priest of the reef temples"};

@@ -6,7 +6,10 @@ namespace ParadigmRealm {
 public static partial class PixelArt {
  static void Ellipse(PixelCanvas cv,double cx,double cy,double rx,double ry,Func<double,double,uint> paint){for(int y=(int)(cy-ry);y<=cy+ry;y++)for(int x=(int)(cx-rx);x<=cx+rx;x++){double dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)cv.Set(x,y,paint(dx,dy));}}
  static uint Lit(uint[] ramp,double dx,double dy){return RampPick(ramp,.78-.3*dx-.25*dy);}
- public static PixelCanvas NativePortrait(int k)
+ public static PixelCanvas NativePortrait(int k){return Bust(k,k,k,k,0);}
+ // A people's portrait from its bust shape, the sky of its world and the robes its hue picks; the later shapes share these parts.
+ public static PixelCanvas PeoplePortrait(SealedPerson p){int sky=new[]{0,0,2,4,6,8}[p.World];return Bust(p.Bust<10?p.Bust:new[]{0,2,3,5,0}[p.Bust-10],p.Bust,sky,p.Bust<10?p.Bust:new[]{0,2,6,5,1}[p.Bust-10],p.Hue);}
+ static PixelCanvas Bust(int k,int shape,int skyAt,int skinAt,int hue)
  {
   int W=150,H=200;var cv=new PixelCanvas(W,H);
   uint[][] skies={Ramp(20,60,40,40,110,80,90,170,120,170,220,170,230,250,220),Ramp(40,70,120,70,120,180,120,170,220,190,215,240,240,245,250),Ramp(40,36,34,80,72,66,130,118,104,180,166,148,225,215,200),Ramp(40,34,30,90,70,52,150,110,70,210,160,100,245,215,170),
@@ -18,7 +21,7 @@ public static partial class PixelArt {
   uint[][] cloth={Ramp(20,60,30,30,95,45,45,130,60,80,170,90,150,210,150),Ramp(70,50,30,110,80,45,150,115,65,190,155,95,225,200,150),Ramp(40,44,50,70,76,84,105,112,122,150,156,166,200,205,212),Ramp(60,40,25,100,65,40,140,95,55,180,130,80,215,175,120),
    Ramp(20,10,15,45,20,25,75,30,35,110,45,45,150,70,60),Ramp(45,35,25,80,60,40,115,90,55,155,125,80,195,165,115),Ramp(40,35,30,70,60,50,100,85,70,135,115,95,170,150,125),Ramp(80,30,30,140,45,40,190,60,50,225,110,90,245,190,170),
    Ramp(10,50,70,20,85,110,40,125,150,90,170,190,170,215,230),Ramp(70,55,20,120,95,30,170,140,40,215,185,80,245,225,150)};
-  var sky=skies[k];var skin=skins[k];var robe=cloth[k];uint gold=Rgb(230,190,90),dark=Rgb(20,16,22);
+  var sky=skies[skyAt];var skin=skins[skinAt];var robe=hue>0?cloth[(k+hue)%cloth.Length]:cloth[k];uint gold=Rgb(230,190,90),dark=Rgb(20,16,22);
   for(int y=0;y<H;y++)for(int x=0;x<W;x++)cv.Set(x,y,RampPick(sky,.95-y/(double)H*.7+(VNoise(x/16.0,y/12.0,700+k)-.5)*.2));
   // Avian wings behind the shoulders.
   if(k==1){Ellipse(cv,35,150,30,48,(dx,dy)=>Lit(skin,dx,dy));Ellipse(cv,115,150,30,48,(dx,dy)=>Lit(skin,dx,dy));}
@@ -44,6 +47,12 @@ public static partial class PixelArt {
   }
   // Eyes: glowing for demon and ratkin, plain for the rest; the machine has its one lens.
   if(k!=2){uint eye=k==4?Rgb(255,220,60):k==6?Rgb(230,40,40):k==7?Rgb(30,25,25):Rgb(30,30,40);int ey=k==7?108:94;for(int d=-1;d<=0;d++){cv.Set(65,ey+d,eye);cv.Set(66,ey+d,eye);cv.Set(84,ey+d,eye);cv.Set(85,ey+d,eye);}}
+  // The later shapes over the common bust: a hood, a bare skull, a smooth mask, a giant's heavy jaw, a radiant halo and wings.
+  if(shape==10){Poly(cv,new[]{P(40,110),P(52,52),P(75,38),P(98,52),P(110,110),P(98,74),P(52,74)},(X,Y)=>Lit(robe,-.2,-.3));}
+  if(shape==11){Ellipse(cv,62,92,8,9,(dx,dy)=>Rgb(18,14,20));Ellipse(cv,88,92,8,9,(dx,dy)=>Rgb(18,14,20));Poly(cv,new[]{P(75,102),P(71,112),P(79,112)},(X,Y)=>Rgb(30,24,28));for(int x=60;x<=90;x+=5)RectFill(cv,x,118,x+2,126,Rgb(30,24,28));}
+  if(shape==12){Ellipse(cv,75,98,27,34,(dx,dy)=>RampPick(robe,.92-.2*dx-.2*dy));Ellipse(cv,63,92,6,4,(dx,dy)=>Rgb(10,8,14));Ellipse(cv,87,92,6,4,(dx,dy)=>Rgb(10,8,14));RectFill(cv,70,116,80,118,Rgb(10,8,14));}
+  if(shape==13){Ellipse(cv,75,126,34,18,(dx,dy)=>Lit(skin,dx,dy));RectFill(cv,44,74,106,80,Lit(skin,0,-.6));for(int x=60;x<=90;x+=10)RectFill(cv,x,126,x+5,134,Rgb(235,225,200));}
+  if(shape==14){for(int i=0;i<12;i++){double a=i*Math.PI/6;cv.Set((int)(75+Math.Cos(a)*38),(int)(92+Math.Sin(a)*42),gold);cv.Set((int)(75+Math.Cos(a)*39),(int)(92+Math.Sin(a)*43),gold);}Poly(cv,new[]{P(45,140),P(8,92),P(30,160)},(X,Y)=>Rgb(245,240,215));Poly(cv,new[]{P(105,140),P(142,92),P(120,160)},(X,Y)=>Rgb(245,240,215));}
   // A gold clasp, then a gold frame.
   Ellipse(cv,75,170,6,6,(dx,dy)=>gold);
   for(int x=0;x<W;x++){cv.Set(x,0,gold);cv.Set(x,H-1,gold);}for(int y=0;y<H;y++){cv.Set(0,y,gold);cv.Set(W-1,y,gold);}

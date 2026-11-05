@@ -14,6 +14,21 @@ public partial class RealmGame {
   int x,y;if(city!=null){x=city.x;y=city.y;}else if(mine!=null){x=mine.x;y=mine.y;}else if(gate!=null){x=gate.x;y=gate.y;}else{x=world.Width/2;y=(world.RealmTop(r)+world.RealmBottom(r))/2;}
   viewRealm=r;atlasTexture=null;FocusTile(x,y);
  }
+ // Legends of the sealed worlds: their histories and all ten peoples of each, to read while the gates stay shut.
+ bool legendsOpen;int legendsWorld=1,legendsPeople=-1;Vector2 legendsScroll;
+ void DrawLegends(){
+  var panel=new Rect(60,60,1160,690);Fill(new Rect(0,0,1280,800),UiDim);GUI.Box(panel,"");
+  if(legendsPeople>=0){civLoreOpen=true;DrawCivilisationLore(legendsPeople);if(!civLoreOpen)legendsPeople=-1;return;}
+  GUI.Label(new Rect(84,74,800,34),"Legends of the sealed worlds",title);
+  if(GUI.Button(new Rect(1020,76,176,32),"Close",button)){legendsOpen=false;GUIUtility.ExitGUI();}
+  for(int r=1;r<=World.RealmCount;r++){var tab=new Rect(84+(r-1)*226,118,218,32);if(r==legendsWorld)Fill(new Rect(tab.x-2,tab.y-2,tab.width+4,tab.height+4),UiAccent);if(GUI.Button(tab,World.RealmNames[r],button)){legendsWorld=r;legendsScroll=Vector2.zero;GUIUtility.ExitGUI();}}
+  GUILayout.BeginArea(new Rect(84,162,560,570));legendsScroll=GUILayout.BeginScrollView(legendsScroll);
+  GUILayout.Label(World.RealmTexts[legendsWorld],body);GUILayout.Space(8);GUILayout.Label("History",heading);GUILayout.Label(SealedPeoples.WorldHistories[legendsWorld],body);
+  GUILayout.EndScrollView();GUILayout.EndArea();
+  float y=162;foreach(int civ in CivilisationCatalog.PeoplesOf(legendsWorld)){var row=new Rect(664,y,532,52);if(GUI.Button(row,"",button)){legendsPeople=civ;civLoreScroll=Vector2.zero;GUIUtility.ExitGUI();}
+   var face=Portrait(CivilisationCatalog.Portraits[civ]);if(face!=null)DrawPortrait(new Rect(row.x+6,row.y+4,33,44),face);var e=CivLore.Of(civ);
+   GUI.Label(new Rect(row.x+48,row.y+5,480,24),CivilisationCatalog.Names[civ],hudLabel);GUI.Label(new Rect(row.x+48,row.y+27,480,20),e==null?"":e.Epithet,small);y+=57;}
+ }
  void DrawWorldSwitcher(){
   if(!world.HasRealms)return;
   var panel=new Rect(800,0,350,500);GUI.Box(panel,"");float y=10;
@@ -28,7 +43,8 @@ public partial class RealmGame {
   y+=4;GUI.Label(new Rect(panel.x+14,y,panel.width-28,22),World.RealmNames[viewRealm],hudTitle);y+=24;GUI.Label(new Rect(panel.x+14,y,panel.width-28,70),World.RealmTexts[viewRealm],new GUIStyle(small){wordWrap=true});y+=74;
   int hidden=Enumerable.Range(1,World.RealmCount).Count(r=>!world.RealmDiscovered(0,r));
   if(hidden>0){GUI.Label(new Rect(panel.x+14,y,panel.width-28,54),hidden+" parallel world"+(hidden==1?" is":"s are")+(world.gatesLocked?" sealed behind the ancient gateways.":" still unknown. Find an ancient gateway and move a land unit onto it to cross over."),new GUIStyle(small){wordWrap=true});y+=58;}
-  int gates=world.tiles.Count(t=>t.realm==0&&t.gateLink>0&&t.seen);GUI.Label(new Rect(panel.x+14,y,panel.width-28,22),"Ancient gateways found: "+gates,small);
+  int gates=world.tiles.Count(t=>t.realm==0&&t.gateLink>0&&t.seen);GUI.Label(new Rect(panel.x+14,y,panel.width-28,22),"Ancient gateways found: "+gates,small);y+=28;
+  if(GUI.Button(new Rect(panel.x+12,y,panel.width-24,34),"Legends of the sealed worlds",button)){legendsOpen=true;legendsScroll=Vector2.zero;GUIUtility.ExitGUI();}
  }
  // A banner on the map while you look at a parallel world.
  void DrawRealmBanner(){

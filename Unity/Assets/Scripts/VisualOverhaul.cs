@@ -25,7 +25,8 @@ namespace ParadigmRealm {
    if(era>=0){for(int e=era;e>=(era>=3?3:era==2?2:0);e--){int key=1000+i*10+e;if(!portraits.TryGetValue(key,out t)){t=Crisp(Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00")+"-e"+e));portraits[key]=t;}if(t!=null)return t;}}
    if(!portraits.TryGetValue(i,out t)){t=Crisp(Resources.Load<Texture2D>("Leaders/leader-"+i.ToString("00")));
     // Real civilisations (portraits 17-28) use a generated placeholder until their painted portrait is supplied.
-    if(t==null&&i>=CivilisationCatalog.FirstNative)t=Crisp(PixelTexture(PixelArt.NativePortrait(i-CivilisationCatalog.FirstNative)));
+    if(t==null&&i>=SealedPeoples.First)t=Crisp(PixelTexture(PixelArt.PeoplePortrait(SealedPeoples.Of(i))));
+    else if(t==null&&i>=CivilisationCatalog.FirstNative)t=Crisp(PixelTexture(PixelArt.NativePortrait(i-CivilisationCatalog.FirstNative)));
     else if(t==null&&i>=17)t=Crisp(PixelTexture(PixelArt.LeaderPlaceholder(i-17)));portraits[i]=t;}return t;
   }
   // Pixel-art portraits stay sharp when enlarged (owner request): each is doubled pixel for pixel (point sampling) into a

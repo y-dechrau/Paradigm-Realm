@@ -9,6 +9,7 @@ namespace ParadigmRealm {
 public sealed class CivEntry {
  public string Epithet,Background,History,Strengths,Weaknesses,Ability,AbilityText,Unit,UnitText,Building,BuildingText,Weakness,WeaknessText;
  public int UnitBase=-1,UnitAttack,UnitDefence,UnitMoves,BuildingBase=-1,Agenda=-1;public int[] Faiths=new int[0];
+ public PeopleRule AbilityRule,BuildingRule,WeaknessRule;
 }
 public static class CivLore {
  // Agendas: what a rival leader likes or holds against you (World.AgendaOpinion).
@@ -285,6 +286,7 @@ public static class CivLore {
    Unit="Saurian Warrior",UnitBase=7,UnitAttack=1,UnitDefence=1,UnitText="Replaces the Spearman: +1 attack, +1 defence.",
    Building="Stepped Pyramid",BuildingBase=36,BuildingText="Replaces the Temple: +2 faith and +1 science as well.",
    Weakness="Slow to Stir",WeaknessText="-1 production in every city.",Agenda=6};
+  for(int i=0;i<SealedPeoples.People.Count;i++)entries[SealedPeoples.First+i]=SealedPeoples.People[i].Lore;
  }
 }
 // The rules behind the civilisations above. Each is a small hook into the yield, content, faith, combat, movement, growth,
@@ -303,6 +305,7 @@ public partial class World {
  public int MaxMoves(Unit u){var e=Civ(u.owner);int m=Moves[u.type];if(e!=null&&e.UnitBase==u.type)m+=e.UnitMoves;if(CivId(u.owner)==11&&Mounted(u.type))m+=2;if(CivId(u.owner)==36&&!IsNaval(u.type))m-=2;return Math.Max(2,m);}
  void ApplyCivYields(City c,ref int f,ref int p,ref int s,ref int g){
   int civ=CivId(c.owner);if(civ<0)return;var worked=Worked(c);bool fresh=FreshWater(c.x,c.y);
+  if(civ>=SealedPeoples.First){ApplyPeopleYields(c,Civ(c.owner),worked,ref f,ref p,ref s,ref g);return;}
   switch(civ){
    case 0:if(Coastal(c))g+=2;else p=Math.Max(1,p-1);if(UniqueBuilding(c,43))s+=2;break;
    case 1:f+=worked.Count(t=>t.terrain==3);if(UniqueBuilding(c,31)){g+=2;f++;}break;
@@ -338,7 +341,7 @@ public partial class World {
   }
  }
  public int CivContent(City c){
-  int civ=CivId(c.owner);if(civ<0)return 0;int n=cities.Count(a=>a.owner==c.owner);
+  int civ=CivId(c.owner);if(civ<0)return 0;if(civ>=SealedPeoples.First)return PeopleContent(c,Civ(c.owner));int n=cities.Count(a=>a.owner==c.owner);
   switch(civ){
    case 3:return UniqueBuilding(c,36)?1:0;
    case 4:return FromCapital(c)>8?-1:0;
@@ -358,7 +361,7 @@ public partial class World {
   }
   return 0;
  }
- public int CivFaith(City c){int civ=CivId(c.owner);if(civ<0)return 0;
+ public int CivFaith(City c){int civ=CivId(c.owner);if(civ<0)return 0;if(civ>=SealedPeoples.First)return PeopleFaith(c,Civ(c.owner));
   switch(civ){case 3:return (HasBuilding(c,36)?2:0)+(UniqueBuilding(c,36)?1:0);case 4:return UniqueBuilding(c,8)?1:0;case 18:return UniqueBuilding(c,36)?2:0;case 20:case 21:return UniqueBuilding(c,42)?1:0;case 24:return 1+(UniqueBuilding(c,36)?1:0);case 25:return UniqueBuilding(c,38)?1:0;case 27:return UniqueBuilding(c,36)?1:0;case 29:return UniqueBuilding(c,36)?2:0;case 31:return -100;case 33:return UniqueBuilding(c,36)?3:0;case 37:return UniqueBuilding(c,43)?1:0;case 38:return UniqueBuilding(c,36)?2:0;}
   return 0;}
  public int CivInfluence(City c){return CivId(c.owner)==20&&c.pop>=4?1:0;}
@@ -371,6 +374,7 @@ public partial class World {
   if(defending){if(civ==1&&cities.Any(c=>c.x==u.x&&c.y==u.y&&c.walls))s--;if(civ==24&&here!=null&&here.terrain==2)s++;if(civ==30||civ==35)s--;if(civ==38&&here!=null&&(here.terrain==11||here.terrain==9||here.terrain==19))s++;}
   else{if(civ==10&&u.hp>=10)s++;if(civ==12&&!IsNaval(u.type)&&here!=null&&NextToWater(here))s++;if(civ==34)s++;if(civ==37&&!IsNaval(u.type))s--;}
   if(civ==33&&!defending)s++;
+  if(civ>=SealedPeoples.First)s+=PeopleStrength(e,defending);
   return s;
  }
  bool NextToWater(Tile t){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n!=null&&IsWater(n.terrain))return true;}return false;}

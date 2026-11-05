@@ -167,12 +167,13 @@ namespace ParadigmRealm
         }
         public static readonly string[] RivalNames={"Amber League","Azure Dominion","Crimson Throne","Jade Concord","Ivory Republic","Obsidian Pact","Golden Horde","Silver Compact","Emerald Court","Violet Syndicate","Saffron Empire","Cobalt Union","Ashen Realm","Verdigris Hold","Scarlet Marches"};
         public static int HexColumns(int count){return (int)Math.Round(Math.Sqrt(count*15.0/16));}
+        public const int MaxNations=66; // up to 16 home civilisations and the ten peoples of each of the five sealed worlds
         public static readonly int[] MaxCivsBySize={4,6,8,12,14,16};
         public string NationName(int owner){if(owner==0)return civilisationName;if(owner>0&&owner<civCount&&nations!=null&&owner<nations.Length&&nations[owner]!=null&&!string.IsNullOrEmpty(nations[owner].name))return nations[owner].name;return owner>0&&owner<=RivalNames.Length?RivalNames[owner-1]:"Rival "+owner;}
         // Resize every per-civilisation array. Existing entries are kept; new ones start unmet and at peace.
         public void SetCivCount(int n)
         {
-            n=Math.Max(2,Math.Min(16,n));civCount=n;
+            n=Math.Max(2,Math.Min(MaxNations,n));civCount=n;
             var oldNations=nations;nations=new Nation[n];for(int i=0;i<n;i++)nations[i]=oldNations!=null&&i<oldNations.Length&&oldNations[i]!=null?oldNations[i]:new Nation();
             Array.Resize(ref war,n);Array.Resize(ref openBorders,n);Array.Resize(ref warWeariness,n);
             var oldMet=met;met=new bool[n];met[0]=true;if(oldMet!=null)for(int i=1;i<n&&i<oldMet.Length;i++)met[i]=oldMet[i];
@@ -203,7 +204,7 @@ namespace ParadigmRealm
         public Unit Add(int owner,int type,int x,int y){var u=new Unit{id=nextId++,owner=owner,type=type,x=x,y=y};u.moves=MaxMoves(u);units.Add(u);return u;}
         // civChoice: -2 keeps the old single-trait setup (trait), 0-11 picks a premade civilisation, -1 a custom one (name, leader,
         // portrait and traitA/traitB). Rivals then take premade civilisations the player did not choose.
-        public static World New(int seed,string civilisationName="Verdant Union",int mapType=0,int speed=1,int difficulty=1,int trait=0,int mapSize=1,int mapShape=0,int civs=3,int civChoice=-2,string leader="",int portrait=0,int traitA=-1,int traitB=-1,bool realWorld=false,bool natives=true,bool hex=false)
+        public static World New(int seed,string civilisationName="Verdant Union",int mapType=0,int speed=1,int difficulty=1,int trait=0,int mapSize=1,int mapShape=0,int civs=3,int civChoice=-2,string leader="",int portrait=0,int traitA=-1,int traitB=-1,bool realWorld=false,bool natives=true,bool hex=false,int peoplesPerWorld=2)
         {
             // New globe games use staggered rows (shape 2): the same tile count as the diagonal globe, W columns by 2W rows,
             // which shows as a 2:1 picture because rows are half a tile tall.
@@ -249,7 +250,7 @@ namespace ParadigmRealm
             w.PlaceLandResources(r);
             for(int i=0;i<civs;i++){w.Step(sx[i],sy[i],-1,0).resource=1;w.Step(sx[i],sy[i],2,0).resource=4;var hill=w.Step(sx[i],sy[i],0,-2);hill.terrain=2;hill.resource=2;}
             w.HarmoniseBiomes();w.SeedSeaResources();
-            w.EnsureFlags();w.SeedVillages();w.SeedRuins();w.AddRealms();if(natives)w.AddNatives();w.RebuildTerritory();w.Reveal();w.Note("Found a city, choose production and research. F1 opens the guide.");return w;
+            w.EnsureFlags();w.SeedVillages();w.SeedRuins();w.AddRealms();if(natives)w.AddNatives(peoplesPerWorld);w.RebuildTerritory();w.Reveal();w.Note("Found a city, choose production and research. F1 opens the guide.");return w;
         }
         [NonSerialized] bool[] visibleMask; [NonSerialized] bool visibleMaskOn;
         // The screen asks "is this tile visible to the player?" thousands of times per frame. For the length of one
@@ -278,14 +279,18 @@ namespace ParadigmRealm
         void LearnAround(int owner,int cx,int cy,int radius,HashSet<int> done){for(int dy=-radius;dy<=radius;dy++)for(int dx=-radius;dx<=radius;dx++){var t=StepIn(cx,cy,dx,dy,radius);if(t==null)continue;if(done.Add(t.y*Width+t.x))LearnTile(owner,t);}}
         void LearnTile(int owner,Tile t){nations[owner].known[t.y*Width+t.x]=true;if(owner==0){t.seen=true;t.rememberedTerrain=t.terrain;t.rememberedResource=t.resource;t.rememberedOwner=t.owner;t.rememberedRoad=t.road;t.rememberedFarm=t.farm;t.rememberedMine=t.mine;t.rememberedFort=t.fort;var city=cities.Find(c=>c.x==t.x&&c.y==t.y);t.rememberedCity=city==null?"":city.name;}}
         // Fog is updated only around units and cities, so cost does not grow with map size.
-        public void Reveal(){for(int owner=0;owner<civCount;owner++){
-                if(HasTech(owner,"satellites")){foreach(var t in tiles)if(t.realm==0)LearnTile(owner,t);continue;}
+        void RevealOne(int owner,bool developed){
+                if(HasTech(owner,"satellites")){foreach(var t in tiles)if(t.realm==0)LearnTile(owner,t);return;}
                 var done=new HashSet<int>();
                 foreach(var u in units)if(u.owner==owner)SeeAround(u,t=>{if(done.Add(t.y*Width+t.x))LearnTile(owner,t);});
                 foreach(var c in cities)if(c.owner==owner)LearnAround(owner,c.x,c.y,3,done);
-                foreach(var t in tiles)if(Developed(owner,t)&&done.Add(t.y*Width+t.x))LearnTile(owner,t);
-            }
-            for(int i=1;i<civCount;i++)if(!met[i]&&(units.Any(u=>u.owner==i&&Visible(u.x,u.y))||cities.Any(c=>c.owner==i&&Visible(c.x,c.y)))){met[i]=true;Note("First contact: "+NationName(i)+".");AddEraScore(0,1,"first contact with "+NationName(i));AddEraScore(i,1,"first contact");if(newContacts==null)newContacts=new List<int>();newContacts.Add(i);}}
+                if(developed)foreach(var t in tiles)if(t.owner==owner&&Developed(owner,t)&&done.Add(t.y*Width+t.x))LearnTile(owner,t);
+        }
+        // After one unit moves only its owner can see more; the player also learns of any civilisation that just came into view.
+        void RevealAfterMove(int owner){RevealOne(owner,false);if(owner!=0)RevealOne(0,false);FirstContacts();}
+        public void Reveal(){for(int owner=0;owner<civCount;owner++)RevealOne(owner,true);FirstContacts();}
+        void FirstContacts(){
+            for(int i=1;i<civCount;i++)if(!met[i]&&!(gatesLocked&&IsNativeNation(i))&&(units.Any(u=>u.owner==i&&Visible(u.x,u.y))||cities.Any(c=>c.owner==i&&Visible(c.x,c.y)))){met[i]=true;Note("First contact: "+NationName(i)+".");AddEraScore(0,1,"first contact with "+NationName(i));AddEraScore(i,1,"first contact");if(newContacts==null)newContacts=new List<int>();newContacts.Add(i);}}
         public bool AtWar(int a,int b){return a>=0&&b>=0&&a<civCount&&b<civCount&&a!=b&&(a!=0&&b!=0?RivalWar(a,b):war[a==0?b:a]);}
         bool RivalWar(int a,int b){var p=Relation(a,b);return p!=null&&p.atWar;}
         public bool CanEnter(int owner,Tile t){return t.owner<0||t.owner==owner||AtWar(owner,t.owner)||HasAccess(owner,t.owner);}
@@ -568,7 +573,10 @@ namespace ParadigmRealm
         public bool Move(Unit u,int x,int y){if(result!=""||u==null||!units.Contains(u))return false;var t=At(x,y);if(t==null)return false;x=t.x;y=t.y;if(Distance(u.x,u.y,x,y)!=1)return false;if(t==null||!Passable(u,t,t.terrain)||!CanEnter(u.owner,t)||!Capacity(u,x,y))return false;var cargo=IsNaval(u.type)?Cargo(u):null;int cost=StepCost(u,u.x,u.y,t);if(u.moves<cost)return false;var enemies=units.Where(a=>a.owner!=u.owner&&a.x==x&&a.y==y).ToList();var c=cities.Find(a=>a.owner!=u.owner&&a.x==x&&a.y==y);
             if(enemies.Count>0||c!=null){if(Power[u.type]==0||enemies.Any(a=>!AtWar(u.owner,a.owner))||(c!=null&&!AtWar(u.owner,c.owner)))return false;if(enemies.Count>0){var e=BestDefender(u,x,y);int dealt,taken;Exchange(u,e,out dealt,out taken);e.hp-=dealt;u.hp-=taken;u.moves=0;if(e.hp<=0&&u.hp>0)Victory(u);if(u.hp<=0&&e.hp>0)Victory(e);if(u.owner==0||e.owner==0)Note(UnitNames[u.type]+" battles "+UnitNames[e.type]+".");units.RemoveAll(a=>a.hp<=0);DrownStranded();if(u.hp<=0||enemies.Any(a=>a.hp>0)){UpdatePortLinks();CheckVictory();return true;}}
                 if(c!=null){if(u.type==4||u.type==9){u.moves=0;CheckVictory();return true;}DiplomacyOnCapture(u.owner,c.owner);LoseProjectCity(c);c.owner=u.owner;c.occupation=4;c.pop=Math.Max(1,c.pop-1);NormaliseSpecialists(c);c.queue.Clear();c.build=-1;c.production=0;c.buildingQueue.Clear();c.buildingProject=-1;c.buildingProduction=0;c.walls=false;RebuildTerritory();if(u.owner==0||Visible(x,y))Note(c.name+" occupied for 4 turns.");}}
-            u.x=x;u.y=y;u.moves=Math.Max(0,u.moves-cost);u.fortified=false;networks=null;if(cargo!=null)CarryCargo(cargo,x,y);VisitVillage(u);ExploreRuin(u);GatewayTravel(u);UpdatePortLinks();Reveal();CheckVictory();return true;}
+            u.x=x;u.y=y;u.moves=Math.Max(0,u.moves-cost);u.fortified=false;if(cargo!=null)CarryCargo(cargo,x,y);VisitVillage(u);ExploreRuin(u);GatewayTravel(u);
+            // A people behind the locked gates touches nothing the player can see, and only its own roads and ports.
+            if(gatesLocked&&IsNativeNation(u.owner)){if(networks!=null&&u.owner<networks.Length)networks[u.owner]=null;RevealOne(u.owner,false);return true;}
+            networks=null;UpdatePortLinks();RevealAfterMove(u.owner);CheckVictory();return true;}
         public List<Unit> RangedTargets(Unit u){return units.Where(e=>e.owner!=u.owner&&AtWar(u.owner,e.owner)&&Distance(u.x,u.y,e.x,e.y)<=2&&VisibleTo(u.owner,e.x,e.y)).ToList();}
         public bool Ranged(Unit u,int targetId){if(u==null||result!=""||u.moves<=0||(u.type!=4&&u.type!=9))return false;var picked=RangedTargets(u).Find(a=>a.id==targetId);if(picked==null)return false;var e=BestDefender(u,picked.x,picked.y);int dx=Math.Sign(DeltaX(u.x,e.x)),dy=Math.Sign(e.y-u.y);var mid=hexGrid?StepToward(u.x,u.y,e.x,e.y):Step(u.x,u.y,dx,dy);if(Distance(u.x,u.y,e.x,e.y)>1&&mid!=null&&(Wooded(mid.terrain)||mid.terrain==5))return false;var city=cities.Find(c=>c.x==e.x&&c.y==e.y&&c.owner==e.owner);if(u.type==9&&city!=null&&city.walls){city.walls=false;Note("City walls breached.");}else{int dealt,taken;Exchange(u,e,out dealt,out taken);e.hp-=dealt;}u.moves=0;if(e.hp<=0)Victory(u);units.RemoveAll(a=>a.hp<=0);CheckVictory();return true;}
         // Healing (CORE-DESIGN-16BIT.md): 1 a turn in the open, 2 fortified, 3 in your own city, full with a Barracks there.
@@ -632,6 +640,8 @@ namespace ParadigmRealm
                 if(u.type==1){ImproveAI(u);continue;}
                 if(Power[u.type]>0&&cities.Any(c=>c.owner==owner&&c.x==u.x&&c.y==u.y)&&!units.Any(a=>a.id!=u.id&&a.owner==owner&&Power[a.type]>0&&a.x==u.x&&a.y==u.y)){u.fortified=true;continue;}
                 if((u.type==4||u.type==9)&&RangedTargets(u).Count>0&&Ranged(u,RangedTargets(u)[0].id))continue;
+                // Sealed peoples at peace rouse their idle troops only now and then: nobody can see them, and it saves most of a crowded turn.
+                if(gatesLocked&&IsNativeNation(owner)&&(turn+u.id)%4!=0&&!AtWarWithAnyone(owner))continue;
                 if(JoinInvasion(u))continue;
                 var target=units.Where(a=>AtWar(owner,a.owner)&&VisibleTo(owner,a.x,a.y)).OrderBy(a=>Distance(u.x,u.y,a.x,a.y)).FirstOrDefault();if(target!=null){Order(u,target.x,target.y);continue;}
                 var enemyCity=cities.Where(c=>AtWar(owner,c.owner)&&VisibleTo(owner,c.x,c.y)).OrderBy(c=>Distance(u.x,u.y,c.x,c.y)).FirstOrDefault();if(enemyCity!=null){Order(u,enemyCity.x,enemyCity.y);continue;}
@@ -674,7 +684,7 @@ namespace ParadigmRealm
             if(nations!=null&&tiles!=null)foreach(var n in nations)if(n!=null&&n.known!=null&&n.known.Length<tiles.Length)n.known=Grow(n.known,tiles.Length);
             networks=null;}
         static T[] Grow<T>(T[] a,int n){if(a==null||a.Length>=n)return a;var b=new T[n];Array.Copy(a,b,a.Length);return b;}
-        public bool Valid(){if(!EmpireValid()||!DiplomacyValid()||!FlagsValid())return false;if(version!=25||!ReligionValid()||!RealmsValid()||!PortValid()||tiles.Any(t=>t.villageOwner< -1||t.villageOwner>=civCount)||mapType<0||mapType>=LandTypeNames.Length||!CivilisationsValid()||!EdictsValid()||!ProjectsValid()||civCount<2||civCount>16||(mapShape<0||mapShape>2)||mapWidth<16||mapWidth>400||mapHeight<10||mapHeight>(mapShape==2?400:300)||turn<1||nextId<1||tiles==null||tiles.Length!=Width*Height||units==null||cities==null||log==null||result==null||tech==null||tech.Length!=TechnologyCatalog.Count||met==null||met.Length!=civCount||war==null||war.Length!=civCount||openBorders==null||openBorders.Length!=civCount||nations==null||nations.Length!=civCount||string.IsNullOrWhiteSpace(civilisationName)||civilisationName.Length>32||gold<0||science<0||research< -1||research>=TechnologyCatalog.Count||speed<0||speed>2||flag<0||flag>2)return false;
+        public bool Valid(){if(!EmpireValid()||!DiplomacyValid()||!FlagsValid())return false;if(version!=25||!ReligionValid()||!RealmsValid()||!PortValid()||tiles.Any(t=>t.villageOwner< -1||t.villageOwner>=civCount)||mapType<0||mapType>=LandTypeNames.Length||!CivilisationsValid()||!EdictsValid()||!ProjectsValid()||civCount<2||civCount>MaxNations||(mapShape<0||mapShape>2)||mapWidth<16||mapWidth>400||mapHeight<10||mapHeight>(mapShape==2?400:300)||turn<1||nextId<1||tiles==null||tiles.Length!=Width*Height||units==null||cities==null||log==null||result==null||tech==null||tech.Length!=TechnologyCatalog.Count||met==null||met.Length!=civCount||war==null||war.Length!=civCount||openBorders==null||openBorders.Length!=civCount||nations==null||nations.Length!=civCount||string.IsNullOrWhiteSpace(civilisationName)||civilisationName.Length>32||gold<0||science<0||research< -1||research>=TechnologyCatalog.Count||speed<0||speed>2||flag<0||flag>2)return false;
             if(nations.Any(n=>n==null||n.tech==null||n.tech.Length!=TechnologyCatalog.Count||n.progress==null||n.progress.Length!=TechnologyCatalog.Count||n.known==null||n.known.Length!=tiles.Length||n.research< -1||n.research>=TechnologyCatalog.Count||n.progress.Any(v=>v<0)||n.tax<0||n.tax>2||n.scienceRate<0||n.scienceRate>MaxScienceRate||n.scienceRate%10!=0||n.gold<0))return false;
             for(int i=0;i<tiles.Length;i++){var t=tiles[i];if(t==null||t.x!=i%Width||t.y!=i/Width||t.terrain<0||t.terrain>=TerrainNames.Length||t.rememberedTerrain<0||t.rememberedTerrain>=TerrainNames.Length||t.resource<0||t.resource>15||t.owner< -1||t.owner>=civCount)return false;}
             if(units.Any(u=>u==null||u.type<0||u.type>=UnitNames.Length||u.promotion<0||u.promotion>2||u.victories<0||u.owner<0||u.owner>=civCount||At(u.x,u.y)==null||u.hp<1||u.hp>10||u.moves<0||u.moves>MaxMoves(u)||u.id<1||u.id>=nextId||u.job<0||u.job>5||u.jobTurns<0||u.workerGroup<0||(u.workerGroup>0&&u.type!=1)||(u.hasOrder&&At(u.destinationX,u.destinationY)==null)))return false;

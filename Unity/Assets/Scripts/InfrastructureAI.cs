@@ -21,13 +21,18 @@ namespace ParadigmRealm {
   }
   void ImproveAI(Unit u){
    if(u.moves<=0)return;
+   // Idle sealed workers look for work one turn in four: nobody can see them, and the search is the costliest part of a crowded turn.
+   if(gatesLocked&&IsNativeNation(u.owner)&&(turn+u.id)%4!=0)return;
    var own=cities.Where(c=>c.owner==u.owner).ToList();
    var worked=new HashSet<Tile>(own.SelectMany(Worked));
+   // Tiles another of this people's workers has taken, and whether any enemy is in play at all, are worked out once.
+   var taken=new HashSet<int>();foreach(var a in units)if(a.owner==u.owner&&a.type==1&&a.id!=u.id){if(a.job>0)taken.Add(a.y*Width+a.x);if(a.hasOrder)taken.Add(a.destinationY*Width+a.destinationX);}
+   bool enemies=AtWarWithAnyone(u.owner);
    bool hunger=own.Any(c=>Yield(c)[0]<=0);
    Tile target=null;int chosenJob=0,best=int.MinValue;var portRoads=PortRoadNeeds(u.owner);
    foreach(var tile in tiles.Where(t=>t.owner==u.owner&&nations[u.owner].known[t.y*Width+t.x]&&!Barren(t.terrain))){
-    if(units.Any(a=>a.id!=u.id&&a.owner==u.owner&&a.type==1&&(a.job>0&&a.x==tile.x&&a.y==tile.y||a.hasOrder&&a.destinationX==tile.x&&a.destinationY==tile.y)))continue;
-    if(units.Any(a=>AtWar(u.owner,a.owner)&&VisibleTo(u.owner,a.x,a.y)&&Distance(tile.x,tile.y,a.x,a.y)<=2))continue;
+    if(taken.Contains(tile.y*Width+tile.x))continue;
+    if(enemies&&units.Any(a=>AtWar(u.owner,a.owner)&&VisibleTo(u.owner,a.x,a.y)&&Distance(tile.x,tile.y,a.x,a.y)<=2))continue;
     var probe=new Unit{owner=u.owner,type=1,x=tile.x,y=tile.y,moves=u.moves};
     foreach(int job in new[]{1,2,3,5}){
      if(JobReason(probe,job)!="")continue;

@@ -29,7 +29,7 @@ namespace ParadigmRealm
             else if(overwriteSave)overwriteSave=false;
             else if(saveAsScreen||settingsScreen){PersistSettings();saveAsScreen=false;settingsScreen=false;}
             else if(pauseMenu)pauseMenu=false;
-            else if(researchScreen||detailsScreen!=""){researchScreen=false;detailsScreen="";}
+            else if(legendsOpen){legendsOpen=false;legendsPeople=-1;civLoreOpen=false;}else if(researchScreen||detailsScreen!=""){researchScreen=false;detailsScreen="";}
             // Esc first lets go of the selected unit (and any pending move); with nothing selected it opens the pause menu.
             else if(!cityScreen&&(selected>=0||moveMode)){selected=-1;moveMode=false;moreActions=false;status="";}
             else {guide=false;confirmNew=false;pendingUnit=-1;pauseMenu=true;}
@@ -111,8 +111,9 @@ namespace ParadigmRealm
             {int hexes=setupShape==1?World.SphereWidths[setupSize]*World.SphereHeights[setupSize]:World.MapWidths[setupSize]*World.MapHeights[setupSize],across=World.HexColumns(hexes);GUILayout.Label(across+" x "+hexes/across+" hexes. Bigger worlds take longer turns.",small);}
             GUILayout.Space(6);GUILayout.Label("Land",body);setupMap=GUILayout.SelectionGrid(setupMap,World.LandTypeNames,3);GUILayout.Label(World.LandTypeTexts[setupMap],small);
             int maxCivs=World.MaxCivsBySize[setupSize];if(setupCivs>maxCivs)setupCivs=maxCivs;if(setupCivs<2)setupCivs=2;
-            GUILayout.Space(6);GUILayout.Label("Civilisations: "+setupCivs+" (you and "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+"; up to "+maxCivs+" on this size), plus "+Math.Min(10,16-setupCivs)+" native peoples in the parallel worlds",body);
+            GUILayout.Space(6);GUILayout.Label("Civilisations: "+setupCivs+" (you and "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+"; up to "+maxCivs+" on this size), plus "+setupPeoples*World.RealmCount+" peoples in the sealed worlds",body);
             setupCivs=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupCivs,2,maxCivs));
+            GUILayout.Space(6);GUILayout.Label("Peoples in each sealed world: "+setupPeoples+(setupPeoples>4?" (slower turns on large maps)":""),body);setupPeoples=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupPeoples,1,10));
             GUILayout.Space(6);tutorialOn=GUILayout.Toggle(tutorialOn," Play with the tutorial: "+GuideName+" talks you through the first turns");
             GUILayout.EndArea();
         }

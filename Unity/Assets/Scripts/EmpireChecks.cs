@@ -202,8 +202,8 @@ public static class EmpireChecks {
   Check(rc.portLinked,"a rival worker builds the road that links its port (port "+w.PortTile(rc).x+","+w.PortTile(rc).y+" city "+rc.x+","+rc.y+"; workers "+string.Join(" ",w.units.Where(a=>a.owner==1&&a.type==1).Select(a=>a.x+","+a.y+" job"+a.job+(a.hasOrder?" ->"+a.destinationX+","+a.destinationY:"")))+")");
  }
  static void CivilisationChecks(){
-  int n=CivilisationCatalog.Count;Check(n==39&&CivilisationCatalog.Names.Distinct().Count()==n&&CivilisationCatalog.Portraits.Distinct().Count()==n&&CivilisationCatalog.Portraits.All(p=>p>=0&&p<CivilisationCatalog.PortraitCount),"39 civilisations (17 original, 12 real, 10 native peoples) with their own names and portraits");
-  Check(CivilisationCatalog.Traits.All(t=>t.Length==2&&t[0]!=t[1])&&CivilisationCatalog.Traits.Select(t=>Math.Min(t[0],t[1])*100+Math.Max(t[0],t[1])).Distinct().Count()==n,"two different traits each, no two civilisations alike");
+  int n=CivilisationCatalog.Count;Check(n==79&&CivilisationCatalog.Names.Distinct().Count()==n&&CivilisationCatalog.Portraits.Distinct().Count()==n&&CivilisationCatalog.Portraits.All(p=>p>=0&&p<CivilisationCatalog.PortraitCount),"79 civilisations (17 original, 12 real, 50 peoples of the sealed worlds) with their own names and portraits");
+  Check(CivilisationCatalog.Traits.All(t=>t.Length==2&&t[0]!=t[1])&&Enumerable.Range(0,CivilisationCatalog.FirstNative).Select(c=>CivilisationCatalog.Traits[c]).Select(t=>Math.Min(t[0],t[1])*100+Math.Max(t[0],t[1])).Distinct().Count()==CivilisationCatalog.FirstNative,"two different traits each, no two home civilisations alike");
   for(int t=0;t<CivilisationCatalog.TraitCount;t++)Check(CivilisationCatalog.Traits.Count(p=>p.Contains(t))>=2,"trait "+CivilisationCatalog.TraitNames[t]+" belongs to at least two civilisations");
   // Crystal Dominion (2) and Sylvan Court (6) are set aside; Jade Dynasty (15) and Serpent League (16) wait for portraits.
   var offered=CivilisationCatalog.Offered().ToList();Check(offered.Count==25&&!offered.Contains(2)&&!offered.Contains(6)&&!offered.Contains(15)&&!offered.Contains(16),"25 civilisations offered; set-aside and art-less ones hidden");

@@ -136,7 +136,7 @@ static void ReligionChecks(){
 }
 // Owner requests 31 Oct, fifth batch: civilisations in full, real civilisations, priests, era score and ages (save version 25).
 static void CivilisationAndAgeChecks(){
-    int full=Enumerable.Range(0,CivilisationCatalog.Count).Count(CivLore.Full);Check(full==32,"32 civilisations with full lore (10 premade, 12 real, 10 native peoples), found "+full);
+    int full=Enumerable.Range(0,CivilisationCatalog.Count).Count(CivLore.Full);Check(full==72,"72 civilisations with full lore (10 premade, 12 real, 50 peoples of the sealed worlds), found "+full);
     foreach(int civ in Enumerable.Range(0,CivilisationCatalog.Count).Where(CivLore.Full)){var e=CivLore.Of(civ);Check(e.Background.Length>100&&e.History.Length>200&&e.Strengths!=""&&e.Weaknesses!=""&&e.Ability!=""&&e.Unit!=""&&e.Building!=""&&e.Weakness!=""&&e.UnitBase>=0&&e.UnitBase<World.UnitNames.Length&&Array.IndexOf(World.BuildingIds,e.BuildingBase)>=0&&e.Agenda>=0&&e.Agenda<CivLore.AgendaNames.Length&&e.Faiths.All(f=>f>=0&&f<ReligionCatalog.Count),CivilisationCatalog.Names[civ]+" is complete");}
     Check(CivilisationCatalog.Names[17]=="China"&&CivilisationCatalog.Leaders[26]=="Cyrus the Great"&&CivilisationCatalog.Enabled[23],"real civilisations offered (China ... Persia, Maya)");
     // Steppe Horde: Keshig name and +2 movement for mounted units; Egypt: river cities +1 food and production.
@@ -171,7 +171,27 @@ static void CivilisationAndAgeChecks(){
     var fantasyGame=World.New(79,"",0,1,1,0,3,1,8,0);Check(!fantasyGame.realWorld&&Enumerable.Range(1,fantasyGame.civCount-1).Where(o=>!fantasyGame.IsNativeNation(o)).All(o=>!CivilisationCatalog.IsReal(fantasyGame.nations[o].civ)),"a Fantasy game has fantasy rivals");
     var customReal=World.New(80,"Free Cantons",0,1,1,0,3,1,6,-1,"Mayor Tell",18,1,2,true);Check(customReal.realWorld&&customReal.nations[0].civ==-1&&Enumerable.Range(1,customReal.civCount-1).Where(o=>!customReal.IsNativeNation(o)).All(o=>CivilisationCatalog.IsReal(customReal.nations[o].civ))&&customReal.Valid(),"a custom civilisation in the Real World group meets real rivals");
     var oldSave=World.New(77);oldSave.version=22;foreach(var u in oldSave.units)u.faith=0;oldSave.UpgradeSave();Check(oldSave.version==25&&oldSave.units.All(u=>u.faith==-1)&&oldSave.Valid(),"version 22 saves upgrade to 23 (units carry no faith)");
-    RealmChecks();HexChecks();
+    RealmChecks();HexChecks();PeopleChecks();
+}
+// Owner request 5 Nov: fifty peoples of the sealed worlds, ten to a world.
+static void PeopleChecks(){
+    Check(SealedPeoples.People.Count==SealedPeoples.Count,"forty later peoples written");
+    for(int r=1;r<=World.RealmCount;r++){var ten=CivilisationCatalog.PeoplesOf(r).ToList();Check(ten.Count==10,World.RealmNames[r]+" has ten peoples");string h=SealedPeoples.WorldHistories[r];Check(h!=null&&h.Length>300,World.RealmNames[r]+" has its history");
+     var pairs=ten.Skip(2).Select(c=>{var t=CivilisationCatalog.Traits[c];return Math.Min(t[0],t[1])*100+Math.Max(t[0],t[1]);}).ToList();Check(pairs.Distinct().Count()==8,World.RealmNames[r]+" peoples have different traits");}
+    foreach(var p in SealedPeoples.People){int civ=SealedPeoples.First+SealedPeoples.People.IndexOf(p);var e=p.Lore;string who=p.Name;
+     Check(CivilisationCatalog.NativeRealm(civ)==p.World&&CivLore.Of(civ)==e&&CivilisationCatalog.Names[civ]==p.Name&&CivilisationCatalog.Greetings[civ]==p.Greeting,who+" is in the catalogue");
+     Check(!string.IsNullOrEmpty(p.Leader)&&!string.IsNullOrEmpty(p.LeaderTitle)&&!string.IsNullOrEmpty(p.Greeting)&&p.Cities.Length==12&&p.Cities.Distinct().Count()==12,who+" has a leader and twelve cities");
+     Check(e.Background.Length>=120&&e.History.Length>=500&&e.Strengths!=""&&e.Weaknesses!="",who+" has a full history ("+e.History.Length+")");
+     Check(p.Traits[0]!=p.Traits[1]&&p.Traits.All(t=>t>=0&&t<CivilisationCatalog.TraitCount)&&e.Agenda>=0&&e.Agenda<CivLore.AgendaNames.Length&&p.Bust>=0&&p.Bust<=14&&p.Hue>=0&&p.Hue<=7,who+" has valid numbers");
+     Check(e.UnitBase>=2&&e.UnitBase<=9&&e.UnitAttack+e.UnitDefence+e.UnitMoves>=1&&Array.IndexOf(World.BuildingIds,e.BuildingBase)>=0,who+" has a valid unit and building");
+     Check(!e.AbilityText.StartsWith(".")&&!e.WeaknessText.StartsWith(".")&&!e.BuildingText.Contains(": as well"),who+" has rules that say something");
+     var hard=new[]{e.WeaknessRule.Food,e.WeaknessRule.Production,e.WeaknessRule.Science,e.WeaknessRule.Gold,e.WeaknessRule.Content,e.WeaknessRule.Faith,e.WeaknessRule.Attack,e.WeaknessRule.Defence,e.WeaknessRule.Sight};Check(hard.Min()<0&&hard.Max()<=0,who+"'s weakness is a real penalty");
+     Check(PixelArt.PeoplePortrait(p).w==150,who+" has a portrait");}
+    // All ten live in every world in a game, and their rule numbers reach the rules.
+    var w=World.New(130,"Crowd",0,1,1,0,1,2,4,hex:true,peoplesPerWorld:10);var peoples=Enumerable.Range(0,w.civCount).Where(w.IsNativeNation).ToList();
+    Check(peoples.Count==50&&w.civCount==54&&w.Valid(),"fifty peoples join a game");Check(peoples.All(o=>w.cities.Any(c=>c.owner==o&&w.RealmOf(c.x,c.y)==CivilisationCatalog.NativeRealm(w.nations[o].civ))),"each of the fifty starts with a city in its own world");
+    for(int t=0;t<10;t++)w.EndTurn();Check(w.Valid()&&w.result=="","fifty peoples run for ten turns");
+    {int o=peoples.First(a=>w.nations[a].civ>=SealedPeoples.First&&CivLore.Of(w.nations[a].civ).AbilityRule.Food>0);var c=w.cities.First(a=>a.owner==o);int with=w.Yield(c)[0];var e=CivLore.Of(w.nations[o].civ);int keep=e.AbilityRule.Food;e.AbilityRule.Food=0;int without=w.Yield(c)[0];e.AbilityRule.Food=keep;Check(with==without+keep,"a people's ability changes its yields");}
 }
 // Owner request 5 Nov: the hex grid. Geometry, picture mapping and whole games on both map shapes.
 static void HexChecks(){
@@ -236,7 +256,7 @@ static void RealmChecks(){
     var natives=Enumerable.Range(0,w.civCount).Where(w.IsNativeNation).ToList();Check(natives.Count==Math.Min(10,16-3),"ten native peoples join a three-civilisation game (found "+natives.Count+")");
     Check(natives.All(o=>w.cities.Any(c=>c.owner==o&&w.RealmOf(c.x,c.y)==CivilisationCatalog.NativeRealm(w.nations[o].civ))),"each native people starts with a city in its own world");
     Check(Enumerable.Range(1,World.RealmCount).All(r=>natives.Count(o=>CivilisationCatalog.NativeRealm(w.nations[o].civ)==r)==2),"two native peoples in every parallel world");
-    {var crowded=World.New(93,"",0,1,1,0,5,1,14);Check(Enumerable.Range(0,crowded.civCount).Count(crowded.IsNativeNation)==2&&crowded.civCount==16,"a 14-civilisation game has room for two native peoples");}
+    {var crowded=World.New(93,"",0,1,1,0,5,1,14);Check(Enumerable.Range(0,crowded.civCount).Count(crowded.IsNativeNation)==10&&crowded.civCount==24,"a 14-civilisation game still has its sealed peoples");}
     // Save version 25 locks the gates and sends stray land units back; a colony's garrison stays.
     {var old=World.New(95);old.version=23;old.gatesLocked=false;var g3=old.tiles.First(t=>t.realm==0&&t.gateLink>0&&old.GateTwin(t).realm==3);var far=old.GateTwin(g3);var stray=old.Add(0,2,far.x,far.y);
      old.UpgradeSave();Check(old.version==25&&old.gatesLocked&&old.RealmOf(stray.x,stray.y)==0&&old.Distance(stray.x,stray.y,g3.x,g3.y)<=1&&old.Valid(),"an older save locks the gates and brings stray units home");}

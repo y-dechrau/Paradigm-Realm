@@ -52,6 +52,7 @@ public partial class World {
   var used=new System.Collections.Generic.HashSet<string>(cities.Select(c=>c.name),StringComparer.OrdinalIgnoreCase);
   int civ=owner>=0&&nations!=null&&owner<nations.Length&&nations[owner]!=null?nations[owner].civ:-1;
   if(civ>=0&&civ<CivCityNames.Length)foreach(var n in CivCityNames[civ])if(!used.Contains(n))return n;
+  {var person=SealedPeoples.Of(civ);if(person!=null)foreach(var n in person.Cities)if(!used.Contains(n))return n;}
   // The shared pool starts at a different place for each civilisation so neighbours do not take alternate names.
   int start=Math.Abs(owner*7+seed)%SharedCityNames.Length;
   for(int k=0;k<SharedCityNames.Length;k++){var n=SharedCityNames[(start+k)%SharedCityNames.Length];if(!used.Contains(n))return n;}

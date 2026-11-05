@@ -77,16 +77,17 @@ public partial class World {
  // Native peoples (owner request, 31 Oct 2026): up to ten civilisations that live in the parallel worlds, two to a world,
  // added after the home civilisations while the total stays within 16. Each starts with a city, a warrior and a worker
  // on open land in its own world, away from the gateway and from the other people there.
- public void AddNatives(){
-  if(!HasRealms)return;int home=civCount,k=Math.Min(CivilisationCatalog.NativeOrder.Length,16-home);if(k<=0)return;
+ public void AddNatives(int perWorld=2){
+  if(!HasRealms)return;int home=civCount,k=Math.Min(Math.Max(0,Math.Min(10,perWorld))*RealmCount,MaxNations-home);if(k<=0)return;
   SetCivCount(home+k);var placed=new List<Tile>();
   for(int i=0;i<k;i++){
    int o=home+i,civ=CivilisationCatalog.NativeOrder[i],r=CivilisationCatalog.NativeRealm(civ);var n=nations[o];
    n.civ=civ;n.name=CivilisationCatalog.Names[civ];n.leader=CivilisationCatalog.Leaders[civ];n.portrait=CivilisationCatalog.Portraits[civ];n.traits=(int[])CivilisationCatalog.Traits[civ].Clone();n.known=new bool[tiles.Length];
    var gate=RealmTiles(r).FirstOrDefault(t=>t.gateLink>0);
    Func<Tile,int> room=t=>{int land=0;for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){var q=StepIn(t.x,t.y,dx,dy,2);if(q!=null&&q.realm==r&&!IsWater(q.terrain)&&!IsImpassable(q.terrain))land++;}return land;};
-   var start=RealmTiles(r).Where(t=>!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&!Barren(t.terrain)&&t.gateLink==0&&t.y>=RealmTop(r)+3&&t.y<RealmBottom(r)-3
-     &&(gate==null||Distance(t.x,t.y,gate.x,gate.y)>=6)&&placed.All(p=>Distance(p.x,p.y,t.x,t.y)>=Math.Max(8,Width/3))).OrderByDescending(room).ThenBy(t=>Lattice(seed+civ,t.x,t.y,5)).FirstOrDefault();
+   // Peoples keep well apart, closing up only as far as a crowded world needs.
+   Tile start=null;for(int apart=Math.Max(8,Width/3);apart>=4&&start==null;apart--)start=RealmTiles(r).Where(t=>!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&!Barren(t.terrain)&&t.gateLink==0&&t.y>=RealmTop(r)+3&&t.y<RealmBottom(r)-3
+     &&(gate==null||Distance(t.x,t.y,gate.x,gate.y)>=Math.Min(6,apart))&&placed.All(p=>Distance(p.x,p.y,t.x,t.y)>=apart)).OrderByDescending(room).ThenBy(t=>Lattice(seed+civ,t.x,t.y,5)).FirstOrDefault();
    if(start==null)continue;placed.Add(start);start.ruin=false;start.village=false;
    // A little open ground round the capital, as the home starts get.
    for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var q=Step(start.x,start.y,dx,dy);if(q!=null&&q.realm==r&&(IsWater(q.terrain)||IsImpassable(q.terrain)||Barren(q.terrain))&&q.gateLink==0)q.terrain=r==5?11:r==3?17:r==2?10:r==4?9:0;}
@@ -95,6 +96,8 @@ public partial class World {
   }
   EnsureFlags();
  }
+ // Behind different locked gates: no sight or contact can pass between them, so nothing need check.
+ public bool SealedApart(int a,int b){return gatesLocked&&CivilisationCatalog.NativeRealm(nations[a].civ)!=CivilisationCatalog.NativeRealm(nations[b].civ);}
  public bool IsNativeNation(int owner){return owner>=0&&owner<civCount&&CivilisationCatalog.IsNative(nations[owner].civ);}
  // A land unit that enters a gateway it knows of is carried to the twin gateway (or the nearest free tile beside it).
  void GatewayTravel(Unit u){
