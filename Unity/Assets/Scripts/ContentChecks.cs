@@ -97,7 +97,7 @@ static void StageFive(){
     old.tech=old.nations[0].tech;foreach(var id in new[]{"toolmaking","agriculture","pottery","masonry","steam"})old.tech[LegacyTechnologyCatalog.Index(id)]=true;
     old.nations[0].progress[LegacyTechnologyCatalog.Index("sailing")]=11;old.nations[0].progress[LegacyTechnologyCatalog.Index("shipbuilding")]=7;old.research=LegacyTechnologyCatalog.Index("sailing");old.science=11;
     old.UpgradeSave();
-    Check(old.version==23&&old.Valid(),"version 12 converts to a valid version 23");
+    Check(old.version==24&&old.Valid(),"version 12 converts to a valid version 24");
     Check(old.HasTech(0,"pottery")&&old.HasTech(0,"masonry")&&old.HasTech(0,"steam")&&old.HasTech(0,"engineering"),"any known folded technology keeps its keystone, with prerequisites");
     Check(old.research==K("sailing")&&old.science==18,"research and progress move to the keystone (Sailing 11 + Shipbuilding 7)");
     Check(old.nations.All(n=>n.edicts!=null&&n.edicts.Length==6),"edict slots added");
@@ -107,7 +107,7 @@ static void StageFive(){
 static void ReligionChecks(){
     Check(ReligionCatalog.Count==23&&ReligionCatalog.Name(0)=="Christianity"&&ReligionCatalog.Name(12)=="Egyptian Religion"&&Enumerable.Range(0,ReligionCatalog.Count).All(r=>TechnologyCatalog.Index(ReligionCatalog.Tech(r))>=0&&ReligionCatalog.Tenet(r)>=0&&ReligionCatalog.Tenet(r)<=6),"23 faiths (12 living, 11 ancient), each with a real founding technology and a tenet");
     Check(World.UnitCosts[0]==90,"settlers cost three times as much (90)");
-    var w=World.New(61);var founder=w.units.First(u=>u.owner==0&&u.type==0);var home=w.Found(founder);Check(home!=null&&w.Valid()&&w.version==23,"new games are valid version 23");
+    var w=World.New(61);var founder=w.units.First(u=>u.owner==0&&u.type==0);var home=w.Found(founder);Check(home!=null&&w.Valid()&&w.version==24,"new games are valid version 24");
     Check(w.JobTechMissing(0,1)=="Requires The Wheel."&&w.JobTechMissing(0,5)=="","worker jobs report a missing technology (Road needs The Wheel; clearing has Stone Tools)");
     Check(w.FaithYield(home)==1&&w.ChoosePantheon(0,4)==false,"a capital gives 1 faith; a pantheon needs 25 faith");
     w.nations[0].faith=300;Check(w.ChoosePantheon(0,4)&&w.nations[0].pantheon==4&&w.nations[0].faith==275,"pantheon adopted for 25 faith");
@@ -131,10 +131,10 @@ static void ReligionChecks(){
     var same=World.New(63);var c1=new City{id=same.nextId++,owner=0,x=same.Width/2,y=same.MainHeight/2,name="Oneton",pop=4};same.cities.Add(c1);var s2=same.tiles.First(t=>same.Distance(t.x,t.y,c1.x,c1.y)==4);same.cities.Add(new City{id=same.nextId++,owner=0,x=s2.x,y=s2.y,name="Twoton",pop=4});same.RebuildTerritory();
     Check(same.tiles.Where(t=>same.Distance(t.x,t.y,c1.x,c1.y)<=2||same.Distance(t.x,t.y,s2.x,s2.y)<=2).All(t=>t.owner==0),"two cities of one civilisation share one territory (their borders merge)");
     // Version 21 saves gain religion and influence fields.
-    var v=World.New(64);v.version=21;v.nations[1].pantheon=5;foreach(var t in v.tiles)t.swayCiv=-7;v.UpgradeSave();Check(v.version==23&&v.Valid()&&v.nations.All(n=>n.pantheon==-1&&n.founded==-1&&n.faith==0)&&v.tiles.All(t=>t.swayCiv==-1),"version 21 saves upgrade to version 23");
+    var v=World.New(64);v.version=21;v.nations[1].pantheon=5;foreach(var t in v.tiles)t.swayCiv=-7;v.UpgradeSave();Check(v.version==24&&v.Valid()&&v.nations.All(n=>n.pantheon==-1&&n.founded==-1&&n.faith==0)&&v.tiles.All(t=>t.swayCiv==-1),"version 21 saves upgrade to version 24");
     CivilisationAndAgeChecks();
 }
-// Owner requests 31 Oct, fifth batch: civilisations in full, real civilisations, priests, era score and ages (save version 23).
+// Owner requests 31 Oct, fifth batch: civilisations in full, real civilisations, priests, era score and ages (save version 24).
 static void CivilisationAndAgeChecks(){
     int full=Enumerable.Range(0,CivilisationCatalog.Count).Count(CivLore.Full);Check(full==32,"32 civilisations with full lore (10 premade, 12 real, 10 native peoples), found "+full);
     foreach(int civ in Enumerable.Range(0,CivilisationCatalog.Count).Where(CivLore.Full)){var e=CivLore.Of(civ);Check(e.Background.Length>100&&e.History.Length>200&&e.Strengths!=""&&e.Weaknesses!=""&&e.Ability!=""&&e.Unit!=""&&e.Building!=""&&e.Weakness!=""&&e.UnitBase>=0&&e.UnitBase<World.UnitNames.Length&&Array.IndexOf(World.BuildingIds,e.BuildingBase)>=0&&e.Agenda>=0&&e.Agenda<CivLore.AgendaNames.Length&&e.Faiths.All(f=>f>=0&&f<ReligionCatalog.Count),CivilisationCatalog.Names[civ]+" is complete");}
@@ -170,7 +170,7 @@ static void CivilisationAndAgeChecks(){
     var realGame=World.New(78,"",0,1,1,0,3,1,8,17);Check(realGame.realWorld&&Enumerable.Range(1,realGame.civCount-1).Where(o=>!realGame.IsNativeNation(o)).All(o=>CivilisationCatalog.IsReal(realGame.nations[o].civ)),"a Real World game has real rivals");
     var fantasyGame=World.New(79,"",0,1,1,0,3,1,8,0);Check(!fantasyGame.realWorld&&Enumerable.Range(1,fantasyGame.civCount-1).Where(o=>!fantasyGame.IsNativeNation(o)).All(o=>!CivilisationCatalog.IsReal(fantasyGame.nations[o].civ)),"a Fantasy game has fantasy rivals");
     var customReal=World.New(80,"Free Cantons",0,1,1,0,3,1,6,-1,"Mayor Tell",18,1,2,true);Check(customReal.realWorld&&customReal.nations[0].civ==-1&&Enumerable.Range(1,customReal.civCount-1).Where(o=>!customReal.IsNativeNation(o)).All(o=>CivilisationCatalog.IsReal(customReal.nations[o].civ))&&customReal.Valid(),"a custom civilisation in the Real World group meets real rivals");
-    var oldSave=World.New(77);oldSave.version=22;foreach(var u in oldSave.units)u.faith=0;oldSave.UpgradeSave();Check(oldSave.version==23&&oldSave.units.All(u=>u.faith==-1)&&oldSave.Valid(),"version 22 saves upgrade to 23 (units carry no faith)");
+    var oldSave=World.New(77);oldSave.version=22;foreach(var u in oldSave.units)u.faith=0;oldSave.UpgradeSave();Check(oldSave.version==24&&oldSave.units.All(u=>u.faith==-1)&&oldSave.Valid(),"version 22 saves upgrade to 23 (units carry no faith)");
     RealmChecks();
 }
 // Owner request 31 Oct: ancient gateways and five parallel worlds below the home world.
@@ -181,9 +181,14 @@ static void RealmChecks(){
     bool sealedOff=true;for(int r=1;r<=World.RealmCount&&sealedOff;r++)for(int y=w.RealmTop(r);y<w.RealmBottom(r)&&sealedOff;y++)for(int x=0;x<w.Width&&sealedOff;x++)for(int dj=-1;dj<=1;dj++)for(int di=-1;di<=1;di++){var n=w.Step(x,y,di,dj);if(n!=null&&n.realm!=r&&n.realm!=-1)sealedOff=false;}
     Check(sealedOff&&w.tiles.Where(t=>t.realm==-1).All(t=>World.IsImpassable(t.terrain)),"parallel worlds are sealed off by impassable rows");
     Check(w.RealmDiscovered(0,0)&&Enumerable.Range(1,5).All(r=>!w.RealmDiscovered(0,r)),"only the home world is known at the start");
-    // Stepping onto a gateway carries a land unit to the twin.
+    // The gates are locked: a land unit on a gateway stays on the home world and learns nothing of the world beyond.
     var gate=homeGates.First(g=>w.GateTwin(g).realm==3);var side=w.tiles.First(t=>t.realm==0&&w.Distance(t.x,t.y,gate.x,gate.y)==1&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain));
-    var walker=w.Add(0,2,side.x,side.y);w.Reveal();Check(w.Move(walker,gate.x,gate.y)&&w.RealmOf(walker.x,walker.y)==3&&walker.moves==0&&w.RealmDiscovered(0,3),"a warrior crosses into the Infernal Depths");
+    var walker=w.Add(0,2,side.x,side.y);w.Reveal();Check(w.gatesLocked&&w.Move(walker,gate.x,gate.y)&&walker.x==gate.x&&walker.y==gate.y&&w.RealmOf(walker.x,walker.y)==0&&!w.RealmDiscovered(0,3)&&w.GateName(gate).Contains("Sealed"),"a locked gateway does not carry a warrior across");
+    walker.x=side.x;walker.y=side.y;walker.moves=World.Moves[2];
+    {var rival=w.Add(1,2,side.x,side.y);w.Move(rival,gate.x,gate.y);Check(w.RealmOf(rival.x,rival.y)==0,"a locked gateway stops rivals too");w.units.Remove(rival);}
+    // Unlocked (kept for a later key): stepping onto a gateway carries a land unit to the twin.
+    w.gatesLocked=false;
+    Check(w.Move(walker,gate.x,gate.y)&&w.RealmOf(walker.x,walker.y)==3&&walker.moves==0&&w.RealmDiscovered(0,3),"a warrior crosses into the Infernal Depths");
     {var settler=w.Add(0,0,gate.x,gate.y);Check(w.FoundReason(settler).Contains("gateway"),"gateway tiles cannot be settled");w.units.Remove(settler);}
     walker.hp=10;w.EndTurn();Check(walker.hp<=8,"the Infernal Depths burn units outside cities (hp "+walker.hp+")");
     var marsh=homeGates.First(g=>w.GateTwin(g).realm==4);var twin=w.GateTwin(marsh);var sick=w.Add(0,2,twin.x,twin.y);w.EndTurn();Check(sick.plague==5,"units in the Plague Marshes catch plague");
@@ -195,6 +200,20 @@ static void RealmChecks(){
     Check(natives.All(o=>w.cities.Any(c=>c.owner==o&&w.RealmOf(c.x,c.y)==CivilisationCatalog.NativeRealm(w.nations[o].civ))),"each native people starts with a city in its own world");
     Check(Enumerable.Range(1,World.RealmCount).All(r=>natives.Count(o=>CivilisationCatalog.NativeRealm(w.nations[o].civ)==r)==2),"two native peoples in every parallel world");
     {var crowded=World.New(93,"",0,1,1,0,5,1,14);Check(Enumerable.Range(0,crowded.civCount).Count(crowded.IsNativeNation)==2&&crowded.civCount==16,"a 14-civilisation game has room for two native peoples");}
+    // Save version 24 locks the gates and sends stray land units back; a colony's garrison stays.
+    {var old=World.New(95);old.version=23;old.gatesLocked=false;var g3=old.tiles.First(t=>t.realm==0&&t.gateLink>0&&old.GateTwin(t).realm==3);var far=old.GateTwin(g3);var stray=old.Add(0,2,far.x,far.y);
+     old.UpgradeSave();Check(old.version==24&&old.gatesLocked&&old.RealmOf(stray.x,stray.y)==0&&old.Distance(stray.x,stray.y,g3.x,g3.y)<=1&&old.Valid(),"an older save locks the gates and brings stray units home");}
+    // The land of the sealed worlds feeds its own peoples and keeps its danger for outsiders.
+    {var land=World.New(96);var ash=land.tiles.First(t=>t.realm==3&&t.terrain==17&&t.resource==0&&!t.farm&&!t.mine&&!t.road);ash.owner=-1;var fed=land.TileYield(ash);Check(fed[0]==3&&fed[1]==2&&fed[2]==1,"volcanic land feeds its native people");
+     ash.owner=0;var outsider=land.TileYield(ash);Check(outsider[0]==0&&outsider[1]==3&&outsider[2]==0,"volcanic land stays hard on an outsider");ash.owner=-1;}
+    // The Spore Circle's slow units (2 moves) can still leave a city ringed by bog, which costs others 3.
+    {var slow=World.New(98);int spore=Enumerable.Range(0,slow.civCount).First(o=>slow.nations[o].civ==36);var sc=slow.cities.First(c=>c.owner==spore);var bog=slow.tiles.First(t=>t.realm==4&&t.terrain==9);var walker2=slow.Add(spore,2,sc.x,sc.y);Check(slow.StepCost(walker2,sc.x,sc.y,bog)<=slow.MaxMoves(walker2),"a slow people's units can always take a step");}
+    // A sealed people behind the home world catches up on research and one far ahead slows; it cannot transcend.
+    {var pace=World.New(97);int nativeOwner=Enumerable.Range(0,pace.civCount).First(pace.IsNativeNation);var n=pace.nations[nativeOwner];n.research=pace.AvailableTech(nativeOwner).First();int t0=n.research;n.progress[t0]=0;
+     foreach(int o in Enumerable.Range(0,pace.civCount).Where(o=>!pace.IsNativeNation(o)))for(int i=0;i<20;i++)pace.nations[o].tech[i]=true;
+     Check(pace.HomeTechPace()>=20,"home pace counts home civilisations only");int behind=pace.HomeTechPace()-n.tech.Count(a=>a);pace.KeepPace(nativeOwner);Check(behind>=World.PaceShare&&n.progress[t0]==pace.ResearchCost(t0,nativeOwner),"a people far behind gains a full technology's research in a turn");
+     for(int i=0;i<60;i++)n.tech[i]=true;n.research=pace.AvailableTech(nativeOwner).First();int held=pace.ResearchCost(n.research,nativeOwner);n.progress[n.research]=held+5;pace.KeepPace(nativeOwner);Check(n.progress[n.research]==held-1,"a people far ahead cannot finish its next technology");
+     var nc=pace.cities.First(c=>c.owner==nativeOwner);Check(pace.BuildReason(nc,70)!="","a sealed people cannot build Transcendence");}
 }
 }
 }

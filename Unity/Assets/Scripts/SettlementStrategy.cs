@@ -105,6 +105,8 @@ namespace ParadigmRealm {
    if(u.hasOrder){
     var r=AssessSettlement(u.owner,u.destinationX,u.destinationY,u.x,u.y);
     if(r.Suitable&&!r.threat&&r.diplomacyWarning==""&&SafeSettlerPath(u,Route(u,u.destinationX,u.destinationY))){ContinueOrder(u);if(u.x==r.x&&u.y==r.y)Found(u);if(u.hasOrder||!units.Contains(u))return;}
+    // Scouting for land with no site known yet: the order's end is only a lookout, so keep walking rather than turn back each turn.
+    else if(!r.threat&&r.diplomacyWarning==""&&SettlementOptions(u,1).Count==0&&SafeSettlerPath(u,Route(u,u.destinationX,u.destinationY))){ContinueOrder(u);if(u.hasOrder||!units.Contains(u))return;}
     else CancelOrder(u);
    }
    var options=SettlementOptions(u,1);if(options.Count>0){

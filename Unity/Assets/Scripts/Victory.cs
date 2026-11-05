@@ -37,6 +37,7 @@ if(CivilisationCatalog.IsNative(nations[o].civ)&&!CivilisationCatalog.IsNative(n
         string ProjectReason(City c,int b)
         {
             var n=nations[c.owner];int stage=ProjectStageOf(b);
+            if(gatesLocked&&IsNativeNation(c.owner))return "A people behind the sealed gates cannot transcend";
             if(n.projectStage>=3)return "Transcendence complete";
             if(stage!=n.projectStage+1)return stage<=n.projectStage?"Stage already complete":"Complete stage "+(n.projectStage+1)+" first";
             if(n.projectActivation>0)return "Stage "+n.projectStage+" is still activating ("+n.projectActivation+" turns)";

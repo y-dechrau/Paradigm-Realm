@@ -10,6 +10,9 @@ namespace ParadigmRealm {
 // danger (attrition, plague) and its own riches (relic sites with richer rewards, rare resources).
 public partial class World {
  public const int RealmCount=5,RealmGap=2;
+ // The gates are locked (owner request, 5 Nov 2026): the arches stand on both sides, but nothing crosses. Saved, so a later
+ // key or event can open them; the crossing code below stays for that day.
+ public bool gatesLocked=true;
  // Each parallel world is as tall as the home world (owner request); saved, so older games keep their own size.
  public int realmHeight;
  public int RealmHeight{get{return realmHeight>0?realmHeight:20;}}
@@ -32,7 +35,7 @@ public partial class World {
  public bool RealmDiscovered(int owner,int r){if(r==0)return true;if(!HasRealms)return false;for(int y=RealmTop(r);y<RealmBottom(r);y++)for(int x=0;x<Width;x++){var t=tiles[y*Width+x];if(owner==0?t.seen:nations[owner].known[y*Width+x])return true;}return false;}
  public Tile GateTwin(Tile t){return t==null||t.gateLink<=0||t.gateLink>tiles.Length?null:tiles[t.gateLink-1];}
  int GateRealm(Tile t){var twin=GateTwin(t);return twin==null?0:t.realm==0?twin.realm:t.realm;}
- public string GateName(Tile t){int r=GateRealm(t);return t.realm==0?"Ancient gateway to the "+RealmNames[r]:"Ancient gateway home";}
+ public string GateName(Tile t){int r=GateRealm(t);if(gatesLocked)return "Sealed ancient gateway";return t.realm==0?"Ancient gateway to the "+RealmNames[r]:"Ancient gateway home";}
  // Called once a new world has been generated: appends the five worlds and links their gateways to the home world.
  void AddRealms(){
   if(HasRealms||mapShape==1)return;realmHeight=mapHeight;int W=Width,oldH=mapHeight,extra=RealmCount*(RealmHeight+RealmGap);var grown=new Tile[W*(oldH+extra)];
@@ -57,7 +60,7 @@ public partial class World {
    case 2:if(edge)return 18;return n<.25?18:n<.55?10:n<.7?3:n<.82?20:m>.55?5:10;
    case 3:if(edge)return 5;return n<.22?5:n<.62?17:m>.5?10:17;
    case 4:if(edge)return 19;return n<.3?6:n<.6?9:n<.75?10:m>.5?19:9;
-   default:if(edge)return 4;return n<.6?4:n<.66?12:m>.55?11:n<.75?19:0;
+   default:if(edge)return 4;return n<.5?4:n<.55?12:m>.55?11:n<.68?19:0;// islands large enough for its peoples to grow as fast as the home world
   }
  }
  void PlaceGateways(Random rnd){
@@ -96,13 +99,47 @@ public partial class World {
  // A land unit that enters a gateway it knows of is carried to the twin gateway (or the nearest free tile beside it).
  void GatewayTravel(Unit u){
   var here=At(u.x,u.y);var twin=GateTwin(here);if(twin==null||IsNaval(u.type))return;
-  Tile landing=Capacity(u,twin.x,twin.y)&&!units.Any(a=>a.owner!=u.owner&&a.x==twin.x&&a.y==twin.y)?twin:null;
-  if(landing==null)for(int dy=-1;dy<=1&&landing==null;dy++)for(int dx=-1;dx<=1&&landing==null;dx++){var n=Step(twin.x,twin.y,dx,dy);if(n!=null&&n.realm==twin.realm&&!IsWater(n.terrain)&&!IsImpassable(n.terrain)&&Capacity(u,n.x,n.y)&&!units.Any(a=>a.owner!=u.owner&&a.x==n.x&&a.y==n.y))landing=n;}
+  if(gatesLocked){if(u.owner==0&&!u.exploring)Note("The ancient gateway is sealed. Your "+UnitName(u)+" cannot open it.");return;}
+  Tile landing=GateLanding(u,twin);
   if(landing==null){if(u.owner==0)Note("The gateway flickers but will not open: the far side is blocked.");return;}
   int from=here.realm;CancelOrder(u);u.exploring=false;u.x=landing.x;u.y=landing.y;u.moves=0;
   if(u.owner==0){Note("Your "+UnitName(u)+" stepped through the ancient gateway into the "+RealmNames[landing.realm]+(landing.realm>0?". "+RealmTexts[landing.realm]:"."));lastGateArrival=landing.realm;}
   else if(KnowsNation(u.owner)&&(landing.realm>0&&RealmDiscovered(0,landing.realm)))Note("A "+UnitName(u)+" of "+NationName(u.owner)+" came through a gateway into the "+RealmNames[landing.realm]+".");
   networks=null;Reveal();
+ }
+ // The free land at a gateway or beside it where a unit can come out; null when it is all blocked.
+ Tile GateLanding(Unit u,Tile twin){
+  if(Capacity(u,twin.x,twin.y)&&!units.Any(a=>a.owner!=u.owner&&a.x==twin.x&&a.y==twin.y))return twin;
+  for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(twin.x,twin.y,dx,dy);if(n!=null&&n.realm==twin.realm&&!IsWater(n.terrain)&&!IsImpassable(n.terrain)&&Capacity(u,n.x,n.y)&&!units.Any(a=>a.owner!=u.owner&&a.x==n.x&&a.y==n.y))return n;}
+  return null;
+ }
+ // Save version 24: the gates closed with travellers on the wrong side. Land units with no city of their own in that world
+ // go back through its gateway; a colony already founded over there stays, with its garrison, cut off.
+ public void RecallTravellers(){
+  foreach(var u in units.Where(a=>!IsNaval(a.type)).ToList()){
+   var t=At(u.x,u.y);if(t==null||t.realm<0)continue;int home=u.owner<nations.Length?CivilisationCatalog.NativeRealm(nations[u.owner].civ):0;
+   if(t.realm==home||cities.Any(c=>c.owner==u.owner&&RealmOf(c.x,c.y)==t.realm))continue;
+   var gate=tiles.FirstOrDefault(g=>g.gateLink>0&&g.realm==t.realm&&(t.realm>0||GateTwin(g).realm==home));var twin=GateTwin(gate);var landing=twin==null?null:GateLanding(u,twin);if(landing==null)continue;
+   CancelOrder(u);u.exploring=false;u.x=landing.x;u.y=landing.y;if(u.owner==0)Note("The ancient gateways have sealed. Your "+UnitName(u)+" came back through just in time.");
+  }
+  networks=null;
+ }
+ // Each people of a parallel world lives off its own land as well as a home people does (owner request, 5 Nov 2026): what
+ // starves an outsider feeds them, so ash, lava and bog feed like grassland (3 food), other land gives at least 2, and all of it at least 1 trade, on land that is theirs or free.
+ void NativeGround(Tile t,int[] yields){
+  if(t.realm<2||t.realm>4||IsWater(t.terrain)||IsImpassable(t.terrain)||(t.owner>=0&&!IsNativeNation(t.owner)))return;
+  yields[0]=Math.Max(yields[0],t.terrain==9||t.terrain==10||t.terrain==17?3:2);yields[2]=Math.Max(yields[2],1);if(t.terrain==17)yields[1]=2;
+ }
+ // Pace (owner request, 5 Nov 2026): the sealed worlds keep step with the home world. Each turn a people behind the average
+ // of the home civilisations gains a share of its current research (one eighth per technology behind), and one well ahead
+ // waits for the next technology, so it tracks the home world whatever its land is like. Home civilisations are never affected.
+ public const int PaceShare=8,PaceLead=2;
+ public int HomeTechPace(){int sum=0,count=0;for(int o=0;o<civCount;o++){if(IsNativeNation(o)||!Survives(o))continue;sum+=nations[o].tech.Count(a=>a);count++;}return count==0?0:sum/count;}
+ internal void KeepPace(int owner){
+  var n=nations[owner];if(!gatesLocked||!IsNativeNation(owner)||n.research<0||!AvailableTech(owner).Contains(n.research))return;
+  int behind=HomeTechPace()-n.tech.Count(a=>a);
+  if(behind>0)n.progress[n.research]+=Math.Max(1,ResearchCost(n.research,owner)*Math.Min(behind,PaceShare)/PaceShare);
+  else if(behind<-PaceLead)n.progress[n.research]=Math.Min(n.progress[n.research],ResearchCost(n.research,owner)-1);
  }
  // The realm the player's unit just arrived in (read and cleared by the interface to switch the view). Not saved.
  [NonSerialized] public int lastGateArrival=-1;

@@ -305,7 +305,7 @@ namespace ParadigmRealm
             // Tribal villages (owner request): named on the card, with the civilisation they joined if any.
             {var ruinTile=world.At(t.x,t.y);if(ruinTile!=null&&ruinTile.ruin)features.Add(ruinTile.realm>0?"Relic site":"Ancient ruins");}
             // Ancient gateways name their world once you have been there.
-            {var gateTile=world.At(t.x,t.y);if(gateTile!=null&&gateTile.gateLink>0){int far=world.GateTwin(gateTile).realm;features.Add(gateTile.realm>0?"Ancient gateway home":world.RealmDiscovered(0,far)?world.GateName(gateTile):"Ancient gateway (destination unknown)");}}
+            {var gateTile=world.At(t.x,t.y);if(gateTile!=null&&gateTile.gateLink>0){int far=world.GateTwin(gateTile).realm;features.Add(world.gatesLocked?world.GateName(gateTile):gateTile.realm>0?"Ancient gateway home":world.RealmDiscovered(0,far)?world.GateName(gateTile):"Ancient gateway (destination unknown)");}}
             {var live=world.At(t.x,t.y);if(live!=null&&live.village)features.Add(live.villageOwner>=0?"Village (joined "+world.NationName(live.villageOwner)+")":"Tribal village");}
             // Border influence: how far a rival has swung this tile (it changes hands at 90%).
             {var live=world.At(t.x,t.y);if(live!=null&&live.swayCiv>=0&&live.sway>0)features.Add("Influence "+live.sway+"% to "+world.NationName(live.swayCiv));}

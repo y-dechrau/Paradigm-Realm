@@ -27,7 +27,7 @@ public partial class RealmGame {
   // What the world on the map is like.
   y+=4;GUI.Label(new Rect(panel.x+14,y,panel.width-28,22),World.RealmNames[viewRealm],hudTitle);y+=24;GUI.Label(new Rect(panel.x+14,y,panel.width-28,70),World.RealmTexts[viewRealm],new GUIStyle(small){wordWrap=true});y+=74;
   int hidden=Enumerable.Range(1,World.RealmCount).Count(r=>!world.RealmDiscovered(0,r));
-  if(hidden>0){GUI.Label(new Rect(panel.x+14,y,panel.width-28,54),hidden+" parallel world"+(hidden==1?" is":"s are")+" still unknown. Find an ancient gateway and move a land unit onto it to cross over.",new GUIStyle(small){wordWrap=true});y+=58;}
+  if(hidden>0){GUI.Label(new Rect(panel.x+14,y,panel.width-28,54),hidden+" parallel world"+(hidden==1?" is":"s are")+(world.gatesLocked?" sealed behind the ancient gateways.":" still unknown. Find an ancient gateway and move a land unit onto it to cross over."),new GUIStyle(small){wordWrap=true});y+=58;}
   int gates=world.tiles.Count(t=>t.realm==0&&t.gateLink>0&&t.seen);GUI.Label(new Rect(panel.x+14,y,panel.width-28,22),"Ancient gateways found: "+gates,small);
  }
  // A banner on the map while you look at a parallel world.

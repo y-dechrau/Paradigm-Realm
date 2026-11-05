@@ -858,6 +858,7 @@ namespace ParadigmRealm
         // Ancient gateway (owner request, 31 Oct 2026): two weathered stone pillars and a lintel framing a swirling portal whose
         // colour tells the world beyond: 0 gold (home), 1 fae green, 2 ash grey, 3 infernal red, 4 plague yellow-green, 5 sea blue.
         static readonly Dictionary<int,PixelCanvas> gateCache=new Dictionary<int,PixelCanvas>();
+        public const int SealedGate=6; // a stone door barred with iron and a gold lock, while the gates are locked
         public static PixelCanvas GatewaySprite(int kind)
         {
             PixelCanvas cv;if(gateCache.TryGetValue(kind,out cv))return cv;cv=new PixelCanvas(64,64);
@@ -865,6 +866,7 @@ namespace ParadigmRealm
              Ramp(80,10,10,150,30,20,220,70,30,250,140,50,255,220,120),Ramp(60,70,20,110,130,30,160,180,40,200,215,90,235,240,170),Ramp(10,40,90,20,80,150,50,130,210,120,190,240,210,240,255)};
             var glow=glows[Math.Max(0,Math.Min(5,kind))];uint[] stone=Ramp(60,58,56,95,92,88,130,126,120,165,160,152,200,196,186);
             for(int y=14;y<=46;y++)for(int x=22;x<=42;x++){double dx=(x-32)/9.5,dy=(y-31)/15.0,d=dx*dx+dy*dy;if(d>1)continue;double a=Math.Atan2(dy,dx),swirl=.5+.5*Math.Sin(a*3+Math.Sqrt(d)*9);cv.Set(x,y,RampPick(glow,.25+.55*swirl*(1-d*.5)+.2*(1-d)));}
+            if(kind==SealedGate){RectFill(cv,22,13,42,47,RampPick(stone,.22));for(int y=19;y<47;y+=9)RectFill(cv,22,y,42,y+1,stone[0]);uint[] gold=Ramp(120,80,20,180,130,40,230,180,70,250,215,120,255,245,200);RectFill(cv,29,26,35,33,RampPick(gold,.7));RectFill(cv,31,28,33,31,stone[0]);}
             RectFill(cv,16,12,21,48,RampPick(stone,.7));RectFill(cv,43,12,48,48,RampPick(stone,.45));RectFill(cv,13,7,51,12,RampPick(stone,.8));
             for(int y=13;y<48;y+=5){cv.Set(16,y,stone[0]);cv.Set(43,y,stone[0]);}for(int x=14;x<51;x+=6)cv.Set(x,9,stone[1]);
             RectFill(cv,12,46,52,49,RampPick(stone,.35));
