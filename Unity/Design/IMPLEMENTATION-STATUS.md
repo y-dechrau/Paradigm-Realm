@@ -2,6 +2,19 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 6 Nov, fourth batch: freeze fix, armies, roads and gateways (save version 31)
+
+Checked by Unity `RealmTools.Checks` and `GraphicsChecks`, a Windows build, `-inputProbe` and `-routeProbe` on a copy of the owner's save. Not hand-played; balance is unproven.
+
+- Freeze: sending a unit to a tile with no room searched the entire map, several times over, and the unit card repeated a route search on every interface pass. On the owner's save this was about 15 seconds an order; it is now under 0.2 seconds. Any route search stops at 50,000 tiles. No error was logged at the time of the reported crash, so the freeze is the likely cause, not a confirmed one.
+- Armies: soldiers cost about 2.5 times the production (Warrior 30, Spearman and Archer 50, Horseman 65, Catapult 100, Knight and War Galley 110, Rifleman 150) and 2 to 4 gold a turn, with +1 gold for every three soldiers beyond two per city.
+- Stacks and escorts: units on a tile can be stacked (button or G) and move as one at the slowest member's speed. Six soldiers and two civilians fit a tile; your own cities shelter any number of civilians. Attackers and animals must get through soldiers before civilians. Rivals do not form stacks yet.
+- Roads: 1 gold a turn per 3 road tiles in your territory, not counting city tiles. Rivals and auto-develop workers build roads only while they can afford it, at most 8 per city, except to ports and improved resources. Road plotting: choose Road or R, point to see the course, new tiles, turns and upkeep; click to build, Shift-click for a bend, right-click to cancel.
+- Wild animals move at half speed inside borders. Scouts exploring by themselves keep two tiles from animals they can see.
+- Sealed gateway scene on first sight, once per gateway. A found gateway keeps a label, stays visible through mist and is marked on the minimap.
+- Cities screen: every city's unit and building lines, changeable from the table.
+- Auto-developing workers say what they are doing.
+
 ## Owner requests 6 Nov, third batch: faith prompt, food, animals, art and speed (save version 30)
 
 Checked by Unity `RealmTools.Checks` and `GraphicsChecks`, a Windows build, `-inputProbe` and `-frameProbe`. Not hand-played; food and animal balance are unproven.

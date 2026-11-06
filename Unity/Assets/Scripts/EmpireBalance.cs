@@ -42,6 +42,41 @@ public partial class World {
   if(u==null||!(u.hasOrder||u.roadOrder))return new List<Tile>();int x=u.roadOrder?u.roadX:u.destinationX,y=u.roadOrder?u.roadY:u.destinationY;
   var path=Route(u,x,y);return path.Count>0?path:Route(u,x,y,true);
  }
+ // ---------- stacks and escorts (owner request, 6 Nov 2026; after Civilization IV's stacks and Civilization VI's escort formations) ----------
+ // Units on one tile can be joined into a stack that moves as one, at the speed of its slowest member. A soldier stacked with a worker
+ // or settler is its escort: an attacker has to get through every soldier on the tile first.
+ public List<Unit> StackOf(Unit u){if(u==null)return new List<Unit>();if(u.stack==0)return new List<Unit>{u};return units.Where(a=>a.stack==u.stack&&a.owner==u.owner&&a.x==u.x&&a.y==u.y).ToList();}
+ bool Stackable(Unit u){return !IsNaval(u.type);}
+ public List<Unit> UnitsToStack(Unit u){return units.Where(a=>a.owner==u.owner&&a.x==u.x&&a.y==u.y&&Stackable(a)).ToList();}
+ public bool JoinStack(Unit u){if(u==null||!Stackable(u))return false;var all=UnitsToStack(u);if(all.Count<2)return false;int id=nextId++;foreach(var a in all)a.stack=id;return true;}
+ public void LeaveStack(Unit u){if(u==null||u.stack==0)return;var all=StackOf(u);foreach(var a in all)a.stack=0;}
+ bool StackFits(Unit u,List<Unit> mates,int x,int y){
+  int soldiers=Power[u.type]>0?1:0,civilians=Power[u.type]==0&&u.type!=1?1:0;foreach(var m in mates){if(Power[m.type]>0)soldiers++;else if(m.type!=1)civilians++;}
+  foreach(var a in units)if(a.owner==u.owner&&a.x==x&&a.y==y&&!IsNaval(a.type)){if(Power[a.type]>0)soldiers++;else if(a.type!=1)civilians++;}
+  return soldiers<=SoldierStack&&(civilians<=CivilianStack||cities.Any(c=>c.owner==u.owner&&c.x==x&&c.y==y));
+ }
+ // ---------- road upkeep (owner request, 6 Nov 2026; as in Civilization V, where roads cost gold each turn) ----------
+ public const int RoadTilesPerGold=3;
+ [NonSerialized] Dictionary<int,int> roadCount;[NonSerialized] int roadCountTurn=-1;
+ internal void ResetRoadCount(){roadCountTurn=-1;}
+ public int RoadTiles(int owner){if(roadCount==null||roadCountTurn!=turn){roadCount=new Dictionary<int,int>();roadCountTurn=turn;var centres=CityCentres();foreach(var t in tiles){if(!t.road||t.owner<0||centres.Contains(t.y*Width+t.x))continue;int n;roadCount.TryGetValue(t.owner,out n);roadCount[t.owner]=n+1;}}int found;roadCount.TryGetValue(owner,out found);return found;}
+ public int RoadUpkeep(int owner){return (RoadTiles(owner)+RoadTilesPerGold-1)/RoadTilesPerGold;}
+ // ---------- plotting a road ----------
+ // The way a road would run from one tile to another, for a worker of this civilisation; existing roads are followed where they help.
+ public List<Tile> RoadCourse(int owner,int fromX,int fromY,int toX,int toY){var probe=new Unit{id=-1,owner=owner,type=1,x=fromX,y=fromY,moves=4};return Route(probe,toX,toY,true);}
+ public int NewRoadTiles(IEnumerable<Tile> course){int n=0;foreach(var t in course)if(!t.road&&!IsWater(t.terrain))n++;return n;}
+ public string PlanRoad(Unit u,List<Tile> course){
+  if(u==null||u.type!=1)return "Only workers build roads.";if(!HasTech(u.owner,"wheel"))return "Requires The Wheel.";if(course==null||course.Count==0)return "No land route to that destination.";
+  var last=course[course.Count-1];foreach(var a in WorkerTeam(u)){CancelOrder(a);a.autoWork=false;a.roadOrder=true;a.roadX=last.x;a.roadY=last.y;if(a.roadPath==null)a.roadPath=new List<int>();a.roadPath.Clear();foreach(var t in course)a.roadPath.Add(t.y*Width+t.x);}
+  foreach(var a in WorkerTeam(u))RoadStep(a);return "Road ordered: "+NewRoadTiles(course)+" new tiles.";
+ }
+ // ---------- sealed gateways the player has found ----------
+ public List<int> gatesFound=new List<int>();
+ [NonSerialized] List<int> gateCells;
+ List<int> GateCells(){if(gateCells==null){gateCells=new List<int>();for(int i=0;i<tiles.Length;i++)if(tiles[i].realm==0&&tiles[i].gateLink>0)gateCells.Add(i);}return gateCells;}
+ void MarkKnownGates(){if(gatesFound==null)gatesFound=new List<int>();foreach(int i in GateCells())if(tiles[i].seen&&!gatesFound.Contains(i))gatesFound.Add(i);}
+ // A gateway the player has only just seen, once each, or null.
+ public Tile NextNewGate(){if(gatesFound==null)gatesFound=new List<int>();foreach(int i in GateCells())if(tiles[i].seen&&!gatesFound.Contains(i)){gatesFound.Add(i);return tiles[i];}return null;}
  // ---------- food: an army marches on its stomach (owner request, 6 Nov 2026; save version 30) ----------
  // Every unit eats. Each city's fields feed one food's worth of units; the rest comes out of what its cities would have stored for
  // growth. When even that runs out the empire goes hungry: the newest units stop where they are until there is food, and every
@@ -82,13 +117,16 @@ public partial class World {
  // Choosing a different technology after a discovery takes the left-over science with it.
  public void ChooseNextResearch(int t){int spare=researchOverflow;researchOverflow=0;if(research>=0){int take=Math.Min(spare,science);science-=take;nations[0].progress[research]=science;spare=take;}else spare=0;SelectResearch(t);if(research==t){science+=spare;nations[0].progress[t]=science;}}
  // What the budget is made of; Budget is its totals.
- public sealed class BudgetLines {public int cityGold,cityBonus,ports,routes,treaties,tribute,cityUpkeep,buildingUpkeep,army,civilians,luxury,treatyCost;public int Income{get{return cityGold+cityBonus+ports+routes+treaties+tribute;}}public int Expense{get{return cityUpkeep+buildingUpkeep+army+civilians+luxury+treatyCost;}}public int Net{get{return Income-Expense;}}}
+ public sealed class BudgetLines {public int cityGold,cityBonus,ports,routes,treaties,tribute,cityUpkeep,buildingUpkeep,army,civilians,luxury,treatyCost,roads;public int Income{get{return cityGold+cityBonus+ports+routes+treaties+tribute;}}public int Expense{get{return cityUpkeep+buildingUpkeep+army+civilians+luxury+treatyCost+roads;}}public int Net{get{return Income-Expense;}}}
  public static int SupportCost(int type){return Upkeep[type];}
  public BudgetLines BudgetDetail(int owner){
   var b=new BudgetLines();var own=cities.Where(c=>c.owner==owner).OrderBy(c=>c.id).ToList();
   foreach(var c in own){b.cityGold+=Yield(c)[3];b.ports+=PortIncome(c);if(!Disorder(c))b.cityBonus+=(HasBuilding(c,31)?2:0)+(Connected(c)&&c!=own[0]?3:0);int distance=Distance(c.x,c.y,own[0].x,own[0].y)/10;b.cityUpkeep+=Math.Max(0,1+c.pop/4+distance-(HasBuilding(c,34)?2:0));b.buildingUpkeep+=c.buildings.Sum(BuildingUpkeep);}
   // Every soldier and warship is paid for (owner request); only civilians have free support from cities and government.
-  int free=0;foreach(var u in units)if(u.owner==owner){if(Power[u.type]>0)b.army+=Upkeep[u.type];else free+=Upkeep[u.type];}
+  int free=0,soldiers=0;foreach(var u in units)if(u.owner==owner){if(Power[u.type]>0){b.army+=Upkeep[u.type];soldiers++;}else free+=Upkeep[u.type];}
+  // A big standing army costs more than the sum of its soldiers (as unit maintenance climbs in Civilization V): +1 gold for every three
+  // soldiers beyond two per city.
+  b.army+=Math.Max(0,soldiers-2*own.Count)/3;b.roads=RoadUpkeep(owner);
   b.civilians=Math.Max(0,free-FreeUnitsPerCity*own.Count-GovernmentSupport(owner));b.luxury=own.Count*nations[owner].luxury;
   b.routes=TradeIncome(owner);b.treaties=DiplomaticIncome(owner);b.tribute=VillageTribute(owner)+ReligionTithe(owner);b.treatyCost=DiplomaticExpense(owner);return b;
  }

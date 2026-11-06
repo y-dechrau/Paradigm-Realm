@@ -16,6 +16,7 @@ namespace ParadigmRealm
             var args=Environment.GetCommandLineArgs();int i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
             i=Array.IndexOf(args,"-frameProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FrameProbe(args[i+1],i+2<args.Length?int.Parse(args[i+2]):4,i+3<args.Length?int.Parse(args[i+3]):120));
+            i=Array.IndexOf(args,"-routeProbe");if(i>=0&&i+1<args.Length)StartCoroutine(RouteProbe(args[i+1]));
             i=Array.IndexOf(args,"-inputProbe");if(i>=0&&i+1<args.Length)StartCoroutine(InputProbeRun(args[i+1]));
             i=Array.IndexOf(args,"-flickerProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FlickerProbe(args[i+1]));
         }
@@ -57,6 +58,23 @@ namespace ParadigmRealm
             File.WriteAllText(Path.Combine(folder,"frames.txt"),log.ToString());Application.Quit();
         }
         void AutoSaveMeasure(){JsonUtility.ToJson(world,false);}
+        // Development aid: "-routeProbe <save>" loads a save and times orders from a settler to each of the player's cities.
+        IEnumerator RouteProbe(string save)
+        {
+            yield return Frames(5);tutorialOn=false;tutorialStep=-1;LoadFile(save);activeSavePath=null;autoSaveFolder=Path.GetDirectoryName(save);Debug.Log("PROBE loaded: "+status+" turn "+world.turn+" tiles "+world.tiles.Length+" nations "+world.civCount+" cities "+world.cities.Count+" units "+world.units.Count);
+            foreach(var line in world.units.Where(u=>u.owner==0).GroupBy(u=>u.type).Select(g=>g.Count()+" "+World.UnitNames[g.Key]))Debug.Log("PROBE own "+line);
+            yield return Frames(30);var own=world.cities.Where(c=>c.owner==0).ToList();var clock=new System.Diagnostics.Stopwatch();
+            var settler=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);if(settler==null&&own.Count>0){var near=own[0];settler=world.Add(0,0,near.x,near.y);Debug.Log("PROBE added a settler at "+near.name);}
+            if(settler==null){Debug.Log("PROBE no settler or city");Application.Quit();yield break;}
+            selected=settler.id;cityId=-1;FocusTile(settler.x,settler.y);int sx=settler.x,sy=settler.y;
+            foreach(var c in own.Take(12)){
+             settler.x=sx;settler.y=sy;settler.moves=World.Moves[0];settler.hasOrder=false;clock.Restart();string error="";bool ok=false;Debug.Log("PROBE ordering to "+c.name+" at "+c.x+","+c.y+" from "+sx+","+sy+" distance "+world.Distance(sx,sy,c.x,c.y)+" civilians there "+world.units.Count(a=>a.owner==0&&a.x==c.x&&a.y==c.y&&World.Power[a.type]==0));
+             try{ok=world.Order(settler,c.x,c.y);}catch(Exception e){error=e.ToString();}
+             Debug.Log("PROBE order to "+c.name+": "+ok+" "+clock.ElapsedMilliseconds+" ms; order "+settler.hasOrder+" to "+settler.destinationX+","+settler.destinationY+" now at "+settler.x+","+settler.y+" "+error);
+             clock.Restart();yield return Frames(3);Debug.Log("PROBE frames after: "+clock.ElapsedMilliseconds+" ms");
+            }
+            settler.x=sx;settler.y=sy;settler.hasOrder=false;Application.Quit();
+        }
         IEnumerator InputProbeRun(string folder)
         {
             Directory.CreateDirectory(folder);yield return Frames(5);
@@ -88,6 +106,9 @@ namespace ParadigmRealm
                 if(people.Count>0){legendsPeople=people[0];yield return Shot(folder,"10h-people-partial.bmp");yield return ClickAt(234,710);Probe("Close leaves a people's page",legendsPeople==-1&&legendsOpen);}
                 world.turn--;gate.seen=false;}
             legendsOpen=false;detailsScreen="Civics";yield return Shot(folder,"10i-civics.bmp");detailsScreen="";
+            {detailsScreen="Cities";citiesPick=city.id;citiesPickBuilding=false;yield return Shot(folder,"10m-cities.bmp");citiesPick=-1;detailsScreen="";}
+            {var door=world.tiles.FirstOrDefault(t=>t.realm==0&&t.gateLink>0);if(door!=null){door.seen=true;StartGateScene(door);if(world.gatesFound==null)world.gatesFound=new System.Collections.Generic.List<int>();world.gatesFound.Add(door.y*world.Width+door.x);yield return new WaitForSeconds(5f);yield return Shot(folder,"10n-gate-scene.bmp");yield return ClickAt(680,610);Probe("Continue closes the gateway scene",gateScene==null);FocusTile(door.x,door.y);isoWidth=64;BuildAtlasTexture();yield return Shot(folder,"10o-gate-on-map.bmp");door.seen=false;world.gatesFound.Clear();FocusTile(city.x,city.y);}}
+            {world.tech[TechnologyCatalog.Index("wheel")]=true;var hand=world.Add(0,1,city.x,city.y);selected=hand.id;cityId=-1;isoWidth=96;FocusTile(city.x,city.y);RoadKey(hand);Probe("R starts road plotting",roadMode);float rx,ry;var aim=world.tiles.First(t=>t.realm==0&&t.seen&&world.Distance(t.x,t.y,city.x,city.y)==3&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain));IsoScreen(aim.x,aim.y,out rx,out ry);yield return Send(Mouse(EventType.MouseUp,rx,ry));yield return Shot(folder,"10p-road-plot.bmp");yield return ClickAt(rx,ry);Probe("a click orders the plotted road",!roadMode&&hand.roadOrder&&hand.roadX==aim.x&&hand.roadY==aim.y);world.units.Remove(hand);selected=-1;isoWidth=64;}
             {var me=world.nations[0];int keepFaith=me.faith;me.faith=World.PantheonCost;me.pantheon=-1;yield return Shot(folder,"10l-god-prompt.bmp");Probe("the god prompt is waiting",PromptOpen());me.faith=keepFaith;}
             {// A crowded tile: the box must show every word.
              var spot=world.tiles.FirstOrDefault(t=>t.realm==0&&t.owner==0&&!PixelArt.IsWater(t.terrain)&&world.Distance(t.x,t.y,city.x,city.y)==1);if(spot!=null){spot.road=true;spot.farm=true;spot.village=true;var a=world.Add(0,2,spot.x,spot.y);var b=world.Add(0,4,spot.x,spot.y);var beast=new Animal{id=9901,kind=5,x=spot.x,y=spot.y};world.animals.Add(beast);selected=a.id;cityId=-1;isoWidth=64;FocusTile(spot.x,spot.y);yield return Send(Mouse(EventType.MouseUp,640,20));yield return Shot(folder,"10k-tile-card.bmp");world.animals.Remove(beast);world.units.Remove(a);world.units.Remove(b);selected=-1;}}

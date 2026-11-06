@@ -31,7 +31,7 @@ namespace ParadigmRealm
             campaign.units[0].type=99;Require(!campaign.Valid(),"malformed unit rejected");
             var memory=World.New(67);var spot=memory.At(9,12);memory.Reveal();int oldTerrain=spot.terrain;memory.units.RemoveAll(a=>a.owner==0);spot.terrain=3;Require(memory.KnownTile(spot).terrain==oldTerrain,"fog preserves last-seen terrain");
             var siege=Flat();siege.met[1]=true;siege.SetWar(1,true);var targetCity=siege.cities.First(a=>a.owner==1);siege.units.RemoveAll(a=>a.x==targetCity.x&&a.y==targetCity.y);var archer=siege.Add(0,4,targetCity.x-1,targetCity.y);siege.Reveal();siege.Order(archer,targetCity.x,targetCity.y);Require(archer.moves==0&&targetCity.owner==1,"ranged unit cannot capture or loop on empty city");
-            var stack=Flat();var mover=stack.units.First(a=>a.owner==0&&a.type==2);int tx=mover.x+1,ty=mover.y;for(int i=0;i<3;i++)stack.Add(0,2,tx,ty);Require(!stack.Move(mover,tx,ty),"military stack limit");
+            var stack=Flat();var mover=stack.units.First(a=>a.owner==0&&a.type==2);int tx=mover.x+1,ty=mover.y;for(int i=0;i<World.SoldierStack;i++)stack.Add(0,2,tx,ty);Require(!stack.Move(mover,tx,ty),"military stack limit");
             var work=Flat();var a=work.units.First(v=>v.owner==0&&v.type==1);a.x=15;a.y=15;
             Require(work.At(15,15).owner==-1&&work.StartJob(a,1)&&a.jobTurns==3,"unclaimed flat road costs three worker-turns");
             work.EndTurn();work.EndTurn();Require(!work.At(15,15).road,"outside flat road not complete early");work.EndTurn();Require(work.At(15,15).road,"outside flat road completes");
@@ -59,10 +59,10 @@ namespace ParadigmRealm
             dc.production=dual.Cost(3)-1;dc.buildingProduction=dual.Cost(7)-1;int unitCount=dual.units.Count;dual.Produce(dc,1);
             Require(dual.units.Count==unitCount+1&&dc.granary&&dc.build<0&&dc.buildingProject==8,"unit and building complete in same production step");
             Require(!dual.ChooseProject(dc,7,false),"constructed building cannot be built twice");
-            dual.ChooseProject(dc,2,false);for(int i=0;i<2;i++)dual.Add(0,2,dc.x,dc.y);dc.production=dual.Cost(2);dc.buildingProduction=dual.Cost(8);dual.Produce(dc,1);
+            dual.ChooseProject(dc,2,false);for(int i=0;i<World.SoldierStack;i++)dual.Add(0,2,dc.x,dc.y);dc.production=dual.Cost(2);dc.buildingProduction=dual.Cost(8);dual.Produce(dc,1);
             Require(dc.build==2&&dc.library,"blocked unit stack does not block building construction");
             var old=Flat();var oc=old.Found(old.units.First(v=>v.owner==0&&v.type==0));old.version=3;oc.build=8;oc.production=17;oc.queue=new System.Collections.Generic.List<int>{1,7,1,9};old.UpgradeSave();
-            Require(old.version==30&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
+            Require(old.version==31&&oc.build==1&&oc.queue.SequenceEqual(new[]{1})&&oc.production==0&&oc.buildingProject==8&&oc.buildingProduction==17&&oc.buildingQueue.SequenceEqual(new[]{7,9})&&old.Valid(),"version-3 mixed queue migration preserves both category orders and active progress");
             old.UpgradeSave();Require(oc.buildingProduction==17&&oc.queue.Count==1,"migration is idempotent");
             var upgrade=Flat();var uc=upgrade.Found(upgrade.units.First(v=>v.owner==0&&v.type==0));var troop=upgrade.units.First(v=>v.owner==0&&v.type==2);upgrade.tech[TechnologyCatalog.Index("bronze")]=true;upgrade.gold=100;
             Require(!upgrade.Upgrade(troop),"owned territory alone does not permit upgrades");troop.x=uc.x;troop.y=uc.y;Require(upgrade.Upgrade(troop)&&troop.type==7,"owned city permits eligible upgrade");
@@ -214,7 +214,7 @@ namespace ParadigmRealm
             var clamped=World.New(5,"Clamp",0,1,1,0,0,1,16,natives:false);
             Require(clamped.civCount==World.MaxCivsBySize[0],"requests above the size limit are clamped");
             var old=World.New(6,"Old",0,1,1,0,1,0,3,natives:false);old.version=9;old.rivalWar=true;foreach(var p in old.diplomacy)p.atWar=false;old.UpgradeSave();
-            Require(old.version==30&&old.civCount==3&&old.AtWar(1,2)&&!old.AtWar(0,1)&&old.Valid(),"version 9 saves upgrade with the old rival war flag preserved");
+            Require(old.version==31&&old.civCount==3&&old.AtWar(1,2)&&!old.AtWar(0,1)&&old.Valid(),"version 9 saves upgrade with the old rival war flag preserved");
             var peace=World.New(7,"Peace",0,1,1,0,1,0,3,natives:false);peace.version=9;peace.rivalWar=false;peace.UpgradeSave();
             Require(!peace.AtWar(1,2)&&peace.Valid(),"version 9 peace between rivals preserved");
         }
@@ -290,7 +290,7 @@ namespace ParadigmRealm
             Require(!s.Move(climber,4,-1)&&climber.x==4&&climber.y==0,"no step beyond the north pole on a staggered globe");
             // Saves migrate: version 8 becomes version 9 and stays flat.
             var old=World.New(8,natives:false);old.version=8;old.UpgradeSave();
-            Require(old.version==30&&old.mapShape==0&&old.Valid(),"version 8 saves upgrade to flat version 30");
+            Require(old.version==31&&old.mapShape==0&&old.Valid(),"version 8 saves upgrade to flat version 31");
         }
         static void MapSizeChecks()
         {
@@ -307,7 +307,7 @@ namespace ParadigmRealm
             Require(World.New(9).Width==48&&World.New(9).MainHeight==30,"default map stays Small 48 x 30");
             Require(World.New(9,"A",0,1,1,0,1).tiles.Select(t=>t.terrain).SequenceEqual(World.New(9).tiles.Select(t=>t.terrain)),"Small is the default size and repeatable by seed");
             var legacy=World.New(3,natives:false);legacy.version=7;legacy.mapWidth=0;legacy.mapHeight=0;legacy.UpgradeSave();
-            Require(legacy.Width==48&&legacy.MainHeight==30&&legacy.version==30&&legacy.Valid(),"version 7 saves upgrade to Small flat version 27");
+            Require(legacy.Width==48&&legacy.MainHeight==30&&legacy.version==31&&legacy.Valid(),"version 7 saves upgrade to Small flat version 27");
         }
     }
 }

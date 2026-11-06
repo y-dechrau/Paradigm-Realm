@@ -51,7 +51,7 @@ public partial class World {
  }
  int HexOr(int k,bool first){if(hexGrid)return first?HexDi[k]:HexDj[k];return first?new[]{1,0,-1,0,1,-1}[k]:new[]{0,1,0,-1,1,-1}[k];}
  // The strongest defender on the tile takes the blow, as in any battle. A unit in a city is safe, and so is one on water.
- Unit AnimalPrey(int x,int y){var t=At(x,y);if(t==null||IsWater(t.terrain)||cities.Any(c=>c.x==x&&c.y==y))return null;return units.Where(u=>u.x==x&&u.y==y).OrderByDescending(u=>Strength(u,null,true)).ThenByDescending(u=>u.hp).ThenBy(u=>u.id).FirstOrDefault();}
+ Unit AnimalPrey(int x,int y){var t=At(x,y);if(t==null||IsWater(t.terrain)||cities.Any(c=>c.x==x&&c.y==y))return null;return units.Where(u=>u.x==x&&u.y==y).OrderByDescending(u=>Power[u.type]>0).ThenByDescending(u=>Strength(u,null,true)).ThenByDescending(u=>u.hp).ThenBy(u=>u.id).FirstOrDefault();}
  void AnimalAttacks(Animal a,Unit prey){
   int atk=AnimalCatalog.Attack[a.kind],def=Strength(prey,null,true);prey.hp-=Damage(atk,def);if(Power[prey.type]>0)a.hp-=Damage(def,atk);string name=AnimalCatalog.Names[a.kind];CancelOrder(prey);
   if(prey.owner==0)Note(prey.hp<=0?"A "+name+" killed your "+UnitName(prey)+".":"A "+name+" attacked your "+UnitName(prey)+".");
@@ -63,7 +63,7 @@ public partial class World {
   foreach(var a in animals.ToList()){
    if(!animals.Contains(a)||a.hp<=0)continue;a.hp=Math.Min(10,a.hp+1);
    if(AnimalCatalog.Carnivore[a.kind]){
-    for(int step=0;step<AnimalCatalog.Steps[a.kind]&&a.hp>0;step++){
+    for(int step=0;step<AnimalSteps(a)&&a.hp>0;step++){
      // The first turns give every people the chance to settle before the hunters find them.
      var prey=turn<HuntersFrom?null:NearestPrey(a,AnimalCatalog.Sense);if(prey==null){AnimalWander(a,r,false);continue;}
      if(Distance(a.x,a.y,prey.x,prey.y)==1){AnimalAttacks(a,prey);break;}
@@ -72,12 +72,14 @@ public partial class World {
     }
    }else{
     var close=NearestPrey(a,1);if(close!=null)AnimalAttacks(a,close);
-    else if(r.Next(2)==0)for(int step=0;step<AnimalCatalog.Steps[a.kind];step++)AnimalWander(a,r,true);
+    else if(r.Next(2)==0)for(int step=0;step<AnimalSteps(a);step++)AnimalWander(a,r,true);
    }
   }
   animals.RemoveAll(a=>a.hp<=0);preyGrid=null;preyCells=null;
   CheckVictory();
  }
+ // Inside any civilisation's borders an animal moves at half speed (owner request, 6 Nov 2026); odd steps round up on alternate turns.
+ public int AnimalSteps(Animal a){int steps=AnimalCatalog.Steps[a.kind];var t=At(a.x,a.y);if(t==null||t.owner<0)return steps;return (steps+((turn+a.id)&1))/2;}
  // A herbivore keeps a clear tile between itself and every unit, so it never wanders into a fight.
  void AnimalWander(Animal a,Random r,bool keepClear){
   for(int attempt=0;attempt<6;attempt++){int k=r.Next(6);var n=Step(a.x,a.y,HexOr(k,true),HexOr(k,false));if(!OpenToAnimal(n))continue;if(keepClear&&PreyNear(n.x,n.y).Any(u=>Distance(u.x,u.y,n.x,n.y)<2))continue;a.x=n.x;a.y=n.y;return;}

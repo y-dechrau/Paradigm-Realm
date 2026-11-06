@@ -187,7 +187,7 @@ namespace ParadigmRealm
             HandleMapInput();
             if(dragging){var m=Event.current.mousePosition;var u=world.units.Find(a=>a.id==dragUnit);if(u!=null){float sx,sy;IsoScreen(u.x,u.y,out sx,out sy);DrawOrderLine(new Vector2(MapX+sx,MapY+sy-6*isoWidth/64f),m);}GUI.Label(new Rect(m.x+15,m.y+12,220,30),roadMode?"Release to build a road there":"Release to send the unit here",body);}
         }
-        readonly Dictionary<int,Animal> viewAnimals=new Dictionary<int,Animal>();
+        readonly Dictionary<int,Animal> viewAnimals=new Dictionary<int,Animal>();readonly List<Vector2> isoGates=new List<Vector2>();
         Texture2D ruinTexture;
         readonly Dictionary<int,Texture2D> gateTextures=new Dictionary<int,Texture2D>();
         readonly List<KeyValuePair<Unit,Rect>> isoUnitDraws=new List<KeyValuePair<Unit,Rect>>();readonly List<int> isoUnitCounts=new List<int>();
@@ -274,6 +274,8 @@ namespace ParadigmRealm
                 var improvement=new Rect(sx-18*s,gy-22*s,36*s,36*s);
                 if(t.mine)DrawArt("mine",improvement);if(t.fort)DrawArt("fort",improvement);
                 if(source.ruin){if(ruinTexture==null)ruinTexture=PixelTexture(PixelArt.Ruins());GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),ruinTexture);}
+                // A sealed gateway the player has found keeps its name on the map (owner request).
+                if(source.gateLink>0&&source.realm==0&&world.gatesLocked&&world.gatesFound!=null&&world.gatesFound.Contains(source.y*width+source.x)){isoGates.Add(new Vector2(sx,gy));isoCityNames.Add("Sealed gateway");isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(1f,.82f,.25f));isoCityRefs.Add(null);}
                 if(source.gateLink>0){var twin=world.GateTwin(source);int kind=world.gatesLocked?PixelArt.SealedGate:source.realm>0?0:twin!=null&&world.RealmDiscovered(0,twin.realm)?twin.realm:0;Texture2D gateTex;if(!gateTextures.TryGetValue(kind,out gateTex)){gateTex=PixelTexture(PixelArt.GatewaySprite(kind));gateTextures[kind]=gateTex;}GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),gateTex);}
                 if(t.village&&visible){DrawArt("village",improvement);if(t.villageOwner>=0){var pole=new Rect(sx+10*s,gy-26*s,Mathf.Max(1,1.5f*s),12*s);Fill(pole,new Color(.3f,.22f,.14f));Fill(new Rect(pole.xMax,pole.y,7*s,5*s),nations[t.villageOwner]);}}
                 if(!visible&&!string.IsNullOrEmpty(t.rememberedCity)){GUI.DrawTexture(new Rect(sx-32*s,gy-44*s,64*s,64*s),SettlementTexture(CityVisualEra(0),3,0,t.x+t.y),ScaleMode.ScaleToFit,true);isoCityNames.Add(t.rememberedCity);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(.6f,.62f,.66f));isoCityRefs.Add(null);}
@@ -298,6 +300,8 @@ namespace ParadigmRealm
             GUI.color=Color.white;foreach(var f in isoFog){float drift=Mathf.Sin(clock*.25f+f.z*2.1f+f.y*.011f)*5*s;GUI.DrawTexture(new Rect(f.x-64*s+drift,f.y-44*s,128*s,88*s),mistBank);}
             GUI.color=MistWisp;foreach(var f in isoFog){if(f.z!=0)continue;float drift=clock*2.2f%64f,sway=Mathf.Sin(clock*.2f+f.x*.02f)*6*s;GUI.DrawTexture(new Rect(f.x-64*s+drift*s-32*s,f.y-30*s+sway,128*s,60*s),mistWisp);}
             GUI.color=before;
+            // A found gateway stands clear of the mist, so it stays on the map however far the fog closes in.
+            foreach(var g in isoGates){Texture2D gateTex;if(!gateTextures.TryGetValue(PixelArt.SealedGate,out gateTex)){gateTex=PixelTexture(PixelArt.GatewaySprite(PixelArt.SealedGate));gateTextures[PixelArt.SealedGate]=gateTex;}GUI.DrawTexture(new Rect(g.x-PixelArt.AX*s,g.y-PixelArt.AY*s,64*s,64*s),gateTex);}isoGates.Clear();
             // Units stand in front of the cloud banks of unexplored land next to them (owner request): drawn again over the mist.
             for(int n=0;n<isoUnitDraws.Count;n++)DrawUnitArt(isoUnitDraws[n].Key,isoUnitDraws[n].Value,isoUnitCounts[n]);
             // Resource badges go on after every tile so the tiles in front can never cover them.
@@ -323,6 +327,44 @@ namespace ParadigmRealm
         }
         // How far a tile's surface is raised on screen: land (as the player knows it) stands Elev pixels above water.
         float Lift(int x,int y,float s){return 0;}
+        // ---------- plotting a road (owner request, 6 Nov 2026) ----------
+        // Road mode shows the course from the worker to the pointer as it moves, with what it will cost. Click to build, Shift-click to
+        // fix a bend and carry on from there, right-click to cancel.
+        readonly List<Tile> roadBends=new List<Tile>();List<Tile> roadPlotted=new List<Tile>();long roadPlotKey=-1;
+        List<Tile> RoadCourseTo(Unit u,int x,int y)
+        {
+            var course=new List<Tile>();int fx=u.x,fy=u.y;
+            foreach(var bend in roadBends){course.AddRange(world.RoadCourse(u.owner,fx,fy,bend.x,bend.y));fx=bend.x;fy=bend.y;}
+            if(!(x==fx&&y==fy))course.AddRange(world.RoadCourse(u.owner,fx,fy,x,y));return course;
+        }
+        bool PlotRoadInput(Event e,bool inside,int x,int y)
+        {
+            var u=Selected();if(u==null||u.type!=1){roadMode=false;roadBends.Clear();return false;}
+            if(e.type==EventType.MouseDown&&e.button==1){roadMode=false;roadBends.Clear();status="Road plan cancelled.";e.Use();return true;}
+            if(e.type==EventType.MouseDown&&e.button==0&&inside)
+            {
+                e.Use();var picked=world.At(x,y);if(picked==null)return true;
+                if(e.shift){roadBends.Add(picked);roadPlotKey=-1;status="Bend added. Keep plotting.";return true;}
+                var course=RoadCourseTo(u,x,y);roadMode=false;roadBends.Clear();
+                if(course.Count==0&&u.x==x&&u.y==y){status=world.StartJob(u,1)?"Building a road here.":world.JobReason(u,1);return true;}
+                status=world.PlanRoad(u,course);return true;
+            }
+            return false;
+        }
+        void DrawRoadPlot(Unit u,float s)
+        {
+            if(u.type!=1)return;var mouse=Event.current.mousePosition;int x,y;bool over=MapView.Contains(mouse)&&!OverHud(mouse)&&IsoPick(mouse,out x,out y);if(!over){x=u.x;y=u.y;}IsoPick(mouse,out x,out y);
+            long key;unchecked{key=x*100000L+y;key=key*31+u.x;key=key*31+u.y;key=key*31+roadBends.Count;}
+            if(key!=roadPlotKey){roadPlotKey=key;roadPlotted=world.At(x,y)!=null?RoadCourseTo(u,x,y):new List<Tile>();}
+            var gold=new Color(1f,.82f,.3f,.95f);float ax,ay;RouteAnchor(u.x,u.y,out ax,out ay);var at=new Vector2(ax,ay);
+            foreach(var t in roadPlotted){RouteAnchor(t.x,t.y,out ax,out ay);var to=new Vector2(ax,ay);float length=(to-at).magnitude;if(length<=2*isoWidth&&length>0)for(float d=0;d<length;d+=3){var p=at+(to-at)*(d/length);Fill(new Rect(p.x-2.5f,p.y-2.5f,5,5),new Color(.1f,.07f,.02f,.7f));Fill(new Rect(p.x-1.5f,p.y-1.5f,3,3),gold);}at=to;
+                if(!t.road){var old=GUI.color;GUI.color=new Color(1f,.82f,.3f,.8f);GUI.DrawTexture(TileRect(ax,ay,s),SelectionPicture());GUI.color=old;}}
+            foreach(var bend in roadBends){RouteAnchor(bend.x,bend.y,out ax,out ay);Fill(new Rect(ax-6,ay-6,12,12),new Color(.1f,.07f,.02f,.9f));Fill(new Rect(ax-4,ay-4,8,8),gold);}
+            int fresh=world.NewRoadTiles(roadPlotted),team=Math.Max(1,world.WorkerTeam(u).Count),turns=Math.Max(1,(fresh*3+team-1)/team+roadPlotted.Count/2),upkeep=(world.RoadTiles(u.owner)+fresh+World.RoadTilesPerGold-1)/World.RoadTilesPerGold-world.RoadUpkeep(u.owner);
+            var panel=new Rect(mouse.x+18,mouse.y+14,280,70);if(panel.xMax>MapW-4)panel.x=mouse.x-298;if(panel.yMax>MapH-4)panel.y=mouse.y-84;DrawGuideFrame(panel);
+            GUI.Label(new Rect(panel.x+8,panel.y+5,panel.width-16,20),roadPlotted.Count==0?"No way there":fresh+" new road tiles  •  about "+turns+" turns",hudLabel);
+            var plotNote=new GUIStyle(hudSmall){wordWrap=false,clipping=TextClipping.Overflow};GUI.Label(new Rect(panel.x+8,panel.y+26,panel.width-16,18),"Upkeep +"+upkeep+" gold a turn",plotNote);GUI.Label(new Rect(panel.x+8,panel.y+45,panel.width-16,18),"Click: build  •  Shift-click: bend  •  Right-click: cancel",new GUIStyle(plotNote){fontSize=11});
+        }
         // A faint dotted line along the way a selected unit's order will go (owner request, 6 Nov 2026). The route is only worked
         // out again when something it depends on changes.
         List<Tile> routeTiles=new List<Tile>();long routeKey=-1;
@@ -360,7 +402,7 @@ namespace ParadigmRealm
             {
                 IsoScreen(chosen.x,chosen.y,out sx,out sy);sy-=Lift(chosen.x,chosen.y,s);
                 GUI.DrawTexture(TileRect(sx,sy,s),SelectionPicture());
-                DrawRouteLine(chosen,s);
+                DrawRouteLine(chosen,s);if(roadMode)DrawRoadPlot(chosen,s);
                 if(chosen.hasOrder)
                 {
                     IsoScreen(chosen.destinationX,chosen.destinationY,out sx,out sy);

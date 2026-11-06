@@ -77,8 +77,7 @@ namespace ParadigmRealm
             }else if(detailsScreen=="Atlas"){DrawAtlas();
             }else if(detailsScreen=="Military"){DrawMilitaryAdviser();
             }else if(detailsScreen=="Cities"){
-                DrawEmpireAdvisors();
-                foreach(var c in world.cities.Where(c=>c.owner==0))if(Button(c.name+" — Population "+c.pop))OpenCity(c);
+                DrawCitiesTable();DrawEmpireAdvisors();
             }else {GUILayout.Label(world.result==""?"Your civilisation's history":world.result,chronicleHeading);foreach(var line in world.log)GUILayout.Label(line,chronicleText);}
             GUILayout.EndScrollView();GUILayout.EndArea();
         }

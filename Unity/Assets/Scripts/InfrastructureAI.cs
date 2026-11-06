@@ -23,6 +23,7 @@ namespace ParadigmRealm {
   // One walk over the map each turn sorts the tiles by owner, instead of one walk for every civilisation with a worker.
   [NonSerialized] Dictionary<int,List<Tile>> ownedTiles;[NonSerialized] int ownedTilesTurn=-1;
   List<Tile> TilesOwnedBy(int owner){if(ownedTiles==null||ownedTilesTurn!=turn){ownedTiles=new Dictionary<int,List<Tile>>();ownedTilesTurn=turn;foreach(var t in tiles){if(t.owner<0)continue;List<Tile> list;if(!ownedTiles.TryGetValue(t.owner,out list)){list=new List<Tile>();ownedTiles[t.owner]=list;}list.Add(t);}}List<Tile> found;return ownedTiles.TryGetValue(owner,out found)?found:new List<Tile>();}
+  [NonSerialized] bool aiRoadOk;const int RoadsPerCity=8;
   void ImproveAI(Unit u){
    if(u.moves<=0)return;
    // Idle sealed workers look for work one turn in four: nobody can see them, and the search is the costliest part of a crowded turn.
@@ -30,7 +31,7 @@ namespace ParadigmRealm {
    // Home rivals likewise, once the early rush of building is over: one turn in three.
    if(u.owner!=0&&turn>80&&(turn+u.id)%3!=0)return;
    // What the whole empire works and needs is the same for each of its workers this turn, so it is found once.
-   if(u.owner==0||aiWorkOwner!=u.owner||aiWorkTurn!=turn){aiWorkOwner=u.owner;aiWorkTurn=turn;var empire=cities.Where(c=>c.owner==u.owner).ToList();aiWorked=new HashSet<Tile>(empire.SelectMany(Worked));aiHunger=empire.Any(c=>Yield(c)[0]<=0);aiPortRoads=PortRoadNeeds(u.owner);aiOwnTiles=TilesOwnedBy(u.owner).Where(t=>nations[u.owner].known[t.y*Width+t.x]&&!Barren(t.terrain)).ToList();}
+   if(u.owner==0||aiWorkOwner!=u.owner||aiWorkTurn!=turn){aiWorkOwner=u.owner;aiWorkTurn=turn;var empire=cities.Where(c=>c.owner==u.owner).ToList();aiWorked=new HashSet<Tile>(empire.SelectMany(Worked));aiHunger=empire.Any(c=>Yield(c)[0]<=0);aiPortRoads=PortRoadNeeds(u.owner);aiRoadOk=Budget(u.owner)[2]>=3&&RoadTiles(u.owner)<empire.Count*RoadsPerCity;aiOwnTiles=TilesOwnedBy(u.owner).Where(t=>nations[u.owner].known[t.y*Width+t.x]&&!Barren(t.terrain)).ToList();}
    var worked=aiWorked;
    // Tiles another of this people's workers has taken, and whether any enemy is in play at all, are worked out once.
    var taken=new HashSet<int>();foreach(var a in units)if(a.owner==u.owner&&a.type==1&&a.id!=u.id){if(a.job>0)taken.Add(a.y*Width+a.x);if(a.hasOrder)taken.Add(a.destinationY*Width+a.destinationX);}
@@ -43,6 +44,8 @@ namespace ParadigmRealm {
     var probe=new Unit{owner=u.owner,type=1,x=tile.x,y=tile.y,moves=u.moves};
     foreach(int job in new[]{1,2,3,5}){
      if(JobReason(probe,job)!="")continue;
+     // Roads cost upkeep, so they are built only where they pay: to a port or an improved resource, while the treasury can bear it.
+     if(job==1&&!aiRoadOk&&!portRoads.Contains(tile.y*Width+tile.x)&&!((tile.farm||tile.mine)&&tile.resource>0))continue;
      // Clearing woodland is worth a little less than the farm it makes room for.
      int value=job==1?4:job==5?(worked.Contains(tile)?18:6):worked.Contains(tile)?24:10;
      if(job==2&&hunger)value+=20;
@@ -58,7 +61,7 @@ namespace ParadigmRealm {
     }
    }
    if(target==null)return;
-   if(u.x==target.x&&u.y==target.y)StartJob(u,chosenJob);
+   u.autoJob=chosenJob;if(u.x==target.x&&u.y==target.y)StartJob(u,chosenJob);
    else Order(u,target.x,target.y);
   }
  }

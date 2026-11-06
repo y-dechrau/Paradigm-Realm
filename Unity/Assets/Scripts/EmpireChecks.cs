@@ -29,7 +29,7 @@ public static class EmpireChecks {
  }
  // 16-bit plan Stage 3: production costs, Settler population cost, building tiers and upkeep (CORE-DESIGN-16BIT.md).
  static void StageThreeEconomy(){
-  int[] units={2,1,7,4,8,9,0},costs={10,20,20,20,25,40,90}; // Settler tripled to 90 (owner request, 31 Oct 2026)
+  int[] units={2,1,7,4,8,9,0},costs={30,20,50,50,65,100,90}; // Settler tripled to 90 (owner request, 31 Oct 2026)
   for(int i=0;i<units.Length;i++)Check(World.BaseCost(World.UnitBuild(units[i]))==costs[i],World.UnitNames[units[i]]+" costs "+costs[i]);
   foreach(int b in World.BuildingIds.Where(id=>!World.IsProject(id))){int cost=World.BaseCost(b);if(World.IsWonder(b))Check(World.WonderEra(b)>=1&&World.WonderEra(b)<=6&&cost==100+50*World.WonderEra(b)&&World.BuildingUpkeep(b)==0,"wonder cost and free upkeep: "+World.BuildName(b));else Check((cost==40||cost==60||cost==80)&&World.BuildingUpkeep(b)==(cost>40?1:0),"building tier and upkeep: "+World.BuildName(b));}
   var w=Setup();var c=w.cities.First(a=>a.owner==0);w.speed=1;Grant(w,0,"agriculture");
@@ -60,7 +60,7 @@ public static class EmpireChecks {
   int income=w.Budget(0)[0];c.buildings.Add(31);Check(w.Budget(0)[0]==income+2,"Market adds 2 gold");
   w.SetScienceRate(0,50);int normal=w.ContentSlots(c);w.SetScienceRate(0,60);Check(w.ContentSlots(c)==normal+1,"60% science (low tax) adds a content slot");w.SetScienceRate(0,30);Check(w.ContentSlots(c)==normal-1,"30% science (high tax) removes a content slot");w.SetScienceRate(0,50);
   w.version=10;w.nations[0].tax=0;w.nations[1].tax=2;w.nations[2].tax=1;w.UpgradeSave();
-  Check(w.version==30&&w.nations[0].scienceRate==60&&w.nations[1].scienceRate==30&&w.nations[2].scienceRate==50&&w.Valid(),"version 10 tax setting migrates to a science rate");
+  Check(w.version==31&&w.nations[0].scienceRate==60&&w.nations[1].scienceRate==30&&w.nations[2].scienceRate==50&&w.Valid(),"version 10 tax setting migrates to a science rate");
   w.nations[0].scienceRate=55;Check(!w.Valid(),"off-step science rate rejected");
  }
  // Stage 3: content and unhappy citizens, disorder (CORE-DESIGN-16BIT.md).
@@ -96,7 +96,7 @@ public static class EmpireChecks {
   Check(w.Move(attacker,target.x,target.y)&&!w.units.Contains(target)&&attacker.victories==1,"killing a defender counts as a victory");
   // Version 11 saves: manual promotions cap at Elite and spare experience counts as Veteran.
   var a3=w.Add(0,2,c.x+2,c.y);a3.promotion=3;a3.victories=0;var a1=w.Add(0,2,c.x+2,c.y+1);a1.promotion=0;a1.experience=5;a1.victories=0;
-  w.version=11;w.UpgradeSave();Check(w.version==30&&a3.promotion==2&&a3.victories==5&&a1.promotion==1&&a1.victories==2&&w.Valid(),"version 11 ranks migrate");
+  w.version=11;w.UpgradeSave();Check(w.version==31&&a3.promotion==2&&a3.victories==5&&a1.promotion==1&&a1.victories==2&&w.Valid(),"version 11 ranks migrate");
   a3.promotion=3;Check(!w.Valid(),"rank above Elite rejected");
  }
  // Civilisations (owner request 29 Oct 2026): 12 premade with two traits each, custom civilisations, trait effects, save 16;
@@ -154,7 +154,7 @@ public static class EmpireChecks {
   int soldiers=w.SoldierCount(1);for(int i=0;i<5;i++)w.Add(1,1,rc.x,rc.y);Check(w.SoldierCount(1)==soldiers&&w.SoldierLimit(1)==3+2*w.cities.Count(c=>c.owner==1),"workers do not count against a rival's soldier limit");
   // Upgrades cost what they cost the player, and need the money.
   w.nations[1].tech[World.UnitTech[7]]=true;var old=w.Add(1,2,rc.x,rc.y);old.moves=4;w.nations[1].gold=10;Check(!w.AIUpgrade(old)&&old.type==2,"a poor rival keeps its Warrior");
-  w.nations[1].gold=500;Check(w.AIUpgrade(old)&&old.type==7&&w.nations[1].gold==480,"a rich rival upgrades at the player's price");
+  w.nations[1].gold=500;Check(w.AIUpgrade(old)&&old.type==7&&w.nations[1].gold==460,"a rich rival upgrades at the player's price");
   // Rush buying.
   w.nations[1].gold=2000;rc.build=World.UnitBuild(2);rc.production=0;int price=w.RushPrice(rc,false);w.AIRush(rc);Check(rc.production==w.CostFor(rc,rc.build)&&w.nations[1].gold==2000-price,"a rival with spare gold buys what its city is making");
   w.nations[1].gold=50;rc.production=0;w.AIRush(rc);Check(rc.production==0,"a rival keeps a reserve");
@@ -277,7 +277,7 @@ public static class EmpireChecks {
   w.nations[0].traits=new[]{World.TraitMilitaristic,-1};Grant(w,0,"toolmaking");c.buildings.Remove(32);w.ChooseProject(c,2,false);w.Produce(c,w.CostFor(c,2));var made=w.units.Last(u=>u.owner==0&&u.type==2);Check(made.promotion==1,"Militaristic: new military units start as Veterans");
   // Version 15 saves: the old trait becomes a matching new trait; rivals keep their names.
   w=World.New(92,natives:false);string rivalName=w.NationName(1);w.version=15;w.nations[0].trait=2;foreach(var nn in w.nations){nn.traits=null;nn.civ=7;}w.UpgradeSave();
-  Check(w.version==30&&w.HasTrait(0,World.TraitScholarly)&&w.nations.All(nn=>nn.civ==-1&&nn.traits!=null)&&w.NationName(1)==rivalName&&w.Valid(),"version 15 saves convert traits and keep rival names");
+  Check(w.version==31&&w.HasTrait(0,World.TraitScholarly)&&w.nations.All(nn=>nn.civ==-1&&nn.traits!=null)&&w.NationName(1)==rivalName&&w.Valid(),"version 15 saves convert traits and keep rival names");
   // Build lists show only what known technology allows; combat units can explore.
   w=Setup();c=w.cities.First(a=>a.owner==0);Check(!w.TechAllows(c,World.UnitBuild(5))&&w.TechAllows(c,World.UnitBuild(2))&&!w.TechAllows(c,8),"build list hides what technology does not yet allow");
   Grant(w,0,"writing");Check(w.TechAllows(c,8),"a newly known technology shows its building");c.library=true;Check(!w.TechAllows(c,8),"a building already built is not listed");
@@ -306,7 +306,7 @@ public static class EmpireChecks {
   Check(w.ConvertSpecialist(c,0,2)&&c.scientists==0&&c.entertainers==2,"and back again");
   c.entertainers=0;c.scientists=0;c.merchants=0;Check(!w.ConvertSpecialist(c,2,0)&&c.scientists==0,"no conversion without an entertainer");
   // Version 14 saves gain empty lock lists.
-  w=World.New(81,natives:false);w.version=14;foreach(var city in w.cities)city.locked=null;w.UpgradeSave();Check(w.version==30&&w.cities.All(a=>a.locked!=null&&a.locked.Count==0)&&w.Valid(),"version 14 saves gain empty lock lists");
+  w=World.New(81,natives:false);w.version=14;foreach(var city in w.cities)city.locked=null;w.UpgradeSave();Check(w.version==31&&w.cities.All(a=>a.locked!=null&&a.locked.Count==0)&&w.Valid(),"version 14 saves gain empty lock lists");
   w.cities[0].locked.Add(-3);Check(!w.Valid(),"invalid lock rejected");
  }
  // Stage 6: victory by capitals, Transcendence as a three-stage project, save version 14 (CORE-DESIGN-16BIT.md).
@@ -345,7 +345,7 @@ public static class EmpireChecks {
   var rn=w.nations[1];rn.projectCity=rc.id;rn.projectStage=3;rn.projectActivation=1;w.UpdateProjects();Check(w.result.Contains("has achieved Transcendence"),"a rival's third stage is a defeat");
   // Version 13 saves gain capitals and empty projects.
   w=World.New(80,natives:false);var keep=w.cities.First(a=>a.owner==1);w.version=13;foreach(var nn in w.nations){nn.capital=-5;nn.projectStage=2;nn.projectActivation=3;}w.UpgradeSave();
-  Check(w.version==30&&w.nations[1].capital==keep.id&&w.nations.All(nn=>nn.projectStage==0&&nn.projectActivation==0)&&w.nations[0].capital==-1&&w.Valid(),"version 13 saves gain capitals and empty projects");
+  Check(w.version==31&&w.nations[1].capital==keep.id&&w.nations.All(nn=>nn.projectStage==0&&nn.projectActivation==0)&&w.nations[0].capital==-1&&w.Valid(),"version 13 saves gain capitals and empty projects");
   float[] bars;var text=w.VictoryText(out bars);Check(text.Length==3&&bars.All(v=>v>=0&&v<=1)&&text[1].Contains("Computing"),"three victory bars");
  }
  // Stage 4: deterministic combat (CORE-DESIGN-16BIT.md).
@@ -382,7 +382,7 @@ public static class EmpireChecks {
   Check(w.StepCost(rider,rider.x,rider.y,forest)==2&&w.StepCost(foot,foot.x,foot.y,forest)==3,"Horseman ignores forest slowdown");
   // Stack limit of 3 military units.
   var s0=w.Add(0,2,x+3,y+6);w.Add(0,2,x+3,y+6);w.Add(0,2,x+3,y+6);var fourth=w.Add(0,2,x+2,y+6);fourth.moves=World.Moves[2];
-  Check(!w.Move(fourth,x+3,y+6),"stack limit 3");
+  w.Add(0,fourth.type,x+3,y+6);w.Add(0,fourth.type,x+3,y+6);w.Add(0,fourth.type,x+3,y+6);Check(!w.Move(fourth,x+3,y+6),"stack limit 6");
   Check(w.Valid(),"combat state stays valid");
  }
 }

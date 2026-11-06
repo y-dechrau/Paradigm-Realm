@@ -31,6 +31,8 @@ namespace ParadigmRealm
             else if(pauseMenu)pauseMenu=false;
             else if(legendsOpen){legendsOpen=false;legendsPeople=-1;civLoreOpen=false;}else if(researchScreen||detailsScreen!=""){researchScreen=false;detailsScreen="";}
             // Esc first lets go of the selected unit (and any pending move); with nothing selected it opens the pause menu.
+            else if(gateScene!=null)gateScene=null;
+            else if(roadMode){roadMode=false;roadBends.Clear();status="Road plan cancelled.";}
             else if(!cityScreen&&(selected>=0||moveMode)){selected=-1;moveMode=false;moreActions=false;status="";}
             else {guide=false;confirmNew=false;pendingUnit=-1;pauseMenu=true;}
             ResetMapGesture();GUI.FocusControl(null);e.Use();GUIUtility.ExitGUI();
@@ -119,7 +121,8 @@ namespace ParadigmRealm
         {
             if(u!=null){
                 DrawEmpireUnit(u);
-                GUILayout.Label((World.Power[u.type]>0?"Support "+World.SupportCost(u.type)+" gold a turn":"Support 1 gold beyond the free allowance")+" | "+World.RankText(u),small);
+                GUILayout.Label((World.Power[u.type]>0?"Support "+World.SupportCost(u.type)+" gold a turn":"Support 1 gold beyond the free allowance")+" | Eats "+(World.UnitRation(u.type)==2?"1 food":"half a food")+" a turn | "+World.RankText(u),small);
+                if(!World.IsNaval(u.type)&&world.UnitsToStack(u).Count>1){if(u.stack==0&&Button("Stack the units on this tile [G]"))world.JoinStack(u);else if(u.stack!=0&&Button("Break up this stack [G]"))world.LeaveStack(u);}
                 GUILayout.Label("Activity: "+world.Activity(u)+" | "+world.Remaining(u),body);
                 if(u.type==1){GUILayout.Label("Worker team: "+world.WorkerTeam(u).Count,small);
                     if(u.workerGroup>0){if(Button("Ungroup workers (stop current work)")){world.UngroupWorkers(u);status="Workers ungrouped; current work cancelled.";}}

@@ -8,7 +8,7 @@ namespace ParadigmRealm {
 public partial class RealmGame {
  int foundStage,foundUnit=-1;string foundName="",foundProblem="";
  bool tilePicker;int pickerX,pickerY;Vector2 pickerAt;
- bool PromptOpen(){return foundStage>0||tilePicker||GuidePromptOpen()||(tutorialOn&&tutorialStep==0&&!tutorialMinimised&&world!=null&&world.result=="");}
+ bool PromptOpen(){return gateScene!=null||foundStage>0||tilePicker||GuidePromptOpen()||(tutorialOn&&tutorialStep==0&&!tutorialMinimised&&world!=null&&world.result=="");}
  void Found(){
   var u=Selected();string reason=world.FoundReason(u);
   if(u==null||reason!=""){status=reason==""?"Select a Settler first.":reason;return;}
@@ -74,8 +74,8 @@ public partial class RealmGame {
  // with no drag, builds a road on the worker's own tile.
  void RoadKey(Unit u){
   if(u==null||u.type!=1){status="Select a worker to build roads.";return;}
-  if(!roadMode){roadMode=true;status="Road mode: right-drag to a destination to build a road there, or press R again to build here.";return;}
-  roadMode=false;string reason=world.WorkerTeam(u).Select(m=>world.JobReason(m,1)).FirstOrDefault(s=>s!="")??"";status=world.StartJob(u,1)?"Building a road here.":reason;
+  if(!roadMode){string missing=world.JobTechMissing(u.owner,1);if(missing!=""){status=missing;return;}roadMode=true;roadBends.Clear();status="Plot the road: click where it should go. Shift-click adds a bend.";return;}
+  roadMode=false;roadBends.Clear();string reason=world.WorkerTeam(u).Select(m=>world.JobReason(m,1)).FirstOrDefault(s=>s!="")??"";status=world.StartJob(u,1)?"Building a road here.":reason;
  }
 }
 }

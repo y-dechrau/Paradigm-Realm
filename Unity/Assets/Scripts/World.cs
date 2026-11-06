@@ -5,7 +5,7 @@ using System.Linq;
 namespace ParadigmRealm
 {
     [Serializable] public class Tile { public int x,y,terrain,resource,owner=-1; public bool seen,road,farm,mine,fort,village,ruin,cleared; public int villageOwner=-1; public int realm,gateLink; public int swayCiv=-1,sway; public int rememberedTerrain,rememberedResource,rememberedOwner=-1; public bool rememberedRoad,rememberedFarm,rememberedMine,rememberedFort; public string rememberedCity=""; }
-    [Serializable] public class Unit { public bool unfed; public int homeCity; public bool exploring,sentry; public int id,owner,x,y,type,hp=10,moves=4,experience,promotion,job,jobTurns,workerGroup; public int victories; public int faith=-1,charges,plague; public bool hasOrder,fortified; public int destinationX,destinationY;
+    [Serializable] public class Unit { public int stack,autoJob; public List<int> roadPath=new List<int>(); public bool unfed; public int homeCity; public bool exploring,sentry; public int id,owner,x,y,type,hp=10,moves=4,experience,promotion,job,jobTurns,workerGroup; public int victories; public int faith=-1,charges,plague; public bool hasOrder,fortified; public int destinationX,destinationY;
         // Save version 21: workers that develop land on their own, and road routes (build a road on every tile to roadX, roadY).
         public bool autoWork,roadOrder; public int roadX,roadY; }
     [Serializable] public class City {
@@ -94,12 +94,14 @@ namespace ParadigmRealm
         public static int TerrainDefence(int t){return t==5||t==17?3:t==2?2:Wooded(t)||t==7?1:0;}
         public static readonly int[] Moves={4,4,4,6,4,6,4,4,6,4,4,4,6,8,8,4};
         // Stage 3 costs from CORE-DESIGN-16BIT.md; Scout, Knight, Rifleman, Medic and Caravan are not in the design table and keep their old costs.
-        public static readonly int[] UnitCosts={90,20,10,14,20,48,65,20,25,40,30,40,20,40,45,40};
+        // Soldiers take far longer to train than they did (owner request, 6 Nov 2026; was Warrior 10, Scout 14, Archer 20, Knight 48,
+        // Rifleman 65, Spearman 20, Horseman 25, Catapult 40, War Galley 45).
+        public static readonly int[] UnitCosts={90,20,30,20,50,110,150,50,65,100,30,40,20,40,110,40};
         // Settlers come with Stone Tools, so a new city can queue Warriors then Settlers on turn 1 (design).
         public static readonly int[] UnitTech={TechnologyCatalog.Index("toolmaking"),-1,TechnologyCatalog.Index("toolmaking"),TechnologyCatalog.Index("toolmaking"),TechnologyCatalog.Index("archery"),TechnologyCatalog.Index("chivalry"),TechnologyCatalog.Index("rifling"),TechnologyCatalog.Index("bronze"),TechnologyCatalog.Index("horseback"),TechnologyCatalog.Index("maths"),TechnologyCatalog.Index("medicine"),TechnologyCatalog.Index("currency"),TechnologyCatalog.Index("sailing"),TechnologyCatalog.Index("engineering"),TechnologyCatalog.Index("engineering"),TechnologyCatalog.Index("mysticism")};
         public static readonly int[] UnitResource={0,0,0,0,0,4,2,0,4,2,0,0,0,0,0,0};
         // Every unit beyond the free support (3 per city plus government) costs 1 gold.
-        public static readonly int[] Upkeep={1,1,1,1,1,2,2,1,2,2,1,1,1,1,2,1};
+        public static readonly int[] Upkeep={1,1,2,1,2,4,4,2,3,3,1,1,1,1,3,1};
         public const int FreeUnitsPerCity=3;
         public static readonly string[] TechNames=TechnologyCatalog.Names;
         public static readonly int[] TechCosts=TechnologyCatalog.Costs;
@@ -113,7 +115,7 @@ namespace ParadigmRealm
         public static readonly int[] BuildingTech={TechnologyCatalog.Index("pottery"),TechnologyCatalog.Index("writing"),TechnologyCatalog.Index("masonry"),TechnologyCatalog.Index("bronze"),TechnologyCatalog.Index("currency"),TechnologyCatalog.Index("bronze"),TechnologyCatalog.Index("agriculture"),TechnologyCatalog.Index("laws"),TechnologyCatalog.Index("medicine"),TechnologyCatalog.Index("mysticism"),TechnologyCatalog.Index("engineering"),TechnologyCatalog.Index("education"),TechnologyCatalog.Index("banking"),TechnologyCatalog.Index("industrialisation"),TechnologyCatalog.Index("medicine"),TechnologyCatalog.Index("construction"),TechnologyCatalog.Index("sailing"),TechnologyCatalog.Index("engineering"),TechnologyCatalog.Index("writing"),TechnologyCatalog.Index("calendar"),TechnologyCatalog.Index("economics"),TechnologyCatalog.Index("military_science"),TechnologyCatalog.Index("computers"),TechnologyCatalog.Index("computers"),TechnologyCatalog.Index("computers")};
         // realWorld: the game was set up with the Real World Civilisations (rivals drawn from them first), not the Fantasy Kingdoms.
         public bool realWorld;
-        public int version=30,civCount=3,seed,turn=1,nextId=1,gold=20,science,research=TechnologyCatalog.Index("agriculture"),mapType,speed=1,difficulty=1,trait;
+        public int version=31,civCount=3,seed,turn=1,nextId=1,gold=20,science,research=TechnologyCatalog.Index("agriculture"),mapType,speed=1,difficulty=1,trait;
         public Tile[] tiles; public List<Unit> units=new List<Unit>(); public List<City> cities=new List<City>();
         public List<string> log=new List<string>(); public bool[] tech=TechnologyCatalog.Starting(),war=new bool[3],met=new[]{true,false,false},openBorders=new bool[3];
         public Nation[] nations=new[]{new Nation(),new Nation(),new Nation()};
@@ -439,7 +441,9 @@ namespace ParadigmRealm
             // A road through woodland is only a trail: combat units get no road speed on it (owner request).
             bool roadStep=from.road&&t.road&&!(Power[u.type]>0&&(Forested(from.terrain)||Forested(t.terrain)));
             return roadStep?1:u.type==3?2:u.type==8&&Wooded(t.terrain)?2:(RoughTerrain(t.terrain)?Math.Min(3,MaxMoves(u)):2);}// a slow people can still manage one step a turn on rough land
-        bool Capacity(Unit u,int x,int y){if(IsNaval(u.type))return units.Count(a=>a.id!=u.id&&a.owner==u.owner&&IsNaval(a.type)&&a.x==x&&a.y==y)<3;var at=At(x,y);if(at!=null&&IsWater(at.terrain))return true;if(u.type==1)return true;return units.Count(a=>a.type!=1&&!IsNaval(a.type)&&a.id!=u.id&&a.owner==u.owner&&a.x==x&&a.y==y&&(Power[a.type]>0)==(Power[u.type]>0))<(Power[u.type]>0?3:1);}
+        // A tile holds six soldiers and two civilians (any number of workers). A city's own people can always shelter inside it.
+        public const int SoldierStack=6,CivilianStack=2;
+        bool Capacity(Unit u,int x,int y){if(IsNaval(u.type))return units.Count(a=>a.id!=u.id&&a.owner==u.owner&&IsNaval(a.type)&&a.x==x&&a.y==y)<3;var at=At(x,y);if(at!=null&&IsWater(at.terrain))return true;if(u.type==1)return true;if(Power[u.type]==0&&cities.Any(c=>c.owner==u.owner&&c.x==x&&c.y==y))return true;return units.Count(a=>a.type!=1&&!IsNaval(a.type)&&a.id!=u.id&&a.owner==u.owner&&a.x==x&&a.y==y&&(Power[a.type]>0)==(Power[u.type]>0))<(Power[u.type]>0?SoldierStack:CivilianStack);}
         [NonSerialized] int[] routeDist,routePrev,routeSeq; [NonSerialized] Tile routeScratch;
         // Regions a land unit can walk between (water, reefs, lakes and peaks separate them; polar ice joins them, as it is
         // passable). Rebuilt only when the terrain fingerprint changes, which in play means once per map.
@@ -466,12 +470,14 @@ namespace ParadigmRealm
         // more than the real remaining cost, so the route found is still the cheapest), a heap and reusable arrays.
         // ignoreUnits: plan as if no units stood in the way (used to tell a jam that will clear from a route that does not exist).
         // Stage 8 speed: rival land units give up at once when the goal lies on land they cannot reach over land.
+        // However big the world, one search stops here; this keeps a hopeless route to a fraction of a second.
+        const int MaxRouteSearch=50000;
         public List<Tile> Route(Unit u,int x,int y,bool ignoreUnits=false)
         {
             var path=new List<Tile>();var goal=At(x,y);if(u==null||goal==null)return path;
             x=goal.x;y=goal.y;
             if(nations[u.owner].known[y*Width+x]&&!Passable(u,goal,u.owner==0?KnownTerrain(goal):goal.terrain))return path;
-            int n=tiles.Length,start=u.y*Width+u.x,end=y*Width+x;
+            int n=tiles.Length,start=u.y*Width+u.x,end=y*Width+x,expanded=0;
             if(u.owner!=0&&!IsNaval(u.type)&&!IsWater(goal.terrain)&&WalkRegion(start)!=WalkRegion(end))return path;
             if(routeDist==null||routeDist.Length!=n){routeDist=new int[n];routePrev=new int[n];routeSeq=new int[n];for(int k=0;k<n;k++){routeDist[k]=int.MaxValue;routePrev[k]=-1;routeSeq[k]=-1;}}
             if(routeScratch==null)routeScratch=new Tile();
@@ -479,10 +485,13 @@ namespace ParadigmRealm
             int minStep=IsNaval(u.type)?2:1;
             // Rivals search straight towards the goal (an ordinary step costs 2), which looks at far fewer tiles than the exact search
             // the player's units use, at the price of a path that may not be quite the shortest.
-            int greed=u.owner!=0&&!IsNaval(u.type)?2:1;Func<int,int> estimate=i=>Distance(tiles[i].x,tiles[i].y,x,y)*minStep*greed;
+            // The player's short journeys get the exact best path; long ones search straight too, or a big map takes seconds.
+            int greed=!IsNaval(u.type)&&(u.owner!=0||Distance(u.x,u.y,x,y)>30)?2:1;Func<int,int> estimate=i=>Distance(tiles[i].x,tiles[i].y,x,y)*minStep*greed;
             // Rivals do not chase detours longer than three times the direct cost (plus a margin); their fallbacks take over.
             int limit=u.owner==0?int.MaxValue:estimate(start)/greed*3*2+40;
             var foreign=new HashSet<int>();var mine=new HashSet<int>();foreach(var a in units){int cell=a.y*Width+a.x;if(a.owner!=u.owner)foreign.Add(cell);else if(a.id!=u.id)mine.Add(cell);}if(wildlife&&animals!=null)foreach(var beast in animals)foreign.Add(beast.y*Width+beast.x);
+            // A tile the unit cannot fit on can never be reached: asking the whole map first froze the game for seconds at a time.
+            if(!ignoreUnits&&start!=end&&mine.Contains(end)&&!Capacity(u,x,y))return path;
             try
             {
                 dist[start]=0;seqOf[start]=0;seqNode.Add(start);touched.Add(start);HeapPush(heap,(long)estimate(start)<<32);
@@ -490,7 +499,7 @@ namespace ParadigmRealm
                 {
                     long key=HeapPop(heap);int current=seqNode[(int)(key&0xFFFFFFFFL)];
                     if((int)(key>>32)!=dist[current]+estimate(current))continue;
-                    if(current==end)break;
+                    if(current==end)break;if(++expanded>MaxRouteSearch)break;
                     var from=tiles[current];
                     for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++)
                     {
@@ -519,7 +528,7 @@ namespace ParadigmRealm
         // stack) is replaced by the nearest reachable tile beside it; a path jammed only by units waits for the next turn; an
         // order ends only when there is no way there at all (owner request).
         [NonSerialized] List<Tile> orderPlan;[NonSerialized] int orderPlanX,orderPlanY;
-        public bool Order(Unit u,int x,int y){if(u==null||result!="")return false;orderPlan=null;CancelOrder(u);u.fortified=false;if(u.x==x&&u.y==y)return true;var goal=At(x,y);if(goal==null)return false;
+        public bool Order(Unit u,int x,int y){if(u==null||result!="")return false;orderPlan=null;CancelOrder(u);if(u.stack!=0)foreach(var m in StackOf(u))if(m!=u)CancelOrder(m);u.fortified=false;if(u.x==x&&u.y==y)return true;var goal=At(x,y);if(goal==null)return false;
             var firstPlan=Route(u,x,y);if(firstPlan.Count>0&&u.owner!=0){orderPlan=firstPlan;orderPlanX=x;orderPlanY=y;}
             if(firstPlan.Count==0&&Route(u,x,y,true).Count==0){var near=NearestReachableBeside(u,goal)??(IsNaval(u.type)||u.owner!=0?null:NearestLandToward(u,goal));if(near==null)return false;x=near.x;y=near.y;if(u.x==x&&u.y==y)return true;}
             u.destinationX=x;u.destinationY=y;u.hasOrder=true;ContinueOrder(u);return true;}
@@ -532,7 +541,7 @@ namespace ParadigmRealm
                 .OrderBy(t=>Distance(t.x,t.y,goal.x,goal.y)).ThenBy(t=>Distance(t.x,t.y,u.x,u.y)))
             {
                 if(t.x==u.x&&t.y==u.y)return t;
-                if(++tries>40)break;
+                if(++tries>6)break;
                 if(Route(u,t.x,t.y).Count>0)return t;
             }
             return null;
@@ -542,17 +551,17 @@ namespace ParadigmRealm
             // Tiles touching the destination first; a ring further out only when none of those can be reached.
             for(int ring=1;ring<=2;ring++)
             {
-                Tile best=null;int bestLength=int.MaxValue;
+                var options=new List<Tile>();
                 for(int dy=-ring;dy<=ring;dy++)for(int dx=-ring;dx<=ring;dx++)
                 {
                     if(Math.Max(Math.Abs(dx),Math.Abs(dy))!=ring)continue;var t=StepIn(goal.x,goal.y,dx,dy,ring);if(t==null)continue;
                     int terrain=u.owner==0&&!Visible(t.x,t.y)?KnownTerrain(t):t.terrain;
                     if(!Passable(u,t,terrain)||!CanEnter(u.owner,t)||units.Any(a=>a.owner!=u.owner&&a.x==t.x&&a.y==t.y)||!Capacity(u,t.x,t.y))continue;
                     if(t.x==u.x&&t.y==u.y)return t;
-                    var path=Route(u,t.x,t.y);if(path.Count==0)continue;
-                    if(path.Count<bestLength){bestLength=path.Count;best=t;}
+                    options.Add(t);
                 }
-                if(best!=null)return best;
+                // The nearest that can be walked to; there is no need to work out a route to every one.
+                foreach(var t in options.OrderBy(a=>Distance(u.x,u.y,a.x,a.y)).Take(4))if(Route(u,t.x,t.y).Count>0)return t;
             }
             return null;
         }
@@ -589,12 +598,13 @@ namespace ParadigmRealm
         // units. Unpaid upkeep costs 1 point.
         public int Strength(Unit u,Unit enemy,bool defending){int s=(defending?Defence[u.type]:Attack[u.type])+u.promotion+MinorStrength(u,defending);if(defending){if(u.type==7&&enemy!=null&&Mounted(enemy.type))s+=2;var t=At(u.x,u.y);s+=TerrainDefence(t.terrain);if(t.fort)s+=1;if(u.fortified)s+=1;if(cities.Any(c=>c.x==u.x&&c.y==u.y&&c.walls))s+=2;if(HasEdict(u.owner,2,0))s+=1;if(HasTrait(u.owner,TraitStalwart)&&At(u.x,u.y).owner==u.owner)s+=1;}else if(enemy!=null&&Mounted(u.type)&&HasTrait(u.owner,TraitHorseLords))s+=1;s+=CivStrength(u,enemy,defending);if(nations[u.owner].arrears>0)s--;return Math.Max(0,s);}
         // The defender that fights: highest defence, then most health. Only it takes damage and only it can die.
-        public Unit BestDefender(Unit attacker,int x,int y){return units.Where(e=>e.owner!=attacker.owner&&e.x==x&&e.y==y).OrderByDescending(e=>Strength(e,attacker,true)).ThenByDescending(e=>e.hp).ThenBy(e=>e.id).FirstOrDefault();}
+        public Unit BestDefender(Unit attacker,int x,int y){var on=At(x,y);bool atSea=on!=null&&IsWater(on.terrain);return units.Where(e=>e.owner!=attacker.owner&&e.x==x&&e.y==y).OrderByDescending(e=>!atSea&&Power[e.type]>0).ThenByDescending(e=>Strength(e,attacker,true)).ThenByDescending(e=>e.hp).ThenBy(e=>e.id).FirstOrDefault();}
         // Exact result of one exchange: damage to the defender and to the attacker (ranged attackers take none).
         public void Exchange(Unit attacker,Unit defender,out int dealt,out int taken){int a=Strength(attacker,defender,false),d=Strength(defender,attacker,true);dealt=Damage(a,d);taken=IsRanged(attacker.type)?0:Damage(d,a);}
-        public bool Move(Unit u,int x,int y){if(result!=""||u==null||!units.Contains(u))return false;var t=At(x,y);if(t==null)return false;x=t.x;y=t.y;if(Distance(u.x,u.y,x,y)!=1)return false;if(t==null||!Passable(u,t,t.terrain)||!CanEnter(u.owner,t)||!Capacity(u,x,y))return false;var cargo=IsNaval(u.type)?Cargo(u):null;int cost=StepCost(u,u.x,u.y,t);if(u.moves<cost)return false;{var beast=wildlife?AnimalAt(x,y):null;if(beast!=null)return FightAnimal(u,beast);}var enemies=units.Where(a=>a.owner!=u.owner&&a.x==x&&a.y==y).ToList();var c=cities.Find(a=>a.owner!=u.owner&&a.x==x&&a.y==y);
+        public bool Move(Unit u,int x,int y){if(result!=""||u==null||!units.Contains(u))return false;var t=At(x,y);if(t==null)return false;x=t.x;y=t.y;if(Distance(u.x,u.y,x,y)!=1)return false;if(t==null||!Passable(u,t,t.terrain)||!CanEnter(u.owner,t)||!Capacity(u,x,y))return false;var cargo=IsNaval(u.type)?Cargo(u):null;int cost=StepCost(u,u.x,u.y,t);if(u.moves<cost)return false;List<Unit> mates=null;if(u.stack!=0){mates=StackOf(u).Where(a=>a!=u&&!a.unfed).ToList();foreach(var m in mates)if(m.moves<StepCost(m,u.x,u.y,t))return false;if(!StackFits(u,mates,x,y))return false;}{var beast=wildlife?AnimalAt(x,y):null;if(beast!=null)return FightAnimal(u,beast);}var enemies=units.Where(a=>a.owner!=u.owner&&a.x==x&&a.y==y).ToList();var c=cities.Find(a=>a.owner!=u.owner&&a.x==x&&a.y==y);
             if(enemies.Count>0||c!=null){if(Power[u.type]==0||enemies.Any(a=>!AtWar(u.owner,a.owner))||(c!=null&&!AtWar(u.owner,c.owner)))return false;if(enemies.Count>0){var e=BestDefender(u,x,y);int dealt,taken;Exchange(u,e,out dealt,out taken);e.hp-=dealt;u.hp-=taken;u.moves=0;if(e.hp<=0&&u.hp>0)Victory(u);if(u.hp<=0&&e.hp>0)Victory(e);if(u.owner==0||e.owner==0)Note(UnitNames[u.type]+" battles "+UnitNames[e.type]+".");units.RemoveAll(a=>a.hp<=0);DrownStranded();if(u.hp<=0||enemies.Any(a=>a.hp>0)){UpdatePortLinks();CheckVictory();return true;}}
                 if(c!=null){if(u.type==4||u.type==9){u.moves=0;CheckVictory();return true;}DiplomacyOnCapture(u.owner,c.owner);LoseProjectCity(c);c.owner=u.owner;c.occupation=4;c.pop=Math.Max(1,c.pop-1);NormaliseSpecialists(c);c.queue.Clear();c.build=-1;c.production=0;c.buildingQueue.Clear();c.buildingProject=-1;c.buildingProduction=0;c.walls=false;RebuildTerritory();if(u.owner==0||Visible(x,y))Note(c.name+" occupied for 4 turns.");}}
+            if(mates!=null)foreach(var m in mates){int mateCost=StepCost(m,u.x,u.y,t);m.x=x;m.y=y;m.moves=Math.Max(0,m.moves-mateCost);m.fortified=false;if(m.job>0)CancelOrder(m);}
             u.x=x;u.y=y;u.moves=Math.Max(0,u.moves-cost);u.fortified=false;if(cargo!=null)CarryCargo(cargo,x,y);VisitVillage(u);ExploreRuin(u);GatewayTravel(u);
             // A people behind the locked gates touches nothing the player can see, and only its own roads and ports.
             if(gatesLocked&&IsNativeNation(u.owner)){if(networks!=null&&u.owner<networks.Length)networks[u.owner]=null;RevealOne(u.owner,false);return true;}
@@ -632,8 +642,12 @@ namespace ParadigmRealm
         public void CancelActivity(Unit u){foreach(var a in WorkerTeam(u)){CancelOrder(a);a.fortified=false;a.autoWork=false;a.roadOrder=false;}}
         public bool StartJob(Unit u,int job){var team=WorkerTeam(u);if(team.Count==0||team.Any(a=>JobReason(a,job)!=""))return false;int work=JobWork(u,job);foreach(var a in team){CancelOrder(a);a.fortified=false;a.job=job;a.jobTurns=work;a.moves=0;}return true;}
         public int JobTurnsRemaining(Unit u){if(u==null||u.job==0)return 0;int count=WorkerTeam(u).Count(a=>a.job==u.job);return (u.jobTurns+Math.Max(1,count)-1)/Math.Max(1,count);}
-        public string Activity(Unit u){if(u.unfed)return "No food: cannot act";if(u.roadOrder&&u.job==0)return "Road to "+u.roadX+", "+u.roadY;if(u.autoWork&&u.job==0)return "Auto-developing";if(u.exploring)return "Auto-exploring";if(u.sentry)return "Sentry: watching for enemies";if(u.job>0)return new[]{"","Building road","Building farm / pasture","Building mine","Building fort","Clearing forest"}[u.job];if(u.hasOrder)return "Travelling to "+u.destinationX+", "+u.destinationY;if(u.fortified)return "Fortifying / healing";return u.moves==0?"Waiting for next turn":"Idle";}
-        public string Remaining(Unit u){if(u.job>0)return JobTurnsRemaining(u)+" turns remaining";if(!u.hasOrder)return "Turns remaining: —";var route=Route(u,u.destinationX,u.destinationY);if(route.Count==0)return "Route blocked";int turns=0,budget=u.moves,x=u.x,y=u.y;foreach(var t in route){int cost=StepCost(u,x,y,u.owner==0?KnownTile(t):t);if(cost>budget){turns++;budget=MaxMoves(u);}budget-=cost;x=t.x;y=t.y;}return "Approx. "+turns+" turns remaining";}
+        static readonly string[] AutoJobs={"look for work","build a road","build a farm","build a mine","build a fort","clear the trees"};
+        public string Activity(Unit u){if(u.unfed)return "No food: cannot act";if(u.roadOrder&&u.job==0)return "Road to "+u.roadX+", "+u.roadY;if(u.autoWork&&u.job>0)return "Auto-developing: "+new[]{"","building a road","building a farm","building a mine","building a fort","clearing the trees"}[u.job];if(u.autoWork)return u.hasOrder?"Auto-developing: on the way to "+AutoJobs[u.autoJob]:"Auto-developing: looking for work";if(u.exploring)return "Auto-exploring";if(u.sentry)return "Sentry: watching for enemies";if(u.job>0)return new[]{"","Building road","Building farm / pasture","Building mine","Building fort","Clearing forest"}[u.job];if(u.hasOrder)return "Travelling to "+u.destinationX+", "+u.destinationY;if(u.fortified)return "Fortifying / healing";return u.moves==0?"Waiting for next turn":"Idle";}
+        // The unit card asks this on every pass of every frame, so the answer is kept until something it depends on changes.
+        long remainingKey=-1;string remainingText="";
+        public string Remaining(Unit u){if(u.job>0)return JobTurnsRemaining(u)+" turns remaining";if(!u.hasOrder)return "Turns remaining: —";long key;unchecked{key=turn;key=key*31+u.id;key=key*31+u.x;key=key*31+u.y;key=key*31+u.destinationX;key=key*31+u.destinationY;key=key*31+u.moves;key=key*31+units.Count;}if(key==remainingKey)return remainingText;remainingKey=key;remainingText=WorkOutRemaining(u);return remainingText;}
+        string WorkOutRemaining(Unit u){var route=Route(u,u.destinationX,u.destinationY);if(route.Count==0)return "Route blocked";int turns=0,budget=u.moves,x=u.x,y=u.y;foreach(var t in route){int cost=StepCost(u,x,y,u.owner==0?KnownTile(t):t);if(cost>budget){turns++;budget=MaxMoves(u);}budget-=cost;x=t.x;y=t.y;}return "Approx. "+turns+" turns remaining";}
         void ProcessJobs(int owner){
             var processed=new HashSet<int>();
             foreach(var u in units.Where(a=>a.owner==owner&&a.job>0&&!a.unfed).ToList()){
@@ -664,7 +678,7 @@ namespace ParadigmRealm
         // Sealed peoples at peace plan one turn in three: nobody can see them, and sixty of them were half of a late turn on a big map.
         bool SealedRest(int owner){return gatesLocked&&turn>=40&&IsNativeNation(owner)&&(turn+owner)%3!=0&&!AtWarWithAnyone(owner);}
         [NonSerialized] int aiBalance,aiBalanceFor=-1;
-        void AI(int owner){EmpireAI(owner);AdjustScienceRate(owner);aiBalance=Budget(owner)[2];aiBalanceFor=owner;var r=new Random(seed+turn*997+owner);foreach(var c in cities.Where(a=>a.owner==owner)){ManageCityAI(c);var own=units.Where(a=>a.owner==owner).ToList();if(c.build<0){var choices=Choices(c);int naval=AINavalBuild(c);int desired=ShouldTrainSettler(c)?0:own.Count(u=>u.type==1)<cities.Count(a=>a.owner==owner)?1:naval>=0&&!(Budget(owner)[2]<0&&nations[owner].gold<15)?naval:Budget(owner)[2]<0&&nations[owner].gold<15?-1:AIMilitaryBuild(c,choices.ToList(),own);c.build=nations[owner].rationShort>0&&desired>=0&&BuildUnit(desired)>=0?-1:desired;}if(c.buildingProject<0){int building=PreferredBuilding(c);if(BuildingIds.Contains(building))ChooseProject(c,building,false);}AIRush(c);}
+        void AI(int owner){EmpireAI(owner);AdjustScienceRate(owner);aiBalance=Budget(owner)[2];aiBalanceFor=owner;var r=new Random(seed+turn*997+owner);foreach(var c in cities.Where(a=>a.owner==owner)){ManageCityAI(c);var own=units.Where(a=>a.owner==owner).ToList();if(c.build>=0&&IsCombatBuild(c.build)&&cities.Count(a=>a.owner==owner)<2&&ShouldTrainSettler(c))c.build=UnitBuild(0);if(c.build<0){var choices=Choices(c);int naval=AINavalBuild(c);int desired=ShouldTrainSettler(c)?0:own.Count(u=>u.type==1)<cities.Count(a=>a.owner==owner)?1:naval>=0&&!(Budget(owner)[2]<0&&nations[owner].gold<15)?naval:Budget(owner)[2]<0&&nations[owner].gold<15?-1:AIMilitaryBuild(c,choices.ToList(),own);c.build=nations[owner].rationShort>0&&desired>=0&&BuildUnit(desired)>=0?-1:desired;}if(c.buildingProject<0){int building=PreferredBuilding(c);if(BuildingIds.Contains(building))ChooseProject(c,building,false);}AIRush(c);}
             aiBalanceFor=-1;foreach(var u in units.Where(a=>a.owner==owner).ToList()){if(!units.Contains(u)||result!=""||u.job>0)continue;if(u.type==11){AICaravan(u);continue;}if(u.type==PriestUnit){PriestAI(u);continue;}if(IsNaval(u.type)){NavalUnitAI(u);continue;}if(u.type==0){PlanAISettlement(u);continue;}if(AtSea(u)){if(!units.Any(g=>g.owner==owner&&g.type==GalleyUnit&&g.x==u.x&&g.y==u.y))GoAshore(u);continue;}
                 if(u.type==1){ImproveAI(u);continue;}
                 if(AIUpgrade(u))continue;
@@ -711,12 +725,12 @@ namespace ParadigmRealm
             // auto develop and road routes; tiles gain ancient ruins (none on old maps).
             if(version==20){if(nations!=null)foreach(var n in nations)if(n!=null){n.tech=Grow(n.tech,TechnologyCatalog.Count);n.progress=Grow(n.progress,TechnologyCatalog.Count);}if(nations!=null&&nations.Length>0&&nations[0]!=null)tech=nations[0].tech;version=21;}if(version==21){UpgradeReligion();version=22;}if(version==22){foreach(var u in units){u.faith=-1;u.charges=0;}version=23;}if(version==23){gatesLocked=true;RecallTravellers();version=24;}if(version==24)version=25;// hexGrid defaults false: older maps keep their layout
             if(version==25){difficultyLevel=DifficultyTable.Steward;version=26;}
-            if(version==26){if(animals==null)animals=new List<Animal>();version=27;}if(version==27)version=28;if(version==28)version=29;if(version==29){foodRations=true;version=30;}// older games have no wild animals
+            if(version==26){if(animals==null)animals=new List<Animal>();version=27;}if(version==27)version=28;if(version==28)version=29;if(version==29){foodRations=true;version=30;}if(version==30){MarkKnownGates();version=31;}// older games have no wild animals
             // Every civilisation remembers the whole map, parallel worlds included.
             if(nations!=null&&tiles!=null)foreach(var n in nations)if(n!=null&&n.known!=null&&n.known.Length<tiles.Length)n.known=Grow(n.known,tiles.Length);
             networks=null;}
         static T[] Grow<T>(T[] a,int n){if(a==null||a.Length>=n)return a;var b=new T[n];Array.Copy(a,b,a.Length);return b;}
-        public bool Valid(){if(!EmpireValid()||!DiplomacyValid()||!FlagsValid())return false;if(version!=30||nations.Any(n=>n.militaryRate<0||n.scienceRate<0||n.militaryRate+n.scienceRate>100)||animals==null||difficultyLevel<0||difficultyLevel>=DifficultyTable.Names.Length||!ReligionValid()||!RealmsValid()||!PortValid()||tiles.Any(t=>t.villageOwner< -1||t.villageOwner>=civCount)||mapType<0||mapType>=LandTypeNames.Length||!CivilisationsValid()||!EdictsValid()||!ProjectsValid()||civCount<2||civCount>MaxNations||(mapShape<0||mapShape>2)||mapWidth<16||mapWidth>400||mapHeight<10||mapHeight>(mapShape==2?400:300)||turn<1||nextId<1||tiles==null||tiles.Length!=Width*Height||units==null||cities==null||log==null||result==null||tech==null||tech.Length!=TechnologyCatalog.Count||met==null||met.Length!=civCount||war==null||war.Length!=civCount||openBorders==null||openBorders.Length!=civCount||nations==null||nations.Length!=civCount||string.IsNullOrWhiteSpace(civilisationName)||civilisationName.Length>32||gold<0||science<0||research< -1||research>=TechnologyCatalog.Count||speed<0||speed>2||flag<0||flag>2)return false;
+        public bool Valid(){if(!EmpireValid()||!DiplomacyValid()||!FlagsValid())return false;if(version!=31||nations.Any(n=>n.militaryRate<0||n.scienceRate<0||n.militaryRate+n.scienceRate>100)||animals==null||difficultyLevel<0||difficultyLevel>=DifficultyTable.Names.Length||!ReligionValid()||!RealmsValid()||!PortValid()||tiles.Any(t=>t.villageOwner< -1||t.villageOwner>=civCount)||mapType<0||mapType>=LandTypeNames.Length||!CivilisationsValid()||!EdictsValid()||!ProjectsValid()||civCount<2||civCount>MaxNations||(mapShape<0||mapShape>2)||mapWidth<16||mapWidth>400||mapHeight<10||mapHeight>(mapShape==2?400:300)||turn<1||nextId<1||tiles==null||tiles.Length!=Width*Height||units==null||cities==null||log==null||result==null||tech==null||tech.Length!=TechnologyCatalog.Count||met==null||met.Length!=civCount||war==null||war.Length!=civCount||openBorders==null||openBorders.Length!=civCount||nations==null||nations.Length!=civCount||string.IsNullOrWhiteSpace(civilisationName)||civilisationName.Length>32||gold<0||science<0||research< -1||research>=TechnologyCatalog.Count||speed<0||speed>2||flag<0||flag>2)return false;
             if(nations.Any(n=>n==null||n.tech==null||n.tech.Length!=TechnologyCatalog.Count||n.progress==null||n.progress.Length!=TechnologyCatalog.Count||n.known==null||n.known.Length!=tiles.Length||n.research< -1||n.research>=TechnologyCatalog.Count||n.progress.Any(v=>v<0)||n.tax<0||n.tax>2||n.scienceRate<0||n.scienceRate>MaxScienceRate||n.scienceRate%10!=0||n.gold<0))return false;
             for(int i=0;i<tiles.Length;i++){var t=tiles[i];if(t==null||t.x!=i%Width||t.y!=i/Width||t.terrain<0||t.terrain>=TerrainNames.Length||t.rememberedTerrain<0||t.rememberedTerrain>=TerrainNames.Length||t.resource<0||t.resource>15||t.owner< -1||t.owner>=civCount)return false;}
             if(units.Any(u=>u==null||u.type<0||u.type>=UnitNames.Length||u.promotion<0||u.promotion>2||u.victories<0||u.owner<0||u.owner>=civCount||At(u.x,u.y)==null||u.hp<1||u.hp>10||u.moves<0||u.moves>MaxMoves(u)||u.id<1||u.id>=nextId||u.job<0||u.job>5||u.jobTurns<0||u.workerGroup<0||(u.workerGroup>0&&u.type!=1)||(u.hasOrder&&At(u.destinationX,u.destinationY)==null)))return false;

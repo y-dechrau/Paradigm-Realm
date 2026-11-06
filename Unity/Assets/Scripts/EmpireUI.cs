@@ -64,7 +64,7 @@ public partial class RealmGame {
         }
     }
     void DrawMilitaryAdviser(){
-        GUILayout.Label("Select a unit to centre the map. Every soldier and warship costs gold each turn (1 or 2 by type). Each city supports "+World.FreeUnitsPerCity+" civilian units free, plus your government's support; each civilian beyond that costs 1 gold per turn.",body);
+        GUILayout.Label("Select a unit to centre the map. Every soldier and warship costs gold each turn (2 to 4 by type), and a large army costs more: +1 gold for every three soldiers beyond two per city. Each city supports "+World.FreeUnitsPerCity+" civilian units free, plus your government's support; each civilian beyond that costs 1 gold per turn.",body);
         foreach(var u in world.units.Where(u=>u.owner==0).ToList())
             if(Button(world.UnitName(u)+" #"+u.id+" | HP "+u.hp+" | "+world.Activity(u))){selected=u.id;cityId=-1;detailsScreen="";cityScreen=false;Center();GUIUtility.ExitGUI();}
     }
@@ -86,6 +86,8 @@ public partial class RealmGame {
             if(t.seen){c=AtlasColour(t.terrain);if(t.owner>=0){var n=nations[t.owner];c=new Color(c.r+(n.r-c.r)*.45f,c.g+(n.g-c.g)*.45f,c.b+(n.b-c.b)*.45f,1);}}
             pixels[(ViewRows-1-(t.y-top))*world.Width+t.x]=c;
         }
+        // Sealed gateways stay plotted on the map once found.
+        if(viewRealm==0&&world.gatesFound!=null)foreach(int cell in world.gatesFound){var g=world.tiles[cell];var gold=new Color(1f,.82f,.25f,1);for(int oy=-1;oy<=1;oy++)for(int ox=-1;ox<=1;ox++){int px=g.x+ox,py=g.y+oy-top;if(px<0||px>=world.Width||py<0||py>=ViewRows)continue;pixels[(ViewRows-1-py)*world.Width+px]=gold;}}
         atlasTexture.SetPixels(pixels);atlasTexture.Apply();atlasPixels=pixels;globeDrawnAtlas++;atlasWorld=world;atlasBuilt=Time.realtimeSinceStartup;
     }
     // Orthographic globe drawn from the same known-world colours as the flat atlas. Drag to spin, buttons nudge.

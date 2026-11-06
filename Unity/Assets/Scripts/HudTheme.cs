@@ -230,7 +230,7 @@ namespace ParadigmRealm
                 DrawIcon(PixelArt.IconRoad,new Rect(tx,r.y+52,20,20));GUI.Label(new Rect(tx+26,r.y+52,120,22),"Movement",hudLabel);GUI.Label(new Rect(tx,r.y+52,tw-8,22),u.moves+" / "+world.MaxMoves(u),hudNumber);
                 DrawIcon(PixelArt.IconMilitary,new Rect(tx,r.y+76,20,20));GUI.Label(new Rect(tx+26,r.y+76,120,22),"Strength",hudLabel);GUI.Label(new Rect(tx,r.y+76,tw-8,22),World.Attack[u.type]+" / "+World.Defence[u.type],hudNumber);
                 // What the unit is doing, on its own line (owner request), with the time left for jobs and journeys; rank below.
-                string doing=world.Activity(u);if(!u.unfed&&(u.job>0||u.hasOrder))doing+=" — "+world.Remaining(u);
+                string doing=world.Activity(u);if(!u.unfed&&(u.job>0||u.hasOrder))doing+=" — "+world.Remaining(u);if(u.stack!=0)doing=world.StackOf(u).Count+" in stack: "+doing;
                 FitLabel(new Rect(tx,r.y+97,tw-8,20),doing,new GUIStyle(hudLabel){fontSize=13,normal={textColor=UiGold}});
                 FitLabel(new Rect(tx,r.y+117,tw-8,16),World.RankText(u),hudSmall,8);
                 DrawUnitActions(u,new Rect(r.x+10,r.y+136,r.width-20,56));
@@ -263,11 +263,12 @@ namespace ParadigmRealm
             actions.Add(new KeyValuePair<int,string>(PixelArt.IconSkip,"Skip"));
             if(World.Power[u.type]>0&&!World.IsNaval(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconFortify,u.fortified?"Wake":"Fortify"));
             else if(u.type!=1)actions.Add(new KeyValuePair<int,string>(PixelArt.IconSentry,u.sentry?"Wake":"Sentry"));
-            actions=actions.Take(u.type==1?5:4).ToList();actions.Add(new KeyValuePair<int,string>(PixelArt.IconMore,moreActions?"Less":"More"));
+            bool canStack=!World.IsNaval(u.type)&&world.UnitsToStack(u).Count>1;if(canStack&&u.type!=1)actions.Insert(1,new KeyValuePair<int,string>(PixelArt.IconMilitary,u.stack!=0?"Unstack":"Stack"));
+            actions=actions.Take(u.type==1?5:canStack?5:4).ToList();actions.Add(new KeyValuePair<int,string>(PixelArt.IconMore,moreActions?"Less":"More"));
             float w=(row.width-(actions.Count-1)*6)/actions.Count;
             for(int i=0;i<actions.Count;i++)
             {
-                var a=actions[i];bool active=a.Value=="Explore"&&u.exploring||a.Value=="Wake"||a.Value=="Less"||a.Value=="Move"&&moveMode;
+                var a=actions[i];bool active=a.Value=="Explore"&&u.exploring||a.Value=="Wake"||a.Value=="Less"||a.Value=="Move"&&moveMode||a.Value=="Road"&&roadMode||a.Value=="Unstack";
                 int barJob=a.Value=="Road"?1:a.Value=="Farm"?2:a.Value=="Mine"?3:a.Value=="Clear"?5:0;
                 bool enabled=GUI.enabled;GUI.enabled=enabled&&(idle||a.Key==PixelArt.IconMore)&&(barJob==0||world.JobTechMissing(u.owner,barJob)=="");
                 if(HudButton(new Rect(row.x+i*(w+6),row.y,w,row.height),a.Key,a.Value,active))
@@ -276,7 +277,10 @@ namespace ParadigmRealm
                     {
                         case "Move":moveMode=!moveMode;status=moveMode?"Click a destination for the "+world.UnitName(u)+" (right-click cancels).":"";break;
                         case "Found":Found();break;
-                        case "Road":case "Farm":case "Mine":case "Clear":{int job=a.Value=="Road"?1:a.Value=="Farm"?2:a.Value=="Clear"?5:3;string reason=world.WorkerTeam(u).Select(m=>world.JobReason(m,job)).FirstOrDefault(s=>s!="")??"";if(!world.StartJob(u,job))status=reason;break;}
+                        case "Stack":status=world.JoinStack(u)?"These units now move together. Soldiers protect any civilians with them.":"";break;
+                        case "Unstack":world.LeaveStack(u);status="Stack broken up.";break;
+                        case "Road":RoadKey(u);break;
+                        case "Farm":case "Mine":case "Clear":{int job=a.Value=="Farm"?2:a.Value=="Clear"?5:3;string reason=world.WorkerTeam(u).Select(m=>world.JobReason(m,job)).FirstOrDefault(s=>s!="")??"";if(!world.StartJob(u,job))status=reason;break;}
                         case "Preach":if(!world.Preach(u))status=world.PreachReason(u);break;
                         case "Explore":if(u.exploring)world.CancelActivity(u);else world.AutoExplore(u);break;
                         case "Skip":world.SkipTurn(u);status=world.UnitName(u)+" skips this turn.";break;
