@@ -39,6 +39,7 @@ public static class RealmTools
         var json=JsonUtility.ToJson(world);
         var loaded=JsonUtility.FromJson<World>(json);loaded.UpgradeSave();
         Require(loaded.Valid(),"save round trip validity");
+        {var zoo=World.New(43,"Zoo",hex:true,wild:true,natives:false);zoo.animals.Add(new Animal{id=9,kind=5,x=3,y=4,hp=7});var back=JsonUtility.FromJson<World>(JsonUtility.ToJson(zoo));back.UpgradeSave();Require(back.wildlife&&back.hexGrid&&back.animals.Count==1&&back.animals[0].kind==5&&back.animals[0].hp==7&&back.Valid(),"wild animals survive a save");}
         var restoredCity=loaded.cities.First(c=>c.owner==0);Require(restoredCity.build==1&&restoredCity.queue.Count==1&&restoredCity.buildingProject==7&&restoredCity.buildingProduction==3,"both production lines survive saving");
         var restored=loaded.units.First(u=>u.id==worker.id);Require(loaded.WorkerTeam(restored).Count==2&&restored.job==1,"worker team and shared work survive saving");
         Require(JsonUtility.ToJson(loaded)==json,"save preserves complete state");

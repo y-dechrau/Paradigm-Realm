@@ -50,7 +50,7 @@ namespace ParadigmRealm
             PixelCanvas cv=null;
             if(kind==1)cv=PixelArt.Sprite(a,b);else if(kind==6)cv=PixelArt.Hamlet(a,b);else if(kind==7)cv=PixelArt.PortSprite();else if(kind==8)cv=PixelArt.HudIcon(a);else if(kind==9)cv=PixelArt.CloudPuff(a);else if(kind==2)cv=PixelArt.Farm(a);else if(kind==3)cv=PixelArt.Road(a);else if(kind==5)cv=PixelArt.ResourceIcon(a);else cv=PixelArt.Misc(a);
             // Tile-shaped overlays (farms, roads, borders, selection, unexplored) are drawn as diamonds in the diagonal view.
-            if(kind==10)cv=PixelArt.HexEdge(a);else if(kind==11)cv=PixelArt.HexRoad(a);
+            if(kind==10)cv=PixelArt.HexEdge(a);else if(kind==11)cv=PixelArt.HexRoad(a);else if(kind==12)cv=PixelArt.AnimalSprite(a);
             else if(cv!=null&&(kind==2||kind==3||kind==4&&(a<=6||a==9)))cv=hexShape?PixelArt.ToHex(cv):PixelArt.ToDiamond(cv);
             tex=cv==null?null:PixelTexture(cv);isoPictures[key]=tex;return tex;
         }
@@ -265,6 +265,7 @@ namespace ParadigmRealm
                 // At sea the ship is drawn, not the units it carries.
                 if(picked==null&&water&&stackAt!=null){var ship=stackAt.Find(a=>World.IsNaval(a.type)&&(a.owner==0||visible));if(ship!=null)first=ship;}
                 var shown=picked??first;
+                if(visible&&world.wildlife){var beast=world.AnimalAt(source.x,source.y);if(beast!=null){var feet=new Rect(sx-20*s,gy-8*s,40*s,15*s);GUI.DrawTexture(feet,IsoPicture(4,8,0));GUI.DrawTexture(new Rect(sx-32*s,gy-42*s,64*s,64*s),IsoPicture(12,beast.kind,0));}}
                 if(shown!=null){var unitRect=new Rect(sx-20*s,gy-36*s,40*s,40*s);DrawUnitArt(shown,unitRect,count);isoUnitDraws.Add(new KeyValuePair<Unit,Rect>(shown,unitRect));isoUnitCounts.Add(count);}
             }
             // Fog of war as dark mist (owner request): a thin drifting veil over land seen before but not watched now, and

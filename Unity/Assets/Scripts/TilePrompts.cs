@@ -20,7 +20,7 @@ public partial class RealmGame {
   GUILayout.BeginArea(new Rect(box.x+24,box.y+18,box.width-48,box.height-30));
   if(foundStage==1){
    GUILayout.Label("Are you sure you want to settle here?",heading);
-   var t=world.At(u.x,u.y);GUILayout.Label(World.TerrainNames[t.terrain]+" at "+u.x+", "+u.y+". The Settler becomes the new city.",body);GUILayout.Space(10);
+   var t=world.At(u.x,u.y);GUILayout.Label(World.TerrainNames[t.terrain]+". The Settler becomes the new city.",body);GUILayout.Space(10);
    GUILayout.BeginHorizontal();if(Button("Yes, settle here")){foundStage=2;foundName=world.NewCityName(0);foundProblem="";GUI.FocusControl(null);}if(Button("No")){foundStage=0;status="Settling cancelled.";}GUILayout.EndHorizontal();
   }else{
    GUILayout.Label("Name your city",heading);

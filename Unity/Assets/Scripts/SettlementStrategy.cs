@@ -68,7 +68,7 @@ namespace ParadigmRealm {
    report.score=report.food*4+report.production*2+report.gold*2+report.resources.Count*4+(report.freshWater?8:0)+(report.coastal?2:0)-report.upkeep*3-report.distance*2-(report.threat?60:0)-(report.diplomacyWarning!=""?100:0);
    return report;
   }
-  bool SettlementThreat(int owner,int x,int y){return units.Any(u=>Power[u.type]>0&&AtWar(owner,u.owner)&&VisibleTo(owner,u.x,u.y)&&Distance(u.x,u.y,x,y)<=3);}
+  bool SettlementThreat(int owner,int x,int y){return AnimalThreat(owner,x,y)||units.Any(u=>Power[u.type]>0&&AtWar(owner,u.owner)&&VisibleTo(owner,u.x,u.y)&&Distance(u.x,u.y,x,y)<=3);}
   bool SafeSettlerPath(Unit u,List<Tile> route){return route.All(t=>!SettlementThreat(u.owner,t.x,t.y));}
   public List<SettlementReport> SettlementOptions(Unit u,int limit=5){
    if(u==null||u.type!=0||!units.Contains(u))return new List<SettlementReport>();

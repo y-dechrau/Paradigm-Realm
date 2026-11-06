@@ -18,7 +18,7 @@ namespace ParadigmRealm
         static Color[] MoreInks(Color[] first){var all=new Color[World.MaxNations];for(int i=0;i<all.Length;i++)all[i]=i<first.Length?first[i]:Color.HSVToRGB((i*.618034f)%1,.55f+(i%3)*.15f,.95f-(i%2)*.15f);return all;}
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot(){if(FindFirstObjectByType<RealmGame>()==null)new GameObject("Paradigm Realm").AddComponent<RealmGame>();}
-        void Awake(){zoomSensitivity=PlayerPrefs.GetFloat("RealmZoomSensitivity",2f);LoadTutorialSettings();tooltips=PlayerPrefs.GetInt("RealmTooltips",1)!=0;var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=UiBackground;camera.orthographic=true;Application.targetFrameRate=30;world=World.New(Environment.TickCount&int.MaxValue,hex:true);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
+        void Awake(){zoomSensitivity=PlayerPrefs.GetFloat("RealmZoomSensitivity",2f);LoadTutorialSettings();tooltips=PlayerPrefs.GetInt("RealmTooltips",1)!=0;var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=UiBackground;camera.orthographic=true;Application.targetFrameRate=30;world=World.New(Environment.TickCount&int.MaxValue,hex:true,wild:true);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
         Unit Selected(){return world.units.Find(u=>u.owner==0&&u.id==selected);}
         void Center(){var u=Selected();if(u!=null&&diamondView){FocusTile(u.x,u.y);return;}if(u!=null)FocusTile(u.x,u.y);}
         string SavePath {get{return Path.Combine(Application.persistentDataPath,"earth-save.json");}}
@@ -69,7 +69,7 @@ namespace ParadigmRealm
 
         void StartGame()
         {
-            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; bool custom=setupCiv>=CivilisationCatalog.Count;world=World.New(chosenSeed,custom?proposedName:CivilisationCatalog.Names[setupCiv],setupMap,setupSpeed,1,0,setupSize,setupShape,setupCivs,custom?-1:setupCiv,customLeader,customPortrait,customTraitA,customTraitB,civGroupReal,hex:true,peoplesPerWorld:setupPeoples,level:setupLevel);setupPage=0;ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
+            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; bool custom=setupCiv>=CivilisationCatalog.Count;world=World.New(chosenSeed,custom?proposedName:CivilisationCatalog.Names[setupCiv],setupMap,setupSpeed,1,0,setupSize,setupShape,setupCivs,custom?-1:setupCiv,customLeader,customPortrait,customTraitA,customTraitB,civGroupReal,hex:true,peoplesPerWorld:setupPeoples,level:setupLevel,wild:true);setupPage=0;ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
             selected=world.units.First(u=>u.owner==0).id;cityId=-1;
             sideScroll=Vector2.zero;researchScreen=false;detailsScreen="";cityScreen=false;pauseMenu=false;activeSavePath=null;Center();hasSession=true;mainMenu=false;
             // With the tutorial on, its guide replaces the opening help page.

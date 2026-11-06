@@ -25,13 +25,15 @@ public static class DifficultyTable {
  // Percent of the normal price for you.
  public static readonly int[] YourResearch={85,90,95,100,100,100,100,100},YourCost={85,90,95,100,100,100,100,100};
  // Extra units each home rival starts with: soldiers, workers, settlers; and free technologies.
+ // Wild animals on the map, percent of the usual number.
+ public static readonly int[] Animals={40,60,80,100,100,120,130,150};
  public static readonly int[] ExtraSoldiers={0,0,0,0,1,1,2,2},ExtraWorkers={0,0,0,0,0,1,1,1},ExtraSettlers={0,0,0,0,0,0,0,1},ExtraTechs={0,0,0,0,0,0,0,1};
  static string Share(int percent){return percent+"%";}
  // The whole level in words, from the same numbers the rules use.
  public static string Describe(int i){
   string start=ExtraSoldiers[i]+ExtraWorkers[i]+ExtraSettlers[i]+ExtraTechs[i]==0?"nothing extra":string.Join(", ",new[]{ExtraSoldiers[i]>0?ExtraSoldiers[i]+" soldier"+(ExtraSoldiers[i]>1?"s":""):null,ExtraWorkers[i]>0?ExtraWorkers[i]+" Worker":null,ExtraSettlers[i]>0?ExtraSettlers[i]+" Settler":null,ExtraTechs[i]>0?ExtraTechs[i]+" technology":null}.Where(s=>s!=null).ToArray());
   return Texts[i]+"\nRivals: units and buildings "+Share(RivalCost[i])+", wonders "+Share(RivalWonderCost[i])+", growth "+Share(RivalFood[i])+", research "+Share(RivalResearch[i])+"; aim for "+RivalCities[i]+" cities; armies "+Share(RivalSoldiers[i])+"; start with "+start+"; may attack you from turn "+PlayerGrace[i]+"."+
-   "\nYou: research "+Share(YourResearch[i])+", units and buildings "+Share(YourCost[i])+". Rivals never see through fog.";
+   "\nYou: research "+Share(YourResearch[i])+", units and buildings "+Share(YourCost[i])+". Wild animals "+Share(Animals[i])+". Rivals never see through fog.";
  }
 }
 public partial class World {
