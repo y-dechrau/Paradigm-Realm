@@ -177,7 +177,11 @@ namespace ParadigmRealm
         readonly List<KeyValuePair<Unit,Rect>> isoUnitDraws=new List<KeyValuePair<Unit,Rect>>();readonly List<int> isoUnitCounts=new List<int>();
         readonly List<Vector3> isoFog=new List<Vector3>(),isoMist=new List<Vector3>();readonly List<Vector4> isoCells=new List<Vector4>();
         // Dark mist colours: the void and unexplored ground, the cloud banks over it, the veil over remembered land and its tint.
-        static readonly Color MistDeep=new Color(.07f,.08f,.11f),MistBank=new Color(.17f,.19f,.24f,.97f),MistThin=new Color(.14f,.16f,.21f,.3f),Remembered=new Color(.58f,.61f,.68f,1);
+        // Unexplored land is black mist (owner request, 6 Nov 2026): soft black banks with faint grey wisps moving through them.
+        static readonly Color MistDeep=new Color(.006f,.006f,.01f),MistWisp=new Color(1,1,1,.8f),MistThin=new Color(.14f,.16f,.21f,.3f),Remembered=new Color(.58f,.61f,.68f,1);
+        Texture2D mistBank,mistWisp;
+        // Glass-smooth texture for mist: bilinear, unlike the crisp pixel art.
+        Texture2D SoftPicture(PixelCanvas cv){var tex=PixelTexture(cv);tex.filterMode=FilterMode.Bilinear;themeTextures.Add(tex);return tex;}
         static readonly int[] RoadDx={-1,0,1,1,1,0,-1,-1},RoadDy={-1,-1,-1,0,1,1,1,0};
         void DrawIsoContents()
         {
@@ -272,8 +276,10 @@ namespace ParadigmRealm
             // thick dark banks (the cloud puffs, darkened) over unexplored land, spilling a little over the known world's edge.
             DrawCloudShadows(s);
             float clock=Time.realtimeSinceStartup;var before=GUI.color;
-            foreach(var f in isoMist){float drift=Mathf.Sin(clock*.35f+f.z*1.7f+f.x*.013f)*5*s;GUI.color=MistThin;GUI.DrawTexture(new Rect(f.x-48*s+drift,f.y-36*s,96*s,64*s),IsoPicture(9,(int)f.z,0));}
-            foreach(var f in isoFog){float drift=Mathf.Sin(clock*.25f+f.z*2.1f+f.y*.011f)*4*s;GUI.color=MistBank;GUI.DrawTexture(new Rect(f.x-48*s*1.1f+drift,f.y-38*s*1.1f,96*s*1.1f,64*s*1.1f),IsoPicture(9,(int)f.z,0));}
+            if(mistBank==null){mistBank=SoftPicture(PixelArt.MistBank());mistWisp=SoftPicture(PixelArt.MistWisp());}
+            foreach(var f in isoMist){float drift=Mathf.Sin(clock*.35f+f.z*1.7f+f.x*.013f)*5*s;GUI.color=MistThin;GUI.DrawTexture(new Rect(f.x-64*s+drift,f.y-44*s,128*s,88*s),mistBank);}
+            GUI.color=Color.white;foreach(var f in isoFog){float drift=Mathf.Sin(clock*.25f+f.z*2.1f+f.y*.011f)*5*s;GUI.DrawTexture(new Rect(f.x-64*s+drift,f.y-44*s,128*s,88*s),mistBank);}
+            GUI.color=MistWisp;foreach(var f in isoFog){if(f.z!=0)continue;float drift=clock*2.2f%64f,sway=Mathf.Sin(clock*.2f+f.x*.02f)*6*s;GUI.DrawTexture(new Rect(f.x-64*s+drift*s-32*s,f.y-30*s+sway,128*s,60*s),mistWisp);}
             GUI.color=before;
             // Units stand in front of the cloud banks of unexplored land next to them (owner request): drawn again over the mist.
             for(int n=0;n<isoUnitDraws.Count;n++)DrawUnitArt(isoUnitDraws[n].Key,isoUnitDraws[n].Value,isoUnitCounts[n]);
@@ -291,13 +297,43 @@ namespace ParadigmRealm
         Texture2D cloudTexture;
         void DrawCloudShadows(float s)
         {
-            if(cloudTexture==null){cloudTexture=PixelTexture(PixelArt.CloudShadows());cloudTexture.wrapMode=TextureWrapMode.Repeat;}
+            // One smooth sheet scrolled across the view. It used to be hard-edged blocks in separate rectangles, and as they drifted
+            // their rows of blocks and joins crossed the screen as flashing horizontal lines (owner report, 6 Nov 2026).
+            if(cloudTexture==null){cloudTexture=PixelTexture(PixelArt.CloudShadows());cloudTexture.wrapMode=TextureWrapMode.Repeat;cloudTexture.filterMode=FilterMode.Bilinear;}
             float tile=128*3*s,t=Time.realtimeSinceStartup;
-            float offX=(-(world.Rows?camI*2:camI-camJ)*isoWidth/2+t*9f)%tile,offY=(-(world.Rows?camJ:camI+camJ)*RowPixels(isoWidth)+t*4f)%tile;if(offX>0)offX-=tile;if(offY>0)offY-=tile;
-            for(float y=offY;y<MapH;y+=tile)for(float x=offX;x<MapW;x+=tile)GUI.DrawTexture(new Rect(x,y,tile,tile),cloudTexture);
+            float offX=(-(world.Rows?camI*2:camI-camJ)*isoWidth/2+t*9f)%tile,offY=(-(world.Rows?camJ:camI+camJ)*RowPixels(isoWidth)+t*4f)%tile;
+            GUI.DrawTextureWithTexCoords(new Rect(0,0,MapW,MapH),cloudTexture,new Rect(-offX/tile,1-(MapH-offY)/tile,MapW/tile,MapH/tile));
         }
         // How far a tile's surface is raised on screen: land (as the player knows it) stands Elev pixels above water.
         float Lift(int x,int y,float s){return 0;}
+        // A faint dotted line along the way a selected unit's order will go (owner request, 6 Nov 2026). The route is only worked
+        // out again when something it depends on changes.
+        List<Tile> routeTiles=new List<Tile>();long routeKey=-1;
+        void DrawRouteLine(Unit u,float s)
+        {
+            if(!u.hasOrder&&!u.roadOrder)return;
+            int dx=u.roadOrder?u.roadX:u.destinationX,dy=u.roadOrder?u.roadY:u.destinationY;
+            unchecked{long key=world.turn;key=key*31+u.id;key=key*31+u.x;key=key*31+u.y;key=key*31+dx;key=key*31+dy;key=key*31+u.moves;key=key*31+world.units.Count;if(key!=routeKey){routeKey=key;routeTiles=world.PlannedRoute(u);}}
+            float wide=(world.Hex?2:4)*(diamondView?isoWidth:tilePixels),step=Mathf.Max(3,4*s);
+            // A soft dark edge first, then the pale line over it, so it stays readable over forest and snow alike.
+            for(int pass=0;pass<2;pass++)
+            {
+                float half=pass==0?3:1.5f,ax,ay,gap=0;var ink=pass==0?new Color(.05f,.04f,.02f,.22f):new Color(1f,.94f,.72f,.5f);
+                RouteAnchor(u.x,u.y,out ax,out ay);var at=new Vector2(ax,ay);
+                foreach(var t in routeTiles)
+                {
+                    RouteAnchor(t.x,t.y,out ax,out ay);var to=new Vector2(ax,ay);float length=(to-at).magnitude;
+                    // Each step is one tile; a longer jump is the seam of a round world, so the line picks up again on the far side.
+                    if(length<=wide)for(float d=gap;d<length;d+=step){var p=at+(to-at)*(d/length);if(diamondView&&(p.x<-4||p.y<-4||p.x>MapW+4||p.y>MapH+4))continue;Fill(new Rect(p.x-half,p.y-half,half*2,half*2),ink);}
+                    gap=length<=wide?Mathf.Repeat(gap-length,step):0;at=to;
+                }
+            }
+        }
+        void RouteAnchor(int x,int y,out float sx,out float sy)
+        {
+            if(diamondView){IsoScreen(x,y,out sx,out sy);return;}
+            var r=ClassicRect(x,y);sx=r.center.x;sy=r.center.y;
+        }
         // Selection outline, destination marker and stack labels go on top so scenery never hides them.
         void DrawIsoOverlay(float s)
         {
@@ -307,6 +343,7 @@ namespace ParadigmRealm
             {
                 IsoScreen(chosen.x,chosen.y,out sx,out sy);sy-=Lift(chosen.x,chosen.y,s);
                 GUI.DrawTexture(TileRect(sx,sy,s),SelectionPicture());
+                DrawRouteLine(chosen,s);
                 if(chosen.hasOrder)
                 {
                     IsoScreen(chosen.destinationX,chosen.destinationY,out sx,out sy);

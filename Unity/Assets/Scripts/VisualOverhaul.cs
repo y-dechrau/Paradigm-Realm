@@ -57,6 +57,7 @@ namespace ParadigmRealm {
     try{unitSprites[i]=PixelTexture(PixelArt.UnitSprite(ReadArtPixels(people[i]),people[i].width,people[i].height));}catch(Exception){unitSprites[i]=null;}}
    // Vessels are drawn by the pixel-art generator (no supplied art); the same picture serves the build list.
    for(int i=World.BoatUnit;i<=World.WarGalleyUnit&&i<people.Length;i++){if(Art("unit-"+i.ToString("00"))!=null)continue;unitSprites[i]=PixelTexture(PixelArt.ShipSprite(i-World.BoatUnit));people[i]=unitSprites[i];}
+   LoadGuardSprites();
    if(World.PriestUnit<people.Length&&Art("unit-15")==null){unitSprites[World.PriestUnit]=PixelTexture(PixelArt.PriestSprite());people[World.PriestUnit]=unitSprites[World.PriestUnit];}
    EnableCivilisationsWithArt();
    var city=Art("city-0-0");if(city!=null){Destroy(cityTexture);cityTexture=city;}
@@ -168,13 +169,25 @@ namespace ParadigmRealm {
    if(t.mine)DrawArt("mine",r);if(t.fort)DrawArt("fort",r);
    if(t.village&&world.Visible(t.x,t.y))DrawArt("village",r);
   }
+  // The unit's picture; a combat unit that is fortified or healing stands guard behind its shield (owner request, 6 Nov 2026).
+  // Art supplied as Visuals/unit-NN-guard replaces the generated guard picture.
+  Texture2D[] guardSprites;
+  Texture2D UnitPicture(Unit u){
+   var plain=unitSprites!=null&&unitSprites[u.type]!=null?unitSprites[u.type]:people[u.type];
+   if(!u.fortified||u.hasOrder||u.job>0||World.Power[u.type]<=0||World.IsNaval(u.type))return plain;
+   return guardSprites!=null&&guardSprites[u.type]!=null?guardSprites[u.type]:plain;
+  }
+  void LoadGuardSprites(){
+   guardSprites=new Texture2D[people.Length];
+   for(int i=0;i<people.Length;i++){if(World.Power[i]<=0||World.IsNaval(i)||unitSprites[i]==null)continue;var made=Art("unit-"+i.ToString("00")+"-guard");if(made==null){try{made=PixelTexture(PixelArt.GuardSprite(ReadArtPixels(unitSprites[i]),unitSprites[i].width,unitSprites[i].height,i));themeTextures.Add(made);}catch(Exception){made=null;}}guardSprites[i]=made;}
+  }
   // r is the unit's box on the tile. The figure is drawn 1.6 times its width (64 px at the default zoom, so pixels stay
   // whole), standing on a soft ground shadow inside a ring in its owner's colour.
   void DrawUnitArt(Unit u,Rect r,int count){
    float size=r.width*1.6f;var feet=new Vector2(r.center.x,r.yMax);
    var baseRect=new Rect(feet.x-size*.3f,feet.y-size*.09f,size*.6f,size*.225f);
    GUI.DrawTexture(baseRect,IsoPicture(4,8,0));var old=GUI.color;GUI.color=nations[u.owner];GUI.DrawTexture(baseRect,IsoPicture(4,7,0));GUI.color=old;
-   var art=unitSprites!=null&&unitSprites[u.type]!=null?unitSprites[u.type]:people[u.type];
+   var art=UnitPicture(u);
    // Armies carry a banner in their owner's colour behind them, as in the owner's mockup.
    if(World.Power[u.type]>0&&!World.IsNaval(u.type)){float px=feet.x+size*.26f,top=feet.y-size*1.02f,pole=Mathf.Max(1,size*.025f);
     Fill(new Rect(px,top,pole,size*.9f),new Color(.32f,.22f,.12f));var ink=nations[u.owner];var flag=new Rect(px+pole,top+size*.02f,size*.2f,size*.24f);

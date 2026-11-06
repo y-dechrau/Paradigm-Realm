@@ -15,8 +15,58 @@ namespace ParadigmRealm
         {
             var args=Environment.GetCommandLineArgs();int i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
+            i=Array.IndexOf(args,"-flickerProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FlickerProbe(args[i+1]));
         }
         IEnumerator Frames(int n){for(int k=0;k<n;k++)yield return null;}
+        // Development aid: "-flickerProbe <folder>" watches the idle map frame by frame and reports thin horizontal bands that change
+        // while the rows beside them do not, then saves the worst pair of frames and their difference.
+        void WriteBmp(string path,Color32[] px,int w,int h)
+        {
+            int row=(w*3+3)&~3;var bytes=new byte[54+row*h];Action<int,int> put=(at,v)=>{bytes[at]=(byte)v;bytes[at+1]=(byte)(v>>8);bytes[at+2]=(byte)(v>>16);bytes[at+3]=(byte)(v>>24);};
+            bytes[0]=(byte)'B';bytes[1]=(byte)'M';put(2,bytes.Length);put(10,54);put(14,40);put(18,w);put(22,h);bytes[26]=1;bytes[28]=24;put(34,row*h);
+            for(int y=0;y<h;y++)for(int x=0;x<w;x++){var c=px[y*w+x];int at=54+y*row+x*3;bytes[at]=c.b;bytes[at+1]=c.g;bytes[at+2]=c.r;}
+            File.WriteAllBytes(path,bytes);
+        }
+        IEnumerator FlickerProbe(string folder)
+        {
+            Directory.CreateDirectory(folder);yield return Frames(5);
+            seedText="421";mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;
+            var founder=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);if(founder!=null)world.Found(founder);
+            foreach(var t in world.tiles)if(t.realm==0&&world.Distance(t.x,t.y,founder.x,founder.y)<=9)t.seen=true;
+            var log=new System.Text.StringBuilder();log.AppendLine("screen "+Screen.width+"x"+Screen.height+" vsync "+QualitySettings.vSyncCount+" zoom "+isoWidth);
+            foreach(int zoom in new[]{64,48,96})
+            {
+                isoWidth=zoom;yield return Frames(120);int w=Screen.width,h=Screen.height;Color32[] last=null,worstA=null,worstB=null;float worst=0;int worstRow=-1,hits=0;var seen=new int[h];var frame=new Texture2D(w,h,TextureFormat.RGBA32,false);
+                for(int n=0;n<180;n++)
+                {
+                    yield return new WaitForEndOfFrame();frame.ReadPixels(new Rect(0,0,w,h),0,0);var px=frame.GetPixels32();
+                    if(last!=null)
+                    {
+                        var changed=new int[h];for(int y=0;y<h;y++){int at=y*w,count=0;for(int x=0;x<w;x++){var a=px[at+x];var b=last[at+x];if(Math.Abs(a.r-b.r)+Math.Abs(a.g-b.g)+Math.Abs(a.b-b.b)>9)count++;}changed[y]=count;}
+                        for(int y=4;y<h-4;y++){float beside=(changed[y-4]+changed[y+4])/2f,score=(changed[y]-beside)/w;if(score>.03f){seen[y]++;hits++;if(score>worst){worst=score;worstRow=y;worstA=last;worstB=px;}}}
+                    }
+                    last=px;yield return null;
+                }
+                Destroy(frame);log.AppendLine("zoom "+zoom+": thin-band hits "+hits+", worst score "+worst.ToString("0.00")+" at row "+(worstRow<0?-1:h-1-worstRow)+" (from top); rows: "+string.Join(",",Enumerable.Range(0,h).Where(y=>seen[y]>0).OrderByDescending(y=>seen[y]).Take(20).Select(y=>(h-1-y)+"x"+seen[y]).ToArray()));
+                if(worstA!=null){WriteBmp(Path.Combine(folder,"z"+zoom+"-a.bmp"),worstA,w,h);WriteBmp(Path.Combine(folder,"z"+zoom+"-b.bmp"),worstB,w,h);var d=new Color32[w*h];for(int k=0;k<d.Length;k++){int v=Math.Min(255,(Math.Abs(worstA[k].r-worstB[k].r)+Math.Abs(worstA[k].g-worstB[k].g)+Math.Abs(worstA[k].b-worstB[k].b))*2);d[k]=new Color32((byte)v,(byte)v,(byte)v,255);}WriteBmp(Path.Combine(folder,"z"+zoom+"-diff.bmp"),d,w,h);}
+            }
+            // Then pan slowly: a straight one or two pixel line across the view, unlike the rows beside it, is a seam between tiles.
+            foreach(int zoom in new[]{64,48,96,32})
+            {
+                isoWidth=zoom;FocusTile(founder.x,founder.y);yield return Frames(60);int w=Screen.width,h=Screen.height;var frame=new Texture2D(w,h,TextureFormat.RGBA32,false);int lines=0,linesRow=-1;float top=0;Color32[] topFrame=null;var rows=new System.Collections.Generic.Dictionary<int,int>();
+                for(int n=0;n<240;n++)
+                {
+                    camI+=.013f;camJ+=.019f;compositeBudgetOn=false;
+                    yield return new WaitForEndOfFrame();frame.ReadPixels(new Rect(0,0,w,h),0,0);var px=frame.GetPixels32();
+                    for(int y=2;y<h-2;y++){int count=0;for(int x=0;x<w;x+=2){var a=px[y*w+x];var u=px[(y+1)*w+x];var d=px[(y-1)*w+x];int au=Math.Abs(a.r-u.r)+Math.Abs(a.g-u.g)+Math.Abs(a.b-u.b),ad=Math.Abs(a.r-d.r)+Math.Abs(a.g-d.g)+Math.Abs(a.b-d.b),ud=Math.Abs(u.r-d.r)+Math.Abs(u.g-d.g)+Math.Abs(u.b-d.b);if(au>30&&ad>30&&ud<au/2&&ud<ad/2)count++;}
+                        float share=count*2f/w;if(share>.12f){lines++;int key=h-1-y;int was;rows.TryGetValue(key,out was);rows[key]=was+1;if(share>top){top=share;linesRow=key;topFrame=px;}}}
+                    yield return null;
+                }
+                Destroy(frame);log.AppendLine("pan zoom "+zoom+": line rows "+lines+", widest "+top.ToString("0.00")+" of screen at row "+linesRow+"; common rows: "+string.Join(",",rows.OrderByDescending(a=>a.Value).Take(12).Select(a=>a.Key+"x"+a.Value).ToArray()));
+                if(topFrame!=null)WriteBmp(Path.Combine(folder,"pan"+zoom+".bmp"),topFrame,w,h);
+            }
+            File.WriteAllText(Path.Combine(folder,"flicker.txt"),log.ToString());Application.Quit();
+        }
         IEnumerator Shot(string folder,string name)
         {
             // Terrain pictures are composed under a per-frame budget, so give the view time to fill in first.
@@ -59,6 +109,20 @@ namespace ParadigmRealm
             yield return Shot(folder,"3-city.bmp");
             cityScreen=false;detailsScreen="Economy";
             yield return Shot(folder,"4-economy.bmp");
+            // Owner requests of 6 Nov 2026, on this throwaway game: Chronicle, guard pictures and route line, guide prompts, wide city view.
+            detailsScreen="Chronicle";yield return Shot(folder,"4c-chronicle.bmp");detailsScreen="";
+            if(city!=null){
+                var extras=new System.Collections.Generic.List<Unit>();isoWidth=96;int slot=0;
+                foreach(int kind in new[]{2,3,4,5,6,7,8,9}){var at=world.tiles.Where(t=>t.realm==0&&!World.IsImpassable(t.terrain)&&!PixelArt.IsWater(t.terrain)&&world.Distance(t.x,t.y,city.x,city.y)==2&&!world.units.Any(a=>a.x==t.x&&a.y==t.y)).Skip(slot++%2).FirstOrDefault();if(at==null)continue;var g=world.Add(0,kind,at.x,at.y);g.fortified=true;extras.Add(g);}
+                world.Reveal();FocusTile(city.x,city.y);var walker=extras.FirstOrDefault(a=>a.type==2);if(walker!=null){walker.fortified=false;var far=world.tiles.Where(t=>t.realm==0&&t.seen&&world.Distance(t.x,t.y,walker.x,walker.y)==5&&world.Route(walker,t.x,t.y).Count>3).FirstOrDefault();if(far!=null){walker.hasOrder=true;walker.destinationX=far.x;walker.destinationY=far.y;selected=walker.id;}}
+                yield return Shot(folder,"4d-guard-and-route.bmp");selected=-1;
+                foreach(var g in extras)world.units.Remove(g);
+                world.researchPrompts.Add(TechnologyCatalog.Index("agriculture"));yield return Shot(folder,"4e-research-prompt.bmp");world.researchPrompts.Clear();
+                {int keepB=city.buildingProject;var keepQ=city.buildingQueue.ToList();city.buildingProject=-1;city.buildingQueue.Clear();int pot=TechnologyCatalog.Index("pottery");bool hadPot=world.tech[pot],hadWrite=world.tech[TechnologyCatalog.Index("writing")];world.tech[pot]=true;world.tech[TechnologyCatalog.Index("writing")]=true;
+                 world.buildPrompts.Add(new BuildPrompt{city=city.id,tech=pot,options=World.BuildingIds.Where(b=>world.BuildReason(city,b)=="").Take(3).ToList()});yield return Shot(folder,"4f-build-prompt.bmp");world.buildPrompts.Clear();world.tech[pot]=hadPot;world.tech[TechnologyCatalog.Index("writing")]=hadWrite;city.buildingProject=keepB;city.buildingQueue=keepQ;}
+                int keepAge=city.age;city.age=60;isoWidth=64;world.RebuildTerritory();world.Reveal();selected=-1;cityId=city.id;cityScreen=true;cityMapScroll=new Vector2(30,20);yield return Shot(folder,"4g-city-scroll.bmp");cityScreen=false;city.age=keepAge;world.RebuildTerritory();
+                world.SetPriority(0,World.AxisMilitary,20);detailsScreen="Economy";yield return Shot(folder,"4h-priorities.bmp");detailsScreen="";world.SetPriority(0,World.AxisMilitary,0);world.SetPriority(0,World.AxisScience,50);
+            }
             // Research screen with the Dawn completed (this throwaway game only), so the edict choice shows.
             detailsScreen="";foreach(var id in new[]{"agriculture","archery","bronze"})world.tech[TechnologyCatalog.Index(id)]=true;
             world.research=TechnologyCatalog.Index("writing");world.nations[0].research=world.research;inspectedTech=-1;researchScreen=true;

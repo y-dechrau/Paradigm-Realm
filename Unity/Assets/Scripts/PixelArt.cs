@@ -77,9 +77,10 @@ namespace ParadigmRealm
                 double top=0;int side=0;for(int k=0;k<6;k++){double e=HexReach(x,y,k);if(e>top){top=e;side=k;}}
                 if(kind==6){if(top>.9)cv.Set(px,py,Rgb(255,222,120));continue;}
                 if(side!=kind)continue;double core=1-top;
-                if(core<.075)cv.Set(px,py,Rgb(255,255,255));
-                else if(core<.105)cv.Set(px,py,Rgb(70,70,70,235));
-                else if(core<.24)cv.Set(px,py,Rgb(255,255,255,(int)(130*(1-(core-.105)/.135))));
+                // Bold borders (owner request, 6 Nov 2026): a thick bright band, a dark rim on its inner side, then the glow.
+                if(core<.17)cv.Set(px,py,Rgb(255,255,255));
+                else if(core<.21)cv.Set(px,py,Rgb(30,30,30,250));
+                else if(core<.40)cv.Set(px,py,Rgb(255,255,255,(int)(160*(1-(core-.21)/.19))));
             }
             hexMisc[kind]=cv;return cv;
         }
@@ -1302,9 +1303,9 @@ namespace ParadigmRealm
                     double along=kind%2==0?(x+.5)/TW:(y+.5)/TH,wob=.035*Math.Sin(along*Math.PI)*Math.Sin(along*Math.PI*3+kind);
                     double e=EdgeE(kind,x,y)+wob,core=1-e;
                     // Owner request: firmer borders. A wider bright core, a dark rim on its inner side, then the soft halo.
-                    if(core<.075)cv.Set(x,y,Rgb(255,255,255));
-                    else if(core<.105)cv.Set(x,y,Rgb(70,70,70,235));
-                    else if(core<.24)cv.Set(x,y,Rgb(255,255,255,(int)(130*(1-(core-.105)/.135))));
+                    if(core<.17)cv.Set(x,y,Rgb(255,255,255));
+                    else if(core<.21)cv.Set(x,y,Rgb(30,30,30,250));
+                    else if(core<.40)cv.Set(x,y,Rgb(255,255,255,(int)(160*(1-(core-.21)/.19))));
                 }
                 else if(kind==4)
                 {
@@ -1397,7 +1398,61 @@ namespace ParadigmRealm
                 else if(dark&&!lit)cv.Set(x,y,Shade(c,.7));
             }
             Outline(cv,Rgb(20,18,24));
+            return StandOnFootRow(cv);
+        }
+        // Art often has clear space or a stray speck under the figure, which left units floating above their tile. Move the picture
+        // so the lowest solid row (feet, wheels or hooves) is always on row 62, the row DrawUnitArt stands on the tile (owner request).
+        public const int FootRowTarget=62;
+        public static int FootRow(PixelCanvas cv)
+        {
+            for(int y=cv.h-1;y>=0;y--){int solid=0;for(int x=0;x<cv.w;x++)if((cv.Get(x,y)>>24)!=0)solid++;if(solid>=6)return y;}
+            return FootRowTarget;
+        }
+        static PixelCanvas StandOnFootRow(PixelCanvas cv)
+        {
+            int foot=FootRow(cv),shift=FootRowTarget-foot;
+            var moved=new PixelCanvas(cv.w,cv.h);
+            for(int y=0;y<=foot;y++)for(int x=0;x<cv.w;x++){int to=y+shift;if(to>=0&&to<cv.h&&(cv.Get(x,y)>>24)!=0)moved.Set(x,to,cv.Get(x,y));}
+            return moved;
+        }
+        // The soft black bank over unexplored land, and a faint grey wisp that drifts through it (owner request, 6 Nov 2026).
+        public static PixelCanvas MistBank()
+        {
+            var cv=new PixelCanvas(64,44);
+            for(int y=0;y<44;y++)for(int x=0;x<64;x++){double u=(x+.5-32)/32,v=(y+.5-22)/22,d=Math.Sqrt(u*u+v*v),n=VNoise(x*.13,y*.17,311)*.35,a=Math.Max(0,Math.Min(1,(1.05-d-n*.5)*2.6));cv.Set(x,y,Rgb(2,2,4,(int)(a*a*(3-2*a)*255)));}
             return cv;
         }
+        public static PixelCanvas MistWisp()
+        {
+            var cv=new PixelCanvas(64,30);
+            for(int y=0;y<30;y++)for(int x=0;x<64;x++){double u=(x+.5-32)/32,v=(y+.5-15)/15,d=1-Math.Min(1,u*u+v*v),n=VNoise(x*.09,y*.22,317),a=Math.Max(0,n-.45)*d;cv.Set(x,y,Rgb(54,54,62,(int)Math.Min(46,a*170)));}
+            return cv;
+        }
+        // A unit standing guard: lower and braced behind a raised shield, with its weapon held upright (owner request, 6 Nov 2026).
+        // Riflemen crouch behind sandbags and a Catapult behind stakes. src is the finished unit picture, top row first.
+        public static PixelCanvas GuardSprite(uint[] src,int sw,int sh,int type)
+        {
+            var from=new PixelCanvas(sw,sh);Array.Copy(src,from.p,Math.Min(src.Length,from.p.Length));int foot=FootRow(from);
+            var cv=new PixelCanvas(64,64);bool mounted=type==5||type==8||type==9;double squash=mounted?.95:.86;
+            for(int y=0;y<64;y++){int back=foot-(int)Math.Round((FootRowTarget-y)/squash);if(back<0||back>=sh)continue;for(int x=0;x<Math.Min(64,sw);x++){var c=from.Get(x,back);if((c>>24)!=0)cv.Set(x,y,c);}}
+            uint dark=Rgb(26,20,16),wood=Rgb(120,84,48),woodLit=Rgb(160,118,70),steel=Rgb(150,160,174),steelLit=Rgb(214,222,232),bronze=Rgb(176,130,58),bronzeLit=Rgb(232,196,110);
+            Action<int,int,int,int,uint> box=(x0,y0,x1,y1,col)=>{for(int y=y0;y<=y1;y++)for(int x=x0;x<=x1;x++)cv.Set(x,y,col);};
+            Action<int,int,int,uint,uint> pole=(x,top,bottom,shaft,tip)=>{box(x-1,top+6,x+1,bottom,dark);box(x,top+6,x,bottom,shaft);for(int k=0;k<6;k++){int half=k<5?k/2:1;box(x-half,top+k,x+half,top+k,tip);}};
+            if(type==6){// Rifleman: rows of sandbags in front, rifle resting on top.
+                for(int row=0;row<3;row++){int y0=FootRowTarget-5-row*6,shift=row%2*5;for(int x=8+shift+row*3;x<54-row*3;x+=10){box(x,y0,x+10,y0+6,dark);box(x+1,y0+1,x+9,y0+5,Rgb(170,150,108));box(x+1,y0+1,x+9,y0+2,Rgb(204,186,144));}}
+                box(14,FootRowTarget-20,52,FootRowTarget-19,dark);box(15,FootRowTarget-20,51,FootRowTarget-20,Rgb(74,56,40));return Finish(cv);}
+            if(type==9){// Catapult: a row of sharpened stakes.
+                for(int x=6;x<58;x+=7){int tip=FootRowTarget-22-(x*7%5);box(x-1,tip+2,x+5,FootRowTarget,dark);box(x,tip+3,x+4,FootRowTarget-1,wood);box(x,tip+3,x+1,FootRowTarget-1,woodLit);box(x+1,tip,x+3,tip+2,dark);}
+                box(4,FootRowTarget-9,59,FootRowTarget-7,dark);box(4,FootRowTarget-8,59,FootRowTarget-8,woodLit);return Finish(cv);}
+            if(type==4){// Archer: a tall wooden pavise planted in front.
+                int l=30,r=50,t=FootRowTarget-38;box(l-1,t-1,r+1,FootRowTarget,dark);box(l,t,r,FootRowTarget-1,wood);for(int x=l+4;x<r;x+=5)box(x,t,x,FootRowTarget-1,dark);box(l,t,r,t+2,woodLit);box(l+7,t+12,r-7,t+25,bronze);box(l+8,t+13,r-8,t+15,bronzeLit);return Finish(cv);}
+            // Spear, lance, club or staff held upright, then a round shield over the body.
+            bool heavy=type==5;uint face=heavy?steel:type==7?bronze:wood,rim=heavy?steelLit:type==7?bronzeLit:woodLit;
+            double cx=mounted?36:37,cy=mounted?FootRowTarget-30:FootRowTarget-22,rx=type==3?10:14,ry=type==3?11:mounted?15:18;
+            pole((int)cx+(int)rx+1,FootRowTarget-(mounted?56:50),FootRowTarget-(mounted?10:0),Rgb(116,84,50),steelLit);
+            for(int y=0;y<64;y++)for(int x=0;x<64;x++){double u=(x+.5-cx)/rx,v=(y+.5-cy)/ry,d=u*u+v*v;if(d>1)continue;cv.Set(x,y,d>.84?dark:d>.62?rim:d<.07?rim:(u+v<-.35?MixC(face,Rgb(255,248,230),.28):u+v>.6?Shade(face,.72):face));}
+            return Finish(cv);
+        }
+        static PixelCanvas Finish(PixelCanvas cv){Outline(cv,Rgb(20,18,24));return cv;}
     }
 }

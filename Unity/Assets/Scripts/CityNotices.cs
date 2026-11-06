@@ -19,6 +19,8 @@ public partial class World {
  // What this city might make next on that line, and why; -1 if nothing is called for.
  public int SuggestNext(City c,bool building,out string why){
   why="";if(c==null)return -1;
+  // Another unit is only suggested when the city has nothing else lined up on either line (owner request, 6 Nov 2026).
+  if(!building&&(c.build>=0||c.queue.Count>0||c.buildingProject>=0||c.buildingQueue.Count>0))return -1;
   if(building){
    int b=PreferredBuilding(c);if(b<0)return -1;var v=Yield(c);
    why=(b==36||b==33||b==42)&&Happiness(c)<1?"Its citizens are close to unrest.":(b==37||b==41)&&c.pop>=GrowthLimit(c)-1?"It is near its growth limit.":b==7?"It stores food, so the city grows faster.":(b==31||b==34||b==39)&&Budget(0)[2]<2?"Your treasury is tight.":b==9?"Enemies are close.":b==43&&v[0]<=0?"The city is short of food.":b==PortBuilding?"It opens the sea to you.":b==30||b==40?"It raises production here.":b==8||b==38?"It raises science here.":"It is the next useful building here.";

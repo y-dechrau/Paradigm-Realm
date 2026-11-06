@@ -11,7 +11,8 @@ public partial class RealmGame {
   var r=NoticeRect;GUI.Box(r,"");Fill(new Rect(r.x,r.y,r.width,2),UiAccent);var wrap=new GUIStyle(small){wordWrap=true};
   string more=world.buildNotices.Count>1?"  (+"+(world.buildNotices.Count-1)+" more)":"";GUI.Label(new Rect(r.x+12,r.y+6,r.width-24,24),n.text+more,hudCaption);
   int current=n.building?c.buildingProject:c.build;string why;int next=current>=0?-1:world.SuggestNext(c,n.building,out why);why="";if(current<0)world.SuggestNext(c,n.building,out why);
-  string line=current>=0?"Now making "+world.BuildNameFor(0,current)+". Open the city to change it.":next>=0?"Next: "+world.BuildNameFor(0,next)+"? "+why:"Nothing is queued on this line. Open the city to choose.";
+  int other=n.building?c.build:c.buildingProject;
+  string line=current>=0?"Now making "+world.BuildNameFor(0,current)+". Open the city to change it.":next>=0?"Next: "+world.BuildNameFor(0,next)+"? "+why:other>=0?"Still making "+world.BuildNameFor(0,other)+". Open the city to add more.":"Nothing is queued on this line. Open the city to choose.";
   GUI.Label(new Rect(r.x+12,r.y+32,r.width-24,40),line,wrap);
   float y=r.yMax-36;
   if(next>=0&&GUI.Button(new Rect(r.x+10,y,150,28),"Make "+world.BuildNameFor(0,next),button)){world.ChooseProject(c,next,false);status=c.name+" will make "+world.BuildNameFor(0,next)+".";world.buildNotices.RemoveAt(0);GUIUtility.ExitGUI();}

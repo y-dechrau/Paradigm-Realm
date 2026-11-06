@@ -2,6 +2,19 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 6 Nov, map, city screen, prompts and empire priorities (save version 28)
+
+Implemented and checked by the engine checks, Unity `RealmTools.Checks` and `GraphicsChecks`, and a Windows build's `-autoShot` screenshots. Not hand-played: dragging sliders and scroll bars, hovering and clicking were not exercised by a person.
+
+- Empire priorities: Science, Military and Finance sliders on the Empire screen, linked and always totalling 100 (`EmpireBalance.cs`). Science keeps its ceiling. Military is a share of Trade, added as shields to any combat unit in training; if none is training, the share goes unused and the screen says so. Finance of 40% or less is low tax, 70% or more high tax. Old saves start at 0 military, which matches the old rules exactly. Rivals stay at 0 military for now.
+- After a discovery, the guide asks what to research next (the cheapest choice stays selected until you answer), then asks each city with an idle building line that gained a building, one city at a time. The tutor picture is local only; without it the panels show no face.
+- City screen: influence bar with numbers (`NextBorderGrowth`); land view keeps its tile size and scrolls by bars, wheel (Shift for sideways) and right or middle drag.
+- Map: unit feet stand on their ring (art is aligned on its lowest solid row), bolder borders, black mist over unexplored land, a faint route line for a selected unit with an order, guard pictures for fortified combat units, units listed on the tile card.
+- Guard pictures are generated from the unit art (shield and upright weapon; pavise for archers, sandbags for riflemen, stakes for catapults). Supplied art named `Visuals/unit-NN-guard` replaces them; no such art exists yet.
+- Chronicle uses Gabriola, an operating system font that is not shipped with the game; other systems fall back through Lucida Calligraphy, Monotype Corsiva and Palatino Linotype to the default font.
+- Flashing horizontal lines: frame comparison traced them to the drifting cloud-shadow sheet (hard-edged blocks in separate rectangles). It is now one smooth sheet. `-flickerProbe <folder>` found 63 thin-band hits before and 0 after at 1422 x 783, over 180 idle frames at each of three zooms, and no map seams while panning. It cannot see display-level tearing.
+- Unit suggestion on the city message only appears when both production lines and their queues are empty.
+
 ## Owner requests 6 Nov, wild animals and larger maps (save version 27)
 - **Settling:** the found-city message no longer shows grid coordinates. The older settlement adviser screen still does.
 - **Larger maps:** every map size in new games has 20% more tiles, on flat and globe maps, sealed worlds included, so saves and turns grow a little (Small globe 54 x 57 instead of 49 x 52). Saved games keep their size.

@@ -52,7 +52,7 @@ namespace ParadigmRealm
             FollowGateArrival();DrawMap();DrawHud();DrawRealmBanner();if(!guide)DrawTutorial();
             if(guide)DrawGuide();if(confirmNew){GUI.Box(new Rect(420,270,440,190),"");GUILayout.BeginArea(new Rect(445,290,390,145));GUILayout.Label("Start a new world?",heading);GUILayout.Label("Save first if you want to keep your current game.",body);if(Button("Start new game")){confirmNew=false;nameSetup=true;GUIUtility.ExitGUI();}if(Button("Cancel"))confirmNew=false;GUILayout.EndArea();}
             if(pendingUnit!=-1){DrawWarPrompt();return;}
-            if(foundStage>0)DrawFoundPrompt();else if(tilePicker)DrawTilePicker();
+            if(foundStage>0)DrawFoundPrompt();else if(tilePicker)DrawTilePicker();else if(GuidePromptOpen())DrawGuidePrompt();
             DrawSaveToast();
         }
         // Meeting a civilisation opens Diplomacy with them straight away, one meeting at a time. This runs between frames, not
@@ -307,7 +307,7 @@ namespace ParadigmRealm
             DrawUnitLabels();
             foreach(var city in world.cities){if(!(city.owner==0||world.Visible(city.x,city.y)))continue;var plateAt=ClassicRect(city.x,city.y);float cx=plateAt.center.x,cy=plateAt.y+plateAt.height*.82f;
                 if(cx<mapScroll.x-80||cx>right+80||cy<mapScroll.y-20||cy>bottom)continue;DrawCityPlate(city,city.name,new Vector2(cx,cy),nations[city.owner]);}
-            var chosen=Selected();if(chosen!=null&&chosen.hasOrder){
+            var chosen=Selected();if(chosen!=null)DrawRouteLine(chosen,tilePixels/64f);if(chosen!=null&&chosen.hasOrder){
                 var destRect=ClassicRect(chosen.destinationX,chosen.destinationY);var marker=new Rect(destRect.center.x-10,destRect.center.y-10,20,20);
                 Fill(marker,new Color(1,.8f,0,.55f));GUI.Label(marker,"X",small);
             }

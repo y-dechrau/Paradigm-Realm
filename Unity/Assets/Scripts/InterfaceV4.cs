@@ -52,15 +52,12 @@ namespace ParadigmRealm
         void DrawDetailsScreen()
         {
             if(detailsScreen=="Diplomacy"){DrawDiplomacyScreen();return;}
-            GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(50,115,800,40),detailsScreen=="Atlas"?"Realms":detailsScreen=="Economy"?"Empire":detailsScreen,title);
+            ChronicleStyles();GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(50,detailsScreen=="Chronicle"?107:115,800,detailsScreen=="Chronicle"?56:40),detailsScreen=="Atlas"?"Realms":detailsScreen=="Economy"?"Empire":detailsScreen,detailsScreen=="Chronicle"?chronicleTitle:title);
             if(GUI.Button(new Rect(1040,115,190,34),"Back",button)){detailsScreen="";GUI.FocusControl(null);GUIUtility.ExitGUI();}
             GUILayout.BeginArea(new Rect(55,175,1160,520));detailsScroll=GUILayout.BeginScrollView(detailsScroll);
             if(detailsScreen=="Economy"){
                 var b=world.Budget(0);GUILayout.Label("Income +"+b[0]+" | Upkeep -"+b[1]+" | Net "+b[2],heading);
-                int rate=world.nations[0].scienceRate;
-                GUILayout.BeginHorizontal();GUILayout.Label("Science "+rate+"% | Tax "+(100-rate)+"%",body,GUILayout.Width(260));
-                if(GUILayout.Button("Science -10%",button))world.SetScienceRate(0,rate-10);if(GUILayout.Button("Science +10%",button))world.SetScienceRate(0,rate+10);GUILayout.EndHorizontal();
-                GUILayout.Label("Each city's Trade is split: the science share (rounded down) becomes science and the rest becomes gold. Maximum "+world.ScienceCap(0)+"% science (80% with the Academies edict). 60% counts as low tax (+1 content citizen per city); 30% or less is high tax (-1). Each city supports 3 units free; government adds more.",body);
+                DrawEmpireBalance();
                 for(int r=2;r<World.ResourceNames.Length;r++)GUILayout.Label(World.ResourceNames[r]+": "+(world.HasResource(0,r)?"connected":"not connected"),body);
             GUILayout.Label(world.AgeLine(0),body);
             DrawEmpireEconomy();
@@ -81,7 +78,7 @@ namespace ParadigmRealm
             }else if(detailsScreen=="Cities"){
                 DrawEmpireAdvisors();
                 foreach(var c in world.cities.Where(c=>c.owner==0))if(Button(c.name+" — Population "+c.pop))OpenCity(c);
-            }else {GUILayout.Label(world.result==""?"Your civilisation's history":world.result,heading);foreach(var line in world.log)GUILayout.Label(line,body);}
+            }else {GUILayout.Label(world.result==""?"Your civilisation's history":world.result,chronicleHeading);foreach(var line in world.log)GUILayout.Label(line,chronicleText);}
             GUILayout.EndScrollView();GUILayout.EndArea();
         }
         void DrawUnitLabels()
@@ -120,28 +117,42 @@ namespace ParadigmRealm
         {
             GUI.Box(area,"");GUI.Label(new Rect(area.x+12,area.y+6,area.width-24,26),"The land around "+c.name,heading);
             var view=new Rect(area.x+8,area.y+36,area.width-16,374);
-            // The view widens with the city's reach (one ring more at size 10, 20 and 30) and shrinks the tiles to fit.
-            int reach=World.WorkRadius(c),show=reach+1;float tw=world.Hex?Mathf.Min(96f,Mathf.Floor(Mathf.Min(view.width/(2*show+1),374f/(2*show*PixelArt.HR/(float)PixelArt.HW+PixelArt.HH/(float)PixelArt.HW)))):Mathf.Min(96f,Mathf.Floor(2*374f/(2*show+1))),th=world.Hex?tw*PixelArt.HH/PixelArt.HW:tw*PixelArt.DH/PixelArt.DW,s=tw/64f;var worked=world.Worked(c);var workable=world.Workable(c);var e=Event.current;
+            // The tiles stay one size (fitted to a new city's land). As the city's influence spreads past the window, scroll bars
+            // appear; the wheel (with Shift for sideways) and dragging with the right or middle button also move it (owner request).
+            int reach=World.WorkRadius(c),show=world.TerritoryRadius(c)+1;const int FitRings=3;float tw=world.Hex?Mathf.Min(96f,Mathf.Floor(Mathf.Min(view.width/(2*FitRings+1),374f/(2*FitRings*PixelArt.HR/(float)PixelArt.HW+PixelArt.HH/(float)PixelArt.HW)))):Mathf.Min(96f,Mathf.Floor(2*374f/(2*FitRings+1))),th=world.Hex?tw*PixelArt.HH/PixelArt.HW:tw*PixelArt.DH/PixelArt.DW,s=tw/64f;var worked=world.Worked(c);var workable=world.Workable(c);var e=Event.current;
+            float landW=world.Hex?(2*show+1)*tw:(2*show+1)*tw,landH=world.Hex?2*show*tw*PixelArt.HR/PixelArt.HW+th:(2*show+1)*th;
+            bool scrollX=landW>view.width,scrollY=landH>view.height;if(scrollX||scrollY){scrollX=scrollY=true;view.width-=14;view.height-=14;}
+            float maxX=Mathf.Max(0,(landW-view.width)/2),maxY=Mathf.Max(0,(landH-view.height)/2);
+            if(view.Contains(e.mousePosition)&&(scrollX||scrollY)){
+             if(e.type==EventType.ScrollWheel){if(e.shift)cityMapScroll.x+=e.delta.y*12;else cityMapScroll.y+=e.delta.y*12;e.Use();}
+             if(e.type==EventType.MouseDrag&&(e.button==1||e.button==2)){cityMapScroll-=e.delta;e.Use();}
+            }
+            cityMapScroll.x=Mathf.Clamp(cityMapScroll.x,-maxX,maxX);cityMapScroll.y=Mathf.Clamp(cityMapScroll.y,-maxY,maxY);
+            if(scrollX){cityMapScroll.x=GUI.HorizontalScrollbar(new Rect(view.x,view.yMax,view.width,14),cityMapScroll.x,view.width,-maxX,maxX+view.width);cityMapScroll.y=GUI.VerticalScrollbar(new Rect(view.xMax,view.y,14,view.height),cityMapScroll.y,view.height,-maxY,maxY+view.height);}
             int frame=(int)(Time.realtimeSinceStartup*2.5f)%3;string hover=null;Rect hoverRect=new Rect();
             GUI.BeginGroup(view);
-            Fill(new Rect(0,0,view.width,view.height),new Color(.2f,.25f,.31f));
-            float cx=view.width/2,cy=view.height/2;
+            Fill(new Rect(0,0,view.width,view.height),scrollX?MistDeep:new Color(.2f,.25f,.31f));
+            float cx=Mathf.Round(view.width/2-cityMapScroll.x),cy=Mathf.Round(view.height/2-cityMapScroll.y);var viewLocal=new Rect(0,0,view.width,view.height);
             for(int pass=0;pass<2;pass++)
             // Diagonal layout, back to front by diagonal so scenery overlaps the tiles behind it.
             // Hex maps go row by row instead.
             for(int sum=world.Hex?-show:-2*show;sum<=(world.Hex?show:2*show);sum++)for(int dx=-show;dx<=show;dx++)
             {
                 int dy=world.Hex?sum:sum-dx;if(dy<-show||dy>show)continue;
-                var t=world.StepIn(c.x,c.y,dx,dy,show);if(t==null)continue;
+                var t=world.StepIn(c.x,c.y,dx,dy,show);if(t==null||world.Distance(c.x,c.y,t.x,t.y)>show)continue;
                 float sx=world.Hex?cx+(dx+dy*.5f)*tw:cx+(dx-dy)*tw/2,sy=world.Hex?cy+dy*tw*PixelArt.HR/PixelArt.HW:cy+(dx+dy)*th/2;var r=new Rect(sx-tw/2,sy-th/2,tw,th);
                 if(r.xMax<0||r.x>view.width||r.yMax<0||r.y>view.height+th)continue;
                 bool ring=world.Distance(c.x,c.y,t.x,t.y)<=reach&&(dx!=0||dy!=0?workable.Contains(t):true),mine=t.owner==c.owner;
                 var known=t.seen?world.KnownTile(t):null;var old=GUI.color;
                 if(pass==0)
                 {
-                    if(known==null){Fill(r,new Color(.24f,.3f,.37f));continue;}
+                    if(known==null){GUI.color=MistDeep;GUI.DrawTexture(r,IsoPicture(4,5,0));GUI.color=old;continue;}
                     GUI.DrawTexture(r,IsoGround(known,c.x+dx,c.y+dy,frame));
                     if(known.road){var road=RoadPicture(known);if(road!=null)GUI.DrawTexture(r,road);}
+                    // Once the view scrolls there is no soft edge to fade the land out, so land outside the territory is shaded,
+                    // and the territory carries the same bold edge as on the map.
+                    if(known.owner!=c.owner&&scrollX){GUI.color=new Color(.04f,.05f,.08f,.55f);GUI.DrawTexture(r,IsoPicture(4,9,0));}
+                    if(known.owner>=0){Color edgeInk=nations[known.owner];edgeInk.a=1;int[] oi=world.Hex?World.HexDi:new[]{0,1,0,-1},oj=world.Hex?World.HexDj:new[]{-1,0,1,0};for(int k=0;k<oi.Length;k++){var nb=world.Step(t.x,t.y,oi[k],oj[k]);if(nb!=null&&nb.seen&&world.KnownOwner(nb)==known.owner)continue;GUI.color=edgeInk;GUI.DrawTexture(r,world.Hex?IsoPicture(10,k,0):IsoPicture(4,k,0));}}
                     GUI.color=old;continue;
                 }
                 // Second pass: scenery, the city, and markers, so they stand over the row behind.
@@ -158,14 +169,14 @@ namespace ParadigmRealm
                 int[] v=centre?world.CityCentreYield(c):world.EffectiveTileYield(c,t);bool active=centre||worked.Contains(t),locked=world.IsLocked(c,t);
                 if(active)DrawYieldPips(new Rect(sx-tw/2+5,sy+th/2-14,tw-10,10),v);
                 if(locked){Fill(new Rect(sx+tw/2-16,sy-th/2+5,11,11),new Color(.08f,.16f,.3f,.9f));Fill(new Rect(sx+tw/2-14,sy-th/2+7,7,7),UiAccent);}
-                if((world.Hex?PixelArt.InHex(e.mousePosition.x-sx,e.mousePosition.y-sy,tw):Mathf.Abs(e.mousePosition.x-sx)/(tw/2)+Mathf.Abs(e.mousePosition.y-sy)/(th/2)<=1)&&e.mousePosition.y<=view.height){
+                if((world.Hex?PixelArt.InHex(e.mousePosition.x-sx,e.mousePosition.y-sy,tw):Mathf.Abs(e.mousePosition.x-sx)/(tw/2)+Mathf.Abs(e.mousePosition.y-sy)/(th/2)<=1)&&viewLocal.Contains(e.mousePosition)){
                     hoverRect=r;hover=World.TerrainNames[known.terrain]+(known.resource>0?" with "+World.ResourceNames[known.resource]:"")+": "+v[0]+" food, "+v[1]+" shields, "+v[2]+" trade — "+(centre?"city centre":locked?"locked citizen (click to release)":active?"worked (click to lock)":"not worked (click to lock a citizen here)");
                     if(!ring&&!centre){var ctl=world.TileController(t,c.owner);if(ctl!=null&&ctl!=c)hover+=" — worked by "+ctl.name+"; click to take it over";}
                     if(!centre&&e.type==EventType.MouseDown&&e.button==0&&GUI.enabled){bool ok=world.ToggleLock(c,t);status=ok?(world.IsLocked(c,t)?"Citizen locked on "+World.TerrainNames[known.terrain]+".":"Tile released to the Governor."):"Cannot lock: every working citizen is already locked here.";e.Use();}
                 }
             }
             // A soft round vignette, rather than dimmed squares, fades the land beyond the city's reach.
-            GUI.DrawTexture(new Rect(0,0,view.width,view.height),CityVignette());
+            if(!scrollX)GUI.DrawTexture(new Rect(0,0,view.width,view.height),CityVignette());
             if(hover!=null){var h=hoverRect;Color glow=new Color(1,1,1,.85f);Fill(new Rect(h.x+3,h.y,h.width-6,2),glow);Fill(new Rect(h.x+3,h.yMax-2,h.width-6,2),glow);Fill(new Rect(h.x,h.y+3,2,h.height-6),glow);Fill(new Rect(h.xMax-2,h.y+3,2,h.height-6),glow);}
             GUI.EndGroup();
             GUI.Label(new Rect(area.x+12,area.y+414,area.width-24,40),hover??"Hover over the land to see what it yields. Click to lock a citizen on a tile; the Governor works the rest.",small);
@@ -174,6 +185,12 @@ namespace ParadigmRealm
             DrawYieldPips(new Rect(lx+70,ly+6,30,10),new[]{0,1,0});GUI.Label(new Rect(lx+82,ly,70,22),"shields",small);
             DrawYieldPips(new Rect(lx+150,ly+6,30,10),new[]{0,0,1});GUI.Label(new Rect(lx+162,ly,60,22),"trade",small);
             Fill(new Rect(lx+222,ly+6,9,9),UiAccent);GUI.Label(new Rect(lx+236,ly,140,22),"locked citizen",small);
+            // How far until the city's influence next spreads (owner request): a bar with the numbers on it.
+            {var g=world.NextBorderGrowth(c);var bar=new Rect(lx,area.y+503,area.width-24,14);
+             string growthLine=g.full?"Influence "+g.radius+" tiles: fully expanded":"Influence "+g.radius+" tiles: next ring "+(g.turnsLeft>=0?"in "+g.turnsLeft+(g.turnsLeft==1?" turn":" turns")+", or at size "+g.citizensAt+" if sooner":"at size "+g.citizensAt);
+             GUI.Label(new Rect(lx,area.y+484,area.width-24,20),growthLine,small);
+             Bar(bar,g.full?1f:g.done/(float)Math.Max(1,g.span),new Color(.62f,.45f,.86f));
+             if(!g.full)GUI.Label(bar,g.done+" / "+g.span+(g.turnsLeft>=0?" turns":" citizens"),new GUIStyle(hudCentre){fontSize=11});}
         }
         Texture2D cityVignette;
         // Clear in the middle, shading smoothly to the panel's slate colour towards the edges (an ellipse, not a square).
@@ -194,7 +211,7 @@ namespace ParadigmRealm
             GUI.SetNextControlName("cityrename");c.name=GUI.TextField(new Rect(x,y,w,28),c.name,32);y+=38;
             var v=world.Yield(c);int trade=world.Trade(c),need=world.FoodNeeded(c);
             GUI.Label(new Rect(x,y,w,24),"Food "+(v[0]>=0?"+":"")+v[0]+"   Shields "+v[1]+"   Trade "+trade,heading);y+=28;
-            GUI.Label(new Rect(x,y,w,22),"Trade at "+world.nations[0].scienceRate+"% science: Science "+v[2]+"  Gold "+v[3],small);y+=26;
+            GUI.Label(new Rect(x,y,w,22),"Trade at "+world.nations[0].scienceRate+"% science: Science "+v[2]+"  Gold "+v[3]+(world.nations[0].militaryRate>0?"  Army +"+world.ArmyBudget(c)+" shields":""),small);y+=26;
             GUI.Label(new Rect(x,y,w,22),"Faith +"+world.FaithYield(c)+"  •  "+(c.religion>=0?"Follows "+ReligionCatalog.Name(c.religion)+(world.IsHolyCity(c)?" (holy city)":""):"No majority faith")+"  •  Influence "+world.CityInfluence(c),small);y+=22;
             GUI.Label(new Rect(x,y,w,22),"Growth  "+c.food+" / "+need+" food",body);y+=22;DrawBar(new Rect(x,y,w,12),c.food/(float)Math.Max(1,need),new Color(.45f,.75f,.35f));y+=16;
             GUI.Label(new Rect(x,y,w,40),world.GrowthStatus(c),small);y+=42;
@@ -224,7 +241,7 @@ namespace ParadigmRealm
             GUI.Box(area,"");int current=building?c.buildingProject:c.build,progress=building?c.buildingProduction:c.production;var queue=building?c.buildingQueue:c.queue;
             GUI.Label(new Rect(area.x+10,area.y+8,area.width-20,25),(building?"BUILDINGS":"UNIT TRAINING")+" — "+queue.Count+" queued",heading);
             // The next three items with their cost and turns left (turns count up through the queue).
-            int output=Math.Max(1,world.Yield(c)[1]),turns=0;var lines=new System.Collections.Generic.List<string>();
+            int output=building||current<0?Math.Max(1,world.Yield(c)[1]):world.LineOutput(c,current),turns=0;var lines=new System.Collections.Generic.List<string>();
             if(current<0)lines.Add("Idle — choose below");
             else{turns=Math.Max(1,(world.CostFor(c,current)-progress+output-1)/output);lines.Add("1. "+world.BuildNameFor(c.owner,current)+"  "+progress+" / "+world.CostFor(c,current)+" — "+turns+" turns");var reason=world.BuildReason(c,current);if(reason!="")lines.Add("   Paused: "+reason);}
             for(int i=0;i<queue.Count&&lines.Count<3;i++){turns+=Math.Max(1,(world.CostFor(c,queue[i])+output-1)/output);lines.Add((i+2)+". "+world.BuildNameFor(c.owner,queue[i])+"  "+world.CostFor(c,queue[i])+" — "+turns+" turns");}

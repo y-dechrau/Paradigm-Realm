@@ -1,0 +1,89 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+namespace ParadigmRealm {
+// Prompts from the guide after a discovery (owner request, 6 Nov 2026): first what to research next, then, one at a time, each
+// idle city that can now build something new. A small picture of Divus Maximus sits beside each. The private picture may be
+// absent (the public backup leaves it out), in which case the panel simply has no face.
+public partial class RealmGame {
+ Texture2D GuideFace(){if(guideFace==null)guideFace=Resources.Load<Texture2D>("Tutor/guide-face");return guideFace;}
+ bool GuidePromptOpen(){return world!=null&&world.result==""&&!guide&&!confirmNew&&pendingUnit==-1&&((world.researchPrompts!=null&&world.researchPrompts.Count>0)||world.NextBuildPrompt()!=null);}
+ Rect GuidePanel(string line,float height,out float y){
+  var box=new Rect(370,170,540,height);Fill(new Rect(0,0,1280,800),new Color(0,0,0,.35f));DrawGuideFrame(box);
+  var face=GuideFace();if(face!=null)GUI.DrawTexture(new Rect(box.x+14,box.y+14,84,84),face,ScaleMode.ScaleAndCrop);
+  float tx=box.x+112,tw=box.width-126;GUI.Label(new Rect(tx,box.y+10,tw,24),GuideName,hudTitle);
+  GUI.Label(new Rect(tx,box.y+36,tw,62),line,new GUIStyle(body){wordWrap=true});y=box.y+106;return box;
+ }
+ void DrawGuidePrompt(){
+  GUI.enabled=true;
+  if(world.researchPrompts!=null&&world.researchPrompts.Count>0){DrawResearchPrompt();return;}
+  var p=world.NextBuildPrompt();if(p!=null)DrawBuildPrompt(p);
+ }
+ void DrawResearchPrompt(){
+  int found=world.researchPrompts[0];var choices=world.AvailableTech(0).OrderBy(t=>world.ResearchCost(t,0)).ToList();
+  if(choices.Count==0){world.researchPrompts.RemoveAt(0);return;}
+  // The cheapest few, always including the one research has already moved on to.
+  var shown=choices.Take(6).ToList();if(world.research>=0&&!shown.Contains(world.research)){shown[shown.Count-1]=world.research;}
+  float y;var box=GuidePanel(World.TechNames[found]+" has been discovered.\nWhat do you want to research next?",106+shown.Count*34+50,out y);
+  int perTurn=Math.Max(1,SciencePerTurn());
+  foreach(int t in shown){
+   int cost=world.ResearchCost(t,0),left=Math.Max(0,cost-world.nations[0].progress[t]),turns=Math.Max(1,(left+perTurn-1)/perTurn);
+   string[] gains=World.ActiveTechBenefits(t);string gain=gains.Length>0?"  —  "+gains[0]:"";
+   if(GUI.Button(new Rect(box.x+14,y,box.width-28,30),"",button)){world.SelectResearch(t);status="Researching "+World.TechNames[t]+".";world.researchPrompts.RemoveAt(0);GUIUtility.ExitGUI();}
+   var was=new GUIStyle(hudSmall){wordWrap=false,alignment=TextAnchor.MiddleLeft};was.normal.textColor=t==world.research?UiGold:UiText;
+   FitLabel(new Rect(box.x+24,y,box.width-120,30),World.TechNames[t]+gain,was,9);
+   GUI.Label(new Rect(box.xMax-96,y,72,30),turns+(turns==1?" turn":" turns"),hudNumber);
+   y+=34;
+  }
+  y+=6;
+  if(GUI.Button(new Rect(box.x+14,y,252,32),"See every technology",button)){world.researchPrompts.RemoveAt(0);researchScreen=true;detailsScreen="";ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
+  if(world.research>=0&&GUI.Button(new Rect(box.x+274,y,252,32),"Carry on with "+World.TechNames[world.research],button)){world.researchPrompts.RemoveAt(0);GUIUtility.ExitGUI();}
+ }
+ void DrawBuildPrompt(BuildPrompt p){
+  var c=world.cities.Find(a=>a.id==p.city);var shown=p.options.Take(5).ToList();int more=world.buildPrompts.Count-1;
+  float y;var box=GuidePanel(World.TechNames[p.tech]+" opens up something new, and "+c.name+" is not building anything.\nWhat should it build?"+(more>0?"  ("+more+" more "+(more==1?"city":"cities")+" after this)":""),106+shown.Count*34+50,out y);
+  int output=Math.Max(1,world.Yield(c)[1]);
+  foreach(int b in shown){
+   int turns=Math.Max(1,(world.CostFor(c,b)+output-1)/output);
+   if(GUI.Button(new Rect(box.x+14,y,box.width-28,30),"",button)){world.ChooseProject(c,b,false);status=c.name+" will build "+world.BuildNameFor(0,b)+".";world.buildPrompts.RemoveAt(0);GUIUtility.ExitGUI();}
+   var line=new GUIStyle(hudSmall){wordWrap=false,alignment=TextAnchor.MiddleLeft};line.normal.textColor=UiText;
+   FitLabel(new Rect(box.x+24,y,box.width-120,30),world.BuildNameFor(0,b)+"  —  "+World.BuildingEffect(b),line,9);
+   GUI.Label(new Rect(box.xMax-96,y,72,30),turns+(turns==1?" turn":" turns"),hudNumber);
+   y+=34;
+  }
+  y+=6;
+  if(GUI.Button(new Rect(box.x+14,y,252,32),"Open "+c.name,button)){world.buildPrompts.RemoveAt(0);OpenCity(c);GUIUtility.ExitGUI();}
+  if(GUI.Button(new Rect(box.x+274,y,252,32),"Not now",button)){world.buildPrompts.RemoveAt(0);GUIUtility.ExitGUI();}
+ }
+ // ---------- the empire's priorities (Empire screen) ----------
+ static readonly string[] PriorityNames={"Science","Military","Finance"};
+ void DrawEmpireBalance(){
+  var n=world.nations[0];int[] rates={n.scienceRate,n.militaryRate,world.FinanceRate(0)};
+  var own=world.cities.Where(c=>c.owner==0).ToList();int trade=own.Sum(c=>world.Trade(c));
+  int[] flow={trade*rates[0]/100,own.Sum(c=>world.ArmyBudget(c)),trade-trade*rates[0]/100-trade*rates[1]/100};
+  string[] unit={" science"," shields"," gold"};
+  GUILayout.Label("Empire priorities",heading);
+  for(int axis=0;axis<3;axis++){
+   GUILayout.BeginHorizontal();GUILayout.Label(PriorityNames[axis]+"  "+rates[axis]+"%",body,GUILayout.Width(150));
+   int moved=Mathf.RoundToInt(GUILayout.HorizontalSlider(rates[axis],0,100,GUILayout.Width(620),GUILayout.Height(22))/10f)*10;
+   GUILayout.Space(16);GUILayout.Label("+"+flow[axis]+unit[axis]+" a turn from Trade",body,GUILayout.Width(300));GUILayout.EndHorizontal();
+   if(moved!=rates[axis]){world.SetPriority(0,axis,moved);rates=new[]{n.scienceRate,n.militaryRate,world.FinanceRate(0)};}
+  }
+  bool training=own.Any(c=>World.IsCombatBuild(c.build));
+  GUILayout.Label("Your cities' Trade is shared between these three, always totalling 100%. Military adds shields to any combat unit a city is training"+(n.militaryRate>0&&!training?" (none is training one now, so that share is going unused)":"")+". Science stops at "+world.ScienceCap(0)+"%. Finance of 40% or less counts as low tax (+1 content citizen per city); 70% or more is high tax (-1). Each city supports 3 units free; government adds more.",body);
+ }
+ // ---------- the Chronicle's lettering ----------
+ GUIStyle chronicleText,chronicleHeading,chronicleTitle;
+ void ChronicleStyles(){
+  if(chronicleText!=null)return;
+  // A calligraphic face that comes with Windows. It is not shipped with the game, so other systems fall back to the next name.
+  Font hand=null;try{hand=Font.CreateDynamicFontFromOSFont(new[]{"Gabriola","Lucida Calligraphy","Monotype Corsiva","Palatino Linotype"},26);}catch(Exception){}
+  var ink=new Color(.96f,.9f,.76f);
+  chronicleText=new GUIStyle(body){fontSize=25,wordWrap=true,richText=false,padding=new RectOffset(4,4,0,0),margin=new RectOffset(0,0,0,2)};chronicleText.normal.textColor=ink;
+  chronicleHeading=new GUIStyle(chronicleText){fontSize=33};chronicleHeading.normal.textColor=UiGold;
+  chronicleTitle=new GUIStyle(title){fontSize=44,fontStyle=FontStyle.Normal};chronicleTitle.normal.textColor=UiGold;
+  if(hand!=null){chronicleText.font=hand;chronicleHeading.font=hand;chronicleTitle.font=hand;}
+ }
+}
+}
