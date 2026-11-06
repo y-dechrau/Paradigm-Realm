@@ -35,6 +35,7 @@ namespace ParadigmRealm
         {
             if(world!=null)world.EndVisibilityCache();compositeBudgetOn=false;
             ApplyVisualSkin();Styles();HudStyles();float scale=Mathf.Min(Screen.width/1280f,Screen.height/800f);GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-1280*scale)/2,(Screen.height-800*scale)/2,0),Quaternion.identity,new Vector3(scale,scale,1));
+            if(probeEvent!=null&&Event.current.type==EventType.Repaint){var injected=probeEvent;probeEvent=null;var at=injected.mousePosition;Event.current=injected;injected.mousePosition=at;}
             GUI.DrawTexture(new Rect(0,0,1280,800),Texture2D.whiteTexture,ScaleMode.StretchToFill,false,0,UiBackground,0,0);
             if(artGallery){DrawGallery();return;}
             if(nameSetup){DrawNameSetup();return;}
@@ -317,6 +318,8 @@ namespace ParadigmRealm
         {
             var e=Event.current;bool inside=InMap(e.mousePosition);
             int x,y;if(!MapTileAt(e.mousePosition,out x,out y)){x=-1;y=-1;inside=false;}
+            // A double click on your city opens it, whatever stands on the tile; the first click may have opened the chooser (owner request).
+            if(e.type==EventType.MouseDown&&e.button==0&&e.clickCount==2&&inside&&!guide&&!confirmNew&&pendingUnit==-1&&foundStage==0&&world.result==""&&!GuidePromptOpen()){var twice=world.cities.Find(c=>c.owner==0&&c.x==x&&c.y==y);if(twice!=null){tilePicker=false;e.Use();OpenCity(twice);return;}}
             if(!GUI.enabled||world.result!=""){dragUnit=-1;dragging=false;mapPointerDown=false;return;}
             // Move mode (the unit card's Move button): the next click on the map is the selected unit's destination.
             if(moveMode&&e.type==EventType.MouseDown&&e.button==0&&inside){var mover=Selected();moveMode=false;if(mover!=null&&!(mover.x==x&&mover.y==y))IssueOrder(mover,x,y);e.Use();return;}

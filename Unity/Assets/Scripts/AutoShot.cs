@@ -15,9 +15,62 @@ namespace ParadigmRealm
         {
             var args=Environment.GetCommandLineArgs();int i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
+            i=Array.IndexOf(args,"-inputProbe");if(i>=0&&i+1<args.Length)StartCoroutine(InputProbeRun(args[i+1]));
             i=Array.IndexOf(args,"-flickerProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FlickerProbe(args[i+1]));
         }
         IEnumerator Frames(int n){for(int k=0;k<n;k++)yield return null;}
+        // Real input for the autoShot run: the next OnGUI handles this event as if the player had done it.
+        Event probeEvent;
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool PostMessage(IntPtr h,uint m,IntPtr w,IntPtr l);
+        [System.Runtime.InteropServices.DllImport("user32.dll",CharSet=System.Runtime.InteropServices.CharSet.Unicode)] static extern IntPtr FindWindow(string c,string t);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr GetActiveWindow();
+        // Mouse events cannot be injected into OnGUI (groups forget the position), so they go to this game's own window as Windows messages.
+        void PostMouse(Event e){var h=GetActiveWindow();if(h==IntPtr.Zero)h=FindWindow(null,Application.productName);var at=new IntPtr(((int)e.mousePosition.y<<16)|((int)e.mousePosition.x&0xffff));PostMessage(h,0x0200,IntPtr.Zero,at);bool left=e.button==0;uint msg=e.type==EventType.MouseDown?(left?0x0201u:0x0204u):(left?0x0202u:0x0205u);PostMessage(h,msg,new IntPtr(e.type==EventType.MouseDown?(left?1:2):0),at);}
+#else
+        void PostMouse(Event e){probeEvent=e;}
+#endif
+        IEnumerator Send(Event e){if(e.isMouse)PostMouse(e);else probeEvent=e;yield return Frames(3);}
+        static Event Mouse(EventType type,float x,float y,int button=0,int clicks=1){return new Event{type=type,mousePosition=new Vector2(x,y),button=button,clickCount=clicks};}
+        IEnumerator ClickAt(float x,float y,int button=0,int clicks=1){yield return Send(Mouse(EventType.MouseDown,x,y,button,clicks));yield return Send(Mouse(EventType.MouseUp,x,y,button,clicks));}
+        void Probe(string name,bool ok){Debug.Log("PROBE "+(ok?"pass":"FAIL")+": "+name);}
+        IEnumerator InputProbeRun(string folder)
+        {
+            Directory.CreateDirectory(folder);yield return Frames(5);
+            seedText="421";mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;
+            var founder=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);var made=world.Found(founder);world.Reveal();selected=-1;cityId=made.id;yield return Frames(60);
+            yield return InputProbes(folder,made);Application.Quit();
+        }
+        IEnumerator InputProbes(string folder,City city)
+        {
+            // Saves go to the screenshot folder, so a real saved game is never touched.
+            activeSavePath=Path.Combine(folder,"probe-save.json");toastText="";yield return Send(Event.KeyboardEvent("^s"));Probe("Ctrl+S saves ("+toastText+")",toastText=="Game saved"&&File.Exists(activeSavePath));
+            yield return Shot(folder,"10a-saved-toast.bmp");
+            // Double click on a city with a unit on it.
+            cityScreen=false;detailsScreen="";isoWidth=64;FocusTile(city.x,city.y);var guard=world.Add(0,2,city.x,city.y);yield return Frames(5);float sx,sy;IsoScreen(city.x,city.y,out sx,out sy);
+            yield return Send(Mouse(EventType.MouseDown,sx,sy));Debug.Log("PROBEINFO after down pointer "+mapPointerDown+" press "+pressX+","+pressY+" city "+city.x+","+city.y+" result '"+world.result+"' screens "+cityScreen+detailsScreen+researchScreen+" prompt "+PromptOpen());yield return Send(Mouse(EventType.MouseUp,sx,sy));Probe("first click on a city with a unit opens the chooser",tilePicker);yield return Send(Mouse(EventType.MouseDown,sx,sy,0,2));Probe("double click opens the city whatever stands there",cityScreen&&!tilePicker);
+            yield return Send(Mouse(EventType.MouseUp,sx,sy,0,2));
+            // Right-click cancels a chosen building, though greyed out; then the building list.
+            cityBuildingTab=true;int pot=TechnologyCatalog.Index("pottery");bool hadPot=world.tech[pot];world.tech[pot]=true;world.tech[TechnologyCatalog.Index("writing")]=true;var opts=World.BuildingIds.Where(b=>world.TechAllows(city,b)).ToList();city.buildingProject=opts[0];city.buildingQueue.Clear();if(opts.Count>1)city.buildingQueue.Add(opts[1]);buildingQueueScroll=Vector2.zero;
+            foreach(var u in new[]{2,3,4,7,2,3,2,3})city.queue.Add(World.UnitBuild(u));city.build=World.UnitBuild(2);yield return Shot(folder,"10b-building-greyed.bmp");
+            yield return ClickAt(1000,336,1);Probe("right click cancels a chosen building",city.buildingProject!=opts[0]);
+            cityBuildingTab=false;yield return Shot(folder,"10c-unit-queue.bmp");city.queue.Clear();city.build=-1;
+            // Zoom to city.
+            yield return ClickAt(955,127);Probe("Zoom to city returns to the map on the city",!cityScreen&&isoWidth==128);yield return Shot(folder,"10d-zoomed-city.bmp");isoWidth=64;world.units.Remove(guard);
+            // The wheel does nothing while the research prompt waits.
+            world.researchPrompts.Add(TechnologyCatalog.Index("agriculture"));yield return Frames(3);int zoom=isoWidth;var wheel=new Event{type=EventType.ScrollWheel,mousePosition=new Vector2(200,500),delta=new Vector2(0,3)};yield return Send(wheel);Probe("the wheel is still while the research prompt waits",isoWidth==zoom);world.researchPrompts.Clear();yield return Frames(3);yield return Send(new Event{type=EventType.ScrollWheel,mousePosition=new Vector2(200,500),delta=new Vector2(0,3)});Probe("and works again afterwards",isoWidth!=zoom);isoWidth=64;
+            // Realms: the Legends button, and the Close button of a people's page.
+            detailsScreen="Atlas";viewRealm=0;legendsOpen=false;legendsPeople=-1;yield return Shot(folder,"10e-realms.bmp");yield return Send(Mouse(EventType.MouseDown,1030,458));Debug.Log("PROBEINFO hot "+GUIUtility.hotControl);yield return Send(Mouse(EventType.MouseUp,1030,458));Probe("the Legends button opens the book",legendsOpen);yield return Shot(folder,"10f-legends-empty.bmp");
+            var gate=world.tiles.FirstOrDefault(t=>t.realm==0&&t.gateLink>0);if(gate!=null){gate.seen=true;int far=world.GateTwin(gate).realm;world.turn++;legendsWorld=far;var people=CivilisationCatalog.PeoplesOf(far).Where(c=>world.NationOfPeople(c)>=0).ToList();if(people.Count>1){world.nations[world.NationOfPeople(people[0])].intel=2;world.nations[world.NationOfPeople(people[1])].intel=3;}yield return Shot(folder,"10g-legends-known.bmp");
+                if(people.Count>0){legendsPeople=people[0];yield return Shot(folder,"10h-people-partial.bmp");yield return ClickAt(234,710);Probe("Close leaves a people's page",legendsPeople==-1&&legendsOpen);}
+                world.turn--;gate.seen=false;}
+            legendsOpen=false;detailsScreen="Civics";yield return Shot(folder,"10i-civics.bmp");detailsScreen="";
+            {// A crowded tile: the box must show every word.
+             var spot=world.tiles.FirstOrDefault(t=>t.realm==0&&t.owner==0&&!PixelArt.IsWater(t.terrain)&&world.Distance(t.x,t.y,city.x,city.y)==1);if(spot!=null){spot.road=true;spot.farm=true;spot.village=true;var a=world.Add(0,2,spot.x,spot.y);var b=world.Add(0,4,spot.x,spot.y);var beast=new Animal{id=9901,kind=5,x=spot.x,y=spot.y};world.animals.Add(beast);selected=a.id;cityId=-1;isoWidth=64;FocusTile(spot.x,spot.y);yield return Send(Mouse(EventType.MouseUp,640,20));yield return Shot(folder,"10k-tile-card.bmp");world.animals.Remove(beast);world.units.Remove(a);world.units.Remove(b);selected=-1;}}
+            world.tech[pot]=hadPot;
+            // Esc menu.
+            pauseMenu=true;yield return Shot(folder,"10j-pause.bmp");pauseMenu=false;activeSavePath=null;
+        }
         // Development aid: "-flickerProbe <folder>" watches the idle map frame by frame and reports thin horizontal bands that change
         // while the rows beside them do not, then saves the worst pair of frames and their difference.
         void WriteBmp(string path,Color32[] px,int w,int h)
@@ -122,6 +175,7 @@ namespace ParadigmRealm
                  world.buildPrompts.Add(new BuildPrompt{city=city.id,tech=pot,options=World.BuildingIds.Where(b=>world.BuildReason(city,b)=="").Take(3).ToList()});yield return Shot(folder,"4f-build-prompt.bmp");world.buildPrompts.Clear();world.tech[pot]=hadPot;world.tech[TechnologyCatalog.Index("writing")]=hadWrite;city.buildingProject=keepB;city.buildingQueue=keepQ;}
                 int keepAge=city.age;city.age=60;isoWidth=64;world.RebuildTerritory();world.Reveal();selected=-1;cityId=city.id;cityScreen=true;cityMapScroll=new Vector2(30,20);yield return Shot(folder,"4g-city-scroll.bmp");cityScreen=false;city.age=keepAge;world.RebuildTerritory();
                 world.SetPriority(0,World.AxisMilitary,20);detailsScreen="Economy";yield return Shot(folder,"4h-priorities.bmp");detailsScreen="";world.SetPriority(0,World.AxisMilitary,0);world.SetPriority(0,World.AxisScience,50);
+                yield return InputProbes(folder,city);
             }
             // Research screen with the Dawn completed (this throwaway game only), so the edict choice shows.
             detailsScreen="";foreach(var id in new[]{"agriculture","archery","bronze"})world.tech[TechnologyCatalog.Index(id)]=true;

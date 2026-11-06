@@ -17,10 +17,10 @@ namespace ParadigmRealm
         static readonly Rect TopBar=new Rect(0,0,1280,38),ResearchCard=new Rect(80,46,300,52),UnitCard=new Rect(8,592,410,200),
             TileCard=new Rect(472,742,336,52),MiniMap=new Rect(1060,590,178,138),MiniButtons=new Rect(1242,590,32,138),
             EndTurnRect=new Rect(1060,738,214,54),MorePanel=new Rect(8,246,410,340);
-        static readonly string[] RailScreens={"Economy","Research","Diplomacy","Religion","Cities","Military","Atlas","Victory","Chronicle","Identity"};
-        static readonly string[] RailLabels={"Empire","Research","Diplomacy","Religion","Cities","Military","Realms","Victory","Chronicle","Identity"};
-        static readonly int[] RailIcons={PixelArt.IconEmpire,PixelArt.IconResearch,PixelArt.IconDiplomacy,PixelArt.IconFaith,PixelArt.IconCities,PixelArt.IconMilitary,PixelArt.IconRealms,PixelArt.IconVictory,PixelArt.IconChronicle,PixelArt.IconIdentity};
-        const float RailItem=54;
+        static readonly string[] RailScreens={"Economy","Civics","Research","Diplomacy","Religion","Cities","Military","Atlas","Victory","Chronicle","Identity"};
+        static readonly string[] RailLabels={"Empire","Civics","Research","Diplomacy","Religion","Cities","Military","Realms","Victory","Chronicle","Identity"};
+        static readonly int[] RailIcons={PixelArt.IconEmpire,PixelArt.IconCivics,PixelArt.IconResearch,PixelArt.IconDiplomacy,PixelArt.IconFaith,PixelArt.IconCities,PixelArt.IconMilitary,PixelArt.IconRealms,PixelArt.IconVictory,PixelArt.IconChronicle,PixelArt.IconIdentity};
+        const float RailItem=49;
         static Rect RailRect{get{return new Rect(0,44,72,RailScreens.Length*RailItem+8);}}
         readonly List<Rect> hudRects=new List<Rect>();
         bool moreActions,moveMode,roadMode;
@@ -77,7 +77,7 @@ namespace ParadigmRealm
         {
             bool clicked=GUI.Button(r,"");
             if(active)Fill(new Rect(r.x+2,r.y+2,r.width-4,r.height-4),new Color(UiButtonActive.r,UiButtonActive.g,UiButtonActive.b,.9f));
-            DrawIcon(icon,new Rect(r.center.x-12,r.y+5,24,24));FitLabel(new Rect(r.x+2,r.yMax-21,r.width-4,18),caption,hudCentre);
+            DrawIcon(icon,new Rect(r.center.x-11,r.y+3,22,22));FitLabel(new Rect(r.x+2,r.yMax-20,r.width-4,18),caption,hudCentre);
             return clicked;
         }
         int SciencePerTurn(){return world.cities.Where(c=>c.owner==0).Sum(c=>world.Yield(c)[2]);}
@@ -140,9 +140,9 @@ namespace ParadigmRealm
             if(world.research<0){GUI.Label(new Rect(r.x+56,r.y+15,230,22),"Choose research",hudCaption);}
             else
             {
-                int cost=world.ResearchCost(world.research,0),done=world.science,perTurn=Math.Max(1,SciencePerTurn());int turns=Math.Max(1,(cost-done+perTurn-1)/perTurn);
-                GUI.Label(new Rect(r.x+56,r.y+6,170,22),World.TechNames[world.research],hudCaption);GUI.Label(new Rect(r.xMax-82,r.y+7,72,20),turns+(turns==1?" turn":" turns"),hudNumber);
-                Bar(new Rect(r.x+56,r.y+32,r.width-68,8),done/(float)Math.Max(1,cost),UiAccent);
+                int cost=world.ResearchCost(world.research,0),done=world.science;int turns=world.ResearchTurns(world.research,0);
+                GUI.Label(new Rect(r.x+56,r.y+6,170,22),World.TechNames[world.research],hudCaption);GUI.Label(new Rect(r.xMax-82,r.y+7,72,20),turns<0?"no science":turns+(turns==1?" turn":" turns"),hudNumber);
+                EraBar(new Rect(r.x+56,r.y+32,r.width-68,8),done/(float)Math.Max(1,cost));
             }
             if(clicked){researchScreen=true;detailsScreen="";ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
         }
@@ -295,19 +295,16 @@ namespace ParadigmRealm
             GUILayout.EndScrollView();GUILayout.EndArea();
         }
         // The tile under the pointer (or under the selected unit): terrain, river, owner and yields.
+        float tileCardGrow;GUIStyle tileCardText;
         void DrawTileCard()
         {
-            Tile t=null;int x,y;var mouse=Event.current.mousePosition;
+            tileCardGrow=0;Tile t=null;int x,y;var mouse=Event.current.mousePosition;
             if(InMap(mouse)&&MapTileAt(mouse,out x,out y))t=world.KnownTile(world.At(x,y));
             if(t==null){var u=Selected();if(u!=null)t=world.KnownTile(world.At(u.x,u.y));}
             // Units on the tile (owner request): a line each above the tile's own description, growing the card upwards.
             var present=t!=null&&t.seen?world.units.Where(a=>a.x==t.x&&a.y==t.y&&(a.owner==0||world.Visible(t.x,t.y))).OrderByDescending(a=>a.id==selected).ThenByDescending(a=>World.Power[a.type]).ToList():new List<Unit>();
             int unitLines=Math.Min(3,present.Count)+(present.Count>3?1:0);
-            {var grown=new Rect(TileCard.x,TileCard.y-unitLines*19,TileCard.width,TileCard.height+unitLines*19);if(viewRealm>0&&unitLines>0)grown=new Rect(grown.x,grown.y-34,grown.width,grown.height);
-             GUI.Box(unitLines>0&&viewRealm>0?new Rect(grown.x,grown.y,grown.width,unitLines*19+6):grown,"");if(unitLines>0&&viewRealm>0)GUI.Box(TileCard,"");
-             float ly=grown.y+4;foreach(var a in present.Take(3)){string line=(a.owner==0?"":world.NationName(a.owner)+" ")+world.UnitName(a)+"  •  Attack "+World.Attack[a.type]+" / Defence "+World.Defence[a.type]+"  •  Health "+a.hp+"/10"+(a.owner==0?"  •  "+world.Activity(a):"");var ink=new GUIStyle(hudCentre);ink.normal.textColor=a.owner==0?UiGold:nations[a.owner];FitLabel(new Rect(grown.x+6,ly,grown.width-12,18),line,ink,8);ly+=19;}
-             if(present.Count>3)GUI.Label(new Rect(grown.x,ly,grown.width,18),"and "+(present.Count-3)+" more",hudCentre);}
-            if(t==null||!t.seen){GUI.Label(new Rect(TileCard.x,TileCard.y+15,TileCard.width,22),t==null?"Point at the map to inspect a tile":"Unexplored",hudCentre);return;}
+            if(t==null||!t.seen){GUI.Box(TileCard,"");GUI.Label(new Rect(TileCard.x,TileCard.y+15,TileCard.width,22),t==null?"Point at the map to inspect a tile":"Unexplored",hudCentre);return;}
             var v=world.TileYield(t);bool known=t.resource>0&&world.ResourceKnown(0,t.resource);if(t.resource>0&&!known){v[0]-=World.ResourceFood[t.resource];v[1]-=World.ResourceShields[t.resource];v[2]-=World.ResourceTrade[t.resource];}
             var features=new List<string>{World.TerrainNames[t.terrain]};if(t.road)features.Add(World.Forested(t.terrain)?"Trail":"Road");if(t.farm)features.Add("Farm");if(t.mine)features.Add("Mine");if(t.fort)features.Add("Fort");if(known)features.Add(World.ResourceNames[t.resource]);
             {var beast=world.wildlife&&world.Visible(t.x,t.y)?world.AnimalAt(t.x,t.y):null;if(beast!=null)features.Add(world.AnimalLabel(beast));}
@@ -318,7 +315,13 @@ namespace ParadigmRealm
             {var live=world.At(t.x,t.y);if(live!=null&&live.village)features.Add(live.villageOwner>=0?"Village (joined "+world.NationName(live.villageOwner)+")":"Tribal village");}
             // Border influence: how far a rival has swung this tile (it changes hands at 90%).
             {var live=world.At(t.x,t.y);if(live!=null&&live.swayCiv>=0&&live.sway>0)features.Add("Influence "+live.sway+"% to "+world.NationName(live.swayCiv));}
-            GUI.Label(new Rect(TileCard.x,TileCard.y+4,TileCard.width,20),string.Join("  •  ",features.ToArray()),hudCentre);
+            // The box grows upwards until every word shows: wrapped description lines first, then a line for each unit (owner request).
+            if(tileCardText==null)tileCardText=new GUIStyle(hudCentre){wordWrap=true,clipping=TextClipping.Overflow};
+            string described=string.Join("  •  ",features.ToArray());float wrapped=tileCardText.CalcHeight(new GUIContent(described),TileCard.width-16),extra=Mathf.Max(0,wrapped-20);tileCardGrow=extra+unitLines*19;
+            {var grown=new Rect(TileCard.x,TileCard.y-tileCardGrow,TileCard.width,TileCard.height+tileCardGrow);
+             GUI.Box(grown,"");GUI.Label(new Rect(TileCard.x+8,TileCard.y+4-extra,TileCard.width-16,20+extra),described,tileCardText);
+             float ly=grown.y+4;foreach(var a in present.Take(3)){string line=(a.owner==0?"":world.NationName(a.owner)+" ")+world.UnitName(a)+"  •  Attack "+World.Attack[a.type]+" / Defence "+World.Defence[a.type]+"  •  Health "+a.hp+"/10"+(a.owner==0?"  •  "+world.Activity(a):"");var ink=new GUIStyle(hudCentre);ink.normal.textColor=a.owner==0?UiGold:nations[a.owner];FitLabel(new Rect(grown.x+6,ly,grown.width-12,18),line,ink,8);ly+=19;}
+             if(present.Count>3)GUI.Label(new Rect(grown.x,ly,grown.width,18),"and "+(present.Count-3)+" more",hudCentre);}
             float cx=TileCard.center.x-96;
             DrawIcon(PixelArt.IconFood,new Rect(cx,TileCard.y+26,20,20));GUI.Label(new Rect(cx+22,TileCard.y+26,40,20),"+"+v[0],hudLabel);
             DrawIcon(PixelArt.IconShields,new Rect(cx+64,TileCard.y+26,20,20));GUI.Label(new Rect(cx+86,TileCard.y+26,40,20),"+"+v[1],hudLabel);
@@ -326,7 +329,8 @@ namespace ParadigmRealm
         }
         // City name plates on the map: framed navy plate, crown for a capital, name and size; your own cities also show what
         // they are building and how far it has come.
-        GUIStyle plateLine;
+        GUIStyle plateLine,plateMaking;
+        string CityMakingLine(City c){bool u=c.build>=0,b=c.buildingProject>=0;return !u&&!b?"Nothing in production":(u?world.BuildNameFor(c.owner,c.build):"")+(u&&b?"  •  ":"")+(b?world.BuildNameFor(c.owner,c.buildingProject):"");}
         void DrawCityPlate(City c,string name,Vector2 top,Color ink)
         {
             // Owner request (31 Oct): a small see-through plate, name and size on one line plus a thin production bar for
@@ -337,7 +341,9 @@ namespace ParadigmRealm
             // The whole name always shows: the plate widens to fit it, and only very long names step the type down (owner request).
             var nameStyle=new GUIStyle(plateLine){clipping=TextClipping.Overflow};float lead=capital?33:22,tail=c!=null?26:6;float textW=nameStyle.CalcSize(new GUIContent(label)).x;
             while(nameStyle.fontSize>8&&lead+textW+tail>240){nameStyle.fontSize--;textW=nameStyle.CalcSize(new GUIContent(label)).x;}
-            float w=Mathf.Max(70,lead+textW+tail),h=own?24:20;var r=new Rect(top.x-w/2,top.y,w,h);
+            // What the city is making goes under its name, small, and the plate widens only as far as it must (owner request).
+            string making=own?CityMakingLine(c):null;if(plateMaking==null)plateMaking=new GUIStyle(plateLine){fontSize=10,fontStyle=FontStyle.Normal,font=hudLabel.font,normal={textColor=UiText}};
+            float w=Mathf.Max(70,lead+textW+tail);if(making!=null)w=Mathf.Min(240,Mathf.Max(w,plateMaking.CalcSize(new GUIContent(making)).x+12));float h=own?36:20;var r=new Rect(top.x-w/2,top.y,w,h);
             Fill(r,new Color(.04f,.06f,.12f,.72f));Fill(new Rect(r.x,r.y,2,r.height),ink);
             if(c!=null){var plateFlag=FlagTexture(c.owner);if(plateFlag!=null)GUI.DrawTexture(new Rect(r.x+4,r.y+5,15,10),plateFlag,ScaleMode.StretchToFill,true);}
             if(capital)DrawIcon(PixelArt.IconCrown,new Rect(r.x+20,r.y+4,12,12));
@@ -345,6 +351,7 @@ namespace ParadigmRealm
             if(c!=null)GUI.Label(new Rect(r.xMax-22,r.y+1,18,19),c.pop.ToString(),new GUIStyle(plateLine){alignment=TextAnchor.MiddleRight});
             if(own)
             {
+                FitLabel(new Rect(r.x+6,r.y+18,w-10,14),making,plateMaking,7);
                 int b=c.buildingProject>=0?c.buildingProject:c.build;int progress=c.buildingProject>=0?c.buildingProduction:c.production;
                 if(b>=0)Bar(new Rect(r.x+4,r.yMax-3,w-8,2),progress/(float)Math.Max(1,world.CostFor(c,b)),UiAccent);
                 if(r.Contains(Event.current.mousePosition)){int perTurn=b>=0?world.LineOutput(c,b):1;string line=b<0?"Nothing in production":world.BuildNameFor(c.owner,b)+" ("+Math.Max(1,(world.CostFor(c,b)-progress+perTurn-1)/perTurn)+" turns)";var tip=new Rect(r.x,r.yMax+2,Mathf.Max(w,hudSmall.CalcSize(new GUIContent(line)).x+12),18);Fill(tip,new Color(.04f,.06f,.12f,.92f));GUI.Label(new Rect(tip.x+6,tip.y+1,tip.width-8,16),line,new GUIStyle(hudSmall){wordWrap=false});}

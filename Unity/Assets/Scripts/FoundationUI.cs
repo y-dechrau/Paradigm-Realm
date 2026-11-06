@@ -35,9 +35,9 @@ namespace ParadigmRealm
             else {guide=false;confirmNew=false;pendingUnit=-1;pauseMenu=true;}
             ResetMapGesture();GUI.FocusControl(null);e.Use();GUIUtility.ExitGUI();
         }
-        bool SaveTo(string path){try{AtomicSave(path);activeSavePath=path;status="";toastText="Game Saved";toastUntil=Time.realtimeSinceStartup+2f;saveError="";return true;}
+        bool SaveTo(string path){try{AtomicSave(path);activeSavePath=path;status="";toastText="Game saved";toastUntil=Time.realtimeSinceStartup+2f;saveError="";return true;}
             catch(Exception e){status="Could not save: "+e.Message;saveError=status;toastText="Save failed";toastUntil=Time.realtimeSinceStartup+4f;return false;}}
-        void DrawSaveToast(){float remaining=toastUntil-Time.realtimeSinceStartup;if(remaining<=0)return;var old=GUI.color;GUI.color=new Color(1,1,1,Mathf.Clamp01(remaining));GUI.Box(new Rect(490,745,300,42),toastText);GUI.color=old;}
+        void DrawSaveToast(){float remaining=toastUntil-Time.realtimeSinceStartup;if(remaining<=0)return;var old=GUI.color;GUI.color=new Color(1,1,1,Mathf.Clamp01(remaining));var plate=new Rect(530,50,220,34);DrawGuideFrame(plate);GUI.Label(plate,toastText,hudCentre);GUI.color=old;}
         string NamedSavePath(){var safe=new string(saveName.Where(c=>char.IsLetterOrDigit(c)||c==' '||c=='-'||c=='_').ToArray()).Trim();return safe.Length==0?null:Path.Combine(Application.persistentDataPath,"earth-named-"+safe+".json");}
         void PersistSettings(){SaveTutorialProgress();PlayerPrefs.SetFloat("RealmZoomSensitivity",zoomSensitivity);PlayerPrefs.SetInt("RealmTooltips",tooltips?1:0);PlayerPrefs.Save();}
         void DrawPauseMenu(){Fill(new Rect(0,0,1280,800),UiDim);
@@ -48,6 +48,7 @@ namespace ParadigmRealm
             if(Button("Continue")){pauseMenu=false;GUI.FocusControl(null);}
             if(Button("Quick Save [Ctrl+S]"))Save();
             if(Button("Save As")){saveName=world.civilisationName+" - Turn "+world.turn;saveError="";overwriteSave=false;saveAsScreen=true;}
+            if(Button("Load Game"))OpenLoadScreen();
             if(Button("Settings"))settingsScreen=true;
             // Back to the title screen; the game stays open there under Resume Game (owner request).
             if(Button("Return to Main Menu")){pauseMenu=false;mainMenu=true;GUI.FocusControl(null);GUIUtility.ExitGUI();}
@@ -56,12 +57,12 @@ namespace ParadigmRealm
             GUILayout.EndArea();
         }
         void DrawSaveAs(){GUI.Box(new Rect(330,140,620,520),"");GUILayout.BeginArea(new Rect(360,165,560,470));GUILayout.Label("Save As",heading);
-            if(overwriteSave){GUILayout.Label("Replace the existing save named "+saveName+"?",body);if(Button("Yes, replace")){if(SaveTo(NamedSavePath())){saveAsScreen=false;overwriteSave=false;}}if(Button("No"))overwriteSave=false;}
+            if(overwriteSave){GUILayout.Label("Are you sure you want to save over "+saveName+"?",body);if(Button("Yes, save over it")){if(SaveTo(NamedSavePath())){saveAsScreen=false;overwriteSave=false;}}if(Button("No"))overwriteSave=false;}
             else {GUILayout.Label("Save name (letters, numbers, spaces, hyphens and underscores)",small);GUI.SetNextControlName("saveName");saveName=GUILayout.TextField(saveName,64);
                 if(Button("Save")){string path=NamedSavePath();if(path==null)saveError="Enter a save name.";else if(File.Exists(path))overwriteSave=true;else if(SaveTo(path))saveAsScreen=false;}
-                GUILayout.Label("Saved games — select one to load",body);saveScroll=GUILayout.BeginScrollView(saveScroll,GUILayout.Height(220));
+                GUILayout.Label("Saved games — select one to save over it",body);saveScroll=GUILayout.BeginScrollView(saveScroll,GUILayout.Height(220));
                 string[] files=new string[0];try{files=Directory.GetFiles(Application.persistentDataPath,"earth-named-*.json").OrderByDescending(File.GetLastWriteTimeUtc).ToArray();}catch(Exception e){saveError=e.Message;}
-                foreach(var file in files)if(Button(Path.GetFileNameWithoutExtension(file).Substring("earth-named-".Length))){LoadFile(file);if(!status.StartsWith("Could not load")){saveAsScreen=false;pauseMenu=false;}}
+                foreach(var file in files)if(Button(Path.GetFileNameWithoutExtension(file).Substring("earth-named-".Length))){saveName=Path.GetFileNameWithoutExtension(file).Substring("earth-named-".Length);saveError="";overwriteSave=true;}
                 GUILayout.EndScrollView();if(Button("Back"))saveAsScreen=false;
             }
             if(saveError!="")GUILayout.Label(saveError,small);GUILayout.EndArea();
@@ -79,7 +80,8 @@ namespace ParadigmRealm
         }
         void AutoSave()
         {
-            if(world.tiles.Length>9000&&world.turn%5!=0)return;
+            // Writing a big world takes seconds, so the biggest save less often.
+            if(world.tiles.Length>60000?world.turn%10!=0:world.tiles.Length>9000&&world.turn%5!=0)return;
             try{AtomicSave(Path.Combine(Application.persistentDataPath,"earth-auto-"+(world.turn%3)+".json"));}
             catch(Exception e){world.Note("Autosave failed: "+e.Message);}
         }
@@ -122,7 +124,7 @@ namespace ParadigmRealm
         {
             if(u!=null){
                 DrawEmpireUnit(u);
-                GUILayout.Label("Upkeep 1 gold beyond free support | "+World.RankText(u),small);
+                GUILayout.Label((World.Power[u.type]>0?"Support "+World.SupportCost(u.type)+" gold a turn":"Support 1 gold beyond the free allowance")+" | "+World.RankText(u),small);
                 GUILayout.Label("Activity: "+world.Activity(u)+" | "+world.Remaining(u),body);
                 if(u.type==1){GUILayout.Label("Worker team: "+world.WorkerTeam(u).Count,small);
                     if(u.workerGroup>0){if(Button("Ungroup workers (stop current work)")){world.UngroupWorkers(u);status="Workers ungrouped; current work cancelled.";}}
@@ -149,6 +151,8 @@ namespace ParadigmRealm
         {
             if(guide||confirmNew||pendingUnit!=-1||mainMenu||pauseMenu||cityScreen||researchScreen||detailsScreen!=""||loadScreen)return;
             var e=Event.current;
+            // While a prompt waits for an answer the map stays still (owner request).
+            if(PromptOpen()){if(e.type==EventType.ScrollWheel)e.Use();return;}
             // Consume the wheel before BeginScrollView can turn it into vertical panning.
             if(e.type==EventType.ScrollWheel&&diamondView&&MapView.Contains(e.mousePosition)){IsoZoom(e.delta.y>0?-1:1);ResetMapGesture();e.Use();}
             else if(e.type==EventType.ScrollWheel&&MapView.Contains(e.mousePosition)&&(globeZoom||e.delta.y>0&&tilePixels<=24&&GlobeZoomAllowed())){ClassicZoom(e.delta.y>0?-8:8);ResetMapGesture();e.Use();}

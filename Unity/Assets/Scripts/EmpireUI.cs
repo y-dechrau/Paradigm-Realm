@@ -64,7 +64,7 @@ public partial class RealmGame {
         }
     }
     void DrawMilitaryAdviser(){
-        GUILayout.Label("Select a unit to centre the map. Each city supports "+World.FreeUnitsPerCity+" units free, plus your government's support; every unit beyond that costs 1 gold per turn.",body);
+        GUILayout.Label("Select a unit to centre the map. Every soldier and warship costs gold each turn (1 or 2 by type). Each city supports "+World.FreeUnitsPerCity+" civilian units free, plus your government's support; each civilian beyond that costs 1 gold per turn.",body);
         foreach(var u in world.units.Where(u=>u.owner==0).ToList())
             if(Button(world.UnitName(u)+" #"+u.id+" | HP "+u.hp+" | "+world.Activity(u))){selected=u.id;cityId=-1;detailsScreen="";cityScreen=false;Center();GUIUtility.ExitGUI();}
     }
@@ -94,7 +94,7 @@ public partial class RealmGame {
     bool globeZoom;
     int WrapColumn(int x){int w=world.Width;return ((x%w)+w)%w;}
     bool GlobeZoomAllowed(){return world!=null&&world.Sphere&&viewRealm==0&&world.HasTech(0,"astronomy");}
-    void EnterGlobeZoom(int x,int y){globeZoom=true;globeLon=(x+.5f)/world.Width*Mathf.PI*2-Mathf.PI;globeLat=-(0.5f-(y+.5f)/world.MainHeight)*Mathf.PI*.8f;}
+    void EnterGlobeZoom(int x,int y){globeZoom=true;globeLon=(x+.5f)/world.Width*Mathf.PI*2-Mathf.PI;globeLat=(0.5f-(y+.5f)/world.MainHeight)*Mathf.PI*.8f;}
     void DrawGlobeZoom(){
         Fill(MapView,new Color(.03f,.05f,.09f));
         DrawGlobeAt(new Rect(MapW/2-300,MapH/2-300,600,600),false);
@@ -111,15 +111,15 @@ public partial class RealmGame {
         if(controls){
         if(GUI.Button(new Rect(20,200,110,28),"Rotate west"))globeLon-=0.4f;
         if(GUI.Button(new Rect(20,236,110,28),"Rotate east"))globeLon+=0.4f;
-        if(GUI.Button(new Rect(20,272,110,28),"Tilt north"))globeLat=Mathf.Clamp(globeLat-0.3f,-1.2f,1.2f);
-        if(GUI.Button(new Rect(20,308,110,28),"Tilt south"))globeLat=Mathf.Clamp(globeLat+0.3f,-1.2f,1.2f);
-        if(GUI.Button(new Rect(20,344,110,28),"Face my units")){var u=Selected();if(u!=null){globeLon=(u.x+.5f)/W*Mathf.PI*2-Mathf.PI;globeLat=-(0.5f-(u.y+.5f)/H)*Mathf.PI;}}
+        if(GUI.Button(new Rect(20,272,110,28),"Tilt north"))globeLat=Mathf.Clamp(globeLat+0.3f,-1.2f,1.2f);
+        if(GUI.Button(new Rect(20,308,110,28),"Tilt south"))globeLat=Mathf.Clamp(globeLat-0.3f,-1.2f,1.2f);
         }
         if(globeTexture==null){globeTexture=new Texture2D(D,D,TextureFormat.RGBA32,false){filterMode=FilterMode.Bilinear,wrapMode=TextureWrapMode.Clamp};globeDrawnLon=-99;}
         if(globeDrawnLon!=globeLon||globeDrawnLat!=globeLat||globeDrawnAtlas!=globeBuiltAtlas){
             var px=new Color[D*D];float R=D/2f,sinT=Mathf.Sin(globeLat),cosT=Mathf.Cos(globeLat);
             for(int py=0;py<D;py++)for(int qx=0;qx<D;qx++){
-                float nx=(qx+.5f-R)/R,ny=(R-py-.5f)/R,r2=nx*nx+ny*ny;
+                // Texture rows count up from the bottom, so north is at the top of the globe.
+                float nx=(qx+.5f-R)/R,ny=(py+.5f-R)/R,r2=nx*nx+ny*ny;
                 if(r2>1){px[py*D+qx]=new Color(0,0,0,0);continue;}
                 float nz=Mathf.Sqrt(1-r2);
                 // Tilt about the horizontal axis, then spin about the polar axis.

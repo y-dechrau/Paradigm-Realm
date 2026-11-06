@@ -21,7 +21,9 @@ namespace ParadigmRealm {
   public static int WorkRadius(City c){return 2+Math.Min(3,c.pop/10);}
   // A tile this city could work: inside its reach, owned by its civilisation, not another city's centre.
   public bool InReach(City c,Tile t,HashSet<int> centres=null){if(c==null||t==null||t.owner!=c.owner||(t.x==c.x&&t.y==c.y)||Distance(t.x,t.y,c.x,c.y)>WorkRadius(c))return false;if(centres!=null)return !centres.Contains(t.y*Width+t.x);foreach(var other in cities)if(other.x==t.x&&other.y==t.y)return false;return true;}
-  HashSet<int> CityCentres(){var s=new HashSet<int>();foreach(var o in cities)s.Add(o.y*Width+o.x);return s;}
+  // Every Yield asks for this, so it is kept until the list of cities changes.
+  [NonSerialized] HashSet<int> centresMemo;[NonSerialized] int centresCount=-1,centresLast=-1;
+  HashSet<int> CityCentres(){int last=cities.Count>0?cities[cities.Count-1].id:-1;if(centresMemo!=null&&centresCount==cities.Count&&centresLast==last)return centresMemo;var s=new HashSet<int>();foreach(var o in cities)s.Add(o.y*Width+o.x);centresMemo=s;centresCount=cities.Count;centresLast=last;return s;}
   // Where reaches overlap, the more dominant city (larger, then older) works the tile, unless another city that can reach it
   // has locked it there (the player's manual override).
   public City TileController(Tile t,int owner,HashSet<int> centres=null,List<City> own=null){
@@ -119,7 +121,7 @@ namespace ParadigmRealm {
   // AI does not receive extra yields, free specialists or hidden terrain knowledge.
   void ManageCityAI(City c){
    c.scientists=c.merchants=c.entertainers=0;
-   int balance=Budget(c.owner)[2];
+   int balance=aiBalanceFor==c.owner?aiBalance:Budget(c.owner)[2];
    c.focus=Yield(c)[0]<=0?1:balance<0?4:c.pop>=GrowthLimit(c)?2:0;
    if(Happiness(c)<0){while(Happiness(c)<0&&c.entertainers<c.pop){c.entertainers++;if(Yield(c)[0]<0){c.entertainers--;break;}}}
    if(c.pop>=3&&Happiness(c)>=0){

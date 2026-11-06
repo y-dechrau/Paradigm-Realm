@@ -73,7 +73,7 @@ namespace ParadigmRealm
                 GUI.Label(Z(new Rect(r.x+10,r.y+51,200,24)),TechnologyCatalog.EraNames[TechnologyCatalog.Eras[i]],zSmall);
                 var benefits=World.ActiveTechBenefits(i);string summary=benefits.Length>0?string.Join("\n",benefits.Take(2).Select(v=>"• "+v).ToArray()):"• Advances the research tree\n• Content unlocks planned";
                 GUI.Label(Z(new Rect(r.x+10,r.y+78,200,53)),summary,zSmall);
-                GUI.Label(Z(new Rect(r.x+10,r.y+132,200,26)),world.tech[i]?"Discovered":world.research==i?"Researching":available.Contains(i)?"Available • "+world.ResearchCost(i):"Locked • "+World.Requirements[i].Length+" prerequisites",zSmall);
+                GUI.Label(Z(new Rect(r.x+10,r.y+132,200,26)),world.tech[i]?"Discovered":world.research==i?"Researching":available.Contains(i)?"Available • "+world.ResearchCost(i)+" science":"Locked • "+World.Requirements[i].Length+" prerequisites",zSmall);
                 // Research straight from the card, but only when the technology can be researched now.
                 if(available.Contains(i)&&world.research!=i&&world.result==""){int left=Math.Max(0,world.ResearchCost(i)-world.nations[0].progress[i]);if(GUI.Button(Z(new Rect(r.x+10,r.y+165,140,27)),"Research • "+Math.Max(1,(left+perTurn-1)/perTurn)+" turns",zButton)){world.SelectResearch(i);inspectedTech=i;}if(GUI.Button(Z(new Rect(r.x+154,r.y+165,56,27)),"Info",zButton)){inspectedTech=i;techDetailScroll=Vector2.zero;}}
                 else if(GUI.Button(Z(new Rect(r.x+10,r.y+165,200,27)),(world.research==i?"Researching — details":"Inspect "+World.TechNames[i]),zButton)){inspectedTech=i;techDetailScroll=Vector2.zero;}

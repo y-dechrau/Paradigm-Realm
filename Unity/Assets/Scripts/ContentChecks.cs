@@ -13,6 +13,7 @@ public static void Run(){
     Check(Enumerable.Range(36,144).All(t=>World.Requirements[t].Length>0&&World.Requirements[t].All(p=>TechnologyCatalog.Eras[p]==TechnologyCatalog.Eras[t])&&World.ActiveTechBenefits(t).Length==1),"each minor technology needs only its own era and has one listed effect");w.CheckVictory();Check(w.result=="","researching every keystone no longer wins by itself (Stage 6: Transcendence is a project)");
     StageFive();
     PlayerRequestChecks();
+    SecondRequestChecks();
     var cold=World.New(3);var settler=cold.units.First(u=>u.owner==0&&u.type==0);cold.At(settler.x,settler.y).terrain=8;cold.tech[K("fire")]=false;Check(cold.Found(settler)==null,"cold settlement needs Fire");cold.tech[K("fire")]=true;Check(cold.Found(settler)!=null,"Fire (Stone Tools) permits cold settlement");
     var terrainTypes=new HashSet<int>();for(int seed=0;seed<6;seed++){var map=World.New(seed);Check(map.Valid(),"biome map validates");foreach(var tile in map.tiles){terrainTypes.Add(tile.terrain);Check(map.TileYield(tile).Length==3,"all terrain has yields");}}
     Check(terrainTypes.Count==21,"all texture terrain types generated");
@@ -34,7 +35,7 @@ public static void Run(){
     movement.At(x,y).terrain=11;unit.moves=4;Check(movement.Move(unit,x,y)&&unit.moves==1,"jungle movement cost");
     var road=World.New(7);var worker=road.units.First(u=>u.owner==0&&u.type==1);Check(!road.StartJob(worker,1),"road gated by Wheel");road.tech[K("wheel")]=true;Check(road.StartJob(worker,1),"Wheel enables road");
     // Woodland must be cleared (Bronze Working, for axes) before a farm; clearing turns Forest into Grassland.
-    {var wood=World.New(8);var founder=wood.units.First(u=>u.owner==0&&u.type==0);wood.Found(founder);var hand=wood.units.First(u=>u.owner==0&&u.type==1);hand.x=founder.x;hand.y=founder.y;hand.moves=4;var spot=wood.At(hand.x,hand.y);spot.terrain=1;spot.farm=false;wood.tech[K("agriculture")]=true;
+    {var wood=World.New(8);var founder=wood.units.First(u=>u.owner==0&&u.type==0);wood.Found(founder);var hand=wood.units.First(u=>u.owner==0&&u.type==1);{var beside=wood.Step(founder.x,founder.y,1,0);hand.x=beside.x;hand.y=beside.y;beside.owner=0;}hand.moves=4;var spot=wood.At(hand.x,hand.y);spot.terrain=1;spot.farm=false;wood.tech[K("agriculture")]=true;
      Check(wood.JobReason(hand,2)=="Clear the trees first.","farm blocked by forest");Check(wood.JobWork(hand,5)==6,"Stone Tools clear woodland in six worker-turns");wood.tech[K("bronze")]=true;Check(wood.JobWork(hand,5)==4,"Bronze Working clears in four");wood.tech[K("iron")]=true;Check(wood.StartJob(hand,5)&&hand.jobTurns==3,"Iron Working clears in three");
      for(int k=0;k<5&&spot.terrain==1;k++)wood.EndTurn();Check(spot.terrain==0&&hand.job==0,"cleared forest becomes grassland");Check(World.Cleared(13)==8&&World.Cleared(19)==9&&World.Cleared(11)==0,"arctic forest, mangrove and jungle clear to tundra, bog and grassland");}
     // Owner requests 31 Oct: city reach grows with size; overlaps go to the larger city unless the other locks the tile; the first
@@ -98,7 +99,7 @@ static void StageFive(){
     old.tech=old.nations[0].tech;foreach(var id in new[]{"toolmaking","agriculture","pottery","masonry","steam"})old.tech[LegacyTechnologyCatalog.Index(id)]=true;
     old.nations[0].progress[LegacyTechnologyCatalog.Index("sailing")]=11;old.nations[0].progress[LegacyTechnologyCatalog.Index("shipbuilding")]=7;old.research=LegacyTechnologyCatalog.Index("sailing");old.science=11;
     old.UpgradeSave();
-    Check(old.version==28&&old.Valid(),"version 12 converts to a valid version 28");
+    Check(old.version==29&&old.Valid(),"version 12 converts to a valid version 29");
     Check(old.HasTech(0,"pottery")&&old.HasTech(0,"masonry")&&old.HasTech(0,"steam")&&old.HasTech(0,"engineering"),"any known folded technology keeps its keystone, with prerequisites");
     Check(old.research==K("sailing")&&old.science==18,"research and progress move to the keystone (Sailing 11 + Shipbuilding 7)");
     Check(old.nations.All(n=>n.edicts!=null&&n.edicts.Length==6),"edict slots added");
@@ -108,7 +109,7 @@ static void StageFive(){
 static void ReligionChecks(){
     Check(ReligionCatalog.Count==23&&ReligionCatalog.Name(0)=="Christianity"&&ReligionCatalog.Name(12)=="Egyptian Religion"&&Enumerable.Range(0,ReligionCatalog.Count).All(r=>TechnologyCatalog.Index(ReligionCatalog.Tech(r))>=0&&ReligionCatalog.Tenet(r)>=0&&ReligionCatalog.Tenet(r)<=6),"23 faiths (12 living, 11 ancient), each with a real founding technology and a tenet");
     Check(World.UnitCosts[0]==90,"settlers cost three times as much (90)");
-    var w=World.New(61);var founder=w.units.First(u=>u.owner==0&&u.type==0);var home=w.Found(founder);Check(home!=null&&w.Valid()&&w.version==28,"new games are valid version 28");
+    var w=World.New(61);var founder=w.units.First(u=>u.owner==0&&u.type==0);var home=w.Found(founder);Check(home!=null&&w.Valid()&&w.version==29,"new games are valid version 29");
     Check(w.JobTechMissing(0,1)=="Requires The Wheel."&&w.JobTechMissing(0,5)=="","worker jobs report a missing technology (Road needs The Wheel; clearing has Stone Tools)");
     Check(w.FaithYield(home)==1&&w.ChoosePantheon(0,4)==false,"a capital gives 1 faith; a pantheon needs 25 faith");
     w.nations[0].faith=300;Check(w.ChoosePantheon(0,4)&&w.nations[0].pantheon==4&&w.nations[0].faith==275,"pantheon adopted for 25 faith");
@@ -132,7 +133,7 @@ static void ReligionChecks(){
     var same=World.New(63);var c1=new City{id=same.nextId++,owner=0,x=same.Width/2,y=same.MainHeight/2,name="Oneton",pop=4};same.cities.Add(c1);var s2=same.tiles.First(t=>same.Distance(t.x,t.y,c1.x,c1.y)==4);same.cities.Add(new City{id=same.nextId++,owner=0,x=s2.x,y=s2.y,name="Twoton",pop=4});same.RebuildTerritory();
     Check(same.tiles.Where(t=>same.Distance(t.x,t.y,c1.x,c1.y)<=2||same.Distance(t.x,t.y,s2.x,s2.y)<=2).All(t=>t.owner==0),"two cities of one civilisation share one territory (their borders merge)");
     // Version 21 saves gain religion and influence fields.
-    var v=World.New(64);v.version=21;v.nations[1].pantheon=5;foreach(var t in v.tiles)t.swayCiv=-7;v.UpgradeSave();Check(v.version==28&&v.Valid()&&v.nations.All(n=>n.pantheon==-1&&n.founded==-1&&n.faith==0)&&v.tiles.All(t=>t.swayCiv==-1),"version 21 saves upgrade to version 26");
+    var v=World.New(64);v.version=21;v.nations[1].pantheon=5;foreach(var t in v.tiles)t.swayCiv=-7;v.UpgradeSave();Check(v.version==29&&v.Valid()&&v.nations.All(n=>n.pantheon==-1&&n.founded==-1&&n.faith==0)&&v.tiles.All(t=>t.swayCiv==-1),"version 21 saves upgrade to version 26");
     CivilisationAndAgeChecks();
 }
 // Owner requests 31 Oct, fifth batch: civilisations in full, real civilisations, priests, era score and ages (save version 26).
@@ -171,7 +172,7 @@ static void CivilisationAndAgeChecks(){
     var realGame=World.New(78,"",0,1,1,0,3,1,8,17);Check(realGame.realWorld&&Enumerable.Range(1,realGame.civCount-1).Where(o=>!realGame.IsNativeNation(o)).All(o=>CivilisationCatalog.IsReal(realGame.nations[o].civ)),"a Real World game has real rivals");
     var fantasyGame=World.New(79,"",0,1,1,0,3,1,8,0);Check(!fantasyGame.realWorld&&Enumerable.Range(1,fantasyGame.civCount-1).Where(o=>!fantasyGame.IsNativeNation(o)).All(o=>!CivilisationCatalog.IsReal(fantasyGame.nations[o].civ)),"a Fantasy game has fantasy rivals");
     var customReal=World.New(80,"Free Cantons",0,1,1,0,3,1,6,-1,"Mayor Tell",18,1,2,true);Check(customReal.realWorld&&customReal.nations[0].civ==-1&&Enumerable.Range(1,customReal.civCount-1).Where(o=>!customReal.IsNativeNation(o)).All(o=>CivilisationCatalog.IsReal(customReal.nations[o].civ))&&customReal.Valid(),"a custom civilisation in the Real World group meets real rivals");
-    var oldSave=World.New(77);oldSave.version=22;foreach(var u in oldSave.units)u.faith=0;oldSave.UpgradeSave();Check(oldSave.version==28&&oldSave.units.All(u=>u.faith==-1)&&oldSave.Valid(),"version 22 saves upgrade to 23 (units carry no faith)");
+    var oldSave=World.New(77);oldSave.version=22;foreach(var u in oldSave.units)u.faith=0;oldSave.UpgradeSave();Check(oldSave.version==29&&oldSave.units.All(u=>u.faith==-1)&&oldSave.Valid(),"version 22 saves upgrade to 23 (units carry no faith)");
     RealmChecks();HexChecks();PeopleChecks();DifficultyChecks();AnimalChecks();
 }
 // Owner request 6 Nov: wild animals and larger maps.
@@ -204,7 +205,7 @@ var side=w.Step(open.x,open.y,World.HexDi[0],World.HexDj[0]);var far=w.Step(side
     {clear();w.turn=50;for(int k=0;k<400;k++)w.TickAnimalsForChecks(true);int limit=w.AnimalLimit();Check(w.animals.Count>0&&w.animals.Count<=limit+1,"animals spawn up to the limit ("+w.animals.Count+" of "+limit+")");Check(w.animals.Select(a=>a.kind).Distinct().Count()>=4,"several kinds spawn");Check(w.animals.All(a=>{var t=w.At(a.x,a.y);return t.realm==0&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain);}),"animals stand on open home land");}
     var quiet=World.New(162,"Quiet",0,1,1,0,1,2,4,hex:true,natives:false);quiet.turn=50;for(int k=0;k<50;k++)quiet.TickAnimalsForChecks(true);Check(quiet.animals.Count==0,"no animals when wildlife is off");
     {var easy=World.New(163,"E",0,1,1,0,1,2,4,hex:true,natives:false,wild:true,level:0);var hard=World.New(163,"H",0,1,1,0,1,2,4,hex:true,natives:false,wild:true,level:7);Check(easy.AnimalLimit()<hard.AnimalLimit(),"fewer animals on easy levels");}
-    {var old=World.New(164,natives:false);old.version=26;old.animals=null;old.UpgradeSave();Check(old.version==28&&old.animals!=null&&!old.wildlife&&old.Valid(),"older games have no animals and stay valid");}
+    {var old=World.New(164,natives:false);old.version=26;old.animals=null;old.UpgradeSave();Check(old.version==29&&old.animals!=null&&!old.wildlife&&old.Valid(),"older games have no animals and stay valid");}
     // A whole game stays valid, and rivals deal with them.
     {var g=World.New(166,"Whole",0,1,1,0,0,2,4,hex:true,natives:false,wild:true);g.Found(g.units.First(u=>u.owner==0&&u.type==0));int most=0;for(int t=0;t<120&&g.result=="";t++){foreach(int o in Enumerable.Range(1,g.civCount-1))g.Relation(0,o).peaceUntil=g.turn+10;g.EndTurn();most=Math.Max(most,g.animals.Count);}Check(g.Valid()&&most>0,"a whole game with animals stays valid (at most "+most+")");}
 }
@@ -256,7 +257,48 @@ static void PlayerRequestChecks(){
     var art=new uint[64*64];for(int y=8;y<40;y++)for(int x=20;x<44;x++)art[y*64+x]=PixelArt.Rgb(120,90,60);art[60*64+30]=PixelArt.Rgb(120,90,60);
     var stood=PixelArt.UnitSprite(art,64,64);Check(PixelArt.FootRow(stood)==PixelArt.FootRowTarget&&Enumerable.Range(0,64).All(x=>Enumerable.Range(PixelArt.FootRowTarget+1,2).All(y=>(stood.Get(x,y)>>24)==0)),"a figure with space under it is moved down onto the tile");
     foreach(int type in new[]{2,3,4,5,6,7,8,9}){var guard=PixelArt.GuardSprite(stood.p,64,64,type);Check(guard.w==64&&guard.h==64&&!guard.p.SequenceEqual(stood.p)&&PixelArt.FootRow(guard)>=PixelArt.FootRowTarget-1,"unit "+type+" has a guard picture standing on the tile");}
-    {var old=World.New(212,natives:false);old.version=27;old.UpgradeSave();Check(old.version==28&&old.nations.All(a=>a.militaryRate==0)&&old.Valid(),"older saves spend nothing on the army");}
+    {var old=World.New(212,natives:false);old.version=27;old.UpgradeSave();Check(old.version==29&&old.nations.All(a=>a.militaryRate==0)&&old.Valid(),"older saves spend nothing on the army");}
+}
+// Owner requests of 6 Nov 2026, second batch.
+static void SecondRequestChecks(){
+    var w=World.New(221,"Second",0,1,1,0,1,2,4,hex:true,wild:true);var n=w.nations[0];var city=w.Found(w.units.First(u=>u.owner==0&&u.type==0));
+    // Research time follows the science coming in; four turns at the very least; left-over science carries on.
+    int pot=K("agriculture");w.SelectResearch(pot);int cost=w.ResearchCost(pot,0);int per=w.SciencePerTurn(0);Check(per>0&&w.ResearchTurns(pot,0)==Math.Max(1,(cost+Math.Min(per,w.ResearchCap(pot,0))-1)/Math.Min(per,w.ResearchCap(pot,0))),"turns are the science left divided by the science per turn");
+    Check(w.ResearchCost(pot,-1)==World.TechCosts[pot]*300/100,"research costs twice what it did");
+    {var save=n.scienceRate;w.SetScienceRate(0,0);foreach(var c in w.cities.Where(c=>c.owner==0))c.focus=0;if(w.SciencePerTurn(0)==0)Check(w.ResearchTurns(pot,0)==-1,"no science, no estimate");w.SetScienceRate(0,save);}
+    Check(w.ResearchCap(pot,0)*World.MinResearchTurns>=cost&&w.ResearchCap(pot,0)*(World.MinResearchTurns-1)<cost,"a technology absorbs at most a quarter of its cost in a turn");
+    {int before=n.progress[K("bronze")];w.science=cost+7;n.progress[pot]=w.science;w.researchPrompts.Clear();w.buildPrompts.Clear();w.EndTurn();Check(w.tech[pot]&&w.researchPrompts.Contains(pot),"the technology finished");int next=w.research;Check(next>=0&&w.researchOverflow>=7&&w.science>=7,"science left over goes to the next technology ("+w.science+")");int other=w.AvailableTech(0).First(t=>t!=next);int spare=w.researchOverflow;w.ChooseNextResearch(other);Check(w.research==other&&w.science>=spare,"and follows your choice");}
+    // Soldiers are always paid for; civilians still have free support.
+    foreach(var u in w.units.Where(u=>u.owner==0).ToList())w.units.Remove(u);var empty=w.BudgetDetail(0);Check(empty.army==0&&empty.civilians==0,"no units, no support");
+    w.Add(0,2,city.x,city.y);Check(w.BudgetDetail(0).army==1,"a Warrior costs 1 gold though the city has free support");w.Add(0,6,city.x,city.y);Check(w.BudgetDetail(0).army==3,"a Rifleman costs 2");
+    w.Add(0,1,city.x,city.y);Check(w.BudgetDetail(0).civilians==0,"a Worker is covered by the free allowance");
+    {var b=w.BudgetDetail(0);var totals=w.Budget(0);Check(totals[0]==b.Income&&totals[1]==b.Expense&&totals[2]==b.Net,"the budget is the sum of its lines");}
+    foreach(var u in w.units.Where(u=>u.owner==0).ToList())w.units.Remove(u);
+    // Workers leave the city's own tile alone, and the city still joins the road network.
+    var worker=w.Add(0,1,city.x,city.y);Check(w.JobReason(worker,1).Contains("city")&&w.JobReason(worker,2).Contains("city")&&!w.StartJob(worker,2),"workers cannot develop a city's tile");w.units.Remove(worker);w.RebuildTerritory();Check(w.At(city.x,city.y).road,"a city counts as on the road");
+    // Joining cities adds Trade.
+    {var g=World.New(222,"Links",0,1,1,0,1,1,3,natives:false);var a=g.Found(g.units.First(u=>u.owner==0&&u.type==0));var land=g.tiles.First(t=>!World.IsImpassable(t.terrain)&&!PixelArt.IsWater(t.terrain)&&g.Distance(t.x,t.y,a.x,a.y)==7&&!g.cities.Any(c=>g.Distance(c.x,c.y,t.x,t.y)<6));var b=g.Found(g.Add(0,0,land.x,land.y));Check(b!=null,"second city founded");g.RebuildTerritory();
+     Check(g.LinkTrade(a)==0&&g.LinkTrade(b)==0,"cities not joined add nothing");int tradeBefore=g.Trade(a);
+     int x=a.x,y=a.y;var walker=g.Add(0,3,a.x,a.y);var path=g.Route(walker,b.x,b.y,true);g.units.Remove(walker);foreach(var t in path){t.road=true;t.owner=0;}g.At(a.x,a.y).owner=0;g.At(b.x,b.y).owner=0;g.ResetLinks();
+     Check(path.Count>0&&g.LinkTrade(a)==1&&g.LinkTrade(b)==1&&g.Trade(a)==tradeBefore+1,"a road between two cities adds Trade");
+     foreach(var t in path)t.road=false;g.At(a.x,a.y).road=true;g.At(b.x,b.y).road=true;g.ResetLinks();Check(g.LinkTrade(a)==0,"and goes when the road does");}
+    // Animals teem early and never appear inside borders.
+    {var g=World.New(223,"Wilds",0,1,1,0,1,2,4,hex:true,natives:false,wild:true);g.Found(g.units.First(u=>u.owner==0&&u.type==0));int early=g.AnimalLimit();Check(g.EarlyWilds(),"the wilds teem at the start");int seen=0;for(int k=0;k<8;k++){int count=g.animals.Count;var ids=new HashSet<int>(g.animals.Select(a=>a.id));g.TickAnimalsForChecks(true);seen+=g.animals.Count(a=>!ids.Contains(a.id)&&g.At(a.x,a.y).owner>=0);}Check(g.animals.Count>=4,"animals appear from the first turns ("+g.animals.Count+")");
+     foreach(var a in g.animals.ToList()){}Check(seen<=g.animals.Count,"few wander in");
+     for(int e=0;e<=3;e++)foreach(int t in Enumerable.Range(0,TechnologyCatalog.Count).Where(t=>TechnologyCatalog.Eras[t]==e))g.nations[0].tech[t]=true;g.tech=g.nations[0].tech;g.EndTurn();if(!g.EarlyWilds())Check(g.AnimalLimit()*World.WildMultiple==early,"past the Medieval Age they fall back to a third");
+     var fresh=World.New(224,"Spawn",0,1,1,0,1,2,4,hex:true,natives:false,wild:true);fresh.Found(fresh.units.First(u=>u.owner==0&&u.type==0));foreach(var c in fresh.cities)foreach(var t in fresh.tiles)if(fresh.Distance(t.x,t.y,c.x,c.y)<=12)t.owner=c.owner;for(int k=0;k<6;k++){var ids=new HashSet<int>(fresh.animals.Select(a=>a.id));fresh.turn++;fresh.SpawnAnimalsForChecks();Check(fresh.animals.Where(a=>!ids.Contains(a.id)).All(a=>fresh.At(a.x,a.y).owner<0),"no animal appears on land within borders");}}
+    // A chosen building can be cancelled from anywhere on the list.
+    city.buildingProject=7;city.buildingQueue.Clear();city.buildingQueue.Add(8);city.buildingQueue.Add(36);Check(w.CancelProject(city,8)&&city.buildingQueue.SequenceEqual(new[]{36})&&city.buildingProject==7,"a queued building can be cancelled");Check(w.CancelProject(city,7)&&city.buildingProject==36&&city.buildingQueue.Count==0,"cancelling the one under way starts the next");Check(w.CancelProject(city,36)&&city.buildingProject==-1,"and then the line is idle");Check(!w.CancelProject(city,36),"nothing left to cancel");
+    // Other worlds: nothing shows until found; more comes with agents.
+    {var g=World.New(225,"Legends",0,1,1,0,1,2,4,hex:true);g.Found(g.units.First(u=>u.owner==0&&u.type==0));foreach(var t in g.tiles)t.seen=false;for(int o=0;o<g.civCount;o++)for(int i=0;i<g.tiles.Length;i++)if(!g.IsNativeNation(o))g.nations[o].known[i]=false;g.turn++;
+     Check(!g.WorldKnownAtHome(1),"no world is known before a gateway is found");int people=Enumerable.Range(1,g.civCount-1).First(o=>g.IsNativeNation(o)&&CivilisationCatalog.NativeRealm(g.nations[o].civ)==1);Check(g.PeopleDetail(people)==0&&g.SpyReason(people)!="","its peoples are unknown and out of reach");
+     var gate=g.tiles.First(t=>t.realm==0&&t.gateLink>0&&g.GateTwin(t).realm==1);gate.seen=true;g.turn++;Check(g.WorldKnownAtHome(1)&&!g.WorldKnownAtHome(g.GateTwin(g.tiles.First(t=>t.realm==0&&t.gateLink>0&&g.GateTwin(t).realm!=1)).realm),"finding a gateway reveals that world alone");
+     g.gold=500;g.nations[0].gold=500;Check(g.SpyPrice(people)==50&&g.SendAgents(people)&&g.PeopleDetail(people)==1&&g.gold==450,"agents buy the first news");Check(g.SendAgents(people)&&g.SendAgents(people)&&g.PeopleDetail(people)==3&&g.SpyReason(people)!="","then more, up to everything");
+     int friend=Enumerable.Range(1,g.civCount-1).First(o=>g.IsNativeNation(o)&&o!=people);g.met[friend]=true;Check(g.PeopleDetail(friend)>=1,"meeting a people shows who they are");g.Relation(0,friend).friendUntil=g.turn+10;Check(g.PeopleDetail(friend)==3,"friendship tells all");}
+    Check(!CivilisationCatalog.Names.Contains("Open Register"),"the Open Register has a new name");
+    // Civics figures.
+    {var s=w.StatsFor(0);Check(s.cities==w.cities.Count(c=>c.owner==0)&&s.population>0&&s.land>0&&s.approval>=0&&s.approval<=100&&s.literacy>=0&&s.literacy<=100,"Civics figures are sensible");}
+    Check(PixelArt.EraHatch(0).w==16&&Enumerable.Range(0,6).Select(e=>PixelArt.EraHatch(e).p[3]).Distinct().Count()>=4,"each age has its own bar pattern");
 }
 static void DifficultyChecks(){
     int L=DifficultyTable.Names.Length;Check(L==8&&DifficultyTable.Names.Distinct().Count()==8&&DifficultyTable.Texts.Length==8,"eight named difficulty levels");
@@ -275,7 +317,7 @@ static void DifficultyChecks(){
     Check(hard.RivalTargetCities(1)==8&&easy.RivalTargetCities(1)==3&&plain.RivalTargetCities(1)==4,"rivals aim for more cities on harder levels");
     {var city0=plain.cities.First(c=>c.owner==1);var city1=hard.cities.First(c=>c.owner==1);int warrior=World.UnitBuild(2);Check(hard.CostFor(city1,warrior)<plain.CostFor(city0,warrior),"rival units are cheaper on hard levels");Check(hard.FoodNeeded(city1)<plain.FoodNeeded(city0),"rival cities grow faster on hard levels");Check(plain.SoldierLimit(1)<hard.SoldierLimit(1)||hard.cities.Count(c=>c.owner==1)>=plain.cities.Count(c=>c.owner==1),"rival armies grow with the level");}
     plain.turn=90;hard.turn=45;Check(hard.PlayerGraceTurn==40&&plain.PlayerGraceTurn==80&&easy.PlayerGraceTurn==140,"harder rivals come for you sooner");
-    {var old=World.New(151,natives:false);old.version=25;old.difficultyLevel=7;old.UpgradeSave();Check(old.version==28&&old.difficultyLevel==S&&old.Valid(),"an older save plays at Steward");}
+    {var old=World.New(151,natives:false);old.version=25;old.difficultyLevel=7;old.UpgradeSave();Check(old.version==29&&old.difficultyLevel==S&&old.Valid(),"an older save plays at Steward");}
     // The message when a city finishes something.
     var w=World.New(152,"Notice",0,1,1,0,1,2,4,hex:true);var mine=w.Found(w.units.First(u=>u.owner==0&&u.type==0));var rival=w.cities.First(c=>c.owner==1);
     w.tech[TechnologyCatalog.Index("toolmaking")]=true;w.nations[1].tech[TechnologyCatalog.Index("toolmaking")]=true;mine.pop=3;
@@ -350,7 +392,7 @@ static void HexChecks(){
      for(int y=-10;y<=10;y++)for(int x=-32;x<=32;x++){bool any=false;foreach(var c in new[]{new[]{0,0},new[]{64,0},new[]{-64,0},new[]{32,30},new[]{-32,30},new[]{32,-30},new[]{-32,-30}}){int px=x-c[0]+32,py=y-c[1]+20;if(px>=0&&py>=0&&px<64&&py<40&&(hex.Get(px,py)>>24)!=0)any=true;}Check(any,"no gap at "+x+","+y);}
      Check((PixelArt.HexEdge(0).Get(62,20)>>24)!=0&&(PixelArt.HexEdge(3).Get(62,20)>>24)==0&&(PixelArt.HexRoad(1).Get(32,20)>>24)!=0,"hex borders and roads sit on the right edges");}
     // An old square save keeps its layout.
-    {var old=World.New(126,natives:false);old.version=24;old.UpgradeSave();Check(old.version==28&&!old.Hex&&old.Valid(),"a version 24 save keeps its square map");}
+    {var old=World.New(126,natives:false);old.version=24;old.UpgradeSave();Check(old.version==29&&!old.Hex&&old.Valid(),"a version 24 save keeps its square map");}
 }
 // Owner request 31 Oct: ancient gateways and five parallel worlds below the home world.
 static void RealmChecks(){
@@ -381,7 +423,7 @@ static void RealmChecks(){
     {var crowded=World.New(93,"",0,1,1,0,5,1,14);Check(Enumerable.Range(0,crowded.civCount).Count(crowded.IsNativeNation)==10&&crowded.civCount==24,"a 14-civilisation game still has its sealed peoples");}
     // Save version 26 locks the gates and sends stray land units back; a colony's garrison stays.
     {var old=World.New(95);old.version=23;old.gatesLocked=false;var g3=old.tiles.First(t=>t.realm==0&&t.gateLink>0&&old.GateTwin(t).realm==3);var far=old.GateTwin(g3);var stray=old.Add(0,2,far.x,far.y);
-     old.UpgradeSave();Check(old.version==28&&old.gatesLocked&&old.RealmOf(stray.x,stray.y)==0&&old.Distance(stray.x,stray.y,g3.x,g3.y)<=1&&old.Valid(),"an older save locks the gates and brings stray units home");}
+     old.UpgradeSave();Check(old.version==29&&old.gatesLocked&&old.RealmOf(stray.x,stray.y)==0&&old.Distance(stray.x,stray.y,g3.x,g3.y)<=1&&old.Valid(),"an older save locks the gates and brings stray units home");}
     // The land of the sealed worlds feeds its own peoples and keeps its danger for outsiders.
     {var land=World.New(96);var ash=land.tiles.First(t=>t.realm==3&&t.terrain==17&&t.resource==0&&!t.farm&&!t.mine&&!t.road);ash.owner=-1;var fed=land.TileYield(ash);Check(fed[0]==3&&fed[1]==2&&fed[2]==1,"volcanic land feeds its native people");
      ash.owner=0;var outsider=land.TileYield(ash);Check(outsider[0]==0&&outsider[1]==3&&outsider[2]==0,"volcanic land stays hard on an outsider");ash.owner=-1;}

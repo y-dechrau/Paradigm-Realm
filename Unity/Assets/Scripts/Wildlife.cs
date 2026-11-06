@@ -17,15 +17,24 @@ public static class AnimalCatalog {
 }
 public partial class World {
  public bool wildlife;public List<Animal> animals=new List<Animal>();
+ internal void SpawnAnimalsForChecks(){SpawnAnimals(new Random(seed+turn));}
  internal void TickAnimalsForChecks(bool spawn){if(!spawn)keepAnimalsFromSpawning=true;turn++;AnimalsTurn();keepAnimalsFromSpawning=false;}
  bool keepAnimalsFromSpawning;
  public Animal AnimalAt(int x,int y){if(animals==null)return null;foreach(var a in animals)if(a.x==x&&a.y==y)return a;return null;}
  bool AnimalGround(Tile t){return t!=null&&t.realm==0&&!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&t.gateLink==0&&!cities.Any(c=>c.x==t.x&&c.y==t.y);}
  bool OpenToAnimal(Tile t){return AnimalGround(t)&&AnimalAt(t.x,t.y)==null&&!units.Any(u=>u.x==t.x&&u.y==t.y);}
  // How many may roam: one per hundred tiles of open land, more or fewer with the difficulty.
- public int AnimalLimit(){if(!wildlife)return 0;return Math.Max(2,tiles.Count(t=>AnimalGround(t))/100*DifficultyTable.Animals[Level]/100);}
+ // Until the first civilisation has passed the Medieval Age the wilds teem (owner request, 6 Nov 2026): three times as many,
+ // arriving faster and from the very start. Animals never appear on land within any civilisation's borders.
+ public const int LastWildEra=2,WildMultiple=3;
+ public bool EarlyWilds(){foreach(var o in Enumerable.Range(0,civCount))if(!IsNativeNation(o)&&Era(o)>LastWildEra)return false;return true;}
+ [NonSerialized] int openLandCount=-1;
+ public int AnimalLimit(){if(!wildlife)return 0;if(openLandCount<0)openLandCount=tiles.Count(t=>t.realm==0&&!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&t.gateLink==0);return Math.Max(2,openLandCount/100*DifficultyTable.Animals[Level]/100)*(EarlyWilds()?WildMultiple:1);}
  void SpawnAnimals(Random r){
-  if(turn<8||keepAnimalsFromSpawning||animals.Count>=AnimalLimit()||r.Next(3)!=0)return;
+  if(keepAnimalsFromSpawning)return;bool early=EarlyWilds();if(!early&&turn<8)return;int limit=AnimalLimit();
+  for(int n=early?3:1;n>0;n--)if(animals.Count<limit&&(early||r.Next(3)==0))SpawnAnimal(r);
+ }
+ void SpawnAnimal(Random r){
   int kind=r.Next(AnimalCatalog.Names.Length);var homes=AnimalCatalog.Homes[kind];
   for(int attempt=0;attempt<40;attempt++){
    var t=tiles[r.Next(mapHeight*Width)];if(!OpenToAnimal(t)||t.owner>=0)continue;if(attempt<25&&!homes.Contains(t.terrain))continue;

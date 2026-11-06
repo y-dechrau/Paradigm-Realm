@@ -20,6 +20,9 @@ namespace ParadigmRealm {
    return available.OrderBy(t=>ResearchCost(t,owner)*(TechnologyCatalog.IsKeystone(t)?1.0:3.0)/(1.0+ (ActiveTechBenefits(t).Length>0?1:0)+wanted.Count(target=>LeadsTo(t,target))*4)).ThenBy(t=>t).First();
   }
   int aiWorkOwner=-1,aiWorkTurn=-1;bool aiHunger;HashSet<Tile> aiWorked;HashSet<int> aiPortRoads;List<Tile> aiOwnTiles;
+  // One walk over the map each turn sorts the tiles by owner, instead of one walk for every civilisation with a worker.
+  [NonSerialized] Dictionary<int,List<Tile>> ownedTiles;[NonSerialized] int ownedTilesTurn=-1;
+  List<Tile> TilesOwnedBy(int owner){if(ownedTiles==null||ownedTilesTurn!=turn){ownedTiles=new Dictionary<int,List<Tile>>();ownedTilesTurn=turn;foreach(var t in tiles){if(t.owner<0)continue;List<Tile> list;if(!ownedTiles.TryGetValue(t.owner,out list)){list=new List<Tile>();ownedTiles[t.owner]=list;}list.Add(t);}}List<Tile> found;return ownedTiles.TryGetValue(owner,out found)?found:new List<Tile>();}
   void ImproveAI(Unit u){
    if(u.moves<=0)return;
    // Idle sealed workers look for work one turn in four: nobody can see them, and the search is the costliest part of a crowded turn.
@@ -27,7 +30,7 @@ namespace ParadigmRealm {
    // Home rivals likewise, once the early rush of building is over: one turn in three.
    if(u.owner!=0&&turn>80&&(turn+u.id)%3!=0)return;
    // What the whole empire works and needs is the same for each of its workers this turn, so it is found once.
-   if(u.owner==0||aiWorkOwner!=u.owner||aiWorkTurn!=turn){aiWorkOwner=u.owner;aiWorkTurn=turn;var empire=cities.Where(c=>c.owner==u.owner).ToList();aiWorked=new HashSet<Tile>(empire.SelectMany(Worked));aiHunger=empire.Any(c=>Yield(c)[0]<=0);aiPortRoads=PortRoadNeeds(u.owner);aiOwnTiles=tiles.Where(t=>t.owner==u.owner&&nations[u.owner].known[t.y*Width+t.x]&&!Barren(t.terrain)).ToList();}
+   if(u.owner==0||aiWorkOwner!=u.owner||aiWorkTurn!=turn){aiWorkOwner=u.owner;aiWorkTurn=turn;var empire=cities.Where(c=>c.owner==u.owner).ToList();aiWorked=new HashSet<Tile>(empire.SelectMany(Worked));aiHunger=empire.Any(c=>Yield(c)[0]<=0);aiPortRoads=PortRoadNeeds(u.owner);aiOwnTiles=TilesOwnedBy(u.owner).Where(t=>nations[u.owner].known[t.y*Width+t.x]&&!Barren(t.terrain)).ToList();}
    var worked=aiWorked;
    // Tiles another of this people's workers has taken, and whether any enemy is in play at all, are worked out once.
    var taken=new HashSet<int>();foreach(var a in units)if(a.owner==u.owner&&a.type==1&&a.id!=u.id){if(a.job>0)taken.Add(a.y*Width+a.x);if(a.hasOrder)taken.Add(a.destinationY*Width+a.destinationX);}

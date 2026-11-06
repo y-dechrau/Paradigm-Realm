@@ -38,12 +38,16 @@ public partial class RealmGame {
  // on diagonal maps they keep their grid steps.
  Tile ArrowTarget(Unit u,int dx,int dy){if(world.Hex)return dy==0?world.At(u.x+dx,u.y):world.Step(u.x,u.y,dy>0?(dx>0?0:-1):(dx<0?0:1),dy);if(!world.Staggered)return world.At(u.x+dx,u.y+dy);return dy!=0?world.At(u.x,u.y+2*dy):world.At(u.x+dx,u.y);}
  // City or unit: one button for the city and one per unit on the tile, beside the pointer.
- void OpenTilePicker(int x,int y){tilePicker=true;pickerX=x;pickerY=y;pickerAt=Event.current.mousePosition;}
+ float pickerOpened;
+ void OpenTilePicker(int x,int y){tilePicker=true;pickerX=x;pickerY=y;pickerAt=Event.current.mousePosition;pickerOpened=Time.realtimeSinceStartup;}
  void DrawTilePicker(){
   var c=world.cities.Find(a=>a.owner==0&&a.x==pickerX&&a.y==pickerY);var own=world.units.Where(u=>u.owner==0&&u.x==pickerX&&u.y==pickerY).ToList();
   if(c==null&&own.Count==0){tilePicker=false;return;}
   GUI.enabled=true;int rows=(c!=null?1:0)+own.Count;var box=new Rect(Mathf.Min(pickerAt.x+12,1280-270),Mathf.Min(pickerAt.y+12,800-(rows*34+44)),258,rows*34+44);
-  var e=Event.current;if(e.type==EventType.MouseDown&&!box.Contains(e.mousePosition)){tilePicker=false;e.Use();return;}
+  var e=Event.current;
+  // The second click of a double click lands here, because the first opened this chooser: it opens the city (owner request).
+  if(e.type==EventType.MouseDown&&e.button==0&&c!=null&&(e.clickCount==2||Time.realtimeSinceStartup-pickerOpened<.6f)&&!box.Contains(e.mousePosition)){int tx,ty;if(MapTileAt(e.mousePosition,out tx,out ty)&&tx==pickerX&&ty==pickerY){tilePicker=false;e.Use();OpenCity(c);return;}}
+  if(e.type==EventType.MouseDown&&!box.Contains(e.mousePosition)){tilePicker=false;e.Use();return;}
   GUI.Box(box,"");GUI.Label(new Rect(box.x+12,box.y+6,box.width-24,22),"Select",heading);float y=box.y+34;
   if(c!=null){if(GUI.Button(new Rect(box.x+10,y,box.width-20,30),"City: "+c.name,button)){cityId=c.id;selected=-1;tilePicker=false;}y+=34;}
   foreach(var u in own){if(GUI.Button(new Rect(box.x+10,y,box.width-20,30),world.UnitName(u)+" — "+world.Activity(u),button)){selected=u.id;cityId=-1;tilePicker=false;}y+=34;}

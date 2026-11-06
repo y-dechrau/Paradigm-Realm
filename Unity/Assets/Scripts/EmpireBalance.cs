@@ -5,6 +5,7 @@ namespace ParadigmRealm {
 // The empire's priorities (owner request, 6 Nov 2026, after Galactic Civilizations II): three linked sliders share each city's
 // Trade between science, the army and the treasury. They always total 100; moving one moves the other two in proportion.
 // The military share becomes extra shields for any combat unit a city is training. Rivals keep it at 0 for now.
+public sealed class CivicStats {public long population;public int cities,land,roads,literacy,approval,lifeExpectancy,gnp,goods,crops,science,soldiers,strength;}
 public sealed class BorderGrowth {public int radius,done,span,turnsLeft=-1,citizensAt=-1;public bool full;}
 // What a discovery asks of the player (owner request, 6 Nov 2026): what to research next, then each idle city that gained a building.
 public sealed class BuildPrompt {public int city,tech;public List<int> options=new List<int>();}
@@ -41,13 +42,102 @@ public partial class World {
   if(u==null||!(u.hasOrder||u.roadOrder))return new List<Tile>();int x=u.roadOrder?u.roadX:u.destinationX,y=u.roadOrder?u.roadY:u.destinationY;
   var path=Route(u,x,y);return path.Count>0?path:Route(u,x,y,true);
  }
+ // ---------- owner requests, 6 Nov 2026, second batch ----------
+ // How long research takes: what is left divided by the science coming in, as in the Civilization series. One technology takes at
+ // least MinResearchTurns however much science there is (the Civilization III rule), and what is left over carries to the next.
+ public const int MinResearchTurns=4;
+ public int SciencePerTurn(int owner){int sum=0;foreach(var c in cities)if(c.owner==owner)sum+=Yield(c)[2];return sum;}
+ public int ResearchCap(int t,int owner){return Math.Max(1,(ResearchCost(t,owner)+MinResearchTurns-1)/MinResearchTurns);}
+ // Turns to finish, or -1 when no science is coming in.
+ public int ResearchTurns(int t,int owner){int rate=Math.Min(SciencePerTurn(owner),ResearchCap(t,owner));if(rate<=0)return -1;int done=owner==0&&t==research?science:nations[owner].progress[t];int left=Math.Max(0,ResearchCost(t,owner)-done);return Math.Max(1,(left+rate-1)/rate);}
+ bool ResearchOpen(int owner,int t){var n=nations[owner];if(n.tech[t])return false;foreach(int r in Requirements[t])if(!n.tech[r])return false;return true;}
+ [NonSerialized] public int researchOverflow;
+ // Choosing a different technology after a discovery takes the left-over science with it.
+ public void ChooseNextResearch(int t){int spare=researchOverflow;researchOverflow=0;if(research>=0){int take=Math.Min(spare,science);science-=take;nations[0].progress[research]=science;spare=take;}else spare=0;SelectResearch(t);if(research==t){science+=spare;nations[0].progress[t]=science;}}
+ // What the budget is made of; Budget is its totals.
+ public sealed class BudgetLines {public int cityGold,cityBonus,ports,routes,treaties,tribute,cityUpkeep,buildingUpkeep,army,civilians,luxury,treatyCost;public int Income{get{return cityGold+cityBonus+ports+routes+treaties+tribute;}}public int Expense{get{return cityUpkeep+buildingUpkeep+army+civilians+luxury+treatyCost;}}public int Net{get{return Income-Expense;}}}
+ public static int SupportCost(int type){return Upkeep[type];}
+ public BudgetLines BudgetDetail(int owner){
+  var b=new BudgetLines();var own=cities.Where(c=>c.owner==owner).OrderBy(c=>c.id).ToList();
+  foreach(var c in own){b.cityGold+=Yield(c)[3];b.ports+=PortIncome(c);if(!Disorder(c))b.cityBonus+=(HasBuilding(c,31)?2:0)+(Connected(c)&&c!=own[0]?3:0);int distance=Distance(c.x,c.y,own[0].x,own[0].y)/10;b.cityUpkeep+=Math.Max(0,1+c.pop/4+distance-(HasBuilding(c,34)?2:0));b.buildingUpkeep+=c.buildings.Sum(BuildingUpkeep);}
+  // Every soldier and warship is paid for (owner request); only civilians have free support from cities and government.
+  int free=0;foreach(var u in units)if(u.owner==owner){if(Power[u.type]>0)b.army+=Upkeep[u.type];else free+=Upkeep[u.type];}
+  b.civilians=Math.Max(0,free-FreeUnitsPerCity*own.Count-GovernmentSupport(owner));b.luxury=own.Count*nations[owner].luxury;
+  b.routes=TradeIncome(owner);b.treaties=DiplomaticIncome(owner);b.tribute=VillageTribute(owner)+ReligionTithe(owner);b.treatyCost=DiplomaticExpense(owner);return b;
+ }
+ // Cities joined by road, by river (Sailing) or by sea between linked ports (Sailing) trade with each other (owner request):
+ // +1 Trade for each other city joined, at most LinkTradeLimit. Worked out once a turn for each civilisation.
+ public const int LinkTradeLimit=4;
+ [NonSerialized] Dictionary<int,int> linkCount;[NonSerialized] int linkTurn=-1;[NonSerialized] HashSet<int> linkDone;[NonSerialized] int[] seaRegion;
+ internal void ResetLinks(){linkTurn=-1;}
+ public int LinkTrade(City c){
+  if(linkTurn!=turn||linkCount==null){linkCount=new Dictionary<int,int>();linkDone=new HashSet<int>();linkTurn=turn;}
+  if(linkDone.Add(c.owner))CountLinks(c.owner);int n;linkCount.TryGetValue(c.id,out n);return Math.Min(LinkTradeLimit,n);
+ }
+ int SeaRegionOf(int cell){
+  if(seaRegion==null){seaRegion=new int[tiles.Length];int next=0;var stack=new Stack<int>();for(int i=0;i<tiles.Length;i++){if(seaRegion[i]!=0||!IsWater(tiles[i].terrain))continue;next++;seaRegion[i]=next;stack.Push(i);while(stack.Count>0){var t=tiles[stack.Pop()];for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var w=Step(t.x,t.y,dx,dy);if(w==null||!IsWater(w.terrain))continue;int at=w.y*Width+w.x;if(seaRegion[at]==0){seaRegion[at]=next;stack.Push(at);}}}}}
+  return seaRegion[cell];
+ }
+ void CountLinks(int owner){
+  var own=cities.Where(c=>c.owner==owner).ToList();if(own.Count<2)return;bool sailing=HasTech(owner,"sailing");
+  var group=new Dictionary<int,int>();foreach(var c in own)group[c.id]=c.id;Func<int,int> find=null;find=a=>{int g=group[a];if(g==a)return a;int top=find(g);group[a]=top;return top;};
+  var cityAt=new Dictionary<int,City>();foreach(var c in own)cityAt[c.y*Width+c.x]=c;
+  var blocked=new HashSet<int>();foreach(var u in units)if(u.owner!=owner&&AtWar(owner,u.owner))blocked.Add(u.y*Width+u.x);
+  var seen=new HashSet<int>();var q=new Queue<Tile>();
+  foreach(var c in own){int home=c.y*Width+c.x;if(seen.Contains(home))continue;seen.Add(home);q.Enqueue(tiles[home]);
+   while(q.Count>0){var t=q.Dequeue();for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n==null||n.owner!=owner)continue;int at=n.y*Width+n.x;City there;bool isCity=cityAt.TryGetValue(at,out there);if(!isCity&&!n.road&&!(sailing&&n.terrain==7))continue;if(blocked.Contains(at)||!seen.Add(at))continue;if(isCity)group[find(there.id)]=find(c.id);q.Enqueue(n);}}
+  }
+  if(sailing){var bySea=new Dictionary<int,int>();foreach(var c in own){if(!c.portLinked)continue;var port=PortTile(c);if(port==null)continue;for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var w=Step(port.x,port.y,dx,dy);if(w==null||!IsWater(w.terrain))continue;int region=SeaRegionOf(w.y*Width+w.x),other;if(bySea.TryGetValue(region,out other))group[find(c.id)]=find(other);else bySea[region]=c.id;}}}
+  var sizes=new Dictionary<int,int>();foreach(var c in own){int g=find(c.id),s;sizes.TryGetValue(g,out s);sizes[g]=s+1;}
+  foreach(var c in own)linkCount[c.id]=sizes[find(c.id)]-1;
+ }
+ // Takes one building (or unit) off the city's list, wherever it is on it.
+ public bool CancelProject(City c,int project){
+  if(c==null)return false;bool building=BuildUnit(project)<0;var queue=building?c.buildingQueue:c.queue;
+  if(queue.Remove(project))return true;
+  if(building){if(c.buildingProject!=project)return false;c.buildingProduction=0;c.buildingProject=queue.Count>0?queue[0]:-1;if(queue.Count>0)queue.RemoveAt(0);return true;}
+  if(c.build!=project)return false;c.production=0;c.build=queue.Count>0?queue[0]:-1;if(queue.Count>0)queue.RemoveAt(0);return true;
+ }
+ // ---------- the sealed worlds as your civilisation knows them ----------
+ [NonSerialized] bool[] worldsKnown;[NonSerialized] int worldsKnownTurn=-1;
+ // A world is known once a home civilisation has found a gateway to it or set eyes on any part of it.
+ public bool WorldKnownAtHome(int r){
+  if(r<=0||r>RealmCount||!HasRealms)return r==0;
+  if(worldsKnown==null||worldsKnownTurn!=turn){worldsKnown=new bool[RealmCount+1];worldsKnownTurn=turn;var home=Enumerable.Range(0,civCount).Where(o=>!IsNativeNation(o)).ToList();
+   for(int i=0;i<tiles.Length;i++){var t=tiles[i];int world=t.realm>0?t.realm:0;if(t.realm==0&&t.gateLink>0){var twin=GateTwin(t);if(twin!=null)world=twin.realm;}if(world<=0||worldsKnown[world])continue;foreach(int o in home)if(o==0?t.seen:nations[o].known[i]){worldsKnown[world]=true;break;}}}
+  return worldsKnown[r];
+ }
+ public int NationOfPeople(int civ){for(int o=1;o<civCount;o++)if(nations[o].civ==civ&&IsNativeNation(o))return o;return -1;}
+ // How much is known of another world's people: 0 nothing, 1 name and face, 2 customs and history, 3 everything. It grows with
+ // contact and friendship, or by sending agents.
+ public int PeopleDetail(int o){
+  if(o<=0||o>=civCount)return 0;int level=nations[o].intel;
+  if(met[o]||Enumerable.Range(1,civCount-1).Any(a=>a!=o&&!IsNativeNation(a)&&HasContact(a,o)))level=Math.Max(level,1);
+  if(met[o]){if(Opinion(o,0)>=25)level=Math.Max(level,2);if(Friends(0,o))level=Math.Max(level,3);}
+  return Math.Min(3,level);
+ }
+ public int SpyPrice(int o){return 50*(PeopleDetail(o)+1);}
+ public string SpyReason(int o){if(!IsNativeNation(o))return "Not a people of another world.";if(!WorldKnownAtHome(CivilisationCatalog.NativeRealm(nations[o].civ)))return "That world is still unknown.";if(PeopleDetail(o)>=3)return "Nothing more to learn.";if(gold<SpyPrice(o))return "Needs "+SpyPrice(o)+" gold.";return "";}
+ public bool SendAgents(int o){if(result!=""||SpyReason(o)!="")return false;int price=SpyPrice(o);gold-=price;nations[0].gold=gold;nations[o].intel=PeopleDetail(o)+1;Note("Agents return from the "+RealmNames[CivilisationCatalog.NativeRealm(nations[o].civ)]+" with news of "+CivilisationCatalog.Names[nations[o].civ]+".");return true;}
+ // ---------- Civics ----------
+ public CivicStats StatsFor(int owner){
+  var s=new CivicStats();var own=cities.Where(c=>c.owner==owner).ToList();s.cities=own.Count;int citizens=0,read=0,calm=0,hungry=0;
+  foreach(var c in own){s.population+=(long)(1000*Math.Pow(c.pop,2.8));citizens+=c.pop;if(HasBuilding(c,8)||HasBuilding(c,38))read+=c.pop;var y=Yield(c);s.gnp+=Trade(c);s.goods+=y[1];s.crops+=y[0]+c.pop*2;s.science+=y[2];calm+=ContentCitizens(c)-UnhappyCitizens(c);if(y[0]<0)hungry++;}
+  foreach(var t in tiles)if(t.owner==owner){s.land++;if(t.road)s.roads++;}
+  foreach(var u in units)if(u.owner==owner&&Power[u.type]>0){s.soldiers++;s.strength+=MilitaryValue(u.type)+u.promotion*2;}
+  s.literacy=citizens==0?0:read*100/citizens;
+  // Approval as in Civilization III: half, plus the balance of content over unhappy citizens.
+  s.approval=citizens==0?50:Math.Max(0,Math.Min(100,50+calm*50/citizens));
+  s.lifeExpectancy=own.Count==0?0:28+Era(owner)*8+own.Count(c=>c.granary)*6/own.Count-hungry*6/own.Count;
+  return s;
+ }
  [NonSerialized] public List<int> researchPrompts=new List<int>();
  [NonSerialized] public List<BuildPrompt> buildPrompts=new List<BuildPrompt>();
  [NonSerialized] Dictionary<int,List<int>> buildableBefore;
  bool BuildingLineIdle(City c){return c.buildingProject<0&&c.buildingQueue.Count==0;}
  void BeginDiscovery(){buildableBefore=new Dictionary<int,List<int>>();foreach(var c in cities.Where(a=>a.owner==0&&BuildingLineIdle(a)))buildableBefore[c.id]=BuildingIds.Where(b=>TechAllows(c,b)).ToList();}
- void EndDiscovery(int found){
-  if(researchPrompts==null)researchPrompts=new List<int>();if(buildPrompts==null)buildPrompts=new List<BuildPrompt>();
+ void EndDiscovery(int found,int spare=0){
+  researchOverflow=spare;if(researchPrompts==null)researchPrompts=new List<int>();if(buildPrompts==null)buildPrompts=new List<BuildPrompt>();
   researchPrompts.Add(found);
   foreach(var c in cities.Where(a=>a.owner==0&&buildableBefore.ContainsKey(a.id))){var before=buildableBefore[c.id];var fresh=BuildingIds.Where(b=>!before.Contains(b)&&TechAllows(c,b)&&BuildReason(c,b)=="").ToList();if(fresh.Count>0)buildPrompts.Add(new BuildPrompt{city=c.id,tech=found,options=fresh});}
   buildableBefore=null;

@@ -97,7 +97,7 @@ namespace ParadigmRealm {
     "\n"+r.knownTiles+" tiles assessed; "+r.unknownTiles+" unexplored. "+(r.threat?"Enemy troops nearby!":"No currently visible military threat at this site.")+"\n"+r.diplomacyWarning;
   }
   public bool ShouldTrainSettler(City c){
-   int owner=c.owner;return c.pop>=2&&Yield(c)[0]>0&&BuildReason(c,0)==""&&cities.Count(a=>a.owner==owner)<RivalTargetCities(owner)&&!units.Any(u=>u.owner==owner&&u.type==0)&&nations[owner].gold>=Math.Max(20,12-Budget(owner)[2]*6);
+   int owner=c.owner;return c.pop>=2&&Yield(c)[0]>0&&BuildReason(c,0)==""&&cities.Count(a=>a.owner==owner)<RivalTargetCities(owner)&&!units.Any(u=>u.owner==owner&&u.type==0)&&nations[owner].gold>=Math.Max(15,12-Budget(owner)[2]*3);
   }
   void PlanAISettlement(Unit u){
    if(u.moves<=0)return;

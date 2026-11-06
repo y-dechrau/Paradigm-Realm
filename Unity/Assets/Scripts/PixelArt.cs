@@ -730,7 +730,7 @@ namespace ParadigmRealm
         public const int IconEmpire=0,IconResearch=1,IconDiplomacy=2,IconCities=3,IconMilitary=4,IconRealms=5,IconVictory=6,IconChronicle=7,IconIdentity=8,
             IconGold=9,IconScience=10,IconAge=11,IconOrder=12,IconTurn=13,IconMenu=14,IconCrown=15,IconFood=16,IconShields=17,IconExplore=18,IconSkip=19,
             IconFortify=20,IconFound=21,IconMore=22,IconZoomIn=23,IconZoomOut=24,IconLayers=25,IconSentry=26,IconRoad=27,IconTrade=28,IconHelp=29,IconNext=30,
-            IconMoodGood=31,IconMoodNeutral=32,IconMoodBad=33,IconMove=34,IconFaith=35,IconAxe=36;
+            IconMoodGood=31,IconMoodNeutral=32,IconMoodBad=33,IconMove=34,IconFaith=35,IconAxe=36,IconCivics=37;
         static readonly uint[] HudGold=Ramp(90,64,24,150,112,44,206,164,76,240,206,120,255,240,190),HudBlue=Ramp(20,50,100,40,90,160,70,130,210,120,180,240,190,225,255),
             HudSilver=Ramp(70,76,90,120,128,142,170,178,190,210,216,226,245,248,252),HudGreen=Ramp(20,70,30,40,110,40,70,150,60,120,190,90,180,230,150),
             HudRed=Ramp(90,20,20,150,40,30,200,70,50,235,120,90,250,180,150),HudWood=Ramp(60,36,20,92,58,32,128,86,48,164,118,70,196,152,100);
@@ -758,6 +758,7 @@ namespace ParadigmRealm
                 case IconMilitary:Line(cv,5,4,18,17,1,HudSilver);Line(cv,19,4,6,17,1,HudSilver);Line(cv,15,19,20,14,1,HudGold);Line(cv,4,14,9,19,1,HudGold);RectFill(cv,18,18,21,21,HudWood[2]);RectFill(cv,3,18,6,21,HudWood[2]);break;
                 case IconRealms:Poly(cv,new[]{P(12,1),P(14.5,9.5),P(23,12),P(14.5,14.5),P(12,23),P(9.5,14.5),P(1,12),P(9.5,9.5)},(X,Y)=>RampPick(HudGold,(X<12)==(Y<12)?.85:.45));Disk(cv,12,12,2.5,2.5,HudBlue,.2);break;
                 case IconVictory:Poly(cv,new[]{P(5,3),P(19,3),P(17,11),P(7,11)},(X,Y)=>RampPick(HudGold,.9-(X-5)/18.0));RectFill(cv,11,11,13,16,HudGold[2]);RectFill(cv,7,16,17,19,HudGold[1]);Line(cv,4,4,2,8,.6,HudGold);Line(cv,20,4,22,8,.6,HudGold);break;
+                case IconCivics:foreach(var bar in new[]{new[]{4,13},new[]{9,8},new[]{14,11},new[]{19,4}})RectFill(cv,bar[0],bar[1],bar[0]+4,21,HudGold[2]);foreach(var bar in new[]{new[]{4,13},new[]{9,8},new[]{14,11},new[]{19,4}})RectFill(cv,bar[0],bar[1],bar[0]+4,bar[1]+2,HudGold[4]);RectFill(cv,2,21,23,23,HudSilver[3]);break;
                 case IconChronicle:RectFill(cv,4,4,20,20,HudRed[1]);RectFill(cv,6,5,19,18,Rgb(236,226,198));for(int y=8;y<17;y+=3)RectFill(cv,8,y,17,y+1,Rgb(150,140,120));RectFill(cv,4,4,6,20,HudRed[0]);break;
                 case IconIdentity:case IconFound:RectFill(cv,5,2,7,22,HudWood[2]);Poly(cv,new[]{P(7,3),P(20,3),P(17,8),P(20,13),P(7,13)},(X,Y)=>RampPick(k==IconFound?HudGreen:HudRed,.85-(X-7)/20.0));break;
                 case IconGold:case IconTrade:Disk(cv,12,12,8,8,HudGold,.1);Disk(cv,12,12,5,5,HudGold,-.1);RectFill(cv,11,9,13,15,HudGold[4]);break;
@@ -1452,6 +1453,28 @@ namespace ParadigmRealm
             pole((int)cx+(int)rx+1,FootRowTarget-(mounted?56:50),FootRowTarget-(mounted?10:0),Rgb(116,84,50),steelLit);
             for(int y=0;y<64;y++)for(int x=0;x<64;x++){double u=(x+.5-cx)/rx,v=(y+.5-cy)/ry,d=u*u+v*v;if(d>1)continue;cv.Set(x,y,d>.84?dark:d>.62?rim:d<.07?rim:(u+v<-.35?MixC(face,Rgb(255,248,230),.28):u+v>.6?Shade(face,.72):face));}
             return Finish(cv);
+        }
+        // A repeating 16 x 16 pattern for progress bars, one per age (owner request, 6 Nov 2026): flint scratches, a Greek key,
+        // heraldic chevrons, riveted iron, racing stripes and a shimmering lattice.
+        public static PixelCanvas EraHatch(int era)
+        {
+            var cv=new PixelCanvas(16,16);
+            string[] key={"########","#......#","#.####.#","#.#..#.#","#.#.##.#","#.#....#","#.######","#......."};
+            for(int y=0;y<16;y++)for(int x=0;x<16;x++)
+            {
+                uint c;
+                switch(era)
+                {
+                    case 0:c=(x+y)%8<2?Rgb(206,160,96):(x*3+y*5)%16==0?Rgb(92,64,36):Rgb(150,108,60);break;
+                    case 1:c=key[y%8][x%8]=='#'?Rgb(244,226,176):Rgb(176,92,52);break;
+                    case 2:{int d=y%8;c=(x+Math.Abs(d-4))%8<3?Rgb(234,190,84):Rgb(150,34,40);break;}
+                    case 3:c=y%8==0||(x+(y/8)*4)%8==0?Rgb(58,62,70):x%8==3&&y%8==4?Rgb(214,134,70):Rgb(112,118,128);break;
+                    case 4:c=((x-y)%8+8)%8<3?Rgb(226,238,248):Rgb(40,104,170);break;
+                    default:c=(x+y)%8==0||((x-y)%8+8)%8==0?Rgb(120,240,240):Rgb(92,44,160);break;
+                }
+                cv.Set(x,y,c);
+            }
+            return cv;
         }
         static PixelCanvas Finish(PixelCanvas cv){Outline(cv,Rgb(20,18,24));return cv;}
     }

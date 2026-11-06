@@ -9,7 +9,7 @@ namespace ParadigmRealm
     {
         bool loadScreen,researchScreen;
         string detailsScreen="",loadError="",deleteCandidate;
-        Vector2 loadScroll,researchScroll,detailsScroll,cityMapScroll,builtScroll,unitQueueScroll,buildingQueueScroll;
+        Vector2 buildingListScroll,unitListScroll,loadScroll,researchScroll,detailsScroll,cityMapScroll,builtScroll,unitQueueScroll,buildingQueueScroll;
         GUIStyle tileLabel;
         void OpenLoadScreen(){loadScreen=true;loadError="";deleteCandidate=null;loadScroll=Vector2.zero;ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
         void DrawLoadScreen()
@@ -61,6 +61,7 @@ namespace ParadigmRealm
                 for(int r=2;r<World.ResourceNames.Length;r++)GUILayout.Label(World.ResourceNames[r]+": "+(world.HasResource(0,r)?"connected":"not connected"),body);
             GUILayout.Label(world.AgeLine(0),body);
             DrawEmpireEconomy();
+            }else if(detailsScreen=="Civics"){DrawCivics();
             }else if(detailsScreen=="Settlement adviser"){DrawSettlementAdviser();
             }else if(detailsScreen=="Citizens"){DrawCitizenManagement();
             }else if(detailsScreen=="Religion"){DrawReligion();
@@ -98,7 +99,7 @@ namespace ParadigmRealm
         void DrawCityScreen()
         {
             var c=world.cities.Find(a=>a.owner==0&&a.id==cityId);if(c==null){cityScreen=false;return;}
-            GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(40,106,700,38),c.name+" — size "+c.pop+(world.Disorder(c)?"   DISORDER":"")+(c.occupation>0?"   occupied "+c.occupation+" turns":""),title);
+            GUI.Box(new Rect(24,100,1232,630),"");if(GUI.Button(new Rect(865,110,180,34),"Zoom to city",button)){cityScreen=false;GUI.FocusControl(null);if(world.Hex||diamondView)isoWidth=128;else tilePixels=96;FocusTile(c.x,c.y);GUIUtility.ExitGUI();}GUI.Label(new Rect(40,106,700,38),c.name+" — size "+c.pop+(world.Disorder(c)?"   DISORDER":"")+(c.occupation>0?"   occupied "+c.occupation+" turns":""),title);
             if(GUI.Button(new Rect(1055,110,180,34),"Back to map",button)){cityScreen=false;GUI.FocusControl(null);GUIUtility.ExitGUI();}
             DrawCityTiles(c,new Rect(40,150,440,520));
             DrawCityTotals(c,new Rect(495,150,370,520));
@@ -189,8 +190,8 @@ namespace ParadigmRealm
             {var g=world.NextBorderGrowth(c);var bar=new Rect(lx,area.y+503,area.width-24,14);
              string growthLine=g.full?"Influence "+g.radius+" tiles: fully expanded":"Influence "+g.radius+" tiles: next ring "+(g.turnsLeft>=0?"in "+g.turnsLeft+(g.turnsLeft==1?" turn":" turns")+", or at size "+g.citizensAt+" if sooner":"at size "+g.citizensAt);
              GUI.Label(new Rect(lx,area.y+484,area.width-24,20),growthLine,small);
-             Bar(bar,g.full?1f:g.done/(float)Math.Max(1,g.span),new Color(.62f,.45f,.86f));
-             if(!g.full)GUI.Label(bar,g.done+" / "+g.span+(g.turnsLeft>=0?" turns":" citizens"),new GUIStyle(hudCentre){fontSize=11});}
+             EraBar(bar,g.full?1f:g.done/(float)Math.Max(1,g.span));
+             if(!g.full){string count=g.done+" / "+g.span+(g.turnsLeft>=0?" turns":" citizens");var countStyle=new GUIStyle(hudCentre){fontSize=11};float cw=countStyle.CalcSize(new GUIContent(count)).x+10;var plate=new Rect(bar.center.x-cw/2,bar.y,cw,bar.height);Fill(plate,new Color(.04f,.06f,.12f,.72f));GUI.Label(plate,count,countStyle);}}
         }
         Texture2D cityVignette;
         // Clear in the middle, shading smoothly to the panel's slate colour towards the edges (an ellipse, not a square).
@@ -211,7 +212,7 @@ namespace ParadigmRealm
             GUI.SetNextControlName("cityrename");c.name=GUI.TextField(new Rect(x,y,w,28),c.name,32);y+=38;
             var v=world.Yield(c);int trade=world.Trade(c),need=world.FoodNeeded(c);
             GUI.Label(new Rect(x,y,w,24),"Food "+(v[0]>=0?"+":"")+v[0]+"   Shields "+v[1]+"   Trade "+trade,heading);y+=28;
-            GUI.Label(new Rect(x,y,w,22),"Trade at "+world.nations[0].scienceRate+"% science: Science "+v[2]+"  Gold "+v[3]+(world.nations[0].militaryRate>0?"  Army +"+world.ArmyBudget(c)+" shields":""),small);y+=26;
+            GUI.Label(new Rect(x,y,w,22),"Trade at "+world.nations[0].scienceRate+"% science: Science "+v[2]+"  Gold "+v[3]+(world.nations[0].militaryRate>0?"  Army +"+world.ArmyBudget(c)+" shields":"")+(world.LinkTrade(c)>0?"  (joined cities +"+world.LinkTrade(c)+" Trade)":""),small);y+=26;
             GUI.Label(new Rect(x,y,w,22),"Faith +"+world.FaithYield(c)+"  •  "+(c.religion>=0?"Follows "+ReligionCatalog.Name(c.religion)+(world.IsHolyCity(c)?" (holy city)":""):"No majority faith")+"  •  Influence "+world.CityInfluence(c),small);y+=22;
             GUI.Label(new Rect(x,y,w,22),"Growth  "+c.food+" / "+need+" food",body);y+=22;DrawBar(new Rect(x,y,w,12),c.food/(float)Math.Max(1,need),new Color(.45f,.75f,.35f));y+=16;
             GUI.Label(new Rect(x,y,w,40),world.GrowthStatus(c),small);y+=42;
@@ -244,25 +245,28 @@ namespace ParadigmRealm
             int output=building||current<0?Math.Max(1,world.Yield(c)[1]):world.LineOutput(c,current),turns=0;var lines=new System.Collections.Generic.List<string>();
             if(current<0)lines.Add("Idle — choose below");
             else{turns=Math.Max(1,(world.CostFor(c,current)-progress+output-1)/output);lines.Add("1. "+world.BuildNameFor(c.owner,current)+"  "+progress+" / "+world.CostFor(c,current)+" — "+turns+" turns");var reason=world.BuildReason(c,current);if(reason!="")lines.Add("   Paused: "+reason);}
-            for(int i=0;i<queue.Count&&lines.Count<3;i++){turns+=Math.Max(1,(world.CostFor(c,queue[i])+output-1)/output);lines.Add((i+2)+". "+world.BuildNameFor(c.owner,queue[i])+"  "+world.CostFor(c,queue[i])+" — "+turns+" turns");}
-            GUI.Label(new Rect(area.x+10,area.y+32,area.width-20,70),string.Join("\n",lines.ToArray()),small);
+            for(int i=0;i<queue.Count;i++){turns+=Math.Max(1,(world.CostFor(c,queue[i])+output-1)/output);lines.Add((i+2)+". "+world.BuildNameFor(c.owner,queue[i])+"  "+world.CostFor(c,queue[i])+" — "+turns+" turns");}
+            // The list stays in the space above Rush; a longer one gets a scroll bar there (owner request).
+            {var listRect=new Rect(area.x+10,area.y+32,area.width-20,70);string listText=string.Join("\n",lines.ToArray());float listH=small.CalcHeight(new GUIContent(listText),listRect.width-18);
+             if(listH<=listRect.height)GUI.Label(listRect,listText,small);
+             else{var listScroll=building?buildingListScroll:unitListScroll;listScroll=GUI.BeginScrollView(listRect,listScroll,new Rect(0,0,listRect.width-18,listH));GUI.Label(new Rect(0,0,listRect.width-18,listH),listText,small);GUI.EndScrollView();if(building)buildingListScroll=listScroll;else unitListScroll=listScroll;}}
             if(current>=0&&GUI.Button(new Rect(area.x+10,area.y+105,area.width-20,24),"Rush: "+world.RushPrice(c,building)+" gold",button))status=world.Rush(c,building)?"Paid; completes next turn if space permits.":"Cannot rush: insufficient gold, blocked, or already funded.";
             var e=Event.current;if(e.type==EventType.MouseDown&&e.button==1&&e.control&&GUI.enabled&&world.result==""&&area.Contains(e.mousePosition)){world.RemoveLastProject(c,building);status="Removed the last "+(building?"building":"unit")+" order.";e.Use();GUIUtility.ExitGUI();}
 
             // Only what the civilisation's current technology allows (and is not already built) is listed (owner request).
             int[] options=(building?World.BuildingIds:Enumerable.Range(0,World.UnitNames.Length).Select(World.UnitBuild).ToArray()).Where(p=>world.TechAllows(c,p)).ToArray();
             Vector2 scroll=building?buildingQueueScroll:unitQueueScroll;
-            scroll=GUI.BeginScrollView(new Rect(area.x+8,area.y+130,area.width-16,area.height-140),scroll,new Rect(0,0,area.width-34,options.Length*67+queue.Count*26+62));
+            scroll=GUI.BeginScrollView(new Rect(area.x+8,area.y+130,area.width-16,area.height-140),scroll,new Rect(0,0,area.width-34,options.Length*67+4));
             for(int i=0;i<options.Length;i++){
                 int project=options[i];float y=i*67;DrawIcon(new Rect(4,y+5,26,26),building?12+Array.IndexOf(World.BuildingIds,project):-1);
                 if(!building)GUI.DrawTexture(new Rect(4,y+5,26,26),people[World.BuildUnit(project)]);
-                var r=new Rect(37,y,area.width-78,32);string reason=world.BuildReason(c,project);bool enabled=GUI.enabled;GUI.enabled=enabled&&reason==""&&world.result=="";
+                var r=new Rect(37,y,area.width-78,32);string reason=world.BuildReason(c,project);bool enabled=GUI.enabled;bool ordered=building&&(current==project||queue.Contains(project));
+                // A building already chosen is greyed out until it is built; right-clicking it still cancels it (owner request).
+                if(ordered&&e.type==EventType.MouseDown&&e.button==1&&!e.control&&r.Contains(e.mousePosition)&&world.result==""){world.CancelProject(c,project);status="Cancelled "+world.BuildNameFor(c.owner,project)+".";e.Use();GUIUtility.ExitGUI();}
+                GUI.enabled=enabled&&reason==""&&world.result==""&&!ordered;
                 bool append=e.control;if(GUI.Button(r,world.BuildNameFor(c.owner,project),button)){bool ok=world.ChooseProject(c,project,append);status=ok?(append?"Added to queue.":"Selected one "+world.BuildNameFor(c.owner,project)+"."):"Already built/queued or queue full.";GUIUtility.ExitGUI();}
-                GUI.enabled=enabled;GUI.Label(new Rect(37,y+34,area.width-78,31),reason!=""?reason:world.CostFor(c,project)+" production"+(building?" | "+World.BuildingEffect(project):"")+(building&&(current==project||queue.Contains(project))?" | Ordered":""),small);
+                GUI.enabled=enabled;GUI.Label(new Rect(37,y+34,area.width-78,31),reason!=""?reason:world.CostFor(c,project)+" production"+(building?" | "+World.BuildingEffect(project):"")+(ordered?" | Ordered: right-click to cancel":""),small);
             }
-            float qy=options.Length*67;GUI.Label(new Rect(5,qy,area.width-40,25),"Waiting queue ("+queue.Count+" / 8)",heading);
-            if(queue.Count==0)GUI.Label(new Rect(5,qy+28,area.width-40,24),"Empty",small);
-            for(int i=0;i<queue.Count;i++)GUI.Label(new Rect(5,qy+28+i*26,area.width-40,25),(i+1)+". "+world.BuildNameFor(c.owner,queue[i]),body);
             GUI.EndScrollView();if(building)buildingQueueScroll=scroll;else unitQueueScroll=scroll;
         }
         void DrawResearchScreen(){DrawExpandedResearch();}

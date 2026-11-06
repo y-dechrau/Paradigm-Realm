@@ -16,18 +16,28 @@ public partial class RealmGame {
  }
  // Legends of the sealed worlds: their histories and all ten peoples of each, to read while the gates stay shut.
  bool legendsOpen;int legendsWorld=1,legendsPeople=-1;Vector2 legendsScroll;
+ // Only what the home world's civilisations have discovered shows here (owner request, 6 Nov 2026): a world once a gateway to it has
+ // been found, a people as contact, friendship or agents reveal them.
  void DrawLegends(){
   var panel=new Rect(60,60,1160,690);Fill(new Rect(0,0,1280,800),UiDim);GUI.Box(panel,"");
-  if(legendsPeople>=0){civLoreOpen=true;DrawCivilisationLore(legendsPeople);if(!civLoreOpen)legendsPeople=-1;return;}
+  if(legendsPeople>=0){var who=world.NationOfPeople(legendsPeople);if(who<0||world.PeopleDetail(who)<1)legendsPeople=-1;else{DrawCivilisationLore(legendsPeople,world.PeopleDetail(who));return;}}
   GUI.Label(new Rect(84,74,800,34),"Legends of the sealed worlds",title);
   if(GUI.Button(new Rect(1020,76,176,32),"Close",button)){legendsOpen=false;GUIUtility.ExitGUI();}
-  for(int r=1;r<=World.RealmCount;r++){var tab=new Rect(84+(r-1)*226,118,218,32);if(r==legendsWorld)Fill(new Rect(tab.x-2,tab.y-2,tab.width+4,tab.height+4),UiAccent);if(GUI.Button(tab,World.RealmNames[r],button)){legendsWorld=r;legendsScroll=Vector2.zero;GUIUtility.ExitGUI();}}
+  var knownWorlds=Enumerable.Range(1,World.RealmCount).Where(world.WorldKnownAtHome).ToList();
+  if(knownWorlds.Count==0){GUI.Label(new Rect(84,170,1100,120),"Nothing is known of any other world. No civilisation of your world has yet found an ancient gateway. Explore: the first gateway found, by you or any civilisation of your world, will begin this book.",body);return;}
+  if(!knownWorlds.Contains(legendsWorld))legendsWorld=knownWorlds[0];
+  for(int r=1;r<=World.RealmCount;r++){var tab=new Rect(84+(r-1)*226,118,218,32);bool known=knownWorlds.Contains(r);if(r==legendsWorld)Fill(new Rect(tab.x-2,tab.y-2,tab.width+4,tab.height+4),UiAccent);bool was=GUI.enabled;GUI.enabled=was&&known;if(GUI.Button(tab,known?World.RealmNames[r]:"Unknown world",button)){legendsWorld=r;legendsScroll=Vector2.zero;GUI.enabled=was;GUIUtility.ExitGUI();}GUI.enabled=was;}
+  var peoples=CivilisationCatalog.PeoplesOf(legendsWorld).Where(c=>world.NationOfPeople(c)>=0).ToList();bool told=peoples.Any(c=>world.PeopleDetail(world.NationOfPeople(c))>=2);
   GUILayout.BeginArea(new Rect(84,162,560,570));legendsScroll=GUILayout.BeginScrollView(legendsScroll);
-  GUILayout.Label(World.RealmTexts[legendsWorld],body);GUILayout.Space(8);GUILayout.Label("History",heading);GUILayout.Label(SealedPeoples.WorldHistories[legendsWorld],body);
+  GUILayout.Label(World.RealmTexts[legendsWorld],body);GUILayout.Space(8);GUILayout.Label("History",heading);GUILayout.Label(told?SealedPeoples.WorldHistories[legendsWorld]:"Its history is unknown. Learn the customs of one of its peoples, and the story of the world comes with it.",body);
   GUILayout.EndScrollView();GUILayout.EndArea();
-  float y=162;foreach(int civ in CivilisationCatalog.PeoplesOf(legendsWorld)){var row=new Rect(664,y,532,52);if(GUI.Button(row,"",button)){legendsPeople=civ;civLoreScroll=Vector2.zero;GUIUtility.ExitGUI();}
-   var face=Portrait(CivilisationCatalog.Portraits[civ]);if(face!=null)DrawPortrait(new Rect(row.x+6,row.y+4,33,44),face);var e=CivLore.Of(civ);
-   GUI.Label(new Rect(row.x+48,row.y+5,480,24),CivilisationCatalog.Names[civ],hudLabel);GUI.Label(new Rect(row.x+48,row.y+27,480,20),e==null?"":e.Epithet,small);y+=57;}
+  float y=162,step=peoples.Count==0?57:Mathf.Min(57,570f/peoples.Count);
+  foreach(int civ in peoples){int o=world.NationOfPeople(civ),detail=world.PeopleDetail(o);var row=new Rect(664,y,532,step-5);bool canOpen=detail>=1;
+   if(canOpen&&GUI.Button(new Rect(row.x,row.y,row.width-132,row.height),"",button)){legendsPeople=civ;civLoreScroll=Vector2.zero;GUIUtility.ExitGUI();}else if(!canOpen)GUI.Box(new Rect(row.x,row.y,row.width-132,row.height),"");
+   float faceH=row.height-8;var face=canOpen?Portrait(CivilisationCatalog.Portraits[civ]):null;var at=new Rect(row.x+6,row.y+4,faceH*.75f,faceH);if(face!=null)DrawPortrait(at,face);else Fill(at,new Color(.02f,.02f,.04f));var e=CivLore.Of(civ);
+   GUI.Label(new Rect(row.x+48,row.y+3,350,22),canOpen?CivilisationCatalog.Names[civ]:"An unknown people",hudLabel);GUI.Label(new Rect(row.x+48,row.y+24,350,20),detail>=2&&e!=null?e.Epithet:detail==1?"Little is known of them.":"Only rumour.",small);
+   if(detail<3){string reason=world.SpyReason(o);bool was=GUI.enabled;GUI.enabled=was&&reason=="";if(GUI.Button(new Rect(row.xMax-126,row.y,126,row.height),"Send agents\n"+world.SpyPrice(o)+" gold",button)){world.SendAgents(o);status="Your agents have returned.";GUI.enabled=was;GUIUtility.ExitGUI();}GUI.enabled=was;}
+   y+=step;}
  }
  void DrawWorldSwitcher(){
   if(!world.HasRealms)return;
@@ -48,7 +58,7 @@ public partial class RealmGame {
  }
  // A banner on the map while you look at a parallel world.
  void DrawRealmBanner(){
-  if(world==null||viewRealm==0)return;var r=new Rect(472,708,336,30);
+  if(world==null||viewRealm==0)return;var r=new Rect(472,708-tileCardGrow,336,30);
   Fill(r,new Color(.18f,.06f,.2f,.92f));Fill(new Rect(r.x,r.y,r.width,2),UiAccent);
   GUI.Label(new Rect(r.x+8,r.y+4,200,22),"In the "+World.RealmNames[viewRealm],hudLabel);
   if(GUI.Button(new Rect(r.xMax-118,r.y+3,112,24),"Home world",button)){ShowRealm(0);}

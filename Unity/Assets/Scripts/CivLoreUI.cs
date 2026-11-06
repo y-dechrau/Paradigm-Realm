@@ -16,21 +16,25 @@ public partial class RealmGame {
   if(e!=null){GUI.Label(new Rect(68,522,1144,92),CivRules(e),small);GUI.Label(new Rect(68,616,1144,40),"Strengths: "+e.Strengths+"   Weaknesses: "+e.Weaknesses+"\nAs a rival, "+CivilisationCatalog.Leaders[civ]+" is a "+CivLore.AgendaNames[e.Agenda]+": "+CivLore.AgendaTexts[e.Agenda],small);}
   else GUI.Label(new Rect(68,522,1144,24),"Rivals are drawn from the other civilisations, each with its own leader and traits.",small);
  }
- void DrawCivilisationLore(int civ){
-  var e=CivLore.Of(civ);if(e==null){civLoreOpen=false;return;}
+ // detail 3 shows everything; for peoples of other worlds it is what your civilisation has managed to learn.
+ void DrawCivilisationLore(int civ,int detail=3){
+  var e=CivLore.Of(civ);if(e==null){civLoreOpen=false;legendsPeople=-1;return;}
   var panel=new Rect(60,60,1160,690);Fill(new Rect(0,0,1280,800),UiDim);GUI.Box(panel,"");
   var face=Portrait(CivilisationCatalog.Portraits[civ]);if(face!=null)DrawPortrait(new Rect(84,84,300,400),face);
   GUI.Label(new Rect(84,494,300,30),CivilisationCatalog.Leaders[civ],heading);GUI.Label(new Rect(84,524,300,44),CivilisationCatalog.PortraitTitles[CivilisationCatalog.Portraits[civ]],small);
   GUILayout.BeginArea(new Rect(408,80,792,600));civLoreScroll=GUILayout.BeginScrollView(civLoreScroll);
   GUILayout.Label(CivilisationCatalog.Names[civ],title);GUILayout.Label(e.Epithet,heading);
-  GUILayout.Label("Background",heading);GUILayout.Label(e.Background,body);
-  GUILayout.Label("History",heading);GUILayout.Label(e.History,body);
-  GUILayout.Label("Strengths",heading);GUILayout.Label(e.Strengths,body);GUILayout.Label("Weaknesses",heading);GUILayout.Label(e.Weaknesses,body);
+  if(detail<2)GUILayout.Label("Little more than a name and a face. Closer friendship or agents would tell you more.",body);
+  if(detail>=2){GUILayout.Label("Background",heading);GUILayout.Label(e.Background,body);
+  GUILayout.Label("History",heading);GUILayout.Label(e.History,body);}
+  if(detail==2)GUILayout.Label("Their strengths, ways of war and intentions are still hidden. Closer friendship or agents would tell you more.",body);
+  if(detail>=3){GUILayout.Label("Strengths",heading);GUILayout.Label(e.Strengths,body);GUILayout.Label("Weaknesses",heading);GUILayout.Label(e.Weaknesses,body);
   GUILayout.Label("In play",heading);var traits=CivilisationCatalog.Traits[civ];GUILayout.Label("Traits — "+CivilisationCatalog.TraitLine(traits)+"\n"+CivRules(e),body);
   GUILayout.Label("As a rival",heading);GUILayout.Label(CivLore.AgendaNames[e.Agenda]+" — "+CivLore.AgendaTexts[e.Agenda],body);
-  GUILayout.Label("Faiths",heading);GUILayout.Label(CivFaiths(e),body);
+  GUILayout.Label("Faiths",heading);GUILayout.Label(CivFaiths(e),body);}
   GUILayout.EndScrollView();GUILayout.EndArea();
-  if(GUI.Button(new Rect(84,690,300,40),"Close",button)){civLoreOpen=false;GUIUtility.ExitGUI();}
+  // ExitGUI leaves this method at once, so everything that closes the page has to happen before it.
+  if(GUI.Button(new Rect(84,690,300,40),"Close",button)){civLoreOpen=false;legendsPeople=-1;GUIUtility.ExitGUI();}
  }
  // The player's own civilisation, for the Identity screen.
  void DrawOwnCivilisationLore(){

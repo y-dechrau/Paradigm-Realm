@@ -2,6 +2,23 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 6 Nov, second batch: research time, civics, legends and speed (save version 29)
+
+Checked by engine checks, Unity `RealmTools.Checks` and `GraphicsChecks`, a Windows build's `-autoShot` screenshots, and `-inputProbe` (real clicks and keys sent to the game's own window; 9 of 9 pass). Not hand-played.
+
+- Research: costs doubled for everyone. Time is science left divided by science per turn, at least 4 turns a technology (the Civilization III rule), and left-over science goes to the next. Rival eras now complete around turns 100 and 250 on a Small map; earliest rival Transcendence not yet measured.
+- Army support: every soldier and warship costs gold (1, or 2 for Knight, Rifleman, Horseman, Catapult and War Galley). Free support now covers civilians only. Rivals' settler gold rule was loosened to match.
+- Trade: +1 for each other city joined by road, river or sea, at most 4. River and sea need Sailing; sea needs linked ports on the same water.
+- Workers cannot develop the tile a city stands on; cities count as on the road.
+- Wild animals: three times as many and arriving from the start until a home civilisation passes the Medieval Age. None appear within borders; they can still wander in.
+- City screen: Zoom to city; queue shown only above Rush with a scroll bar when long; chosen buildings greyed until built, right-click cancels; era-patterned influence bar. City plates show what is being made. Tile card grows until all text shows.
+- Input: wheel ignored while a prompt waits; double click opens a city whatever stands on it; Ctrl+S shows "Game saved"; Save As asks before saving over; Load Game in the Esc menu (saved games are no longer loaded from the Save As list).
+- Realms: globe north is at the top and Tilt north goes north (it was drawn upside down); Face my units removed.
+- Legends: a world shows once a home civilisation has found a gateway to it; a people's detail grows through contact, friendship or agents (`SendAgents`: 50, 100, 150 gold). This is the only espionage in the game so far. While the gates are locked, agents are the only way to learn about these peoples. Close on a people's page now works.
+- The Open Register is renamed the Ninefold Ledger.
+- Civics tab: demographics ranked against home civilisations you have met, finances line by line, economy, military and society.
+- Speed: Huge map at turn 200 fell from about 3.9 s to about 0.9 s a turn in the .NET harness (the real game on Mono will be slower). Autosave on maps over 60,000 tiles is every 10 turns. Rival paths may be slightly less direct; sealed peoples plan one turn in three after turn 40. Crowded Small maps with all 56 nations still reach 1 to 2.5 s late on.
+
 ## Owner requests 6 Nov, map, city screen, prompts and empire priorities (save version 28)
 
 Implemented and checked by the engine checks, Unity `RealmTools.Checks` and `GraphicsChecks`, and a Windows build's `-autoShot` screenshots. Not hand-played: dragging sliders and scroll bars, hovering and clicking were not exercised by a person.

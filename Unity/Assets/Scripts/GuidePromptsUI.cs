@@ -26,14 +26,13 @@ public partial class RealmGame {
   // The cheapest few, always including the one research has already moved on to.
   var shown=choices.Take(6).ToList();if(world.research>=0&&!shown.Contains(world.research)){shown[shown.Count-1]=world.research;}
   float y;var box=GuidePanel(World.TechNames[found]+" has been discovered.\nWhat do you want to research next?",106+shown.Count*34+50,out y);
-  int perTurn=Math.Max(1,SciencePerTurn());
   foreach(int t in shown){
-   int cost=world.ResearchCost(t,0),left=Math.Max(0,cost-world.nations[0].progress[t]),turns=Math.Max(1,(left+perTurn-1)/perTurn);
+   int turns=world.ResearchTurns(t,0);
    string[] gains=World.ActiveTechBenefits(t);string gain=gains.Length>0?"  —  "+gains[0]:"";
-   if(GUI.Button(new Rect(box.x+14,y,box.width-28,30),"",button)){world.SelectResearch(t);status="Researching "+World.TechNames[t]+".";world.researchPrompts.RemoveAt(0);GUIUtility.ExitGUI();}
+   if(GUI.Button(new Rect(box.x+14,y,box.width-28,30),"",button)){world.ChooseNextResearch(t);status="Researching "+World.TechNames[t]+".";world.researchPrompts.RemoveAt(0);GUIUtility.ExitGUI();}
    var was=new GUIStyle(hudSmall){wordWrap=false,alignment=TextAnchor.MiddleLeft};was.normal.textColor=t==world.research?UiGold:UiText;
    FitLabel(new Rect(box.x+24,y,box.width-120,30),World.TechNames[t]+gain,was,9);
-   GUI.Label(new Rect(box.xMax-96,y,72,30),turns+(turns==1?" turn":" turns"),hudNumber);
+   GUI.Label(new Rect(box.xMax-96,y,72,30),turns<0?"no science":turns+(turns==1?" turn":" turns"),hudNumber);
    y+=34;
   }
   y+=6;
