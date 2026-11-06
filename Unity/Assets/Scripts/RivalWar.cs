@@ -10,10 +10,10 @@ namespace ParadigmRealm {
 public partial class World {
  // Home rivals only: the sealed peoples cannot reach anyone else, and leaving them alone keeps a crowded turn short.
  bool ActiveRival(int owner){return owner>0&&!(gatesLocked&&IsNativeNation(owner));}
- public const int PlayerGrace=80;
+
  public int SoldierCount(int owner){return units.Count(u=>u.owner==owner&&Power[u.type]>0&&!IsNaval(u.type));}
  // Three soldiers and two a city, half as many again at war.
- public int SoldierLimit(int owner){int limit=3+2*cities.Count(c=>c.owner==owner);return AtWarWithAnyone(owner)?limit*3/2:limit;}
+ public int SoldierLimit(int owner){int limit=(3+2*cities.Count(c=>c.owner==owner))*DifficultyTable.RivalSoldiers[Level]/100;return AtWarWithAnyone(owner)?limit*3/2:limit;}
  // What a city trains when it has no settler, worker or ship to make: the best soldier it can, every fourth one a ranged unit.
  int AIMilitaryBuild(City c,List<int> choices,List<Unit> own){
   int owner=c.owner;var soldiers=choices.Where(b=>BuildUnit(b)>=2&&!IsNaval(BuildUnit(b))&&MilitaryValue(BuildUnit(b))>0).OrderByDescending(b=>MilitaryValue(BuildUnit(b))).ToList();
@@ -83,12 +83,12 @@ public partial class World {
  // to war. Agendas and traits make leaders differ, and a small roll fixed for each game means they differ between games.
  public int Ambition(int a,int b){
   // The player gets a longer grace, to build a first army before anyone comes for them.
-  if(turn<(b==0?PlayerGrace:40)||!ActiveRival(a)||a==b||(gatesLocked&&IsNativeNation(b))||!HasContact(a,b))return 0;
+  if(turn<(b==0?PlayerGraceTurn:40)||!ActiveRival(a)||a==b||(gatesLocked&&IsNativeNation(b))||!HasContact(a,b))return 0;
   var mine=cities.Where(c=>c.owner==a).ToList();var theirs=cities.Where(c=>c.owner==b&&nations[a].known[c.y*Width+c.x]).ToList();if(mine.Count==0||theirs.Count==0)return 0;
   int score=0,agenda=CivLore.Of(nations[a].civ)!=null?CivLore.Of(nations[a].civ).Agenda:-1;
   score+=agenda==4||agenda==7?20:agenda==6?10:agenda==0?-5:agenda==5?-20:0;
   if(HasTrait(a,9))score+=10;if(HasTrait(a,11))score+=5;if(HasTrait(a,5))score-=10;
-  score+=(int)(((uint)(seed*31+a*17)>>3)&15);
+  score+=(int)(((uint)(seed*31+a*17)>>3)&15)+DifficultyTable.WarLust[Level];
   int close=mine.Min(c=>theirs.Min(o=>Distance(c.x,c.y,o.x,o.y)));
   int reach=close<=10?20:close<=16?10:-30;
   if(reach>0&&Landmass(mine[0].x,mine[0].y)!=Landmass(theirs[0].x,theirs[0].y)&&!cities.Any(c=>c.owner==a&&c.portLinked))reach=-30;

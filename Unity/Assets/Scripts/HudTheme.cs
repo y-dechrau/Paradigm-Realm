@@ -44,6 +44,7 @@ namespace ParadigmRealm
             for(int i=0;i<RecentNotes().Count;i++)hudRects.Add(NoteRect(i));
             // The tutorial panel takes its own clicks (its Next, Hide and End buttons), not the map underneath.
             if(TutorialShown())hudRects.Add(TutorialRect());
+            if(NoticeShown())hudRects.Add(NoticeRect);if(CallShown())hudRects.Add(CallRect);
             if(viewRealm>0)hudRects.Add(new Rect(472,708,336,30));
 
         }
@@ -87,7 +88,7 @@ namespace ParadigmRealm
             bool idle=!guide&&!confirmNew&&pendingUnit==-1;GUI.enabled=idle;
             DrawRail();DrawResearchCard();DrawLeaders();DrawNotices();DrawMiniMap();
             if(CardShown()){if(moreActions)DrawMoreActions();DrawUnitCard();}else moreActions=false;
-            DrawTileCard();
+            DrawTileCard();DrawBuildNotice();DrawRivalCall();
 
             GUI.enabled=idle&&world.result=="";
 
@@ -134,7 +135,7 @@ namespace ParadigmRealm
         }
         void DrawResearchCard()
         {
-            var r=ResearchCard;bool clicked=GUI.Button(r,"");
+            var r=ResearchCard;bool clicked=GUI.Button(r,"");if(world.research>=0)GlowBorder(r,GlowSilver);
             var well=new Rect(r.x+6,r.y+6,40,40);Fill(well,UiTrough);DrawIcon(PixelArt.IconResearch,new Rect(well.x+8,well.y+8,24,24));
             if(world.research<0){GUI.Label(new Rect(r.x+56,r.y+15,230,22),"Choose research",hudCaption);}
             else

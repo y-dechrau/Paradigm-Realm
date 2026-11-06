@@ -102,6 +102,7 @@ namespace ParadigmRealm
             GUILayout.Label(SpeedTexts[Mathf.Clamp(setupSpeed,0,2)],small);
             GUILayout.Space(10);GUILayout.Label("Seed (optional)",heading);seedText=GUILayout.TextField(seedText,11);
             GUILayout.Label("The same number and settings make the same world again.",small);
+            GUILayout.Space(10);GUILayout.Label("Difficulty: "+DifficultyTable.Names[setupLevel],heading);setupLevel=GUILayout.SelectionGrid(setupLevel,DifficultyTable.Names,4);GUILayout.Label(DifficultyTable.Describe(setupLevel),small);
             GUILayout.EndArea();
             GUILayout.BeginArea(new Rect(680,133,400,485));
             GUILayout.Label("Your world",heading);

@@ -380,7 +380,7 @@ public partial class World {
  bool NextToWater(Tile t){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n!=null&&IsWater(n.terrain))return true;}return false;}
  // Leader agendas (Civilization VI): a rival's opinion of another civilisation moves by what it values.
  // Every other people distrusts the demons of the Abyssal Throne (-10), whatever its agenda.
- public int AgendaOpinion(int observer,int other){return AgendaCore(observer,other)+(observer!=other&&CivId(other)==33&&CivId(observer)!=33?-10:0);}
+ public int AgendaOpinion(int observer,int other){return (other==0&&ActiveRival(observer)?DifficultyTable.Attitude[Level]:0)+AgendaCore(observer,other)+(observer!=other&&CivId(other)==33&&CivId(observer)!=33?-10:0);}
  int AgendaCore(int observer,int other){
   var e=Civ(observer);if(e==null||e.Agenda<0||observer==other)return 0;
   switch(e.Agenda){

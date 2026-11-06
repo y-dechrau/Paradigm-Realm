@@ -53,7 +53,7 @@ namespace ParadigmRealm
             if(settler!=null)world.Found(settler);
             var unit=world.units.FirstOrDefault(u=>u.owner==0&&World.Power[u.type]>0)??world.units.FirstOrDefault(u=>u.owner==0);
             if(unit!=null){selected=unit.id;Center();}
-            yield return Shot(folder,"2-unit.bmp");
+            yield return Shot(folder,"2-unit.bmp");{var fc=world.cities.FirstOrDefault(a=>a.owner==0);if(fc!=null){world.buildNotices.Add(new BuildNotice{city=fc.id,text=fc.name+" trained Warrior.",building=false});world.met[1]=true;world.rivalCalls.Add(new RivalCall{from=1,offer=0,text="proposes a trade."});yield return Shot(folder,"2a-messages.bmp");world.buildNotices.Clear();world.rivalCalls.Clear();world.met[1]=false;}}
             var city=world.cities.FirstOrDefault(c=>c.owner==0);
             if(city!=null){selected=-1;cityId=city.id;cityScreen=true;var spot=world.Workable(city).FirstOrDefault();if(spot!=null)world.ToggleLock(city,spot);}
             yield return Shot(folder,"3-city.bmp");
@@ -62,7 +62,7 @@ namespace ParadigmRealm
             // Research screen with the Dawn completed (this throwaway game only), so the edict choice shows.
             detailsScreen="";foreach(var id in new[]{"agriculture","archery","bronze"})world.tech[TechnologyCatalog.Index(id)]=true;
             world.research=TechnologyCatalog.Index("writing");world.nations[0].research=world.research;inspectedTech=-1;researchScreen=true;
-            yield return Shot(folder,"4b-research.bmp");
+            yield return Shot(folder,"4b-research.bmp");{int keepEra=researchEra,keepResearch=world.research,keepInspect=inspectedTech;researchEra=0;inspectedTech=-1;researchScroll=Vector2.zero;var dawn=world.AvailableTech(0).Where(t=>TechnologyCatalog.Eras[t]==0).DefaultIfEmpty(-1).First();if(dawn>=0){world.research=dawn;world.nations[0].research=dawn;}LayoutTechnologyTree();yield return Shot(folder,"4b1-research-dawn.bmp");researchEra=keepEra;inspectedTech=keepInspect;world.research=keepResearch;world.nations[0].research=keepResearch;LayoutTechnologyTree();}
             techZoom=.6f;researchScroll=Vector2.zero;yield return Shot(folder,"4b2-research-zoomed-out.bmp");techZoom=1.4f;yield return Shot(folder,"4b3-research-zoomed-in.bmp");techZoom=1f;
             researchScreen=false;
             // Religion screen with a pantheon and a founded faith (this throwaway game only).

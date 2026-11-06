@@ -68,7 +68,7 @@ namespace ParadigmRealm
             }
             var available=world.AvailableTech();int perTurn=Math.Max(1,world.cities.Where(c=>c.owner==0).Sum(c=>world.Yield(c)[2]));
             foreach(int i in shown){
-                Rect r=ExpandedTechRect(i);Fill(Z(r),world.tech[i]?new Color(.12f,.3f,.21f):inspectedTech==i?new Color(.25f,.29f,.4f):new Color(.10f,.15f,.18f));GUI.Box(Z(r),"");DrawTechnologyGlyph(Z(new Rect(r.x+8,r.y+10,24,24)),i);
+                Rect r=ExpandedTechRect(i);Fill(Z(r),world.tech[i]?new Color(.12f,.3f,.21f):inspectedTech==i?new Color(.25f,.29f,.4f):new Color(.10f,.15f,.18f));GUI.Box(Z(r),"");if(world.tech[i])GlowBorder(Z(r),GlowGold);else if(world.research==i)GlowBorder(Z(r),GlowSilver);DrawTechnologyGlyph(Z(new Rect(r.x+8,r.y+10,24,24)),i);
                 GUI.Label(Z(new Rect(r.x+40,r.y+8,173,44)),World.TechNames[i],zBody);
                 GUI.Label(Z(new Rect(r.x+10,r.y+51,200,24)),TechnologyCatalog.EraNames[TechnologyCatalog.Eras[i]],zSmall);
                 var benefits=World.ActiveTechBenefits(i);string summary=benefits.Length>0?string.Join("\n",benefits.Take(2).Select(v=>"• "+v).ToArray()):"• Advances the research tree\n• Content unlocks planned";
