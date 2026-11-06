@@ -43,7 +43,14 @@ namespace ParadigmRealm {
    return result;
   }
   static int FocusScore(int focus,int[] v){return focus==1?v[0]*4+v[1]+v[2]:focus==2?v[1]*4+v[0]+v[2]:focus==4?v[2]*6+v[0]+v[1]:v[0]*2+v[1]+v[2];}
+  // Which tiles a city works is asked for hundreds of times a turn; while a turn is running the answer is kept (no player can change it).
+  [NonSerialized] Dictionary<int,KeyValuePair<long,List<Tile>>> workedMemo;
   public List<Tile> Worked(City c){
+   if(!processing)return WorkedNow(c);if(workedMemo==null)workedMemo=new Dictionary<int,KeyValuePair<long,List<Tile>>>();
+   long sig=c.pop+1000L*c.focus+100000L*c.scientists+10000000L*c.merchants+1000000000L*c.entertainers+100000000000L*(c.locked==null?0:c.locked.Count)+10000000000000L*c.owner;
+   KeyValuePair<long,List<Tile>> hit;if(workedMemo.TryGetValue(c.id,out hit)&&hit.Key==sig)return hit.Value;var list=WorkedNow(c);workedMemo[c.id]=new KeyValuePair<long,List<Tile>>(sig,list);return list;
+  }
+  List<Tile> WorkedNow(City c){
    var candidates=Workable(c).Select(t=>new{Tile=t,V=EffectiveTileYield(c,t)}).OrderByDescending(t=>FocusScore(c.focus,t.V)).ThenBy(t=>t.Tile.y*Width+t.Tile.x).ToList();
    int count=Math.Max(0,c.pop-c.scientists-c.merchants-c.entertainers);
    // Locked tiles are worked first; the Governor (focus) fills the rest and never swaps a locked tile away.
@@ -76,7 +83,7 @@ namespace ParadigmRealm {
   public bool ReturnToWork(City c){if(c==null)return false;foreach(int type in new[]{2,0,1})if(AdjustSpecialist(c,type,-1))return true;return false;}
   public bool ConvertSpecialist(City c,int from,int to){if(c==null||from==to||from<0||from>2||to<0||to>2)return false;if(!AdjustSpecialist(c,from,-1))return false;if(AdjustSpecialist(c,to,1))return true;AdjustSpecialist(c,from,1);return false;}
   public string GrowthStatus(City c){
-   int net=Yield(c)[0];
+   int net=Yield(c)[0]-c.ration;
    // Disorder comes first: it stops production and gold as well as growth.
    if(Disorder(c))return "Disorder: "+UnhappyCitizens(c)+" unhappy outnumber "+ContentCitizens(c)+" content. No production, no gold and no growth; add entertainers, build a Temple or raise the science rate to 60%.";
    if(net<0)return "Food shortage: "+(-net)+"/turn. "+(c.food/(-net)+1)+" turns until stores run out; reduce specialists or improve food tiles.";
@@ -122,7 +129,7 @@ namespace ParadigmRealm {
   void ManageCityAI(City c){
    c.scientists=c.merchants=c.entertainers=0;
    int balance=aiBalanceFor==c.owner?aiBalance:Budget(c.owner)[2];
-   c.focus=Yield(c)[0]<=0?1:balance<0?4:c.pop>=GrowthLimit(c)?2:0;
+   c.focus=Yield(c)[0]<=0||nations[c.owner].rationShort>0?1:balance<0?4:c.pop>=GrowthLimit(c)?2:0;
    if(Happiness(c)<0){while(Happiness(c)<0&&c.entertainers<c.pop){c.entertainers++;if(Yield(c)[0]<0){c.entertainers--;break;}}}
    if(c.pop>=3&&Happiness(c)>=0){
     if(balance<0)c.merchants=1;else if(c.library)c.scientists=1;

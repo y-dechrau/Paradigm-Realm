@@ -57,7 +57,9 @@ public partial class World {
   foreach(var o in offers.Where(o=>o.status==0&&o.expires<=turn)){o.status=3;o.answer="Expired.";}
  }
  public void DiplomacyAI(){
-  foreach(var pair in diplomacy)if(pair.a!=0&&!pair.contact&&!SealedApart(pair.a,pair.b)&&(units.Any(u=>u.owner==pair.b&&VisibleTo(pair.a,u.x,u.y))||cities.Any(c=>c.owner==pair.b&&VisibleTo(pair.a,c.x,c.y))||units.Any(u=>u.owner==pair.a&&VisibleTo(pair.b,u.x,u.y))))pair.contact=true;
+  // Each pair looks for the other one turn in three, through lists sorted by owner: with sixty peoples this was a tenth of a turn.
+  {var unitsOf=new System.Collections.Generic.List<Unit>[civCount];var citiesOf=new System.Collections.Generic.List<City>[civCount];for(int o=0;o<civCount;o++){unitsOf[o]=new System.Collections.Generic.List<Unit>();citiesOf[o]=new System.Collections.Generic.List<City>();}foreach(var u in units)if(u.owner>=0&&u.owner<civCount)unitsOf[u.owner].Add(u);foreach(var c in cities)citiesOf[c.owner].Add(c);
+   foreach(var pair in diplomacy){if(pair.a==0||pair.contact||(pair.a+pair.b+turn)%3!=0||SealedApart(pair.a,pair.b))continue;bool seen=false;foreach(var u in unitsOf[pair.b])if(VisibleTo(pair.a,u.x,u.y)){seen=true;break;}if(!seen)foreach(var c in citiesOf[pair.b])if(VisibleTo(pair.a,c.x,c.y)){seen=true;break;}if(!seen)foreach(var u in unitsOf[pair.a])if(VisibleTo(pair.b,u.x,u.y)){seen=true;break;}if(seen)pair.contact=true;}}
   for(int a=1;a<civCount;a++){if(turn%5!=a%5||!cities.Any(c=>c.owner==a))continue;for(int b=0;b<civCount;b++){if(!HasContact(a,b)||offers.Any(o=>o.status==0&&SamePair(o.from,o.to,a,b)))continue;var p=Relation(a,b);DiplomaticOffer offer=null;
    bool covets=!AtWar(a,b)&&Ambition(a,b)>=50;
    if(AtWar(a,b)){if(RivalWantsPeace(a,b))offer=new DiplomaticOffer{from=a,to=b,kind=TreatyKind.Peace};}

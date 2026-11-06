@@ -20,7 +20,7 @@ namespace ParadigmRealm
         void OpenCity(City c){tutorialCitySeen=true;cityId=c.id;selected=-1;cityScreen=true;cityScroll=Vector2.zero;cityMapScroll=Vector2.zero;builtScroll=Vector2.zero;unitQueueScroll=Vector2.zero;buildingQueueScroll=Vector2.zero;researchScreen=false;detailsScreen="";GUI.FocusControl(null);ResetMapGesture();GUIUtility.ExitGUI();}
         bool OrderTeam(Unit u,int x,int y){var team=world.WorkerTeam(u).ToList();bool ok=false;foreach(var member in team)ok=world.Order(member,x,y)||ok;status=ok?"Order issued. Travel continues each turn; new orders replace it.":"Cannot reach that destination.";return ok;}
         string UnitDescription(Unit u){return new[]{"Founds new cities","Builds roads and improvements","Basic close-combat infantry","Explores distant territory","Ranged infantry","Armoured mounted troops","Gunpowder infantry","Counters mounted troops","Fast mounted troops","Siege artillery","Helps nearby units heal","Establishes trade routes and supplies wonders","Explores coasts and ferries one land unit","Carries land units across the sea","Fights at sea and bombards coasts","Preaches its faith in cities (2 sermons), keeps a city content and heals nearby units"}[u.type];}
-        void HandleGlobalInput(){var e=Event.current;if(e.type!=EventType.KeyDown)return;
+        void HandleGlobalInput(){var e=Event.current;if(e.type!=EventType.KeyDown||turnRunning)return;
             if(e.keyCode==KeyCode.S&&e.control){Save();e.Use();return;}
             if(e.keyCode!=KeyCode.Escape)return;
             if(foundStage>0)foundStage=0;
@@ -78,13 +78,8 @@ namespace ParadigmRealm
             File.WriteAllText(temporary,JsonUtility.ToJson(world,false));
             if(File.Exists(path))File.Replace(temporary,path,path+".bak");else File.Move(temporary,path);
         }
-        void AutoSave()
-        {
-            // Writing a big world takes seconds, so the biggest save less often.
-            if(world.tiles.Length>60000?world.turn%10!=0:world.tiles.Length>9000&&world.turn%5!=0)return;
-            try{AtomicSave(Path.Combine(Application.persistentDataPath,"earth-auto-"+(world.turn%3)+".json"));}
-            catch(Exception e){world.Note("Autosave failed: "+e.Message);}
-        }
+        // Autosave runs on another thread, so the map keeps moving; the turn is not handed back until it has finished.
+        bool AutoSaveDue(){return world.tiles.Length>60000?world.turn%10==0:world.tiles.Length<=9000||world.turn%5==0;}
         void LoadAuto()
         {
             try{

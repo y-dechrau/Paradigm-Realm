@@ -11,6 +11,7 @@ public partial class RealmGame {
   GUILayout.Label("Faith "+me.faith+"  (+"+world.FaithPerTurn(0)+" a turn)",heading);
   GUILayout.Label("Faith comes from your capital (+1), Temples (+2), a holy city (+3) and some beliefs. A pantheon costs "+World.PantheonCost+" faith; founding a faith costs "+world.FoundingCost()+" and needs Mysticism and a city with a Temple, which becomes the holy city. Cities press their majority faith on every city within ten tiles; the stronger pressure wins the city. This world can hold "+world.MaxReligions()+" faiths.",small);
   GUILayout.Space(6);GUILayout.Label("Pantheon",heading);
+  if(me.pantheon<0)GUILayout.Label("Until your civilisation names a god, its villages pray apart and their devotion goes to waste. Divus Maximus will ask you to choose as soon as enough faith has gathered.",small);
   if(me.pantheon>=0)GUILayout.Label(ReligionCatalog.PantheonNames[me.pantheon]+" — "+ReligionCatalog.PantheonText[me.pantheon],body);
   else{string why=world.PantheonReason(0);if(why!="")GUILayout.Label(why,small);bool was=GUI.enabled;GUI.enabled=was&&why=="";
    for(int p=0;p<ReligionCatalog.PantheonNames.Length;p++){GUILayout.BeginHorizontal();if(GUILayout.Button(ReligionCatalog.PantheonNames[p],button,GUILayout.Width(220)))world.ChoosePantheon(0,p);GUILayout.Label(ReligionCatalog.PantheonText[p],small);GUILayout.EndHorizontal();}GUI.enabled=was;}

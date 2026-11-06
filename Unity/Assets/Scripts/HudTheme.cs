@@ -29,10 +29,21 @@ namespace ParadigmRealm
         // Clicks and the mouse wheel reach the map only where no widget is drawn over it.
         bool OverHud(Vector2 p){foreach(var r in hudRects)if(r.Contains(p))return true;return false;}
         bool InMap(Vector2 p){return MapView.Contains(p)&&!OverHud(p);}
-        List<int> MetRivals(){return Enumerable.Range(1,world.civCount-1).Where(o=>world.met[o]).Take(5).ToList();}
+        // The interface is laid out and drawn several times a frame; what it reads from the world is worked out at most once a frame,
+        // and the costly totals a few times a second.
+        List<int> metRivalsMemo;int metRivalsFrame=-1;
+        List<int> MetRivals(){if(metRivalsMemo!=null&&metRivalsFrame==Time.frameCount)return metRivalsMemo;metRivalsFrame=Time.frameCount;metRivalsMemo=new List<int>(5);for(int o=1;o<world.civCount&&metRivalsMemo.Count<5;o++)if(world.met[o])metRivalsMemo.Add(o);return metRivalsMemo;}
+        int hudBudget,hudOwnCities,hudCalm,hudScience,hudFood,hudResearchTurns,hudEra,hudTurn=-1;float hudAt;World hudWorld;
+        void RefreshHudNumbers(){
+            if(hudWorld==world&&hudTurn==world.turn&&Time.realtimeSinceStartup-hudAt<.3f)return;hudWorld=world;hudTurn=world.turn;hudAt=Time.realtimeSinceStartup;
+            hudBudget=world.Budget(0)[2];hudOwnCities=0;hudCalm=0;hudScience=0;foreach(var c in world.cities)if(c.owner==0){hudOwnCities++;if(!world.Disorder(c))hudCalm++;hudScience+=world.Yield(c)[2];}
+            int need;hudFood=world.FoodBalance(0,out need);hudResearchTurns=world.research>=0?world.ResearchTurns(world.research,0):-1;hudEra=world.Era(0);
+        }
         Rect LeaderRect(int i){return new Rect(1274-(i+1)*80,46,74,96);}
         // The current message (what just happened or why an order failed) leads, then the newest log entries of this turn and last.
-        List<string> RecentNotes(){string now="Turn "+world.turn+":",last="Turn "+(world.turn-1)+":";var notes=new List<string>();if(!string.IsNullOrEmpty(status))notes.Add(status);foreach(var l in world.log.Where(l=>l.StartsWith(now)||l.StartsWith(last))){if(notes.Count>=3)break;string text=l.Substring(l.IndexOf(':')+1).Trim();if(text!=status)notes.Add(text);}return notes;}
+        List<string> notesMemo;int notesTurn=-1,notesLog=-1;string notesStatus;
+        List<string> RecentNotes(){if(notesMemo!=null&&notesTurn==world.turn&&notesLog==world.log.Count&&notesStatus==status)return notesMemo;notesTurn=world.turn;notesLog=world.log.Count;notesStatus=status;notesMemo=WorkOutNotes();return notesMemo;}
+        List<string> WorkOutNotes(){string now="Turn "+world.turn+":",last="Turn "+(world.turn-1)+":";var notes=new List<string>();if(!string.IsNullOrEmpty(status))notes.Add(status);foreach(var l in world.log.Where(l=>l.StartsWith(now)||l.StartsWith(last))){if(notes.Count>=3)break;string text=l.Substring(l.IndexOf(':')+1).Trim();if(text!=status)notes.Add(text);}return notes;}
         Rect NoteRect(int i){float top=MetRivals().Count>0?150:46;return new Rect(1040,top+i*52,234,46);}
         bool CardShown(){return Selected()!=null||world.cities.Any(a=>a.owner==0&&a.id==cityId);}
         void BuildHudRects()
@@ -80,20 +91,22 @@ namespace ParadigmRealm
             DrawIcon(icon,new Rect(r.center.x-11,r.y+3,22,22));FitLabel(new Rect(r.x+2,r.yMax-20,r.width-4,18),caption,hudCentre);
             return clicked;
         }
-        int SciencePerTurn(){return world.cities.Where(c=>c.owner==0).Sum(c=>world.Yield(c)[2]);}
+        int SciencePerTurn(){RefreshHudNumbers();return hudScience;}
 
         // ---------- the whole HUD ----------
         void DrawHud()
         {
-            bool idle=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen();GUI.enabled=idle;
+            bool idle=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen()&&!turnRunning;GUI.enabled=idle;
             DrawRail();DrawResearchCard();DrawLeaders();DrawNotices();DrawMiniMap();
             if(CardShown()){if(moreActions)DrawMoreActions();DrawUnitCard();}else moreActions=false;
             DrawTileCard();DrawBuildNotice();DrawRivalCall();
 
             GUI.enabled=idle&&world.result=="";
 
+            if(turnRunning){GUI.enabled=true;GUI.Box(EndTurnRect,"");GUI.Label(new Rect(EndTurnRect.x,EndTurnRect.y+6,EndTurnRect.width,20),"The world moves...",hudCentre);EraBar(new Rect(EndTurnRect.x+12,EndTurnRect.y+32,EndTurnRect.width-24,10),Mathf.Min(turnStep,world.civCount)/(float)Math.Max(1,world.civCount));GUI.enabled=false;}
+            else{
             if(GUI.Button(EndTurnRect,"END TURN",endTurnStyle))EndTurn();
-            var cap=new Rect(EndTurnRect.xMax-50,EndTurnRect.yMax-21,42,16);Fill(cap,new Color(.12f,.08f,.03f,.75f));GUI.Label(cap,"Enter",keyCapStyle);
+            var cap=new Rect(EndTurnRect.xMax-50,EndTurnRect.yMax-21,42,16);Fill(cap,new Color(.12f,.08f,.03f,.75f));GUI.Label(cap,"Enter",keyCapStyle);}
             GUI.enabled=true;
             DrawTopBar();
             // Full tile details (movement, settlement advice, units present) while Alt is held.
@@ -101,19 +114,20 @@ namespace ParadigmRealm
         }
         void DrawTopBar()
         {
-            HudStyles();
+            HudStyles();RefreshHudNumbers();
             Fill(TopBar,new Color(.035f,.055f,.095f,.96f));Fill(new Rect(0,TopBar.yMax-2,1280,1),UiGold);Fill(new Rect(0,TopBar.yMax-1,1280,1),new Color(0,0,0,.6f));
             DrawIcon(PixelArt.IconRealms,new Rect(10,7,24,24));GUI.Label(new Rect(42,8,260,26),"PARADIGM  REALM",hudTitle);
-            int budget=world.Budget(0)[2];int ownCities=world.cities.Count(c=>c.owner==0),calm=world.cities.Count(c=>c.owner==0&&!world.Disorder(c));
+            int budget=hudBudget,ownCities=hudOwnCities,calm=hudCalm;
             var items=new[]{
                 new KeyValuePair<int,string>(PixelArt.IconGold,"Gold  "+world.gold+"  ("+(budget>=0?"+":"")+budget+")"),
                 new KeyValuePair<int,string>(PixelArt.IconScience,"Science  +"+SciencePerTurn()),
-                new KeyValuePair<int,string>(PixelArt.IconAge,TechnologyCatalog.EraNames[world.Era(0)]+(world.AgeOf(0)!=World.AgeNormal?" · "+World.AgeNames[world.AgeOf(0)].Replace(" Age",""):"")),
+                new KeyValuePair<int,string>(PixelArt.IconFood,"Food  "+(hudFood>=0?"+":"")+hudFood+"  "+world.FoodStateName(0)),
+                new KeyValuePair<int,string>(PixelArt.IconAge,TechnologyCatalog.EraNames[hudEra]+(world.AgeOf(0)!=World.AgeNormal?" · "+World.AgeNames[world.AgeOf(0)].Replace(" Age",""):"")),
                 new KeyValuePair<int,string>(PixelArt.IconOrder,"Order  "+(ownCities==0?"—":(calm*100/ownCities)+"%"))};
-            float x=420;
-            foreach(var item in items){DrawIcon(item.Key,new Rect(x,8,22,22));float w=hudLabel.CalcSize(new GUIContent(item.Value)).x;GUI.Label(new Rect(x+28,9,w+4,22),item.Value,hudLabel);x+=w+64;Fill(new Rect(x-16,10,1,18),new Color(UiGold.r,UiGold.g,UiGold.b,.45f));}
+            float x=250;
+            foreach(var item in items){DrawIcon(item.Key,new Rect(x,8,22,22));float w=hudLabel.CalcSize(new GUIContent(item.Value)).x;GUI.Label(new Rect(x+28,9,w+4,22),item.Value,hudLabel);x+=w+52;Fill(new Rect(x-12,10,1,18),new Color(UiGold.r,UiGold.g,UiGold.b,.45f));}
             DrawIcon(PixelArt.IconTurn,new Rect(1002,8,22,22));GUI.Label(new Rect(1030,9,160,22),"Turn "+world.turn+"  •  "+world.Calendar(),hudLabel);
-            bool enabled=GUI.enabled;GUI.enabled=!confirmNew&&pendingUnit==-1;
+            bool enabled=GUI.enabled;GUI.enabled=!confirmNew&&pendingUnit==-1&&!turnRunning;
             if(GUI.Button(new Rect(1196,5,34,28),""))guide=true;DrawIcon(PixelArt.IconHelp,new Rect(1201,7,24,24));
             if(GUI.Button(new Rect(1236,5,38,28),"")){pauseMenu=true;GUIUtility.ExitGUI();}DrawIcon(PixelArt.IconMenu,new Rect(1243,7,24,24));
             GUI.enabled=enabled;
@@ -140,7 +154,7 @@ namespace ParadigmRealm
             if(world.research<0){GUI.Label(new Rect(r.x+56,r.y+15,230,22),"Choose research",hudCaption);}
             else
             {
-                int cost=world.ResearchCost(world.research,0),done=world.science;int turns=world.ResearchTurns(world.research,0);
+                int cost=world.ResearchCost(world.research,0),done=world.science;RefreshHudNumbers();int turns=hudResearchTurns;
                 GUI.Label(new Rect(r.x+56,r.y+6,170,22),World.TechNames[world.research],hudCaption);GUI.Label(new Rect(r.xMax-82,r.y+7,72,20),turns<0?"no science":turns+(turns==1?" turn":" turns"),hudNumber);
                 EraBar(new Rect(r.x+56,r.y+32,r.width-68,8),done/(float)Math.Max(1,cost));
             }
@@ -175,7 +189,7 @@ namespace ParadigmRealm
         void DrawMiniMap()
         {
             GUI.Box(MiniMap,"");var inner=new Rect(MiniMap.x+5,MiniMap.y+5,MiniMap.width-10,MiniMap.height-10);
-            if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>1f)BuildAtlasTexture();
+            if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>3f)BuildAtlasTexture();
             // Staggered rows are a quarter of a tile width apart (16 of 64 pixels), so a row is a quarter as tall as a column is wide.
             float aspect=world.Width/(world.Hex?ViewRows*PixelArt.HR/(float)PixelArt.HW:world.Staggered?ViewRows*.25f:(float)ViewRows),w=inner.width,h=w/aspect;if(h>inner.height){h=inner.height;w=h*aspect;}
             var drawn=new Rect(inner.center.x-w/2,inner.center.y-h/2,w,h);Fill(inner,UiTrough);GUI.DrawTexture(drawn,atlasTexture,ScaleMode.StretchToFill);
@@ -216,7 +230,7 @@ namespace ParadigmRealm
                 DrawIcon(PixelArt.IconRoad,new Rect(tx,r.y+52,20,20));GUI.Label(new Rect(tx+26,r.y+52,120,22),"Movement",hudLabel);GUI.Label(new Rect(tx,r.y+52,tw-8,22),u.moves+" / "+world.MaxMoves(u),hudNumber);
                 DrawIcon(PixelArt.IconMilitary,new Rect(tx,r.y+76,20,20));GUI.Label(new Rect(tx+26,r.y+76,120,22),"Strength",hudLabel);GUI.Label(new Rect(tx,r.y+76,tw-8,22),World.Attack[u.type]+" / "+World.Defence[u.type],hudNumber);
                 // What the unit is doing, on its own line (owner request), with the time left for jobs and journeys; rank below.
-                string doing=world.Activity(u);if(u.job>0||u.hasOrder)doing+=" — "+world.Remaining(u);
+                string doing=world.Activity(u);if(!u.unfed&&(u.job>0||u.hasOrder))doing+=" — "+world.Remaining(u);
                 FitLabel(new Rect(tx,r.y+97,tw-8,20),doing,new GUIStyle(hudLabel){fontSize=13,normal={textColor=UiGold}});
                 FitLabel(new Rect(tx,r.y+117,tw-8,16),World.RankText(u),hudSmall,8);
                 DrawUnitActions(u,new Rect(r.x+10,r.y+136,r.width-20,56));

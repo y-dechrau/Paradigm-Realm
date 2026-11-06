@@ -1370,12 +1370,12 @@ namespace ParadigmRealm
         // The supplied 128 x 128 unit pictures are never changed on disk. As the game loads, a copy is reduced to a crisp
         // 64 x 64 sprite (area-averaged, hard alpha), given a rim light on edges facing the top-left light, shade on edges
         // facing away, and a dark outline, so units read as solid 16-bit figures. src is top-down 0xAARRGGBB.
-        public static PixelCanvas UnitSprite(uint[] src,int sw,int sh)
+        public static PixelCanvas UnitSprite(uint[] src,int sw,int sh,int Out=64)
         {
-            const int Out=64,Fit=58;
+            int Fit=Out*58/64;
             var cv=new PixelCanvas(Out,Out);
             double scale=Math.Max(sw,sh)/(double)Fit;int fw=(int)Math.Round(sw/scale),fh=(int)Math.Round(sh/scale);
-            int ox=(Out-fw)/2,oy=Out-2-fh;
+            int ox=(Out-fw)/2,oy=Out-Out/32-fh;
             for(int dy=0;dy<fh;dy++)for(int dx=0;dx<fw;dx++)
             {
                 double x0=dx*scale,x1=x0+scale,y0=dy*scale,y1=y0+scale,a=0,r=0,g=0,b=0,area=0;
@@ -1406,15 +1406,43 @@ namespace ParadigmRealm
         public const int FootRowTarget=62;
         public static int FootRow(PixelCanvas cv)
         {
-            for(int y=cv.h-1;y>=0;y--){int solid=0;for(int x=0;x<cv.w;x++)if((cv.Get(x,y)>>24)!=0)solid++;if(solid>=6)return y;}
-            return FootRowTarget;
+            for(int y=cv.h-1;y>=0;y--){int solid=0;for(int x=0;x<cv.w;x++)if((cv.Get(x,y)>>24)!=0)solid++;if(solid>=cv.w*6/64)return y;}
+            return FootRowTarget*cv.h/64;
         }
         static PixelCanvas StandOnFootRow(PixelCanvas cv)
         {
-            int foot=FootRow(cv),shift=FootRowTarget-foot;
+            int foot=FootRow(cv),shift=FootRowTarget*cv.h/64-foot;
             var moved=new PixelCanvas(cv.w,cv.h);
             for(int y=0;y<=foot;y++)for(int x=0;x<cv.w;x++){int to=y+shift;if(to>=0&&to<cv.h&&(cv.Get(x,y)>>24)!=0)moved.Set(x,to,cv.Get(x,y));}
             return moved;
+        }
+        // Doubles a picture, keeping its edges clean (Scale2x), for sharper art on large screens (owner request, 6 Nov 2026).
+        public static PixelCanvas Scale2x(PixelCanvas s)
+        {
+            var d=new PixelCanvas(s.w*2,s.h*2);int w=s.w,h=s.h;var p=s.p;
+            for(int y=0;y<h;y++)for(int x=0;x<w;x++)
+            {
+                uint e=p[y*w+x],a=y>0?p[(y-1)*w+x]:e,b=x<w-1?p[y*w+x+1]:e,c=x>0?p[y*w+x-1]:e,f=y<h-1?p[(y+1)*w+x]:e;
+                bool on=c!=b&&a!=f;int at=y*2*d.w+x*2;
+                d.p[at]=on&&c==a?a:e;d.p[at+1]=on&&a==b?b:e;d.p[at+d.w]=on&&c==f?c:e;d.p[at+d.w+1]=on&&f==b?b:e;
+            }
+            return d;
+        }
+        // Clear pixels take the colour of a solid neighbour, so smooth scaling leaves no dark fringe round a sprite.
+        public static PixelCanvas Bleed(PixelCanvas s)
+        {
+            var d=new PixelCanvas(s.w,s.h);Array.Copy(s.p,d.p,s.p.Length);int[] ox={1,-1,0,0},oy={0,0,1,-1};
+            for(int y=0;y<s.h;y++)for(int x=0;x<s.w;x++){if((s.p[y*s.w+x]>>24)!=0)continue;for(int k=0;k<4;k++){uint n=s.Get(x+ox[k],y+oy[k]);if((n>>24)!=0){d.p[y*s.w+x]=n&0xFFFFFFu;break;}}}
+            return d;
+        }
+        // The guard picture for a 128 x 128 unit: the figure braced at full detail, the shield and weapon doubled over it.
+        public static PixelCanvas GuardSpriteHD(uint[] src,int sw,int sh,int type)
+        {
+            var from=new PixelCanvas(sw,sh);Array.Copy(src,from.p,Math.Min(src.Length,from.p.Length));int foot=FootRow(from),target=FootRowTarget*2;
+            var cv=new PixelCanvas(sw,sh);bool mounted=type==5||type==8||type==9;double squash=mounted?.95:.86;
+            for(int y=0;y<sh;y++){int back=foot-(int)Math.Round((target-y)/squash);if(back<0||back>=sh)continue;for(int x=0;x<sw;x++){var c=from.Get(x,back);if((c>>24)!=0)cv.Set(x,y,c);}}
+            var over=Scale2x(GuardSprite(new uint[64*64],64,64,type));for(int i=0;i<over.p.Length&&i<cv.p.Length;i++)if((over.p[i]>>24)!=0)cv.p[i]=over.p[i];
+            return cv;
         }
         // The soft black bank over unexplored land, and a faint grey wisp that drifts through it (owner request, 6 Nov 2026).
         public static PixelCanvas MistBank()

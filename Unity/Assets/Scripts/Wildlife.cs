@@ -21,18 +21,22 @@ public partial class World {
  internal void TickAnimalsForChecks(bool spawn){if(!spawn)keepAnimalsFromSpawning=true;turn++;AnimalsTurn();keepAnimalsFromSpawning=false;}
  bool keepAnimalsFromSpawning;
  public Animal AnimalAt(int x,int y){if(animals==null)return null;foreach(var a in animals)if(a.x==x&&a.y==y)return a;return null;}
- bool AnimalGround(Tile t){return t!=null&&t.realm==0&&!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&t.gateLink==0&&!cities.Any(c=>c.x==t.x&&c.y==t.y);}
- bool OpenToAnimal(Tile t){return AnimalGround(t)&&AnimalAt(t.x,t.y)==null&&!units.Any(u=>u.x==t.x&&u.y==t.y);}
+ bool AnimalGround(Tile t){return t!=null&&t.realm==0&&!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&t.gateLink==0&&!CityCentres().Contains(t.y*Width+t.x);}
+ bool OpenToAnimal(Tile t){return AnimalGround(t)&&AnimalAt(t.x,t.y)==null&&!(preyCells!=null?preyCells.Contains(t.y*Width+t.x):units.Any(u=>u.x==t.x&&u.y==t.y));}
+ // Units sorted into blocks of 8 x 8 tiles for the animals' turn, so a beast looks only at what is near it.
+ [NonSerialized] Dictionary<int,List<Unit>> preyGrid;[NonSerialized] HashSet<int> preyCells;
+ void IndexPrey(){preyGrid=new Dictionary<int,List<Unit>>();preyCells=new HashSet<int>();foreach(var u in units){int key=(u.y/8)*100000+u.x/8;List<Unit> list;if(!preyGrid.TryGetValue(key,out list)){list=new List<Unit>();preyGrid[key]=list;}list.Add(u);preyCells.Add(u.y*Width+u.x);}}
+ IEnumerable<Unit> PreyNear(int x,int y){if(preyGrid==null){foreach(var u in units)yield return u;yield break;}int columns=(Width+7)/8;for(int r=y/8-1;r<=y/8+1;r++)for(int k=-1;k<=1;k++){int col=((x/8+k)%columns+columns)%columns;List<Unit> list;if(r>=0&&preyGrid.TryGetValue(r*100000+col,out list))foreach(var u in list)if(u.hp>0)yield return u;}}
  // How many may roam: one per hundred tiles of open land, more or fewer with the difficulty.
  // Until the first civilisation has passed the Medieval Age the wilds teem (owner request, 6 Nov 2026): three times as many,
  // arriving faster and from the very start. Animals never appear on land within any civilisation's borders.
- public const int LastWildEra=2,WildMultiple=3;
+ public const int LastWildEra=2,WildMultiple=3,HuntersFrom=8;
  public bool EarlyWilds(){foreach(var o in Enumerable.Range(0,civCount))if(!IsNativeNation(o)&&Era(o)>LastWildEra)return false;return true;}
  [NonSerialized] int openLandCount=-1;
- public int AnimalLimit(){if(!wildlife)return 0;if(openLandCount<0)openLandCount=tiles.Count(t=>t.realm==0&&!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&t.gateLink==0);return Math.Max(2,openLandCount/100*DifficultyTable.Animals[Level]/100)*(EarlyWilds()?WildMultiple:1);}
+ public int AnimalLimit(){if(!wildlife)return 0;if(openLandCount<0)openLandCount=tiles.Count(t=>t.realm==0&&!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&t.gateLink==0);return Math.Max(2,openLandCount/40*DifficultyTable.Animals[Level]/100)*(EarlyWilds()?WildMultiple:1);}
  void SpawnAnimals(Random r){
   if(keepAnimalsFromSpawning)return;bool early=EarlyWilds();if(!early&&turn<8)return;int limit=AnimalLimit();
-  for(int n=early?3:1;n>0;n--)if(animals.Count<limit&&(early||r.Next(3)==0))SpawnAnimal(r);
+  for(int n=early?Math.Max(3,limit/30):Math.Max(1,limit/100);n>0;n--)if(animals.Count<limit&&(early||r.Next(3)==0))SpawnAnimal(r);
  }
  void SpawnAnimal(Random r){
   int kind=r.Next(AnimalCatalog.Names.Length);var homes=AnimalCatalog.Homes[kind];
@@ -53,14 +57,15 @@ public partial class World {
   if(prey.owner==0)Note(prey.hp<=0?"A "+name+" killed your "+UnitName(prey)+".":"A "+name+" attacked your "+UnitName(prey)+".");
   if(prey.hp<=0){units.Remove(prey);DrownStranded();}else if(a.hp<=0){Victory(prey);if(prey.owner==0)Note("Your "+UnitName(prey)+" killed the "+name+".");}
  }
- Unit NearestPrey(Animal a,int range){Unit best=null;int least=int.MaxValue;foreach(var u in units){int d=Distance(a.x,a.y,u.x,u.y);if(d>range||d>=least||AnimalPrey(u.x,u.y)==null)continue;best=u;least=d;}return best==null?null:AnimalPrey(best.x,best.y);}
+ Unit NearestPrey(Animal a,int range){Unit best=null;int least=int.MaxValue;foreach(var u in PreyNear(a.x,a.y)){int d=Distance(a.x,a.y,u.x,u.y);if(d>range||d>=least||AnimalPrey(u.x,u.y)==null)continue;best=u;least=d;}return best==null?null:AnimalPrey(best.x,best.y);}
  void AnimalsTurn(){
-  if(!wildlife)return;if(animals==null)animals=new List<Animal>();var r=new Random(seed*31+turn*7);SpawnAnimals(r);
+  if(!wildlife)return;if(animals==null)animals=new List<Animal>();var r=new Random(seed*31+turn*7);IndexPrey();SpawnAnimals(r);
   foreach(var a in animals.ToList()){
    if(!animals.Contains(a)||a.hp<=0)continue;a.hp=Math.Min(10,a.hp+1);
    if(AnimalCatalog.Carnivore[a.kind]){
     for(int step=0;step<AnimalCatalog.Steps[a.kind]&&a.hp>0;step++){
-     var prey=NearestPrey(a,AnimalCatalog.Sense);if(prey==null){AnimalWander(a,r,false);continue;}
+     // The first turns give every people the chance to settle before the hunters find them.
+     var prey=turn<HuntersFrom?null:NearestPrey(a,AnimalCatalog.Sense);if(prey==null){AnimalWander(a,r,false);continue;}
      if(Distance(a.x,a.y,prey.x,prey.y)==1){AnimalAttacks(a,prey);break;}
      Tile best=null;int least=Distance(a.x,a.y,prey.x,prey.y);for(int k=0;k<6;k++){var n=Step(a.x,a.y,HexOr(k,true),HexOr(k,false));if(!OpenToAnimal(n))continue;int d=Distance(n.x,n.y,prey.x,prey.y);if(d<least){least=d;best=n;}}
      if(best==null)break;a.x=best.x;a.y=best.y;
@@ -70,12 +75,12 @@ public partial class World {
     else if(r.Next(2)==0)for(int step=0;step<AnimalCatalog.Steps[a.kind];step++)AnimalWander(a,r,true);
    }
   }
-  animals.RemoveAll(a=>a.hp<=0);
+  animals.RemoveAll(a=>a.hp<=0);preyGrid=null;preyCells=null;
   CheckVictory();
  }
  // A herbivore keeps a clear tile between itself and every unit, so it never wanders into a fight.
  void AnimalWander(Animal a,Random r,bool keepClear){
-  for(int attempt=0;attempt<6;attempt++){int k=r.Next(6);var n=Step(a.x,a.y,HexOr(k,true),HexOr(k,false));if(!OpenToAnimal(n))continue;if(keepClear&&units.Any(u=>Distance(u.x,u.y,n.x,n.y)<2))continue;a.x=n.x;a.y=n.y;return;}
+  for(int attempt=0;attempt<6;attempt++){int k=r.Next(6);var n=Step(a.x,a.y,HexOr(k,true),HexOr(k,false));if(!OpenToAnimal(n))continue;if(keepClear&&PreyNear(n.x,n.y).Any(u=>Distance(u.x,u.y,n.x,n.y)<2))continue;a.x=n.x;a.y=n.y;return;}
  }
  // A unit attacks an animal by moving onto it. Civilians cannot. Combat has no dice, so the result can be known in advance.
  public void AnimalExchange(Unit u,Animal a,out int dealt,out int taken){int own=Strength(u,null,false);dealt=Damage(own,AnimalCatalog.Defence[a.kind]);taken=IsRanged(u.type)?0:Damage(AnimalCatalog.Defence[a.kind],own);}

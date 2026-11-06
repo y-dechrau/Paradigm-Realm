@@ -26,16 +26,29 @@ namespace ParadigmRealm
         readonly List<Tile> isoResTiles=new List<Tile>();
         readonly List<Vector2> isoResPos=new List<Vector2>();
 
+        Color32[] pixelBuffer=new Color32[0];
+        void FillTexture(Texture2D tex,PixelCanvas cv,bool mips,bool release)
+        {
+            if(pixelBuffer.Length!=cv.w*cv.h)pixelBuffer=new Color32[cv.w*cv.h];var pixels=pixelBuffer;var p=cv.p;int w=cv.w,h=cv.h;
+            for(int y=0;y<h;y++){int to=(h-1-y)*w,from=y*w;for(int x=0;x<w;x++){uint c=p[from+x];pixels[to+x]=new Color32((byte)(c>>16),(byte)(c>>8),(byte)c,(byte)(c>>24));}}
+            tex.SetPixels32(pixels);tex.Apply(mips,release);
+        }
         Texture2D PixelTexture(PixelCanvas cv)
         {
             var tex=new Texture2D(cv.w,cv.h,TextureFormat.RGBA32,false){filterMode=FilterMode.Point,wrapMode=TextureWrapMode.Clamp};
-            var pixels=new Color[cv.w*cv.h];
-            for(int y=0;y<cv.h;y++)for(int x=0;x<cv.w;x++)
-            {
-                uint c=cv.p[y*cv.w+x];
-                pixels[(cv.h-1-y)*cv.w+x]=new Color(((c>>16)&255)/255f,((c>>8)&255)/255f,(c&255)/255f,(c>>24)/255f);
-            }
-            tex.SetPixels(pixels);tex.Apply();return tex;
+            FillTexture(tex,cv,false,false);return tex;
+        }
+        // Art that may be drawn at any size: smooth scaling, with smaller copies for when the map is zoomed out.
+        Texture2D SoftTexture(PixelCanvas cv)
+        {
+            var tex=new Texture2D(cv.w,cv.h,TextureFormat.RGBA32,true){filterMode=FilterMode.Bilinear,wrapMode=TextureWrapMode.Clamp};
+            FillTexture(tex,PixelArt.Bleed(cv),true,false);return tex;
+        }
+        // Ground and tile shapes keep their crisp edges so neighbouring tiles meet exactly; the memory copy is dropped once uploaded.
+        Texture2D TileTexture(PixelCanvas cv)
+        {
+            var tex=new Texture2D(cv.w,cv.h,TextureFormat.RGBA32,false){filterMode=FilterMode.Point,wrapMode=TextureWrapMode.Clamp};
+            FillTexture(tex,cv,false,true);return tex;
         }
         // kind: 1 sprite, 2 farm, 3 road, 4 misc, 5 sea resource icon. Small shared pictures, never evicted.
         Texture2D IsoPicture(int kind,int a,int b)
@@ -52,7 +65,8 @@ namespace ParadigmRealm
             // Tile-shaped overlays (farms, roads, borders, selection, unexplored) are drawn as diamonds in the diagonal view.
             if(kind==10)cv=PixelArt.HexEdge(a);else if(kind==11)cv=PixelArt.HexRoad(a);else if(kind==12)cv=PixelArt.AnimalSprite(a);
             else if(cv!=null&&(kind==2||kind==3||kind==4&&(a<=6||a==9)))cv=hexShape?PixelArt.ToHex(cv):PixelArt.ToDiamond(cv);
-            tex=cv==null?null:PixelTexture(cv);isoPictures[key]=tex;return tex;
+            // Icons are drawn at four times their design size and sprites at twice, so they stay sharp on large screens.
+            tex=cv==null?null:kind==8?SoftTexture(PixelArt.Scale2x(PixelArt.Scale2x(cv))):kind==1||kind==6||kind==7||kind==9||kind==12||kind==5?SoftTexture(PixelArt.Scale2x(cv)):kind==2||kind==3||kind==4||kind==10||kind==11?TileTexture(PixelArt.Scale2x(cv)):PixelTexture(cv);isoPictures[key]=tex;return tex;
         }
         void ClearIso()
         {
@@ -146,7 +160,8 @@ namespace ParadigmRealm
             for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){int n=IsoKnownTerrain(world.Step(t.x,t.y,dx,dy));if(dx==0&&dy==0)n=t.terrain;isoN9[(dy+1)*3+dx+1]=n;if(n>=0&&PixelArt.IsWater(n))anyWater=true;}
             if(t.terrain==7){int[] offI=world.Hex?World.HexDi:new[]{0,1,0,-1},offJ=world.Hex?World.HexDj:new[]{-1,0,1,0};for(int k=0;k<offI.Length;k++){int n=IsoKnownTerrain(world.Step(t.x,t.y,offI[k],offJ[k]));if(n>=0&&(n==7||PixelArt.IsWater(n)))mask|=1<<k;}}
             int fr=anyWater?frame:0;int sig=world.Hex?19:17;unchecked{foreach(int n in isoN9)sig=sig*31+n+1;sig=sig*31+mask;}
-            int index=t.y*world.Width+t.x;long key=((long)(uint)sig<<32)|(uint)(index*4+fr);
+            // Zoomed in, the ground is drawn at twice the detail; zoomed out the plain picture looks better and costs less.
+            bool sharp=cityScreen||isoWidth>=64;int index=t.y*world.Width+t.x;long key=((long)(uint)sig<<32)|(uint)(index*8+fr+(sharp?4:0));
             Texture2D tex;
             if(isoTiles.TryGetValue(key,out tex)){Texture2D cur;if(!isoShown.TryGetValue(index,out cur)||cur!=tex)isoShown[index]=tex;return tex;}
             if(compositeBudgetOn&&compositeClock.ElapsedMilliseconds>=CompositeBudgetMs)
@@ -154,8 +169,8 @@ namespace ParadigmRealm
                 Texture2D previous;
                 if(isoShown.TryGetValue(index,out previous)&&previous!=null)return previous;
             }
-            tex=PixelTexture(world.Hex?PixelArt.ComposeHex(isoN9,t.x,t.y,fr,mask):PixelArt.ToDiamond(PixelArt.Compose(isoN9,t.x,t.y,fr,mask)));
-            if(isoTiles.Count>=6000){long oldest=isoTileOrder.Dequeue();Texture2D gone;if(isoTiles.TryGetValue(oldest,out gone)){Destroy(gone);isoTiles.Remove(oldest);}}
+            {var composed=world.Hex?PixelArt.ComposeHex(isoN9,t.x,t.y,fr,mask):PixelArt.ToDiamond(PixelArt.Compose(isoN9,t.x,t.y,fr,mask));tex=TileTexture(sharp?PixelArt.Scale2x(composed):composed);}
+            if(isoTiles.Count>=4000){long oldest=isoTileOrder.Dequeue();Texture2D gone;if(isoTiles.TryGetValue(oldest,out gone)){Destroy(gone);isoTiles.Remove(oldest);}}
             isoTiles[key]=tex;isoTileOrder.Enqueue(key);isoShown[index]=tex;return tex;
         }
         // ---------- drawing ----------
@@ -172,6 +187,7 @@ namespace ParadigmRealm
             HandleMapInput();
             if(dragging){var m=Event.current.mousePosition;var u=world.units.Find(a=>a.id==dragUnit);if(u!=null){float sx,sy;IsoScreen(u.x,u.y,out sx,out sy);DrawOrderLine(new Vector2(MapX+sx,MapY+sy-6*isoWidth/64f),m);}GUI.Label(new Rect(m.x+15,m.y+12,220,30),roadMode?"Release to build a road there":"Release to send the unit here",body);}
         }
+        readonly Dictionary<int,Animal> viewAnimals=new Dictionary<int,Animal>();
         Texture2D ruinTexture;
         readonly Dictionary<int,Texture2D> gateTextures=new Dictionary<int,Texture2D>();
         readonly List<KeyValuePair<Unit,Rect>> isoUnitDraws=new List<KeyValuePair<Unit,Rect>>();readonly List<int> isoUnitCounts=new List<int>();
@@ -193,6 +209,7 @@ namespace ParadigmRealm
             viewStacks.Clear();
             foreach(var unit in world.units){List<Unit> stackAt;int cell=unit.y*width+unit.x;if(!viewStacks.TryGetValue(cell,out stackAt)){stackAt=new List<Unit>(2);viewStacks[cell]=stackAt;}stackAt.Add(unit);}
             viewCities.Clear();foreach(var city in world.cities)viewCities[city.y*width+city.x]=city;
+            viewAnimals.Clear();if(world.animals!=null)foreach(var a in world.animals)viewAnimals[a.y*width+a.x]=a;
             if(Event.current.type==EventType.Repaint)BuildSuburbs();
             // Diagonal view: tiles go back to front by diagonal (i + j), so raised scenery overlaps the tiles behind it.
             // R covers every tile whose diamond can touch the view, with a margin for tall scenery below the bottom edge.
@@ -269,7 +286,7 @@ namespace ParadigmRealm
                 // At sea the ship is drawn, not the units it carries.
                 if(picked==null&&water&&stackAt!=null){var ship=stackAt.Find(a=>World.IsNaval(a.type)&&(a.owner==0||visible));if(ship!=null)first=ship;}
                 var shown=picked??first;
-                if(visible&&world.wildlife){var beast=world.AnimalAt(source.x,source.y);if(beast!=null){var feet=new Rect(sx-20*s,gy-8*s,40*s,15*s);GUI.DrawTexture(feet,IsoPicture(4,8,0));GUI.DrawTexture(new Rect(sx-32*s,gy-42*s,64*s,64*s),IsoPicture(12,beast.kind,0));}}
+                if(visible&&world.wildlife){Animal beast;viewAnimals.TryGetValue(cell,out beast);if(beast!=null){var feet=new Rect(sx-20*s,gy-8*s,40*s,15*s);GUI.DrawTexture(feet,IsoPicture(4,8,0));GUI.DrawTexture(new Rect(sx-32*s,gy-42*s,64*s,64*s),IsoPicture(12,beast.kind,0));}}
                 if(shown!=null){var unitRect=new Rect(sx-20*s,gy-36*s,40*s,40*s);DrawUnitArt(shown,unitRect,count);isoUnitDraws.Add(new KeyValuePair<Unit,Rect>(shown,unitRect));isoUnitCounts.Add(count);}
             }
             // Fog of war as dark mist (owner request): a thin drifting veil over land seen before but not watched now, and

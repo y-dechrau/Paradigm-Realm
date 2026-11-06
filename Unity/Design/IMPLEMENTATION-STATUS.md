@@ -2,6 +2,16 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 6 Nov, third batch: faith prompt, food, animals, art and speed (save version 30)
+
+Checked by Unity `RealmTools.Checks` and `GraphicsChecks`, a Windows build, `-inputProbe` and `-frameProbe`. Not hand-played; food and animal balance are unproven.
+
+- Faith: when enough faith gathers, Divus Maximus asks you to name a god from the pantheon and explains why. It cannot be put off, and End Turn waits for the answer.
+- Food: every unit eats (half a food; mounted, siege and large ships one). Each city's fields feed one food's worth; the rest comes out of city growth. When that runs out the empire is Hungry: the newest units cannot act or heal, and every city loses a content citizen. Plenty to spare (at least one food per city) is Thriving: +1 content citizen in every city. Shown on the top bar, unit card and Civics. Rivals stop training units and put cities on food when short. Saves from earlier versions start using this rule.
+- Wild animals: one per 40 tiles of land (was 100), still three times that until a home civilisation passes the Medieval Age. Hunters do not hunt before turn 8.
+- Art: unit pictures keep their full 128 x 128 detail; icons are four times their design size; sprites and zoomed-in ground twice; smooth filtering on sprites. Text already stayed sharp when scaled.
+- Speed: End Turn no longer freezes the game; the turn runs in slices with the interface locked and a progress bar. Autosave runs on another thread. On a Huge map at turn 140 in the real build a turn fell from about 1,215 ms to about 460 ms. Rivals have fewer cities at that point (214 against 283), so some of the gain is smaller empires.
+
 ## Owner requests 6 Nov, second batch: research time, civics, legends and speed (save version 29)
 
 Checked by engine checks, Unity `RealmTools.Checks` and `GraphicsChecks`, a Windows build's `-autoShot` screenshots, and `-inputProbe` (real clicks and keys sent to the game's own window; 9 of 9 pass). Not hand-played.

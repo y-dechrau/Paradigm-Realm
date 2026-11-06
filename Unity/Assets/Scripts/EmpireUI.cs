@@ -104,7 +104,7 @@ public partial class RealmGame {
         // The globe is the home world only; a parallel world in view has no globe.
         if(viewRealm!=0){globeZoom=false;return;}
         if(atlasRealm!=0)atlasTexture=null;
-        if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>1f)BuildAtlasTexture();
+        if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>3f)BuildAtlasTexture();
         const int D=420;int W=world.Width,H=world.MainHeight;
         var e=Event.current;
         if(e.type==EventType.MouseDrag&&e.button==0&&area.Contains(e.mousePosition)){globeLon-=e.delta.x*0.012f*D/area.width;globeLat=Mathf.Clamp(globeLat+e.delta.y*0.012f*D/area.height,-1.2f,1.2f);globeDragged=true;e.Use();}
@@ -167,7 +167,7 @@ public partial class RealmGame {
                 GUI.DrawTexture(r,terrain[t.terrain]);if(t.owner>=0)Fill(new Rect(r.x+cell*.31f,r.y+r.height*.31f,cell*.38f,r.height*.38f),nations[t.owner]);
             }
         }else{
-            if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>1f)BuildAtlasTexture();
+            if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>3f)BuildAtlasTexture();
             GUI.DrawTexture(area,atlasTexture,ScaleMode.StretchToFill,false);
         }
         var e=Event.current;if(e.type==EventType.MouseDown&&e.button==0&&area.Contains(e.mousePosition)){

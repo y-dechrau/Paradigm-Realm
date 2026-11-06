@@ -8,17 +8,38 @@ namespace ParadigmRealm {
 // absent (the public backup leaves it out), in which case the panel simply has no face.
 public partial class RealmGame {
  Texture2D GuideFace(){if(guideFace==null)guideFace=Resources.Load<Texture2D>("Tutor/guide-face");return guideFace;}
- bool GuidePromptOpen(){return world!=null&&world.result==""&&!guide&&!confirmNew&&pendingUnit==-1&&((world.researchPrompts!=null&&world.researchPrompts.Count>0)||world.NextBuildPrompt()!=null);}
- Rect GuidePanel(string line,float height,out float y){
-  var box=new Rect(370,170,540,height);Fill(new Rect(0,0,1280,800),new Color(0,0,0,.35f));DrawGuideFrame(box);
+ bool PantheonDue(){var n=world.nations[0];return n.pantheon<0&&n.faith>=World.PantheonCost&&world.PantheonReason(0)=="";}
+ bool GuidePromptOpen(){return world!=null&&!turnRunning&&world.result==""&&!guide&&!confirmNew&&pendingUnit==-1&&((world.researchPrompts!=null&&world.researchPrompts.Count>0)||PantheonDue()||world.NextBuildPrompt()!=null);}
+ // The End Turn button runs the turn a little at a time, so the map keeps moving and never freezes.
+ bool turnRunning;int turnStep;const long TurnSliceMs=20;string autoSaveFolder;
+ System.Collections.IEnumerator RunTurn(){
+  var clock=System.Diagnostics.Stopwatch.StartNew();var steps=world.TurnSteps().GetEnumerator();turnStep=0;
+  while(true){
+   bool more;try{more=steps.MoveNext();}catch(Exception e){Debug.LogException(e);status="The turn could not finish: "+e.Message;more=false;}
+   if(!more)break;turnStep=steps.Current;if(clock.ElapsedMilliseconds>=TurnSliceMs){yield return null;clock.Reset();clock.Start();}
+  }
+  steps.Dispose();turnStep=world.civCount;
+  if(AutoSaveDue()){string path=System.IO.Path.Combine(autoSaveFolder??Application.persistentDataPath,"earth-auto-"+(world.turn%3)+".json");var job=System.Threading.Tasks.Task.Run(()=>AtomicSave(path));while(!job.IsCompleted)yield return null;if(job.Exception!=null)world.Note("Autosave failed: "+job.Exception.GetBaseException().Message);}
+  status=world.result!=""?world.result:"Turn "+world.turn+". Choose your orders.";turnRunning=false;
+ }
+ Rect GuidePanel(string line,float height,out float y,float textHeight=62){
+  var box=new Rect(370,Mathf.Max(60,170-Mathf.Max(0,height-430)/2),540,height);Fill(new Rect(0,0,1280,800),new Color(0,0,0,.35f));DrawGuideFrame(box);
   var face=GuideFace();if(face!=null)GUI.DrawTexture(new Rect(box.x+14,box.y+14,84,84),face,ScaleMode.ScaleAndCrop);
   float tx=box.x+112,tw=box.width-126;GUI.Label(new Rect(tx,box.y+10,tw,24),GuideName,hudTitle);
-  GUI.Label(new Rect(tx,box.y+36,tw,62),line,new GUIStyle(body){wordWrap=true});y=box.y+106;return box;
+  GUI.Label(new Rect(tx,box.y+36,tw,textHeight),line,new GUIStyle(body){wordWrap=true});y=box.y+44+textHeight;return box;
  }
  void DrawGuidePrompt(){
   GUI.enabled=true;
   if(world.researchPrompts!=null&&world.researchPrompts.Count>0){DrawResearchPrompt();return;}
+  if(PantheonDue()){DrawPantheonPrompt();return;}
   var p=world.NextBuildPrompt();if(p!=null)DrawBuildPrompt(p);
+ }
+ // Enough faith has gathered: the player must name a god (owner request, 6 Nov 2026). There is no putting it off.
+ const string PantheonPlea="Your people have begun leaving offerings at shrines, but every village prays to a different power, and they quarrel over whose rites come first. All that devotion is going to waste. Name one god as patron of your whole civilisation: its priests will bring your cities under one calendar of rites, and its blessing will reach every one of them. The choice is for all time, so choose what your people will need most.";
+ void DrawPantheonPrompt(){
+  float y;var names=ReligionCatalog.PantheonNames;var box=GuidePanel(PantheonPlea,44+128+names.Length*40+14,out y,128);
+  var text=new GUIStyle(hudSmall){wordWrap=true,alignment=TextAnchor.MiddleLeft};text.normal.textColor=UiText;
+  for(int p=0;p<names.Length;p++){if(GUI.Button(new Rect(box.x+14,y,box.width-28,36),"",button)){world.ChoosePantheon(0,p);status="Your people now follow the "+names[p]+".";GUIUtility.ExitGUI();}GUI.Label(new Rect(box.x+24,y,150,36),names[p],new GUIStyle(hudCaption){alignment=TextAnchor.MiddleLeft});GUI.Label(new Rect(box.x+176,y,box.width-200,36),ReligionCatalog.PantheonText[p],text);y+=40;}
  }
  void DrawResearchPrompt(){
   int found=world.researchPrompts[0];var choices=world.AvailableTech(0).OrderBy(t=>world.ResearchCost(t,0)).ToList();

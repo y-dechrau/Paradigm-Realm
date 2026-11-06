@@ -42,6 +42,33 @@ public partial class World {
   if(u==null||!(u.hasOrder||u.roadOrder))return new List<Tile>();int x=u.roadOrder?u.roadX:u.destinationX,y=u.roadOrder?u.roadY:u.destinationY;
   var path=Route(u,x,y);return path.Count>0?path:Route(u,x,y,true);
  }
+ // ---------- food: an army marches on its stomach (owner request, 6 Nov 2026; save version 30) ----------
+ // Every unit eats. Each city's fields feed one food's worth of units; the rest comes out of what its cities would have stored for
+ // growth. When even that runs out the empire goes hungry: the newest units stop where they are until there is food, and every
+ // city loses a content citizen. An empire with food to spare thrives and every city gains one.
+ public bool foodRations;
+ public const int FieldRations=1;
+ // In halves of a food a turn: horses, siege trains and big crews eat twice as much.
+ public static int UnitRation(int type){return type==5||type==8||type==9||type==13||type==14?2:1;}
+ public void FoodOutlook(int owner,List<City> own,int[][] yields,out int surplus,out int need){
+  int halves=0;foreach(var u in units)if(u.owner==owner)halves+=UnitRation(u.type);
+  need=Math.Max(0,(halves+1)/2-own.Count*FieldRations);surplus=0;for(int i=0;i<own.Count;i++)surplus+=Math.Max(0,yields[i][0]);
+ }
+ // What the next turn looks like, for the interface.
+ public int FoodBalance(int owner,out int need){var own=cities.Where(c=>c.owner==owner).ToList();var y=own.Select(Yield).ToArray();int surplus;FoodOutlook(owner,own,y,out surplus,out need);return surplus-need;}
+ public string FoodStateName(int owner){var n=nations[owner];return n.foodState>0?"Thriving":n.foodState<0?"Hungry":"Fed";}
+ public int UnfedUnits(int owner){int count=0;foreach(var u in units)if(u.owner==owner&&u.unfed)count++;return count;}
+ void FeedUnits(int owner,List<City> own,int[][] yields){
+  var n=nations[owner];foreach(var c in own)c.ration=0;
+  if(!foodRations||own.Count==0){n.foodState=0;n.rationShort=0;foreach(var u in units)if(u.owner==owner)u.unfed=false;return;}
+  int surplus,need;FoodOutlook(owner,own,yields,out surplus,out need);
+  // Each city gives in proportion to what it has, then any odd food left comes from the best fed.
+  int left=Math.Min(need,surplus);if(surplus>0){for(int i=0;i<own.Count&&left>0;i++){int spare=Math.Max(0,yields[i][0]);int take=Math.Min(left,spare*Math.Min(need,surplus)/surplus);own[i].ration=take;left-=take;}for(int i=0;i<own.Count&&left>0;i++){int take=Math.Min(left,Math.Max(0,yields[i][0])-own[i].ration);if(take>0){own[i].ration+=take;left-=take;}}}
+  int shortBy=Math.Max(0,need-surplus);n.rationShort=shortBy;n.foodState=shortBy>0?-1:surplus-need>=own.Count?1:0;
+  int hungry=shortBy*2,before=0;foreach(var u in units)if(u.owner==owner){if(u.unfed)before++;u.unfed=false;}
+  if(hungry>0){var list=units.Where(u=>u.owner==owner).OrderByDescending(u=>u.id).ToList();foreach(var u in list){if(hungry<=0)break;u.unfed=true;hungry-=UnitRation(u.type);}}
+  if(owner==0){int now=UnfedUnits(0);if(now>0&&before==0)Note("Your people are hungry. "+now+(now==1?" unit has":" units have")+" no food and cannot act until there is more.");else if(now==0&&before>0)Note("There is food again, and all your units can act.");}
+ }
  // ---------- owner requests, 6 Nov 2026, second batch ----------
  // How long research takes: what is left divided by the science coming in, as in the Civilization series. One technology takes at
  // least MinResearchTurns however much science there is (the Civilization III rule), and what is left over carries to the next.

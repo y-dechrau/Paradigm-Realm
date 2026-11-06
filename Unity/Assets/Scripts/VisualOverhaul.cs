@@ -54,11 +54,12 @@ namespace ParadigmRealm {
   void LoadVisualArt(){
    unitSprites=new Texture2D[people.Length];
    for(int i=0;i<people.Length;i++){var t=Art("unit-"+i.ToString("00"));if(t!=null){Destroy(people[i]);people[i]=t;}
-    try{unitSprites[i]=PixelTexture(PixelArt.UnitSprite(ReadArtPixels(people[i]),people[i].width,people[i].height));}catch(Exception){unitSprites[i]=null;}}
+    // Supplied art keeps its full 128 x 128 detail now, rather than being halved.
+    try{unitSprites[i]=SoftTexture(PixelArt.UnitSprite(ReadArtPixels(people[i]),people[i].width,people[i].height,people[i].width>=96?128:64));}catch(Exception){unitSprites[i]=null;}}
    // Vessels are drawn by the pixel-art generator (no supplied art); the same picture serves the build list.
-   for(int i=World.BoatUnit;i<=World.WarGalleyUnit&&i<people.Length;i++){if(Art("unit-"+i.ToString("00"))!=null)continue;unitSprites[i]=PixelTexture(PixelArt.ShipSprite(i-World.BoatUnit));people[i]=unitSprites[i];}
+   for(int i=World.BoatUnit;i<=World.WarGalleyUnit&&i<people.Length;i++){if(Art("unit-"+i.ToString("00"))!=null)continue;unitSprites[i]=SoftTexture(PixelArt.Scale2x(PixelArt.ShipSprite(i-World.BoatUnit)));people[i]=unitSprites[i];}
    LoadGuardSprites();
-   if(World.PriestUnit<people.Length&&Art("unit-15")==null){unitSprites[World.PriestUnit]=PixelTexture(PixelArt.PriestSprite());people[World.PriestUnit]=unitSprites[World.PriestUnit];}
+   if(World.PriestUnit<people.Length&&Art("unit-15")==null){unitSprites[World.PriestUnit]=SoftTexture(PixelArt.Scale2x(PixelArt.PriestSprite()));people[World.PriestUnit]=unitSprites[World.PriestUnit];}
    EnableCivilisationsWithArt();
    var city=Art("city-0-0");if(city!=null){Destroy(cityTexture);cityTexture=city;}
    var names=Resources.Load<TextAsset>("Visuals/gallery-names");galleryNames=names==null?new string[0]:names.text.Split(new[]{'\n'},StringSplitOptions.RemoveEmptyEntries);
@@ -127,13 +128,13 @@ namespace ParadigmRealm {
     // Supplied art first: city-<age>-<size band>[-walled], size bands 0 (1-3), 1 (4-7), 2 (8-11), 3 (12 and over).
     int band=pop<=3?0:pop<=7?1:pop<=11?2:3;string name="city-"+style+"-"+band;bool walled=(flags&PixelArt.FlagWalls)!=0;
     tex=(walled?SpriteSlot(name+"-walled"):null)??SpriteSlot(name);
-    if(tex==null)tex=PixelTexture(PixelArt.Settlement(style,pop,flags,variant));settlementTextures[key]=tex;}
+    if(tex==null)tex=SoftTexture(PixelArt.Scale2x(PixelArt.Settlement(style,pop,flags,variant)));settlementTextures[key]=tex;}
    return tex;
   }
   // Art slots: pictures in Assets/Resources/Sprites (for example from SpriteCook) replace the drawn ones by name. Missing
   // names fall back to the procedural art, so slots can be filled one at a time. Naming: Design/ART-SLOTS.md.
   readonly Dictionary<string,Texture2D> spriteSlots=new Dictionary<string,Texture2D>();
-  Texture2D SpriteSlot(string name){Texture2D t;if(!spriteSlots.TryGetValue(name,out t)){t=Resources.Load<Texture2D>("Sprites/"+name);if(t!=null)t.filterMode=FilterMode.Point;spriteSlots[name]=t;}return t;}
+  Texture2D SpriteSlot(string name){Texture2D t;if(!spriteSlots.TryGetValue(name,out t)){t=Resources.Load<Texture2D>("Sprites/"+name);if(t!=null)t.filterMode=FilterMode.Bilinear;spriteSlots[name]=t;}return t;}
   void DrawCityArt(City c,Rect r){GUI.DrawTexture(r,SettlementTexture(CityVisualEra(c.owner),c.pop,SettlementFlags(c),c.id),ScaleMode.ScaleToFit,true);}
   // Outlying farmsteads: from size 5, one neighbouring land tile of the city's own territory per two citizens (up to 8)
   // gets a few houses, chosen in a fixed order per city so they do not jump about.
@@ -179,7 +180,7 @@ namespace ParadigmRealm {
   }
   void LoadGuardSprites(){
    guardSprites=new Texture2D[people.Length];
-   for(int i=0;i<people.Length;i++){if(World.Power[i]<=0||World.IsNaval(i)||unitSprites[i]==null)continue;var made=Art("unit-"+i.ToString("00")+"-guard");if(made==null){try{made=PixelTexture(PixelArt.GuardSprite(ReadArtPixels(unitSprites[i]),unitSprites[i].width,unitSprites[i].height,i));themeTextures.Add(made);}catch(Exception){made=null;}}guardSprites[i]=made;}
+   for(int i=0;i<people.Length;i++){if(World.Power[i]<=0||World.IsNaval(i)||unitSprites[i]==null)continue;var made=Art("unit-"+i.ToString("00")+"-guard");if(made==null){try{var from=ReadArtPixels(unitSprites[i]);int size=unitSprites[i].width;made=SoftTexture(size>=128?PixelArt.GuardSpriteHD(from,size,unitSprites[i].height,i):PixelArt.GuardSprite(from,size,unitSprites[i].height,i));themeTextures.Add(made);}catch(Exception){made=null;}}guardSprites[i]=made;}
   }
   // r is the unit's box on the tile. The figure is drawn 1.6 times its width (64 px at the default zoom, so pixels stay
   // whole), standing on a soft ground shadow inside a ring in its owner's colour.
@@ -193,6 +194,8 @@ namespace ParadigmRealm {
     Fill(new Rect(px,top,pole,size*.9f),new Color(.32f,.22f,.12f));var ink=nations[u.owner];var flag=new Rect(px+pole,top+size*.02f,size*.2f,size*.24f);
     var flagArt=FlagTexture(u.owner);if(flagArt!=null){flag.width=flag.height*1.5f;GUI.DrawTexture(flag,flagArt,ScaleMode.StretchToFill,true);}else Fill(flag,ink*.75f+new Color(0,0,0,.25f));}
    GUI.DrawTexture(new Rect(feet.x-size/2,feet.y-size*62f/64f,size,size),art,ScaleMode.ScaleToFit,true);
+   // A unit without food shows it: a small red mark at its feet.
+   if(u.unfed&&u.owner==0){var mark=new Rect(feet.x-size*.33f,feet.y-size*.32f,size*.16f,size*.16f);Fill(mark,new Color(.75f,.14f,.1f,.95f));GUI.DrawTexture(mark,Icon(PixelArt.IconFood),ScaleMode.ScaleToFit,true);}
    // Health shows above the head, and only when the unit is hurt, so the map stays clean.
    if(u.hp<10){float h=Mathf.Max(3,r.width*.07f),bar=r.width*.8f,by=feet.y-size*60f/64f-h;
     Fill(new Rect(feet.x-bar/2-1,by-1,bar+2,h+2),new Color(.08f,.1f,.12f,.85f));

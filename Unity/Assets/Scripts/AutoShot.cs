@@ -15,6 +15,7 @@ namespace ParadigmRealm
         {
             var args=Environment.GetCommandLineArgs();int i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
+            i=Array.IndexOf(args,"-frameProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FrameProbe(args[i+1],i+2<args.Length?int.Parse(args[i+2]):4,i+3<args.Length?int.Parse(args[i+3]):120));
             i=Array.IndexOf(args,"-inputProbe");if(i>=0&&i+1<args.Length)StartCoroutine(InputProbeRun(args[i+1]));
             i=Array.IndexOf(args,"-flickerProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FlickerProbe(args[i+1]));
         }
@@ -34,6 +35,28 @@ namespace ParadigmRealm
         static Event Mouse(EventType type,float x,float y,int button=0,int clicks=1){return new Event{type=type,mousePosition=new Vector2(x,y),button=button,clickCount=clicks};}
         IEnumerator ClickAt(float x,float y,int button=0,int clicks=1){yield return Send(Mouse(EventType.MouseDown,x,y,button,clicks));yield return Send(Mouse(EventType.MouseUp,x,y,button,clicks));}
         void Probe(string name,bool ok){Debug.Log("PROBE "+(ok?"pass":"FAIL")+": "+name);}
+        // Development aid: "-frameProbe <folder> <size> <turns>" plays the rivals forward, then measures frames and turns uncapped.
+        IEnumerator FrameProbe(string folder,int size,int turns)
+        {
+            Directory.CreateDirectory(folder);yield return Frames(5);var log=new System.Text.StringBuilder();
+            QualitySettings.vSyncCount=0;Application.targetFrameRate=-1;
+            seedText="4242";setupSize=size;setupShape=1;setupCivs=World.MaxCivsBySize[size];setupPeoples=10;mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;
+            var founder=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);var made=world.Found(founder);log.AppendLine("screen "+Screen.width+"x"+Screen.height+" tiles "+world.tiles.Length+" nations "+world.civCount+" "+System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription);
+            var clock=new System.Diagnostics.Stopwatch();double sum=0,worst=0;
+            for(int t=1;t<=turns&&world.result=="";t++){for(int o=1;o<world.civCount;o++)world.Relation(0,o).friendUntil=world.turn+10;clock.Restart();world.EndTurn();double ms=clock.Elapsed.TotalMilliseconds;sum+=ms;worst=Math.Max(worst,ms);if(t%20==0){log.AppendLine("turn "+t+": average "+(sum/20).ToString("0")+" ms, worst "+worst.ToString("0")+" ms, cities "+world.cities.Count+", units "+world.units.Count+", animals "+world.animals.Count);sum=0;worst=0;}if(t%5==0)yield return null;}
+            world.researchPrompts.Clear();world.buildPrompts.Clear();world.buildNotices.Clear();world.rivalCalls.Clear();world.newContacts.Clear();for(int o=1;o<world.civCount;o++)world.met[o]=o<6;
+            foreach(var t in world.tiles)if(t.realm==0&&world.Distance(t.x,t.y,made.x,made.y)<=24)t.seen=true;world.Reveal();selected=world.units.Where(u=>u.owner==0).Select(u=>u.id).DefaultIfEmpty(-1).First();
+            foreach(int zoom in new[]{64,32,128})
+            {
+                isoWidth=zoom;FocusTile(made.x,made.y);yield return Frames(90);guiClock.Reset();mapClock.Reset();hudClock.Reset();guiPasses=0;long before=GC.GetTotalMemory(false);int gcs=GC.CollectionCount(0);clock.Restart();const int N=120;for(int n=0;n<N;n++)yield return null;double total=clock.Elapsed.TotalMilliseconds;
+                log.AppendLine("zoom "+zoom+": frame "+(total/N).ToString("0.0")+" ms; OnGUI "+(guiClock.Elapsed.TotalMilliseconds/N).ToString("0.0")+" (map "+(mapClock.Elapsed.TotalMilliseconds/N).ToString("0.0")+", HUD "+(hudClock.Elapsed.TotalMilliseconds/N).ToString("0.0")+"), passes/frame "+(guiPasses/(float)N).ToString("0.0")+", GC gen0 "+(GC.CollectionCount(0)-gcs));
+            }
+            isoWidth=64;FocusTile(made.x,made.y);yield return Frames(30);{clock.Restart();const int N=60;for(int n=0;n<N;n++){IsoPan(6,3);yield return null;}log.AppendLine("panning: frame "+(clock.Elapsed.TotalMilliseconds/N).ToString("0.0")+" ms");}
+            clock.Restart();AutoSaveMeasure();log.AppendLine("save "+clock.Elapsed.TotalMilliseconds.ToString("0")+" ms");
+            autoSaveFolder=folder;for(int run=0;run<3;run++){world.researchPrompts.Clear();world.buildPrompts.Clear();world.nations[0].pantheon=0;if(run==2)while((world.turn+1)%10!=0)world.turn++;clock.Restart();EndTurn();double slowest=0;var one=new System.Diagnostics.Stopwatch();one.Start();int frames=0;while(turnRunning){yield return null;slowest=Math.Max(slowest,one.Elapsed.TotalMilliseconds);one.Reset();one.Start();frames++;}log.AppendLine("End Turn"+(run==2?" with autosave":"")+": "+clock.Elapsed.TotalMilliseconds.ToString("0")+" ms, "+frames+" frames drawn meanwhile, slowest frame "+slowest.ToString("0")+" ms");}log.AppendLine("autosave file written: "+(Directory.GetFiles(folder,"earth-auto-*.json").Length>0)+"; status "+status);autoSaveFolder=null;
+            File.WriteAllText(Path.Combine(folder,"frames.txt"),log.ToString());Application.Quit();
+        }
+        void AutoSaveMeasure(){JsonUtility.ToJson(world,false);}
         IEnumerator InputProbeRun(string folder)
         {
             Directory.CreateDirectory(folder);yield return Frames(5);
@@ -65,6 +88,7 @@ namespace ParadigmRealm
                 if(people.Count>0){legendsPeople=people[0];yield return Shot(folder,"10h-people-partial.bmp");yield return ClickAt(234,710);Probe("Close leaves a people's page",legendsPeople==-1&&legendsOpen);}
                 world.turn--;gate.seen=false;}
             legendsOpen=false;detailsScreen="Civics";yield return Shot(folder,"10i-civics.bmp");detailsScreen="";
+            {var me=world.nations[0];int keepFaith=me.faith;me.faith=World.PantheonCost;me.pantheon=-1;yield return Shot(folder,"10l-god-prompt.bmp");Probe("the god prompt is waiting",PromptOpen());me.faith=keepFaith;}
             {// A crowded tile: the box must show every word.
              var spot=world.tiles.FirstOrDefault(t=>t.realm==0&&t.owner==0&&!PixelArt.IsWater(t.terrain)&&world.Distance(t.x,t.y,city.x,city.y)==1);if(spot!=null){spot.road=true;spot.farm=true;spot.village=true;var a=world.Add(0,2,spot.x,spot.y);var b=world.Add(0,4,spot.x,spot.y);var beast=new Animal{id=9901,kind=5,x=spot.x,y=spot.y};world.animals.Add(beast);selected=a.id;cityId=-1;isoWidth=64;FocusTile(spot.x,spot.y);yield return Send(Mouse(EventType.MouseUp,640,20));yield return Shot(folder,"10k-tile-card.bmp");world.animals.Remove(beast);world.units.Remove(a);world.units.Remove(b);selected=-1;}}
             world.tech[pot]=hadPot;

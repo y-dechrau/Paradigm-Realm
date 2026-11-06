@@ -43,6 +43,7 @@ public partial class RealmGame {
   GUILayout.Label("Priorities: Science "+n.scienceRate+"%   Military "+n.militaryRate+"%   Finance "+world.FinanceRate(0)+"%",body);
   int links=own.Sum(world.LinkTrade);GUILayout.Label("Cities joined by road, river or sea add "+links+" Trade   •   Trade per citizen: "+(own.Sum(c=>c.pop)==0?"0":(me.gnp/(float)own.Sum(c=>c.pop)).ToString("0.0")),body);
   {string line="Next technology: ";if(world.research<0)line+="none";else{int turns=world.ResearchTurns(world.research,0);line+=World.TechNames[world.research]+(turns<0?" (no science coming in)":" in "+turns+(turns==1?" turn":" turns"));}GUILayout.Label(line,body);}
+  {int need;int spare=world.FoodBalance(0,out need);GUILayout.Label("Food: "+world.FoodStateName(0)+"   •   Units eat "+need+" a turn beyond what the fields give   •   "+(spare>=0?"+"+spare+" left for growth":"short by "+(-spare))+(world.UnfedUnits(0)>0?"   •   "+world.UnfedUnits(0)+" units cannot act":""),body);}
   GUILayout.Space(8);GUILayout.Label("Military",heading);
   var army=world.units.Where(u=>u.owner==0&&World.Power[u.type]>0).GroupBy(u=>u.type).OrderByDescending(g=>World.MilitaryValue(g.Key)).Select(g=>g.Count()+" "+World.UnitNames[g.Key]);
   GUILayout.Label(me.soldiers==0?"No soldiers.":string.Join(", ",army.ToArray()),body);
