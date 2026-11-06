@@ -55,7 +55,7 @@ namespace ParadigmRealm
             bool atWar=Enumerable.Range(0,civCount).Any(o=>o!=owner&&AtWar(owner,o));
             bool enemyShips=units.Any(a=>IsNaval(a.type)&&a.owner!=owner&&AtWar(owner,a.owner)&&VisibleTo(owner,a.x,a.y));
             int guards=fleet(WarGalleyUnit),ports=cities.Count(a=>a.owner==owner&&a.portLinked);
-            if((atWar&&guards<ports||enemyShips&&guards<ports*2)&&BuildReason(c,UnitBuild(WarGalleyUnit))=="")return UnitBuild(WarGalleyUnit);
+            if((atWar&&guards<Math.Min(ports,3)||enemyShips&&guards<Math.Min(ports*2,4))&&BuildReason(c,UnitBuild(WarGalleyUnit))=="")return UnitBuild(WarGalleyUnit);
             return -1;
         }
 

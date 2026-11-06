@@ -23,7 +23,7 @@ public static class EmpireChecks {
  var villageTile=w.At(13,15);villageTile.owner=-1;foreach(var tt in w.tiles)if(tt.owner==0&&w.Distance(tt.x,tt.y,13,15)<=4)tt.owner=-1;Check(w.VillageTribute(0)==0,"no tax from a village far from your borders");
  w.At(14,15).owner=0;Check(w.VillageTribute(0)==World.VillageTax,"village within 4 tiles of your borders pays tax");
  scout.x=13;scout.y=17;var rivalScout=w.Add(1,3,12,15);Check(w.Move(rivalScout,13,15)&&villageTile.villageOwner==1&&w.VillageTribute(0)==0,"another civilisation can win the village over");w.AutoExplore(scout);w.CancelActivity(scout);Check(!scout.exploring&&!scout.hasOrder,"X stops exploration");
- StageThreeEconomy();StageThreeTrade();StageThreeHappiness();StageThreeUnits();StageFourCombat();StageSixVictory();StageSevenCity();CivilisationChecks();PathfindingChecks();NavalChecks();NavalAIChecks();StageEightChecks();
+ StageThreeEconomy();StageThreeTrade();StageThreeHappiness();StageThreeUnits();StageFourCombat();StageSixVictory();StageSevenCity();CivilisationChecks();PathfindingChecks();NavalChecks();NavalAIChecks();StageEightChecks();RivalWarChecks();
  Check(w.Valid(),"expanded state validates");w.tradeRoutes=null;w.UpgradeSave();Check(w.tradeRoutes!=null&&w.Valid(),"legacy absent routes migrated");
  for(int seed=0;seed<3;seed++){w=World.New(seed);w.Found(w.units.First(u=>u.owner==0&&u.type==0));for(int turn=0;turn<50;turn++){w.EndTurn();Check(w.Valid(),"campaign state, seed "+seed+" turn "+turn);}}
  }
@@ -145,6 +145,47 @@ public static class EmpireChecks {
  }
  // Stage 8 (AI and balance): flat science buildings, research pacts once per civilisation, the research pace, and a
  // whole standard game in which no rival wins before turn 200 (design target: earliest Transcendence around 230).
+ // Owner request 6 Nov: rival armies that modernise and wars that are fought on their merits.
+ static void RivalWarChecks(){
+  var w=Setup();foreach(var a in w.units.Where(a=>a.owner!=0).ToList())w.units.Remove(a);foreach(var c0 in w.cities.Where(c=>c.owner!=0).ToList())w.cities.Remove(c0);
+  var mine=w.cities.First(c=>c.owner==0);var site=w.tiles.First(t=>t.realm==0&&w.Distance(t.x,t.y,mine.x,mine.y)==14&&t.x>6&&t.y>6&&t.x<w.Width-6&&t.y<w.MainHeight-6);
+  var rc=w.Found(w.Add(1,0,site.x,site.y));w.RebuildTerritory();
+  // Only soldiers count against the limit, and the limit grows with cities.
+  int soldiers=w.SoldierCount(1);for(int i=0;i<5;i++)w.Add(1,1,rc.x,rc.y);Check(w.SoldierCount(1)==soldiers&&w.SoldierLimit(1)==3+2*w.cities.Count(c=>c.owner==1),"workers do not count against a rival's soldier limit");
+  // Upgrades cost what they cost the player, and need the money.
+  w.nations[1].tech[World.UnitTech[7]]=true;var old=w.Add(1,2,rc.x,rc.y);old.moves=4;w.nations[1].gold=10;Check(!w.AIUpgrade(old)&&old.type==2,"a poor rival keeps its Warrior");
+  w.nations[1].gold=500;Check(w.AIUpgrade(old)&&old.type==7&&w.nations[1].gold==480,"a rich rival upgrades at the player's price");
+  // Rush buying.
+  w.nations[1].gold=2000;rc.build=World.UnitBuild(2);rc.production=0;int price=w.RushPrice(rc,false);w.AIRush(rc);Check(rc.production==w.CostFor(rc,rc.build)&&w.nations[1].gold==2000-price,"a rival with spare gold buys what its city is making");
+  w.nations[1].gold=50;rc.production=0;w.AIRush(rc);Check(rc.production==0,"a rival keeps a reserve");
+  // Exact fights.
+  var strong=w.Add(1,6,rc.x+3,rc.y);var weak=w.Add(0,2,rc.x+4,rc.y);Check(w.GoodFight(strong,weak)&&!w.GoodFight(weak,strong),"the exact result decides who attacks");
+  w.units.Remove(strong);w.units.Remove(weak);
+  // Hurt units fall back; hopeless attacks are not made.
+  w.met[1]=true;Check(w.SetWar(1,true),"war for the checks");
+  var hurt=w.Add(1,2,rc.x+5,rc.y);hurt.hp=2;hurt.moves=4;int was=w.Distance(hurt.x,hurt.y,rc.x,rc.y);Check(w.WarUnitAI(hurt)&&w.Distance(hurt.x,hurt.y,rc.x,rc.y)<was,"a hurt unit falls back towards a city");w.units.Remove(hurt);
+  var brave=w.Add(1,2,rc.x+5,rc.y);brave.moves=4;var wall=w.Add(0,6,rc.x+6,rc.y);w.Reveal();w.turn++;w.WarUnitAI(brave);Check(wall.hp==10&&brave.hp==10,"a Warrior does not attack a Rifleman");w.units.Remove(brave);
+  var hunter=w.Add(1,6,rc.x+5,rc.y);hunter.moves=4;wall.type=2;wall.hp=2;w.Reveal();w.turn++;w.WarUnitAI(hunter);Check(!w.units.Contains(wall)||wall.hp<2,"a Rifleman attacks a Warrior it can beat");w.units.RemoveAll(a=>a==hunter||a==wall);
+  w.SetWar(1,false);
+  // Peace comes from the state of the war, not the calendar.
+  var r2=w.Found(w.Add(2,0,rc.x+5,rc.y+5));w.RebuildTerritory();w.Relation(1,2).contact=true;for(int i=0;i<8;i++)w.Add(1,6,r2.x-2,r2.y+(i%3)-1);w.Add(2,2,r2.x,r2.y);w.turn=100;w.Reveal();
+  Check(w.DeclareWar(1,2),"rivals can go to war");Check(!w.RivalWantsPeace(1,2)&&!w.RivalWantsPeace(2,1),"nobody asks for peace at once");
+  w.turn=110;Check(w.RivalWantsPeace(2,1)&&!w.RivalWantsPeace(1,2),"the losing side asks for peace and the winner does not");
+  var ask=new DiplomaticOffer{from=2,to=1,kind=TreatyKind.Peace};Check(w.PeaceRefusal(ask)>0&&w.OfferWillingness(ask)<0,"the winner refuses an early peace");
+  w.turn=145;Check(w.RivalWantsPeace(1,2)&&w.PeaceRefusal(ask)==0,"a long war can end");
+  // Ambition: never early, never on the sealed peoples; a warning comes first; a friend is left alone.
+  w.Relation(1,2).atWar=false;w.Relation(1,2).peaceUntil=0;w.Relation(1,2).warStarted=0;w.nations[2].projectStage=1;
+  w.turn=30;Check(w.Ambition(1,2)==0,"no ambition before turn 40");w.turn=70;Check(w.Ambition(1,0)==0,"the player has a longer grace");
+  w.turn=100;int want=w.Ambition(1,2);Check(want>=50,"a far stronger neighbour with a Transcendence project is coveted ("+want+")");
+  w.Relation(1,2).friendUntil=500;w.turn=101;w.DiplomacyAI();w.turn=106;w.DiplomacyAI();Check(!w.AtWar(1,2),"a friend is not attacked");
+  w.Relation(1,2).friendUntil=0;w.Relation(1,2).allianceUntil=0;w.turn=111;w.DiplomacyAI();Check(!w.AtWar(1,2),"a warning comes before war");w.turn=116;w.DiplomacyAI();Check(w.AtWar(1,2),"after the warning comes war");
+  var crowd=World.New(141,"Sealed",0,1,1,0,1,2,4,hex:true);crowd.turn=200;int native=Enumerable.Range(0,crowd.civCount).First(crowd.IsNativeNation);Check(crowd.Ambition(1,native)==0&&crowd.Ambition(native,1)==0,"sealed peoples neither covet nor are coveted");
+  // A whole game: wars happen, armies modernise, and everything stays valid.
+  var g=World.New(142,"War",0,1,1,0,0,2,4,hex:true,natives:false);g.Found(g.units.First(u=>u.owner==0&&u.type==0));int warTurns=0;
+  for(int t=0;t<170&&g.result=="";t++){g.EndTurn();if(Enumerable.Range(1,g.civCount-1).Any(a=>Enumerable.Range(1,g.civCount-1).Any(b=>a<b&&g.AtWar(a,b))))warTurns++;}
+  var army=g.units.Where(u=>u.owner!=0&&World.Power[u.type]>0&&!World.IsNaval(u.type)).ToList();
+  Check(g.Valid()&&warTurns>0,"rivals fight in a whole game ("+warTurns+" turns of war)");Check(army.Count>0&&army.Count(u=>u.type==2)*2<army.Count,"rival armies are not mostly Warriors by turn 170 ("+army.Count(u=>u.type==2)+" of "+army.Count+")");
+ }
  static void StageEightChecks(){
   var w=Setup();var c=w.cities.First(a=>a.owner==0);c.pop=6;int before=w.Yield(c)[2];c.buildings.Add(38);Check(w.Yield(c)[2]==before+3,"University adds a flat +3 science");
   var second=w.Found(w.Add(0,0,c.x+6,c.y));second.pop=4;w.met[1]=true;w.Relation(0,1).researchUntil=w.turn+10;
@@ -154,7 +195,8 @@ public static class EmpireChecks {
   int first=TechnologyCatalog.Index("agriculture"),late=TechnologyCatalog.Index("fusion");w.speed=1;
   Check(w.ResearchCost(first,-1)==World.TechCosts[first]*World.ResearchPace[0]/100&&w.ResearchCost(late,-1)==World.TechCosts[late]*World.ResearchPace[TechnologyCatalog.Eras[late]]/100,"research cost is the design cost times the era's pace");
   var g=World.New(701,"Pace",0,1,1,0,1,1,4);g.Found(g.units.First(u=>u.owner==0&&u.type==0));var eraOne=new int[g.civCount];
-  for(int t=0;t<200&&g.result=="";t++){g.EndTurn();for(int o=1;o<g.civCount;o++)if(eraOne[o]==0&&g.Era(o)>=1)eraOne[o]=g.turn;}
+  // The idle stand-in player is kept out of war: rivals now conquer a civilisation that never defends itself, and this measures rivals.
+  for(int t=0;t<200&&g.result=="";t++){for(int o=1;o<g.civCount;o++)g.Relation(0,o).friendUntil=g.turn+10;g.EndTurn();for(int o=1;o<g.civCount;o++)if(eraOne[o]==0&&g.Era(o)>=1)eraOne[o]=g.turn;}
   Check(g.result=="","no rival wins before turn 200 in a standard Small game ("+g.result+")");
   Check(Enumerable.Range(1,g.civCount-1).Where(o=>!g.IsNativeNation(o)).All(o=>eraOne[o]>=25&&eraOne[o]<=60),"home rivals complete the first era between turns 25 and 60 (all, natives included: "+string.Join(", ",Enumerable.Range(1,g.civCount-1).Select(o=>eraOne[o]))+")");
   // Behind the locked gates the native peoples keep step with the home world.
