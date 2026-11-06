@@ -2,9 +2,9 @@ namespace ParadigmRealm {
 // The eight further peoples of the Plague Marshes (world 4). All names and stories are invented; see SealedPeoples.cs.
 public static partial class SealedPeoples {
  static void AddPlagueMarshes(){
-  WorldHistories[adding]="Long ago this world was a green river country, its forests fed by one slow water, the Long Amber. Then came the Stilling. A fire fell from the sky, the river lost its way and stopped, and the water rose and stayed. The forests drowned where they stood, and the sickness of standing water crept across the land. Everyone now living came out of that ruin. The Spore Circle grew on the dead trees and the Gnawing Swarm dug beneath them. Frogs rose singing as the Unrecalled Chorus; healers of the drowned towns became the Ivy Collegium; the Paired Assize took the last dry house; the Stiltwind Factors sold charms against the bad wind; the Peat Crown buried its kings and they did not stay down; the Refused Lanterns reached the gates too late. Far out on the flats the Drainage Mandate still pumps, and the Freed Conduits still fight it. At some hour nobody recorded, the ancient gateways were sealed. No one here knows who did it. The Collegium calls it a quarantine set by frightened neighbours. The Swarm calls it the theft of its gift. The Assize calls it a trial not yet passed, the Factors a debt with its price unnamed, the Crown a decree of its own dead. The Mandate files it as a leak correctly stopped. The Chorus simply asks whether anyone is coming.";
+  WorldHistories[adding]="Long ago this world was a green river country, its forests fed by one slow water, the Long Amber. Then came the Stilling. A fire fell from the sky, the river lost its way and stopped, and the water rose and stayed. The forests drowned where they stood, and the sickness of standing water crept across the land. Everyone now living came out of that ruin. The Spore Circle grew on the dead trees and the Gnawing Swarm dug beneath them. Frogs rose singing as the Unrecalled Chorus; healers of the drowned towns became the Ivy Collegium; the Paired Assize took the last dry house; the Stiltwind Factors sold charms against the bad wind; the Peat Crown buried its kings and they did not stay down; the Refused Lanterns reached the gates too late. Far out on the flats the Drainage Mandate still pumps, and the Freed Conduits still fight it. At an hour only the Refused Lanterns claim to have seen, the ancient gateways were sealed. No one here knows who did it. The Collegium calls it a quarantine set by frightened neighbours. The Swarm calls it the theft of its gift. The Assize calls it a trial not yet passed, the Factors a bad season for trade, the Crown a decree of its own dead. The Mandate files it as a leak correctly stopped. The Chorus simply asks whether anyone is coming.";
 
-  // Inspired by the Testament of Solomon's thirty-six spirits of single ailments, each turned back by its own charm.
+  // Inspired by the Testament of Solomon's thirty-six decans (Conybeare's text numbers 34), spirits turned back by an angel's name, a written charm or a rite. The ivy is our own invention.
   Add("Ivy Collegium","Ammerel Vane","Provost of the Thirty-Six Oaths","Sit, and tell me exactly where it aches, for I greet every neighbour as a case not yet written up.",10,2,6,3,1,
    new[]{"Firstchair","Hederin","Sallow Hall","Long Register","Stillwater Door","Oathsend","Greenword","Lintel","Vanecroft","Charmward","Ninth Bed","Quietward"},
    "Thirty-Six Chairs, One Oath Each",
@@ -16,7 +16,7 @@ public static partial class SealedPeoples {
    "Charm Register",8,new PeopleRule{Science=1,Content=1},
    "One Oath Each",new PeopleRule{Production=-1});
 
-  // Inspired by the frogs and the reddened river of the plagues in the old tales of Exodus; here the plague itself has outlived its purpose.
+  // Inspired by the frogs and reddened river of Exodus 7-8, scripture to living faiths; the image only, with no figure from it. Here the plague has outlived its purpose.
   Add("Unrecalled Chorus","Brumlow Oom","Cantor of the Errand","We were sent here, friend, though none of us recalls by whom; have you come to tell us we may stop?",9,3,3,5,5,
    new[]{"Kingsbed","Ovenmere","Hundred Ponds","Cantor's Reach","Lilyhum","Long Refrain","Second Verse","Damp Chapel","Still Note","Brumlow Pool","Errand's End","Nightsong"},
    "The Errand Nobody Called Off",
@@ -28,7 +28,7 @@ public static partial class SealedPeoples {
    "Singing Basin",42,new PeopleRule{Food=1,Content=1},
    "Not Sent to Fight",new PeopleRule{Attack=-1});
 
-  // Inspired by the paired lords, sickness offices and trials of wit of death-courts in world myth; rooms and offices are all invented.
+  // Inspired by the paired lords and trials of Xibalba in the K'iche' Maya Popol Vuh; K'iche' communities are living. Names, offices and wording invented; add no Maya names, dress or ball game.
   Add("Paired Assize","Orsk and Velleth","Twin Justices of the Seven Rooms","Two of us greet you, stranger, and we will both remember exactly how you answer.",12,0,5,7,7,
    new[]{"Drydoor","Two Doors","Room of Damp","Room of No Lamp","Twinhold","Leechcount","Long Answer","Paired Steps","Quitclaim","Ridgehouse","Riddlemoor","Counterpoise"},
    "Answer Well or Stay",
@@ -40,13 +40,13 @@ public static partial class SealedPeoples {
    "Hall of Two Chairs",34,new PeopleRule{Science=1,Content=1},
    "Every Office Twice",new PeopleRule{Gold=-1});
 
-  // Inspired by Mesopotamian wind-demon amulets: an ugly face that drives off a worse one, feared as both cause and cure.
+  // Inspired by Mesopotamian Pazuzu amulets, a demon's face that turns away a worse one. Wind direction varies by source.
   Add("Stiltwind Factors","Haskra Longshank","First Factor of the Bad Wind","A fine day to buy protection from the wind, friend, and you would be surprised how soon you will need it.",1,5,1,11,0,
    new[]{"Southwest Landing","Kilnmere","Longshank Quay","Ledgerfen","Stiltmarket","Scowl","Gustward","Claypenny","First Charm","Windbill","High Wade","Tollmire"},
    "Protection, Reasonably Priced",
-   "Tall heron-folk on long thin legs, who stalk the shallows with packs of little clay charms. They sell protection from the bad wind that blows from the southwest across the mires. Everybody buys. Nobody has ever proved that the Factors cannot also call that wind, and the Factors find the question bad for trade.",
-   "The herons of the Long Amber came to speech after the Stilling, when the southwest wind began carrying the marsh's sickness from mire to mire and they alone stood high above it on their legs. They baked the first clay charm in the shape of the wind itself, a scowling winged thing, reasoning that an ugly face drives off an uglier one. It worked, or seemed to, and a people was born of the trade. Their golden age was the Hanging Season, when a charm swung at every door from the Mangrove shore to the edge of the Desolate wasteland and the Factors' ledgers held half the world's debts. Then the Ivy Collegium published proof that a charm bought too late did nothing, and a dozen towns drove out their agents and broke the kilns. The wind dropped that same year, and came back harder only when the kilns were relit, which people noticed. First Factor Longshank has rebuilt on credit and cheerful denial. She wants a charm in every city, and keeps a sample case packed for the day the gates open on new customers.",
-   "Rich cities; fast Stiltrunners; agents in every town.","Nobody quite trusts them, even at home.",
+   "Tall heron-folk on long thin legs, who stalk the shallows with packs of little clay charms. They sell protection from the bad wind that blows from the southwest across the mires. Everybody buys. Nobody has ever proved that the charms work, and the Factors find the question bad for trade.",
+   "The herons of the Long Amber came to speech after the Stilling, when the southwest wind began carrying the marsh's sickness from mire to mire and they alone stood high above it on their legs. They baked the first clay charm in the shape of the wind itself, a scowling winged thing, reasoning that an ugly face drives off an uglier one. It worked, or seemed to, and a people was born of the trade. Their golden age was the Hanging Season, when a charm swung at every door from the Mangrove shore to the edge of the Desolate wasteland and the Factors' kilns ran day and night to meet the orders. Then the Ivy Collegium published proof that a charm bought too late did nothing, and a dozen towns stopped paying. Orders fell, kilns went cold and half the Factors' houses failed. First Factor Longshank has rebuilt on cheaper clay and cheerful denial. She wants a charm in every city, and keeps a sample case packed for the day the gates open on new customers.",
+   "Rich cities; fast Stiltrunners; charms on every door.","Nobody quite trusts them, even at home.",
    "Clay Against the Wind",new PeopleRule{Gold=2},
    "Stiltrunner",8,1,0,2,
    "Charm Exchange",31,new PeopleRule{Gold=1,Content=1},
@@ -64,7 +64,7 @@ public static partial class SealedPeoples {
    "Open Shutter",36,new PeopleRule{Faith=2,Content=1},
    "Nothing Grows for Them",new PeopleRule{Food=-1});
 
-  // Fantasy of peat-kept dead kings, with an echo of the old image of shades rising to greet a fallen ruler on a bed of worms.
+  // Fantasy of peat-kept dead kings, with an echo of the old image of shades rising to greet a fallen ruler on a bed of worms. (Isaiah 14:9-11; image only).
   Add("Peat Crown","Aldreth the Ninth Buried","King Beneath the Peat","My forefathers have risen from their beds to greet you, as they will rise again when you are laid among us.",11,1,4,9,3,
    new[]{"Blackbed","Deepbed","Ninth Mound","Kingsbarrow","Cutter's Row","Long Mound","Wormhall","Grandson's Rest","Old Saddle","Peathold","Mournmarch","Sodthrone"},
    "The Kings Who Keep Their Thrones",

@@ -1,0 +1,77 @@
+using System;using System.Collections.Generic;using System.Diagnostics;using System.IO;using System.Linq;using ParadigmRealm;
+// Pacing measurement. args: seed size land shelter(0/1) norace(0/1) maxTurn outFile
+class Pace{
+ static void Main(string[] a){
+  if(a[0]=="dump"){Dump();return;}
+  int seed=int.Parse(a[0]),size=int.Parse(a[1]),land=int.Parse(a[2]);bool shelter=a[3]=="1",norace=a[4]=="1";int max=int.Parse(a[5]);
+  var o=new StreamWriter(a[6]){AutoFlush=true};
+  var w=World.New(seed,"Pace",land,1,1,0,size,2,4,hex:Environment.GetEnvironmentVariable("PACE_HEX")!="0",peoplesPerWorld:2);
+  w.Found(w.units.First(u=>u.owner==0&&u.type==0));
+  int n=w.civCount;var home=Enumerable.Range(1,n-1).Where(x=>!w.IsNativeNation(x)).ToList();
+  o.WriteLine($"GAME\tseed={seed}\tsize={World.MapSizeNames[size]}\tland={World.LandTypeNames[land]}\tshelter={shelter}\tnorace={norace}\tcivCount={n}\thome={string.Join(",",home)}\tgatesLocked={w.gatesLocked}\ttiles={w.tiles.Length}\thex={w.hexGrid}");
+  foreach(int x in Enumerable.Range(0,n))o.WriteLine($"NATION\t{x}\t{w.NationName(x)}\tnative={w.IsNativeNation(x)}");
+  var era=new int[n,6];var stage=new int[n,4];var buildStart=new int[n,4];var lastTech=new int[n];var maxGap=new int[n];var techs=new int[n];var size8=new int[n];var noResearch=new int[n];var idleBuild=new long[n];var citiesTotal=new long[n];var prevStage=new int[n];var peakCities=new int[n];var peakArmy=new int[n];var all180=new int[n];var compT=new int[n];var transT=new int[n];var upT=new int[n];var resets=new int[n];
+  var warT=new int[n];var lastBc=new int[n];var lastBuild=new int[n];var lastCc=new int[n];var lastCity=new int[n];var bestAtComp=new int[n];var ks=Enumerable.Range(0,n).Select(_=>new HashSet<int>()).ToArray();var cityOwner=new Dictionary<int,int>();int captures=0;
+  var turnMs=new List<double>();var sw=new Stopwatch();string crash="";
+  while(w.result==""&&w.turn<max){
+   sw.Restart();
+   try{w.EndTurn();}catch(Exception e){crash=e.GetType().Name+": "+e.Message+" @ "+(e.StackTrace??"").Split('\n')[0];break;}
+   turnMs.Add(sw.Elapsed.TotalMilliseconds);
+   int t=w.turn;
+   // Stand-in player: it knows what the second-best surviving home rival knows.
+   var al=home.Where(w.Survives).OrderByDescending(x=>w.nations[x].tech.Count(b=>b)).ToList();
+   if(al.Count>0&&Environment.GetEnvironmentVariable("PACE_NOCOPY")!="1"){var src=w.nations[al[Math.Min(1,al.Count-1)]].tech;for(int i=0;i<180;i++)w.tech[i]=src[i];w.nations[0].tech=w.tech;w.research=-1;w.nations[0].research=-1;}
+   if(shelter)foreach(int x in Enumerable.Range(1,n-1))if(w.war[x])w.war[x]=false;
+   if(norace)foreach(int x in Enumerable.Range(1,n-1))if(w.nations[x].projectStage==3&&w.nations[x].projectActivation>0&&w.nations[x].projectActivation<3)w.nations[x].projectActivation=3;
+   foreach(int x in Enumerable.Range(1,n-1)){var N=w.nations[x];
+    for(int e=0;e<6;e++)if(era[x,e]==0&&w.EraComplete(x,e))era[x,e]=t;
+    int c=N.tech.Count(b=>b);if(c>techs[x]){maxGap[x]=Math.Max(maxGap[x],t-lastTech[x]);lastTech[x]=t;techs[x]=c;if(c==180&&all180[x]==0)all180[x]=t;}
+    if(N.research<0)noResearch[x]++;
+    var mine=w.cities.Where(q=>q.owner==x).ToList();citiesTotal[x]+=mine.Count;idleBuild[x]+=mine.Count(q=>q.buildingProject<0);
+    if(mine.Count>peakCities[x])peakCities[x]=mine.Count;int army=w.units.Count(u=>u.owner==x&&World.Power[u.type]>0);if(army>peakArmy[x])peakArmy[x]=army;
+    if(size8[x]==0&&mine.Any(q=>q.pop>=8))size8[x]=t;
+    if(compT[x]==0&&N.tech[TechnologyCatalog.Index("computers")])compT[x]=t;if(upT[x]==0&&N.tech[TechnologyCatalog.Index("uploading")])upT[x]=t;if(transT[x]==0&&N.tech[TechnologyCatalog.Index("transcendence")])transT[x]=t;
+    for(int s=1;s<=3;s++){if(buildStart[x,s]==0&&mine.Any(q=>q.buildingProject==69+s))buildStart[x,s]=t;if(stage[x,s]==0&&N.projectStage>=s){stage[x,s]=t;o.WriteLine($"EVENT\t{t}\t{x}\tstage{s}complete");}}
+    if(N.projectStage<prevStage[x]){resets[x]++;for(int s=N.projectStage+1;s<=3;s++)stage[x,s]=0;o.WriteLine($"EVENT\t{t}\t{x}\tprojectLost from {prevStage[x]}");}prevStage[x]=N.projectStage;
+   }
+   // Variant: home rivals research keystones only (cheapest first) until none remain, as a focused player might.
+   if(Environment.GetEnvironmentVariable("PACE_BEELINE")=="1")foreach(int x in home){var avail=w.AvailableTech(x).Where(TechnologyCatalog.IsKeystone).OrderBy(k=>w.ResearchCost(k,x)).ToList();if(avail.Count>0&&!(w.nations[x].research>=0&&TechnologyCatalog.IsKeystone(w.nations[x].research)&&avail.Contains(w.nations[x].research)))w.nations[x].research=avail[0];}
+   // Extra instrumentation: wars, captures, last activity, keystone order.
+   foreach(int x in home){bool at=Enumerable.Range(0,n).Any(y=>y!=x&&w.AtWar(x,y));if(at)warT[x]++;
+    var own=w.cities.Where(q=>q.owner==x).ToList();int bc=own.Sum(q=>q.buildings.Count+(q.library?1:0)+(q.granary?1:0)+(q.walls?1:0));if(bc>lastBc[x]){lastBc[x]=bc;lastBuild[x]=t;}if(own.Count>lastCc[x]){lastCc[x]=own.Count;lastCity[x]=t;}
+    for(int k=0;k<36;k++)if(w.nations[x].tech[k]&&!ks[x].Contains(k)){ks[x].Add(k);if(k>=24)o.WriteLine($"KS\t{t}\t{x}\t{World.TechNames[k]}");}
+    if(bestAtComp[x]==0&&w.nations[x].tech[TechnologyCatalog.Index("computers")])bestAtComp[x]=own.Select(q=>w.Yield(q)[1]).DefaultIfEmpty(0).Max();
+   }
+   foreach(var q in w.cities){if(cityOwner.TryGetValue(q.id,out int pv)&&pv!=q.owner){captures++;o.WriteLine($"CAPTURE\t{t}\t{q.name}\t{pv}->{q.owner}");}cityOwner[q.id]=q.owner;}
+   if(t%50==0)Snap(o,w,t,n,turnMs);
+  }
+  foreach(int x in home)o.WriteLine($"EXTRA\t{x}\twarTurns={warT[x]}\tlastBuilding={lastBuild[x]}\tlastCity={lastCity[x]}\tbestCityProdAtComputing={bestAtComp[x]}\tunits={string.Join(",",w.units.Where(u=>u.owner==x).GroupBy(u=>World.UnitNames[u.type]).Select(g=>g.Key+":"+g.Count()))}");
+  o.WriteLine($"EXTRA\tall\tcaptures={captures}");
+  Snap(o,w,w.turn,n,turnMs,true);
+  foreach(int x in Enumerable.Range(1,n-1)){var N=w.nations[x];
+   string kk=string.Join(" ",Enumerable.Range(0,6).Select(e=>w.KnownInEra(x,e)+"/"+Enumerable.Range(0,180).Count(i=>TechnologyCatalog.Eras[i]==e&&!TechnologyCatalog.IsKeystone(i)&&N.tech[i])));
+   o.WriteLine($"RIVAL\t{x}\tnative={w.IsNativeNation(x)}\talive={w.Survives(x)}\teras={string.Join(",",Enumerable.Range(0,6).Select(e=>era[x,e]))}\tcomputing={compT[x]}\tuploading={upT[x]}\ttrans={transT[x]}\tsize8={size8[x]}\tbuildStart={buildStart[x,1]},{buildStart[x,2]},{buildStart[x,3]}\tstageDone={stage[x,1]},{stage[x,2]},{stage[x,3]}\tresets={resets[x]}\ttechs={techs[x]}\tall180={all180[x]}\tmaxTechGap={maxGap[x]}\tlastTech={lastTech[x]}\tnoResearchTurns={noResearch[x]}\tidleBuildShare={(citiesTotal[x]==0?0:idleBuild[x]*100/citiesTotal[x])}\tpeakCities={peakCities[x]}\tpeakArmy={peakArmy[x]}\tkeystone/minor per era={kk}");
+  }
+  double avg=turnMs.Count>0?turnMs.Average():0;var last=turnMs.Skip(Math.Max(0,turnMs.Count-50)).ToList();
+  o.WriteLine($"END\tturn={w.turn}\tresult={w.result}\tcrash={crash}\tavgMs={avg:0}\tlast50Ms={(last.Count>0?last.Average():0):0}\tmaxMs={(turnMs.Count>0?turnMs.Max():0):0}\tvalid={w.Valid()}");
+  o.Close();
+ }
+ static void Snap(StreamWriter o,World w,int t,int n,List<double> ms,bool end=false){
+  foreach(int x in Enumerable.Range(0,n)){var N=w.nations[x];var mine=w.cities.Where(q=>q.owner==x).ToList();
+   int sci=0,prod=0;foreach(var c in mine){var v=w.Yield(c);prod+=v[1];sci+=v[2];}
+   int cost=N.research>=0?w.ResearchCost(N.research,x):0;
+   o.WriteLine($"{(end?"LAST":"SNAP")}\t{t}\t{x}\ttech={N.tech.Count(b=>b)}\tera={w.Era(x)}\tcities={mine.Count}\tpop={mine.Sum(c=>c.pop)}\tmaxpop={(mine.Count>0?mine.Max(c=>c.pop):0)}\tarmy={w.units.Count(u=>u.owner==x&&World.Power[u.type]>0)}\tworkers={w.units.Count(u=>u.owner==x&&u.type==1)}\tgold={N.gold}\trate={N.scienceRate}\tsci={sci}\tprod={prod}\tresearch={N.research}\tcost={cost}\tstage={N.projectStage}\tactiv={N.projectActivation}\twars={Enumerable.Range(0,n).Count(y=>y!=x&&w.AtWar(x,y))}\tbuildingsAvg={(mine.Count>0?mine.Average(c=>c.buildings.Count):0):0.0}");
+  }
+  o.WriteLine($"TIME\t{t}\tlast50avgMs={(ms.Count>0?ms.Skip(Math.Max(0,ms.Count-50)).Average():0):0}");
+ }
+ static void Dump(){
+  var w=World.New(1,"Pace",0,1,1,0,1,2,4,hex:Environment.GetEnvironmentVariable("PACE_HEX")!="0",peoplesPerWorld:2);
+  for(int e=0;e<6;e++){var all=Enumerable.Range(0,180).Where(i=>TechnologyCatalog.Eras[i]==e).ToList();
+   Console.WriteLine($"ERA {e+1} {TechnologyCatalog.EraNames[e]}: keystones cost {all.Where(TechnologyCatalog.IsKeystone).Sum(i=>w.ResearchCost(i,-1))}, minors cost {all.Where(i=>!TechnologyCatalog.IsKeystone(i)).Sum(i=>w.ResearchCost(i,-1))}, 4-keystone cheapest {all.Where(TechnologyCatalog.IsKeystone).Select(i=>w.ResearchCost(i,-1)).OrderBy(c=>c).Take(4).Sum()}");
+   Console.WriteLine("  keystones: "+string.Join(", ",all.Where(TechnologyCatalog.IsKeystone).Select(i=>World.TechNames[i]+"("+w.ResearchCost(i,-1)+")")));
+   Console.WriteLine("  units: "+string.Join(", ",Enumerable.Range(0,World.UnitNames.Length).Where(u=>World.UnitTech[u]>=0&&TechnologyCatalog.Eras[World.UnitTech[u]]==e).Select(u=>World.UnitNames[u])));
+   Console.WriteLine("  buildings: "+string.Join(", ",Enumerable.Range(0,World.BuildingIds.Length).Where(b=>TechnologyCatalog.Eras[World.BuildingTech[b]]==e).Select(b=>World.BuildingNames[b]+"="+World.BuildingIds[b]+"<"+World.TechNames[World.BuildingTech[b]])));
+   Console.WriteLine("  keystone benefits: "+string.Join(" | ",all.Where(TechnologyCatalog.IsKeystone).Select(i=>World.TechNames[i]+": "+string.Join("; ",World.ActiveTechBenefits(i)))));
+  }
+ }
+}

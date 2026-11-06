@@ -5,7 +5,7 @@ namespace ParadigmRealm {
 // The peoples of the sealed worlds (owner request, 5 Nov 2026): ten to a world, the two first written (CivLore entries 29-38)
 // and eight more each (catalogue 39-78, eight in a row per world, in world order). Inspired by biblical and apocryphal
 // writings, other religions and myths, science fiction and fantasy, but all invented: no figure sacred to a living faith
-// appears, and no name comes from anyone's fiction. Their stories and rule numbers are in SealedPeoples<World>.cs.
+// is depicted, and no name was knowingly taken from anyone's fiction (names not legally cleared). Their stories and rule numbers are in SealedPeoples<World>.cs.
 // A rule is a few small integers; the text the player reads is written from the numbers, so the two cannot disagree.
 public sealed class PeopleRule {
  // In every city.

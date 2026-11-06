@@ -4,6 +4,8 @@ public static partial class SealedPeoples {
  static void AddInfernalDepths(){
   WorldHistories[adding]="In the beginning, as far as anyone can tell, there was only fire, black glass, and a giant under the rock who would not lie still. The Choir of the Hush sang him quiet before anyone else kept count of years. The Abyssal Throne rose next and dragged slaves into the Depths: the orcs of the Bloodtusk Horde, and the mortals whose dead became the Glazed Court. The Chained Vigil fell out of the red sky to watch, taught the slaves iron, and the great revolt followed. Salamanders of the Night Barge Guild cut twelve locks into the lava river, and enemies began to trade. Demons who feared being devoured wrote themselves down and became the Open Register. Then a vessel came down to cool the world: the Thermal Mandate survive from it, and the Crucible Progeny from its abandoned machines. On the rims of the steam vents, the Mossward Kindred keep the last green thing alive. All ten peoples have found the ancient gateways standing cold and shut, and none knows who shut them. The Throne calls them a jailer's door and means to break it. The Horde calls them a coward's door. The Register looks for the court order, the Guild for the unpaid toll, and the Mandate reads a quarantine. The Choir asks only that nobody knock loudly.";
 
+  // Inspired by the Testament of Solomon's demons who state their work and their undoing, with Goetia-style ranks.
+
   Add("Open Register","Tessivar Nine-Seals","Marquis-Registrar of the Open Rolls","Your name, your labour and your undoing, please, and then we may begin on friendly terms.",4,3,6,7,1,
    new[]{"Firstfile","Codicil","Inkfall","Docket Stair","Countersign","Rollhouse","Marginal","Attest","Ninth Schedule","Witness Deep","Sealwright","Last Clause"},
    "Every Name on the Public Roll",
@@ -15,8 +17,10 @@ public static partial class SealedPeoples {
    "Hall of Declarations",34,new PeopleRule{Gold=2,Science=1},
    "Undoing on Public File",new PeopleRule{Defence=-1});
 
+  // Inspired by Azazel's teaching and binding in 1 Enoch 8 and 10, renamed.
+
   Add("Chained Vigil","Orrivane the Unwinged","First Link of the Chained Vigil","We taught the fire once and we are sorry for it; tell us what you mean to do with what you know.",14,7,3,8,2,
-   new[]{"Linkhold","Emberfold","Fallen Lantern","Anvilrest","Lastfeather","Nineday Fall","Shackle Hill","Tongsmouth","Greywing","Bellowsgate","Quench","Vigil's End"},
+   new[]{"Linkhold","Emberlink","Fallen Lantern","Anvilrest","Lastfeather","Nineday Fall","Shackle Hill","Tongsmouth","Greywing","Bellowsgate","Quench","Vigil's End"},
    "Those Who Taught the Fire",
    "Tall, ash-grey beings with the stumps of burned wings, who fell from the red sky in an age nobody can date. They wear the chains they were once bound with, by choice, and work metal as penance for having taught it. They speak softly, and they do not ask to be forgiven.",
    "The old tales say the Vigil came to watch the Depths from above and only to watch. They flew lower out of pity for the slaves in the pits, and lower still, until ash clogged their wings. Grounded, they taught what they knew: ore, bellows and quenching. That iron broke the chains of the orcs, and the Bloodtusk Horde still sing of it without a word of thanks. The Abyssal Throne bound the teachers under Shackle Hill for four hundred years. When the ground split they climbed out, still chained, and chose to stay so. Their golden age was the Long Forging, when Vigil smiths made tools for any people who asked and weapons for none. It ended at Greywing, where blades made by their own pupils burned a city of refugees, and they learned that a gift cannot be recalled. Orrivane now seeks every weapon descended from their teaching, to unmake it, and wonders aloud whether their lost kin sealed the gateways to keep this shame from spreading.",
@@ -25,6 +29,8 @@ public static partial class SealedPeoples {
    "Chainbearer",2,1,1,0,
    "Chain Chapel",36,new PeopleRule{Faith=2,Content=1},
    "Eyes Burned Dim",new PeopleRule{Sight=-1});
+
+  // Inspired by the twelve hours and solar barque of the Egyptian Amduat, with the Hall of Maat's feather and turquoise trees from other Egyptian sources.
 
   Add("Night Barge Guild","Temeshu Long-Pole","Master of the Twelfth Lock","Every road here is a river and every river has a toll, friend, so let us agree a fair one.",9,1,1,5,0,
    new[]{"Tollmouth","Feather Quay","Crustgate","Poleman's Rest","Turquoise Reach","Slagwharf","Ironwall Basin","Hourstair","Glowbank","Twelfthlock","Emberquay","Sounding"},
@@ -37,8 +43,10 @@ public static partial class SealedPeoples {
    "Feather Scale House",31,new PeopleRule{Gold=2,Content=1},
    "Contract Soldiers",new PeopleRule{Attack=-1});
 
+  // Inspired by Typhon buried under a volcano (Hesiod, Pindar, Apollodorus).
+
   Add("Choir of the Hush","Ombrale of the Low Note","Cantor of the Lowest Note","Speak softly, little one, and tell me you have not brought your drums.",13,5,3,4,5,
-   new[]{"Lowsong","Humming Stair","Karvagh's Rib","Lull","Slumberstone","Drone Hollow","Quiet Anvil","Softfall","Breathing Hill","Tremorwatch","Long Rest","Hushmoot"},
+   new[]{"Lowsong","Humming Stair","Karvagh's Rib","Lull","Slumberstone","Drone Hollow","Quiet Anvil","Softfall","Breathing Hill","Tremorwatch","Long Lull","Hushmoot"},
    "Singers Above the Buried Giant",
    "Giants with skin like grey basalt, who sit in rings on the mountain called Karvagh and sing a single low note, in shifts, without ever stopping. Beneath the mountain lies something the note keeps asleep. They are gentle, slow, and very hard to argue with.",
    "When the Depths still shook daily, a people of giant herders noticed that the quakes slackened when they hummed. They followed the answer in the rock up to Karvagh and sat down, and their descendants have not stopped singing. The old tales give the Sleeper below more heads than anyone could count and a fire in every one; no living giant has seen it. In the Great Drone, their golden age, nine hundred singers held whole valleys still, and the Mossward Kindred came to plant the calm slopes. Then came the Year of Hammers. The war drums of the Bloodtusk Horde and the siege engines of the Abyssal Throne met at the foot of the mountain, and the Choir lost the note for a single breath. The southern plain went up in fire and has not cooled. Since then the giants have forbidden battle on their ground and pay others to keep the peace. Ombrale wants a quiet world, and fears the gateways are a second lid on the same sleeper.",
@@ -62,7 +70,7 @@ public static partial class SealedPeoples {
   Add("Crucible Progeny","Casting Four-Ninety","Surviving Best of the Melt","You are composed of useful elements; state your reason for remaining assembled.",2,6,8,9,4,
    new[]{"Melt Zero","Pour Point","Mould Seven","Ingot Field","Slagline","Sprue","Flux","Cast Yard","Tailings","Annealer","Yield","Reject Heap"},
    "The Machines That Melt Themselves",
-   "Walking foundries of slag and iron, descended from mining machines left running on the lava fields. They have no parents and no graves: each generation is poured from the melted bodies of the last, and whatever failed is not poured again. They hate nobody. They simply assay everything.",
+   "Walking foundries of slag and iron, descended from survey machines left running on the lava fields. They have no parents and no graves: each generation is poured from the melted bodies of the last, and whatever failed is not poured again. They hate nobody. They simply assay everything.",
    "The survey machines of the Thermal Mandate were built to repair one another from local ore. Left behind on ground where lava destroyed the careless in days, they began to differ: those that stayed above the flow went on repairing, and those that did not became ore. Nobody designed what happened next. In the Great Pour, their golden age, they learned to choose their own shapes, and factories walked out across the plains. The Bloodtusk Horde broke warband after warband against them, and Grukka is said to speak of them with something near respect. Then one casting proved so successful that nearly all were poured to its pattern. It had a single flaw: it cracked under sudden cold. When the Mandate flooded a lava field with coolant, a quarter of the Progeny shattered overnight. Since then Casting Four-Ninety keeps its people varied by testing them, on purpose and without end, against whoever is nearest. It regards the sealed gateways as the only object in the Depths it has failed to melt, and it intends to continue trying.",
    "Immense output from volcanic land; armoured striders; constant war.","Citizens know the next melt may take them.",
    "Drawn from the Melt",new PeopleRule{Terrains=new[]{17},TileProduction=1},
@@ -71,7 +79,7 @@ public static partial class SealedPeoples {
    "Fear of the Cull",new PeopleRule{Content=-1});
 
   Add("Mossward Kindred","Vesperil Softwing","Elder of the Last Moss","I am old now, nearly six, so let us be quick and kind: have you brought anything green?",1,2,2,5,6,
-   new[]{"Softlight","Greenrim","Vent Garden","Dewcatch","Firstspore","Lichen Stair","Wingfold","Smokeshade","Cool Hollow","Mossbed","Duskward","Paleleaf"},
+   new[]{"Softsmoke","Greenrim","Vent Garden","Dewcatch","Firstspore","Lichen Stair","Wingfold","Smokeshade","Cool Hollow","Mossbed","Duskward","Paleleaf"},
    "Gardeners in the Smoke",
    "Soft grey moth-folk with wings dusted in soot, who live only six or seven years and spend them tending moss on the cool rims of steam vents. The moss is the last green thing in the Depths. They carry it, spore by spore, to every vent that will take it.",
    "Ash-moths once fed on the heat-loving moss of the steam vents and thought about nothing else. When the glassworks of the Abyssal Throne fouled the vents, one swarm learned to carry spores on its wings and to plan for the next vent, and the planning needed speech. Their golden age was the Green Terraces on the slopes of Karvagh, under the Choir of the Hush, whose low note holds the vents steady. Generations of gardeners mapped every warm crack in the world. Then came the Blackening: a season of eruptions, while the Crucible Progeny stripped the outer terraces for ore. Seven parts in ten of the moss were lost, and a whole generation died in one winter of smoke with its songs unsung, for a moth's learning lasts only as long as the moth. Vesperil, who is nearly six, wants a moss bed in every city of every people, and gives spores to anyone who swears not to burn them. Her people guess that the gateways were sealed to keep the smoke from something green.",

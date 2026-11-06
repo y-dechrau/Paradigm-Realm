@@ -1,0 +1,129 @@
+GAME	seed=102	size=Small	land=Continents	shelter=False	norace=False	civCount=14	home=1,2,3	gatesLocked=True	tiles=15912	hex=False
+NATION	0	Pace	native=False
+NATION	1	Lionmarch Kingdom	native=False
+NATION	2	Sunspire Emirate	native=False
+NATION	3	Steppe Horde	native=False
+NATION	4	Sylvan Elves	native=True
+NATION	5	Abyssal Throne	native=True
+NATION	6	The Iron Mind	native=True
+NATION	7	Gnawing Swarm	native=True
+NATION	8	Tidebound Courts	native=True
+NATION	9	Aerie of Wings	native=True
+NATION	10	Bloodtusk Horde	native=True
+NATION	11	Ashforge Clans	native=True
+NATION	12	Spore Circle	native=True
+NATION	13	Scaled Dominion	native=True
+SNAP	50	0	tech=5	era=1	cities=1	pop=6	maxpop=6	army=2	workers=1	gold=136	rate=50	sci=4	prod=7	research=-1	cost=0	stage=0	activ=0	wars=0	buildingsAvg=0.0
+SNAP	50	1	tech=5	era=1	cities=4	pop=14	maxpop=8	army=11	workers=4	gold=147	rate=60	sci=24	prod=36	research=8	cost=209	stage=0	activ=0	wars=0	buildingsAvg=0.5
+SNAP	50	2	tech=6	era=1	cities=4	pop=13	maxpop=6	army=8	workers=4	gold=308	rate=60	sci=33	prod=39	research=2	cost=52	stage=0	activ=0	wars=0	buildingsAvg=1.0
+SNAP	50	3	tech=5	era=1	cities=4	pop=18	maxpop=8	army=12	workers=5	gold=158	rate=60	sci=25	prod=47	research=8	cost=209	stage=0	activ=0	wars=0	buildingsAvg=1.0
+SNAP	50	4	tech=5	era=1	cities=4	pop=17	maxpop=7	army=10	workers=3	gold=387	rate=60	sci=16	prod=35	research=8	cost=209	stage=0	activ=0	wars=0	buildingsAvg=0.5
+SNAP	50	5	tech=8	era=1	cities=5	pop=21	maxpop=6	army=14	workers=8	gold=335	rate=60	sci=36	prod=64	research=38	cost=21	stage=0	activ=0	wars=0	buildingsAvg=1.2
+SNAP	50	6	tech=8	era=1	cities=5	pop=22	maxpop=6	army=12	workers=8	gold=270	rate=60	sci=46	prod=69	research=38	cost=21	stage=0	activ=0	wars=0	buildingsAvg=1.4
+SNAP	50	7	tech=8	era=1	cities=5	pop=26	maxpop=6	army=13	workers=7	gold=262	rate=60	sci=42	prod=43	research=37	cost=21	stage=0	activ=0	wars=0	buildingsAvg=0.8
+SNAP	50	8	tech=6	era=1	cities=5	pop=21	maxpop=6	army=9	workers=5	gold=331	rate=60	sci=37	prod=48	research=2	cost=52	stage=0	activ=0	wars=0	buildingsAvg=0.8
+SNAP	50	9	tech=5	era=1	cities=5	pop=24	maxpop=8	army=11	workers=5	gold=147	rate=50	sci=13	prod=47	research=8	cost=209	stage=0	activ=0	wars=0	buildingsAvg=0.4
+SNAP	50	10	tech=8	era=1	cities=5	pop=21	maxpop=6	army=12	workers=6	gold=211	rate=60	sci=37	prod=59	research=38	cost=21	stage=0	activ=0	wars=0	buildingsAvg=1.0
+SNAP	50	11	tech=8	era=1	cities=3	pop=13	maxpop=6	army=9	workers=2	gold=349	rate=60	sci=30	prod=32	research=38	cost=21	stage=0	activ=0	wars=0	buildingsAvg=1.0
+SNAP	50	12	tech=6	era=1	cities=4	pop=19	maxpop=8	army=13	workers=4	gold=209	rate=60	sci=30	prod=33	research=2	cost=52	stage=0	activ=0	wars=0	buildingsAvg=1.0
+SNAP	50	13	tech=5	era=1	cities=3	pop=15	maxpop=6	army=10	workers=2	gold=284	rate=60	sci=26	prod=17	research=8	cost=209	stage=0	activ=0	wars=0	buildingsAvg=0.7
+TIME	50	last50avgMs=61
+SNAP	100	0	tech=33	era=1	cities=1	pop=6	maxpop=6	army=2	workers=1	gold=293	rate=50	sci=6	prod=14	research=-1	cost=0	stage=0	activ=0	wars=0	buildingsAvg=0.0
+SNAP	100	1	tech=33	era=1	cities=5	pop=28	maxpop=8	army=12	workers=8	gold=951	rate=60	sci=55	prod=119	research=12	cost=546	stage=0	activ=0	wars=0	buildingsAvg=5.4
+SNAP	100	2	tech=37	era=2	cities=5	pop=36	maxpop=12	army=12	workers=5	gold=1333	rate=80	sci=97	prod=98	research=61	cost=83	stage=0	activ=0	wars=0	buildingsAvg=6.6
+SNAP	100	3	tech=33	era=1	cities=4	pop=29	maxpop=8	army=12	workers=5	gold=1041	rate=60	sci=56	prod=116	research=12	cost=546	stage=0	activ=0	wars=0	buildingsAvg=5.5
+SNAP	100	4	tech=35	era=2	cities=6	pop=43	maxpop=9	army=13	workers=7	gold=714	rate=50	sci=33	prod=37	research=9	cost=228	stage=0	activ=0	wars=0	buildingsAvg=5.0
+SNAP	100	5	tech=34	era=1	cities=5	pop=35	maxpop=7	army=14	workers=8	gold=1281	rate=60	sci=30	prod=69	research=9	cost=228	stage=0	activ=0	wars=0	buildingsAvg=6.0
+SNAP	100	6	tech=35	era=2	cities=5	pop=35	maxpop=7	army=12	workers=8	gold=1053	rate=70	sci=95	prod=107	research=10	cost=247	stage=0	activ=0	wars=0	buildingsAvg=6.8
+SNAP	100	7	tech=34	era=1	cities=5	pop=30	maxpop=6	army=13	workers=7	gold=794	rate=60	sci=60	prod=50	research=7	cost=190	stage=0	activ=0	wars=0	buildingsAvg=4.0
+SNAP	100	8	tech=34	era=1	cities=6	pop=39	maxpop=7	army=12	workers=10	gold=692	rate=60	sci=84	prod=48	research=7	cost=190	stage=0	activ=0	wars=0	buildingsAvg=5.5
+SNAP	100	9	tech=34	era=1	cities=5	pop=34	maxpop=8	army=11	workers=5	gold=564	rate=60	sci=58	prod=83	research=7	cost=190	stage=0	activ=0	wars=0	buildingsAvg=5.4
+SNAP	100	10	tech=34	era=1	cities=5	pop=35	maxpop=7	army=12	workers=6	gold=491	rate=50	sci=18	prod=76	research=9	cost=228	stage=0	activ=0	wars=0	buildingsAvg=6.0
+SNAP	100	11	tech=34	era=1	cities=5	pop=33	maxpop=7	army=11	workers=5	gold=1381	rate=60	sci=73	prod=83	research=9	cost=228	stage=0	activ=0	wars=0	buildingsAvg=5.6
+SNAP	100	12	tech=34	era=1	cities=4	pop=30	maxpop=9	army=13	workers=4	gold=355	rate=50	sci=55	prod=46	research=7	cost=190	stage=0	activ=0	wars=0	buildingsAvg=5.3
+SNAP	100	13	tech=34	era=1	cities=5	pop=30	maxpop=6	army=12	workers=8	gold=1025	rate=60	sci=60	prod=39	research=7	cost=190	stage=0	activ=0	wars=0	buildingsAvg=3.8
+TIME	100	last50avgMs=147
+SNAP	150	0	tech=49	era=2	cities=1	pop=6	maxpop=6	army=2	workers=1	gold=640	rate=50	sci=8	prod=16	research=-1	cost=0	stage=0	activ=0	wars=0	buildingsAvg=0.0
+SNAP	150	1	tech=49	era=2	cities=5	pop=36	maxpop=12	army=12	workers=8	gold=2114	rate=80	sci=78	prod=231	research=71	cost=83	stage=0	activ=0	wars=0	buildingsAvg=10.4
+SNAP	150	2	tech=65	era=3	cities=5	pop=70	maxpop=17	army=12	workers=5	gold=3716	rate=80	sci=258	prod=179	research=16	cost=714	stage=0	activ=0	wars=0	buildingsAvg=13.0
+SNAP	150	3	tech=49	era=2	cities=4	pop=35	maxpop=12	army=12	workers=5	gold=2023	rate=80	sci=79	prod=226	research=71	cost=83	stage=0	activ=0	wars=0	buildingsAvg=10.5
+SNAP	150	4	tech=55	era=2	cities=6	pop=66	maxpop=12	army=13	workers=7	gold=1746	rate=80	sci=117	prod=148	research=77	cost=83	stage=0	activ=0	wars=0	buildingsAvg=9.7
+SNAP	150	5	tech=55	era=2	cities=5	pop=60	maxpop=12	army=14	workers=8	gold=2857	rate=80	sci=116	prod=233	research=77	cost=83	stage=0	activ=0	wars=0	buildingsAvg=9.0
+SNAP	150	6	tech=55	era=2	cities=5	pop=49	maxpop=12	army=12	workers=8	gold=2039	rate=80	sci=143	prod=131	research=77	cost=83	stage=0	activ=0	wars=0	buildingsAvg=9.4
+SNAP	150	7	tech=55	era=2	cities=5	pop=60	maxpop=12	army=13	workers=7	gold=2740	rate=60	sci=105	prod=90	research=77	cost=83	stage=0	activ=0	wars=0	buildingsAvg=10.0
+SNAP	150	8	tech=55	era=2	cities=6	pop=61	maxpop=12	army=12	workers=10	gold=2335	rate=80	sci=140	prod=125	research=77	cost=83	stage=0	activ=0	wars=0	buildingsAvg=10.8
+SNAP	150	9	tech=55	era=2	cities=5	pop=52	maxpop=12	army=11	workers=5	gold=726	rate=80	sci=96	prod=123	research=77	cost=83	stage=0	activ=0	wars=0	buildingsAvg=10.0
+SNAP	150	10	tech=55	era=2	cities=5	pop=60	maxpop=12	army=12	workers=6	gold=1112	rate=80	sci=117	prod=260	research=77	cost=83	stage=0	activ=0	wars=0	buildingsAvg=9.0
+SNAP	150	11	tech=55	era=2	cities=5	pop=60	maxpop=12	army=11	workers=5	gold=2949	rate=80	sci=140	prod=133	research=77	cost=83	stage=0	activ=0	wars=0	buildingsAvg=9.0
+SNAP	150	12	tech=55	era=2	cities=4	pop=48	maxpop=12	army=13	workers=4	gold=867	rate=80	sci=90	prod=112	research=77	cost=83	stage=0	activ=0	wars=0	buildingsAvg=10.3
+SNAP	150	13	tech=55	era=2	cities=5	pop=60	maxpop=12	army=12	workers=8	gold=2116	rate=80	sci=148	prod=74	research=77	cost=83	stage=0	activ=0	wars=0	buildingsAvg=9.4
+TIME	150	last50avgMs=206
+SNAP	200	0	tech=65	era=3	cities=1	pop=6	maxpop=6	army=2	workers=1	gold=1040	rate=50	sci=10	prod=16	research=-1	cost=0	stage=0	activ=0	wars=0	buildingsAvg=0.0
+SNAP	200	1	tech=65	era=3	cities=5	pop=66	maxpop=20	army=12	workers=8	gold=2643	rate=80	sci=109	prod=435	research=16	cost=714	stage=0	activ=0	wars=0	buildingsAvg=12.6
+SNAP	200	2	tech=98	era=4	cities=5	pop=133	maxpop=30	army=12	workers=5	gold=9296	rate=80	sci=503	prod=526	research=111	cost=608	stage=0	activ=0	wars=0	buildingsAvg=15.4
+SNAP	200	3	tech=64	era=2	cities=4	pop=64	maxpop=20	army=12	workers=5	gold=2981	rate=80	sci=131	prod=331	research=15	cost=672	stage=0	activ=0	wars=0	buildingsAvg=12.5
+SNAP	200	4	tech=75	era=3	cities=6	pop=102	maxpop=20	army=13	workers=7	gold=3088	rate=80	sci=170	prod=249	research=92	cost=252	stage=0	activ=0	wars=0	buildingsAvg=12.5
+SNAP	200	5	tech=75	era=3	cities=5	pop=100	maxpop=20	army=14	workers=8	gold=4447	rate=80	sci=183	prod=377	research=92	cost=252	stage=0	activ=0	wars=0	buildingsAvg=12.0
+SNAP	200	6	tech=75	era=3	cities=5	pop=80	maxpop=20	army=12	workers=8	gold=2917	rate=80	sci=210	prod=160	research=92	cost=252	stage=0	activ=0	wars=0	buildingsAvg=12.4
+SNAP	200	7	tech=75	era=3	cities=5	pop=99	maxpop=20	army=13	workers=7	gold=5085	rate=60	sci=150	prod=121	research=92	cost=252	stage=0	activ=0	wars=0	buildingsAvg=13.0
+SNAP	200	8	tech=75	era=3	cities=6	pop=102	maxpop=20	army=12	workers=10	gold=5193	rate=80	sci=241	prod=186	research=92	cost=252	stage=0	activ=0	wars=0	buildingsAvg=13.7
+SNAP	200	9	tech=75	era=3	cities=5	pop=81	maxpop=20	army=11	workers=5	gold=1104	rate=80	sci=136	prod=206	research=92	cost=252	stage=0	activ=0	wars=0	buildingsAvg=13.0
+SNAP	200	10	tech=75	era=3	cities=5	pop=92	maxpop=20	army=12	workers=6	gold=1716	rate=80	sci=157	prod=331	research=92	cost=252	stage=0	activ=0	wars=0	buildingsAvg=12.0
+SNAP	200	11	tech=75	era=3	cities=5	pop=99	maxpop=20	army=11	workers=5	gold=4297	rate=80	sci=222	prod=197	research=92	cost=252	stage=0	activ=0	wars=0	buildingsAvg=12.0
+SNAP	200	12	tech=75	era=3	cities=4	pop=80	maxpop=20	army=13	workers=4	gold=1523	rate=80	sci=137	prod=203	research=92	cost=252	stage=0	activ=0	wars=0	buildingsAvg=13.3
+SNAP	200	13	tech=75	era=3	cities=5	pop=99	maxpop=20	army=12	workers=8	gold=3936	rate=80	sci=265	prod=120	research=92	cost=252	stage=0	activ=0	wars=0	buildingsAvg=13.2
+TIME	200	last50avgMs=243
+KS	242	2	Computing
+EVENT	243	2	stage1complete
+SNAP	250	0	tech=81	era=3	cities=1	pop=6	maxpop=6	army=2	workers=1	gold=1441	rate=50	sci=10	prod=21	research=-1	cost=0	stage=0	activ=0	wars=0	buildingsAvg=0.0
+SNAP	250	1	tech=81	era=3	cities=5	pop=88	maxpop=20	army=12	workers=8	gold=3364	rate=80	sci=145	prod=559	research=98	cost=252	stage=0	activ=0	wars=0	buildingsAvg=13.6
+SNAP	250	2	tech=122	era=4	cities=5	pop=141	maxpop=38	army=12	workers=5	gold=15100	rate=80	sci=735	prod=826	research=155	cost=966	stage=1	activ=2	wars=0	buildingsAvg=15.4
+SNAP	250	3	tech=77	era=3	cities=4	pop=65	maxpop=20	army=12	workers=5	gold=4037	rate=80	sci=112	prod=446	research=94	cost=252	stage=0	activ=0	wars=0	buildingsAvg=13.5
+SNAP	250	4	tech=91	era=3	cities=6	pop=101	maxpop=20	army=13	workers=7	gold=4325	rate=80	sci=186	prod=335	research=18	cost=1360	stage=0	activ=0	wars=0	buildingsAvg=12.7
+SNAP	250	5	tech=91	era=3	cities=5	pop=100	maxpop=20	army=14	workers=8	gold=6273	rate=80	sci=191	prod=394	research=18	cost=1360	stage=0	activ=0	wars=0	buildingsAvg=12.0
+SNAP	250	6	tech=91	era=3	cities=5	pop=80	maxpop=20	army=12	workers=8	gold=4016	rate=80	sci=231	prod=166	research=18	cost=1360	stage=0	activ=0	wars=0	buildingsAvg=12.4
+SNAP	250	7	tech=91	era=3	cities=5	pop=100	maxpop=20	army=13	workers=7	gold=7796	rate=60	sci=168	prod=137	research=18	cost=1360	stage=0	activ=0	wars=0	buildingsAvg=13.0
+SNAP	250	8	tech=91	era=3	cities=6	pop=101	maxpop=20	army=12	workers=10	gold=8706	rate=80	sci=267	prod=194	research=18	cost=1360	stage=0	activ=0	wars=0	buildingsAvg=13.8
+SNAP	250	9	tech=91	era=3	cities=5	pop=81	maxpop=20	army=11	workers=5	gold=1155	rate=80	sci=146	prod=282	research=18	cost=1360	stage=0	activ=0	wars=0	buildingsAvg=13.0
+SNAP	250	10	tech=91	era=3	cities=5	pop=88	maxpop=20	army=12	workers=6	gold=2166	rate=80	sci=178	prod=353	research=18	cost=1360	stage=0	activ=0	wars=0	buildingsAvg=12.0
+SNAP	250	11	tech=91	era=3	cities=5	pop=100	maxpop=20	army=11	workers=5	gold=6127	rate=80	sci=250	prod=204	research=18	cost=1360	stage=0	activ=0	wars=0	buildingsAvg=12.0
+SNAP	250	12	tech=91	era=3	cities=4	pop=80	maxpop=20	army=13	workers=4	gold=2228	rate=80	sci=148	prod=212	research=18	cost=1360	stage=0	activ=0	wars=0	buildingsAvg=13.3
+SNAP	250	13	tech=92	era=3	cities=5	pop=97	maxpop=20	army=12	workers=8	gold=6227	rate=80	sci=298	prod=120	research=19	cost=1440	stage=0	activ=0	wars=0	buildingsAvg=13.8
+TIME	250	last50avgMs=256
+EVENT	254	2	stage2complete
+KS	261	2	Satellites
+EVENT	266	2	stage3complete
+KS	273	2	Nuclear Fission
+EXTRA	1	warTurns=0	lastBuilding=203	lastCity=53	bestCityProdAtComputing=0	units=Warrior:12,Worker:8,Caravan:1,Boat:1,Priest:2
+EXTRA	2	warTurns=0	lastBuilding=187	lastCity=52	bestCityProdAtComputing=419	units=Warrior:8,Worker:5,Spearman:4,Boat:1,Caravan:1,Priest:2
+EXTRA	3	warTurns=0	lastBuilding=205	lastCity=38	bestCityProdAtComputing=0	units=Warrior:12,Worker:5,Caravan:1,Boat:1,Priest:2
+EXTRA	all	captures=0
+LAST	275	0	tech=91	era=3	cities=1	pop=6	maxpop=6	army=2	workers=1	gold=1666	rate=50	sci=10	prod=22	research=-1	cost=0	stage=0	activ=0	wars=0	buildingsAvg=0.0
+LAST	275	1	tech=91	era=3	cities=5	pop=88	maxpop=20	army=12	workers=8	gold=3745	rate=80	sci=151	prod=576	research=18	cost=1360	stage=0	activ=0	wars=0	buildingsAvg=13.6
+LAST	275	2	tech=133	era=4	cities=5	pop=161	maxpop=40	army=12	workers=5	gold=18856	rate=80	sci=749	prod=954	research=138	cost=966	stage=3	activ=0	wars=0	buildingsAvg=15.4
+LAST	275	3	tech=86	era=3	cities=4	pop=64	maxpop=20	army=12	workers=5	gold=4585	rate=80	sci=124	prod=442	research=103	cost=252	stage=0	activ=0	wars=0	buildingsAvg=13.5
+LAST	275	4	tech=100	era=4	cities=6	pop=147	maxpop=30	army=13	workers=7	gold=5316	rate=80	sci=309	prod=654	research=113	cost=608	stage=0	activ=0	wars=0	buildingsAvg=13.7
+LAST	275	5	tech=99	era=4	cities=5	pop=130	maxpop=26	army=14	workers=8	gold=7071	rate=80	sci=245	prod=846	research=112	cost=608	stage=0	activ=0	wars=0	buildingsAvg=13.0
+LAST	275	6	tech=100	era=4	cities=5	pop=104	maxpop=29	army=12	workers=8	gold=4448	rate=80	sci=275	prod=311	research=113	cost=608	stage=0	activ=0	wars=0	buildingsAvg=13.4
+LAST	275	7	tech=99	era=4	cities=5	pop=146	maxpop=30	army=13	workers=7	gold=9330	rate=60	sci=210	prod=315	research=112	cost=608	stage=0	activ=0	wars=0	buildingsAvg=14.0
+LAST	275	8	tech=101	era=4	cities=6	pop=147	maxpop=30	army=12	workers=10	gold=11746	rate=80	sci=387	prod=362	research=114	cost=608	stage=0	activ=0	wars=0	buildingsAvg=14.8
+LAST	275	9	tech=100	era=4	cities=5	pop=121	maxpop=30	army=11	workers=5	gold=1691	rate=80	sci=276	prod=617	research=113	cost=608	stage=0	activ=0	wars=0	buildingsAvg=14.0
+LAST	275	10	tech=99	era=4	cities=5	pop=108	maxpop=26	army=12	workers=6	gold=2306	rate=80	sci=214	prod=723	research=112	cost=608	stage=0	activ=0	wars=0	buildingsAvg=13.0
+LAST	275	11	tech=100	era=4	cities=5	pop=129	maxpop=26	army=11	workers=5	gold=7067	rate=80	sci=303	prod=428	research=113	cost=608	stage=0	activ=0	wars=0	buildingsAvg=13.0
+LAST	275	12	tech=99	era=4	cities=4	pop=116	maxpop=30	army=13	workers=4	gold=2588	rate=80	sci=187	prod=504	research=112	cost=608	stage=0	activ=0	wars=0	buildingsAvg=14.3
+LAST	275	13	tech=101	era=4	cities=5	pop=130	maxpop=30	army=12	workers=8	gold=8017	rate=80	sci=418	prod=297	research=114	cost=608	stage=0	activ=0	wars=0	buildingsAvg=14.8
+TIME	275	last50avgMs=255
+RIVAL	1	native=False	alive=True	eras=43,108,200,0,0,0	computing=0	uploading=0	trans=0	size8=32	buildStart=0,0,0	stageDone=0,0,0	resets=0	techs=91	all180=0	maxTechGap=20	lastTech=269	noResearchTurns=0	idleBuildShare=74	peakCities=5	peakArmy=12	keystone/minor per era=6/24 6/24 6/24 1/0 0/0 0/0
+RIVAL	2	native=False	alive=True	eras=32,95,149,191,0,0	computing=242	uploading=0	trans=0	size8=95	buildStart=242,253,264	stageDone=243,254,266	resets=0	techs=133	all180=0	maxTechGap=11	lastTech=275	noResearchTurns=0	idleBuildShare=57	peakCities=5	peakArmy=12	keystone/minor per era=6/24 6/24 6/24 6/24 3/10 0/0
+RIVAL	3	native=False	alive=True	eras=42,107,203,0,0,0	computing=0	uploading=0	trans=0	size8=38	buildStart=0,0,0	stageDone=0,0,0	resets=0	techs=86	all180=0	maxTechGap=23	lastTech=275	noResearchTurns=0	idleBuildShare=74	peakCities=4	peakArmy=12	keystone/minor per era=6/24 6/24 6/19 1/0 0/0 0/0
+RIVAL	4	native=True	alive=True	eras=43,100,170,261,0,0	computing=0	uploading=0	trans=0	size8=53	buildStart=0,0,0	stageDone=0,0,0	resets=0	techs=100	all180=0	maxTechGap=19	lastTech=274	noResearchTurns=0	idleBuildShare=66	peakCities=6	peakArmy=13	keystone/minor per era=6/24 6/24 6/24 5/5 0/0 0/0
+RIVAL	5	native=True	alive=True	eras=39,104,171,262,0,0	computing=0	uploading=0	trans=0	size8=103	buildStart=0,0,0	stageDone=0,0,0	resets=0	techs=99	all180=0	maxTechGap=18	lastTech=273	noResearchTurns=0	idleBuildShare=78	peakCities=5	peakArmy=14	keystone/minor per era=6/24 6/24 6/24 5/4 0/0 0/0
+RIVAL	6	native=True	alive=True	eras=29,100,170,261,0,0	computing=0	uploading=0	trans=0	size8=102	buildStart=0,0,0	stageDone=0,0,0	resets=0	techs=100	all180=0	maxTechGap=14	lastTech=275	noResearchTurns=0	idleBuildShare=72	peakCities=5	peakArmy=12	keystone/minor per era=6/24 6/24 6/24 5/5 0/0 0/0
+RIVAL	7	native=True	alive=True	eras=30,102,171,262,0,0	computing=0	uploading=0	trans=0	size8=104	buildStart=0,0,0	stageDone=0,0,0	resets=0	techs=99	all180=0	maxTechGap=12	lastTech=274	noResearchTurns=0	idleBuildShare=65	peakCities=5	peakArmy=13	keystone/minor per era=6/24 6/24 6/24 5/4 0/0 0/0
+RIVAL	8	native=True	alive=True	eras=36,101,170,259,0,0	computing=0	uploading=0	trans=0	size8=102	buildStart=0,0,0	stageDone=0,0,0	resets=0	techs=101	all180=0	maxTechGap=17	lastTech=274	noResearchTurns=0	idleBuildShare=60	peakCities=6	peakArmy=12	keystone/minor per era=6/24 6/24 6/24 5/6 0/0 0/0
+RIVAL	9	native=True	alive=True	eras=46,104,170,262,0,0	computing=0	uploading=0	trans=0	size8=50	buildStart=0,0,0	stageDone=0,0,0	resets=0	techs=100	all180=0	maxTechGap=22	lastTech=275	noResearchTurns=0	idleBuildShare=65	peakCities=5	peakArmy=11	keystone/minor per era=6/24 6/24 6/24 5/5 0/0 0/0
+RIVAL	10	native=True	alive=True	eras=40,104,171,262,0,0	computing=0	uploading=0	trans=0	size8=102	buildStart=0,0,0	stageDone=0,0,0	resets=0	techs=99	all180=0	maxTechGap=18	lastTech=274	noResearchTurns=0	idleBuildShare=78	peakCities=5	peakArmy=12	keystone/minor per era=6/24 6/24 6/24 5/4 0/0 0/0
+RIVAL	11	native=True	alive=True	eras=36,102,170,261,0,0	computing=0	uploading=0	trans=0	size8=103	buildStart=0,0,0	stageDone=0,0,0	resets=0	techs=100	all180=0	maxTechGap=16	lastTech=275	noResearchTurns=0	idleBuildShare=70	peakCities=5	peakArmy=11	keystone/minor per era=6/24 6/24 6/24 5/5 0/0 0/0
+RIVAL	12	native=True	alive=True	eras=34,103,171,262,0,0	computing=0	uploading=0	trans=0	size8=43	buildStart=0,0,0	stageDone=0,0,0	resets=0	techs=99	all180=0	maxTechGap=15	lastTech=274	noResearchTurns=0	idleBuildShare=69	peakCities=4	peakArmy=13	keystone/minor per era=6/24 6/24 6/24 5/4 0/0 0/0
+RIVAL	13	native=True	alive=True	eras=42,102,170,259,0,0	computing=0	uploading=0	trans=0	size8=103	buildStart=0,0,0	stageDone=0,0,0	resets=0	techs=101	all180=0	maxTechGap=20	lastTech=274	noResearchTurns=0	idleBuildShare=49	peakCities=5	peakArmy=12	keystone/minor per era=6/24 6/24 6/24 5/6 0/0 0/0
+END	turn=275	result=Sunspire Emirate has achieved Transcendence. Defeat.	crash=	avgMs=191	last50Ms=255	maxMs=778	valid=True

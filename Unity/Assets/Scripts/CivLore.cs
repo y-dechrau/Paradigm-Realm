@@ -224,7 +224,7 @@ public static class CivLore {
    Weakness="Hollow Bones",WeaknessText="All units -1 defence.",Agenda=1};
   entries[31]=new CivEntry{Epithet="The Machines That Remained",
    Background="Self-repairing machines of brass and iron that walk the ash plains of a world their makers destroyed. They think as one network, build without rest and feel nothing that could be called faith.",
-   History="The makers of the Iron Mind built it to run their cities, then burned their world in a war the machines could not stop. When the fires died, the machines kept working: rebuilding, mining, counting. Over the centuries their network woke into a single cold intelligence. Prime Unit Aurex respects only efficiency and strength, and has begun to wonder what lies beyond the gateways.",
+   History="The makers of the Iron Mind built it to run their cities, then burned their world in a war the machines could not stop. When the fires died, the machines kept working: rebuilding, mining, counting. Over the centuries their network woke into a single cold intelligence. Prime Unit Aurex respects only efficiency and strength, and has begun to wonder what lies beyond the sealed gateways.",
    Strengths="Tireless production; armoured automatons; great assembly forges.",Weaknesses="No faith at all.",
    Ability="Tireless",AbilityText="+2 production in every city.",
    Unit="Automaton",UnitBase=6,UnitAttack=1,UnitDefence=1,UnitText="Replaces the Rifleman: +1 attack, +1 defence.",
@@ -240,7 +240,7 @@ public static class CivLore {
    Weakness="Grudge-Bearers",WeaknessText="While at war with anyone, every city -1 content citizen.",Agenda=3};
   entries[33]=new CivEntry{Epithet="Rulers of the Burning Depths",
    Background="Horned demons of fire and shadow who rule the Infernal Depths from citadels of black glass above rivers of lava. They feed on fear and worship their own Archfiend.",
-   History="The Abyssal Throne has stood since the Depths first burned. Its demon princes fight endlessly for the Archfiend's favour, and only the threat of the orc hordes ever unites them. Malgoroth seized the throne by devouring his rivals and now looks hungrily at the gateways: a whole new world of mortals to rule. Every other people distrusts the demons, and with reason.",
+   History="The Abyssal Throne claims to have stood since the Depths first burned. Its demon princes fight endlessly for the Archfiend's favour, and only the threat of the orc hordes ever unites them. Malgoroth seized the throne by devouring his rivals and now looks hungrily at the sealed gateways: break them, and a whole new world of mortals to rule. Every other people distrusts the demons, and with reason.",
    Strengths="Ferocious warriors; infernal knights; blood altars that burn with faith.",Weaknesses="Hated by every other people.",
    Ability="Hellborn",AbilityText="All units +1 attack.",
    Unit="Infernal Knight",UnitBase=5,UnitAttack=2,UnitText="Replaces the Knight: +2 attack.",

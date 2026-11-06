@@ -2,7 +2,9 @@ namespace ParadigmRealm {
 // The eight new peoples of the Drowned Deep (world 5). See SealedPeoples.cs for the rule class and the Add signature.
 public static partial class SealedPeoples {
  static void AddDrownedDeep(){
-  WorldHistories[adding]="Once this world had shores that ran for weeks. The old tales agree on little else. In the Rising the deep burst upward and the rain did not stop, and when it ended only the tops of things stood clear. The Scaled Dominion says its temples watched it all, and its calendars do count back further than anyone can check. The Tidebound Courts gathered the reef-clans below the waves. Survivors above them became the Dike-Wardens of Lannoch, who lost their land a second time, and the Seven Mantles, who say cloaked teachers came out of the sea to instruct them. The Tholekin took up the sunken pillars they believe hold the islands above water. The Flensers of Ummoth settled on the ribs of a dead sea-giant, the Galecourt on the highest crags, and the Nine Nets on the beaches where the drowned wash in. Later a long vessel fell burning from the sky: the Manifest descend from its crew, and the Accretion may be what leaked from its hold. Ancient gateways stand sealed on a few islands, their arches dry at every tide. The Dominion says the first gods shut them on leaving. The Manifest call them airlocks closed by a lost Bridge. The Nets claim them as salvage. Nobody here knows who sealed them, and few are eager to learn why.";
+  WorldHistories[adding]="Once this world had shores that ran for weeks. The old tales agree on little else. In the Rising the deep burst upward and the rain did not stop, and when it ended only the tops of things stood clear. The Scaled Dominion says its sleeping temples outlasted it all, and its calendars do count back further than anyone can check. The Tidebound Courts gathered the reef-clans below the waves. Survivors above them became the Dike-Wardens of Lannoch, who lost their land a second time, and the Seven Mantles, who say cloaked teachers came out of the sea to instruct them. The Tholekin took up the sunken pillars they believe hold the islands above water. The Flensers of Ummoth settled on the ribs of a dead sea-giant, the Galecourt on the highest crags, and the Nine Nets on the beaches where the drowned wash in. Later a long vessel fell burning from the sky: the Manifest descend from its crew, and the Accretion may be what leaked from its hold. Ancient gateways stand sealed on a few islands, their arches dry at every tide. The Dominion says the first gods shut them on leaving. The Manifest call them airlocks closed by a lost Bridge. The Nets claim them as salvage. Nobody here knows who sealed them, and few are eager to learn why.";
+
+  // Inspired by the spirits sworn to uphold a pillar until the world's end, Testament of Solomon.
 
   Add("Tholekin","Uzzabar the Unbowed","First Shoulder of the Colonnade","Speak low, stranger, for the Tholekin are carrying your island as well as ours, and we have not yet asked you to thank us.",13,3,7,4,6,
    new[]{"Lastcolumn","Bearhold","Shoulderstone","Long Shift","Undermoor","Plinth Haven","Kneeling Isle","Capstone","Thole","Greatlintel","Weightwater","Standing Hall"},
@@ -15,16 +17,20 @@ public static partial class SealedPeoples {
    "Hall of the Load",30,new PeopleRule{Production=2,Content=1},
    "Eyes on the Load",new PeopleRule{Sight=-1});
 
+  // Inspired by Leviathan's hide and flesh in Jewish apocalyptic and rabbinic tradition; the image only, renamed.
+
   Add("Flensers of Ummoth","Garrask Long-Knife","Master of the Last Carcass","You smell of small fish, stranger, so tell the Flensers plainly what you will pay for the right to sail past our ribs.",5,1,9,0,7,
    new[]{"Ribhaven","Ummoth's Rest","Saltpit","Hidetown","Great Jaw","Spinewater","Tallow Bay","Marrowgate","Sternum","Harpoon Rock","Longrib","Brinevat"},
    "Tent-Dwellers on the Great Ribs",
-   "A hard, heavy-jawed people whose chief island is the skeleton of a sea-giant, grown over with jungle and coral. They live in tents of her hide and eat her salted flesh from pits older than their records. The diet has changed their faces and shortened their patience, and they now hunt what remains of her kind.",
+   "A hard, broad-shouldered people whose chief island is the skeleton of a sea-giant, grown over with jungle and coral. They live in tents of her hide and eat her salted flesh from pits older than their records. The salt has thickened their blood and shortened their patience, and they now hunt what remains of her kind.",
    "When the sea-giant Ummoth died and drifted aground, her ribs stood taller than any hill left in the world, and shipwrecked families crawled ashore among them. Soil gathered, jungle took root, and the carcass became land worth holding. The founders cut tents from her hide and claimed that the old tales promised her flesh to whoever outlasted the waters. Their golden age was the Great Salting, when hide sails and barrels of preserved meat fed half the islands and bought the Flensers everyone's fear. Then the pits began to run out. The Tidebound Courts, whose champions ride lesser beasts of the same line, refused to give them up, and the War of Calves left both sides with burned fleets and a lasting hatred. Master Garrask now sends harpoon crews after any beast big enough to become a new island. If the Courts object, he says, coral cuts easier than rib.",
    "Fierce raiders; rich flensing yards; fearless crews.","The meat that built them is running out.",
    "Eaters of the Giant",new PeopleRule{Attack=1},
    "Hide-Shield Harpooner",4,1,1,0,
    "Flensing Yard",32,new PeopleRule{Food=1,Production=1,Gold=1},
    "The Last of the Meat",new PeopleRule{Food=-1});
+
+  // Inspired by the Mesopotamian apkallu and Berossus's Oannes, joined by invention to the threshold custom of 1 Samuel 5, which does not call Dagon a fish god.
 
   Add("Seven Mantles","Ushenna the Reader","Seventh Mantle and Reader of Salt","Step over the doorsill, friend, as the Seven Mantles do, and then tell us what you have learned lately.",8,5,6,3,1,
    new[]{"First Shallows","Sillstep","Cloakwater","Hundred Schools","Mangrove Hall","Scalehouse","Lectern Isle","Seedmeasure","Tidescript","Saltreading","Seventh Wade","Copyists' Rest"},
@@ -36,6 +42,8 @@ public static partial class SealedPeoples {
    "Tide Reader",3,0,1,2,
    "Mantle School",8,new PeopleRule{Science=2,Faith=1},
    "Soft Hands",new PeopleRule{Attack=-1});
+
+  // Inspired by the Breton legend of Ys, without its slanders of the king's daughter.
 
   Add("Dike-Wardens of Lannoch","Aldroen Haskeval","Warden of the Empty Key-Hook","You are welcome behind our dike, traveller, but please close the gate yourself, and look to see that it has closed.",10,6,2,8,3,
    new[]{"New Lannoch","Polder End","Keyhouse","Low Bell","Claybank","Sluicewatch","Greenwall","Ebbmeadow","Nightgate","Second Dike","Anwenna's Reach","Quiet Tide"},
@@ -49,11 +57,11 @@ public static partial class SealedPeoples {
    "Bells at Low Tide",new PeopleRule{Content=-1});
 
   Add("The Manifest","Ilu Vantry","Acting Captain, Ninth of That Rank","Please state your name, berth and duty for the morning roll, and the Manifest will be glad to welcome you aboard.",2,4,5,7,5,
-   new[]{"Main Deck","Aft Compartment","Berth Nine","Roll Call","Lower Galley","Bulkhead","Port Stores","Hatch Forty","Muster Green","Starboard Hill","Keelside","Second Watch"},
+   new[]{"Main Deck","Aft Compartment","Berth Nine","Roll Call","Lower Galley","Keel Bulkhead","Port Stores","Hatch Forty","Muster Green","Starboard Hill","Keelside","Second Watch"},
    "Crew of the Island That Sailed",
-   "Cheerful, punctual islanders who live on a long iron-ribbed hill under jungle and reef, and call it the Ship. They hold a roll call each dawn, keep ration books, and speak of hills as decks and rain as a leak. Few of them believe the Ship ever moved, and none can open the manuals they guard.",
-   "Long after the Rising a vessel came down burning from the sky and broke on a reef. Its crew had travelled for so many generations that they had no notion of an ocean, so they stayed aboard and waited for orders. Coral closed around the hull and jungle covered it, until the vessel was an island with a town in every compartment. The golden age was the Great Muster, when each family held a berth, nobody went hungry and ten thousand names answered at dawn. The crisis was the day a hold marked Do Not Open was found breached and empty, and soon afterward new reef began to rise all around. Whatever the Accretion is, the oldest entries suggest it was cargo, meant to build land for settlers. Acting Captain Vantry, wearing the old pressure helm of her office, has sent ships to every people of the Deep with gifts and a polite request for news of the Bridge. She wants a peaceful world and her cargo accounted for.",
-   "Orderly, contented towns; steady output; polite envoys.","They guard the manuals but cannot read them.",
+   "Cheerful, punctual shipfolk who live on a long iron-ribbed hill under jungle and reef, and call it the Ship. They hold a roll call each dawn, keep ration books, and speak of hills as decks and rain as a leak. Few of them believe the Ship ever moved, and none can open the manuals they guard.",
+   "Long after the Rising a vessel came down burning from the sky and broke on a reef. Its crew had travelled for so many generations that they had no notion of an ocean, so they stayed aboard and waited for orders. Coral closed around the hull and jungle covered it, until the vessel was an island with a town in every compartment. The golden age was the Great Muster, when each family held a berth, nobody went hungry and ten thousand names answered at dawn. The crisis was the day a hold marked Do Not Open was found breached and empty, and soon afterward new reef began to rise all around. Whatever the Accretion is, the oldest entries suggest it was ship's stores, meant to build land for settlers. Acting Captain Vantry, wearing the old pressure helm of her office, has sent ships to every people of the Deep with gifts and a polite request for news of the Bridge. She wants a peaceful world and her missing hold accounted for.",
+   "Orderly, contented towns; steady output; polite envoys.","They guard the manuals but have lost the codes that open them.",
    "Ship's Discipline",new PeopleRule{Content=1,Production=1},
    "Deck Marshal",6,1,1,0,
    "Ship's Stores",7,new PeopleRule{Food=2,Content=1},
@@ -79,7 +87,9 @@ public static partial class SealedPeoples {
    "Reading the Glass",new PeopleRule{Sight=1,Gold=1},
    "Gale Runner",3,1,0,2,
    "Storm Loft",31,new PeopleRule{Gold=2,Science=1},
-   "Hollow Bones",new PeopleRule{Defence=-1});
+   "Built for the Gale",new PeopleRule{Defence=-1});
+
+  // Inspired by Ran's net and Naglfar's nails in Norse tradition.
 
   Add("Nine Nets","Sunnesk Tallyhand","Eldest Sister of the Reckoning","The Nine Nets wish you a safe crossing, stranger, and have already entered your name in case you do not make one.",11,0,1,3,2,
    new[]{"Windward Tally","Dryinggrounds","Ledger Beach","Wrackline","Ninth Mesh","Clenchnail","Debtors' Shingle","Flotsam Court","Lost Cargo","Corkfloat","Salvage Hall","Last Entry"},

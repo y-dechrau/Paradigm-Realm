@@ -4,6 +4,8 @@ public static partial class SealedPeoples {
  static void AddFaeWilds(){
   WorldHistories[adding]="The Fae Wilds began as mist over silver water. The Sylvan Elves say they woke first, under the first stars; the Standing Kin, who were already there, have not yet finished disagreeing. Storm-eagles taught the first flocks of the Aerie to speak, and the Orchard Without a Door stood shut at the centre of everything, its seep turning every lake to balm, which is why wounds close here faster than anywhere. Then lights fell from the sky. The Unsleeping came down to teach, and their huge children, the Hungering, ate the land bare. The Lingering Folk fled into the hills and the Underglass through the lakes; elves and Aerie, at war over the canopy, made peace on the last star to fall. Afterwards came the quieter powers: the Tallied Court, who count every gift left at the stone circles; the Grove Survey, whose ship sank in a lake under three days of dark cloud; and the Lumen Accord, the thought in the glowing roots. The gateway arches stand in the deep woods, older than any of them will admit, and nothing passes. Nobody knows who sealed them. The elves call it a wall against the marsh rot. The Balmwalkers say the hand that shut the Orchard shut these too. The Court calls it a debt in default. The Survey logs it as an anomaly. The Kin were asked, and are still answering.";
 
+  // Inspired by the guarded garden of Genesis 3:24: the image only, no figure or name from it.
+
   Add("The Balmwalkers","Tessaly Oun","Walker of the Long Petition","You look tired, friend; sit, let us see to that wound, and then tell us if you have news of the wall.",10,0,3,2,5,
    new[]{"Firstmile","Wallshade","Seepwater","Longwalk","Mercy Ford","Thornwell","Alder Hospice","Vialstead","Kneeling Green","Lastmile","Ennet's Rest","Salvebrook"},
    "Pilgrims of the Closed Orchard",
@@ -14,6 +16,8 @@ public static partial class SealedPeoples {
    "Staffbearer",7,0,2,0,
    "Hospice of the Seep",33,new PeopleRule{Food=1,Content=1},
    "The Vow of the Road",new PeopleRule{Attack=-1});
+
+  // Inspired by the Watchers of 1 Enoch 6-8, renamed; 1 Enoch is scripture to some living churches.
 
   Add("The Unsleeping","Serevane the Unlidded","Speaker of the Bound Star","We taught your kind fire and the edge of a blade; I have not closed my eyes in nine ages, so choose your next words with care.",14,1,6,9,7,
    new[]{"Ornath's Fall","Lidless Hall","Vigil Height","Ember Scarp","Brightforge","Petition Stair","Starcutter","Tallmere","Skyward Rest","Unlit Gate","Wakehold","The Long Watch"},
@@ -26,6 +30,8 @@ public static partial class SealedPeoples {
    "House of Petition",30,new PeopleRule{Production=1,Science=1},
    "The Long Refusal",new PeopleRule{Content=-1});
 
+  // Inspired by Scottish seely folk, who repay kindness and avenge insult.
+
   Add("The Tallied Court","Ambril Quince","Keeper of the Exact Ledger","You have walked on our grass, and that is entered; you have also bowed, and that is entered too, so let us see where we stand.",12,2,5,9,6,
    new[]{"Ninering","Evencount","Duskmark","The Fair Copy","Hazel Tithe","Quittance","Ring of Thanks","Redress","Moonreckon","Candle Audit","Lastfavour","Pledgestone"},
    "Keepers of Every Kindness",
@@ -36,6 +42,8 @@ public static partial class SealedPeoples {
    "Hare-Rider of the Tally",3,1,0,2,
    "Ledger Circle",34,new PeopleRule{Gold=2,Content=1},
    "Bound by the Letter",new PeopleRule{Production=-1});
+
+  // Inspired by the Tir na nOg time slip, as in the Oisin lay of about 1750, attributed to Coimin.
 
   Add("The Lingering Folk","Dorn Ellowmere","Lord of the Unended Noon","Is the winter over yet? No matter; come in, the harps are tuned, and I shall need your report on the giants.",3,3,7,4,2,
    new[]{"Evenmound","Harpswell","Gold Barrow","Longnoon","Turfgate","Stillhollow","Underhay","Dimhallow","Barrowsong","Honeyhollow","Latebell","Greenbarrow"},
@@ -69,6 +77,8 @@ public static partial class SealedPeoples {
    "Sporecaster",4,1,1,0,
    "Sleeping Hall",7,new PeopleRule{Food=2,Science=1},
    "One Pain for All",new PeopleRule{Defence=-1});
+
+  // Inspired by the Lady of the Lake's realm behind an illusory lake (Vulgate cycle).
 
   Add("The Underglass","Verrine of the Still Side","Sovereign of the Reverse Shore","You dropped something in our ceiling, some years ago; I am sure we can agree on a fair price for its return.",8,6,0,1,0,
    new[]{"Reverse Shore","Stillside","Lostmarket","Silverskin","Ripple Quay","Anchorfall","Fosterhall","Mirror Reach","Ring Exchange","Underbank","Crooked Tide","Thrownsword"},
