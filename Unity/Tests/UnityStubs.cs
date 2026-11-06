@@ -35,7 +35,7 @@ public static class GUILayout{public static void BeginVertical(params GUILayoutO
 public class ExitGUIException:Exception{}
 public static class GUIUtility{public static int hotControl;public static void ScaleAroundPivot(Vector2 s,Vector2 p){}public static void ExitGUI(){throw new ExitGUIException();}}
 public enum EventType{KeyDown,MouseDown,MouseUp,MouseDrag,ScrollWheel,Used,Repaint,Layout}
-public enum KeyCode{W,S,A,D,F1,Tab,Return,B,LeftArrow,RightArrow,UpArrow,DownArrow,X,Escape,Space,KeypadEnter,V,R,LeftControl,RightControl}
+public enum KeyCode{G,W,S,A,D,F1,Tab,Return,B,LeftArrow,RightArrow,UpArrow,DownArrow,X,Escape,Space,KeypadEnter,V,R,LeftControl,RightControl}
 public class Event{public bool isMouse=>type==EventType.MouseDown||type==EventType.MouseUp;public static Event KeyboardEvent(string s)=>new Event();public static Event current=new Event();public EventType type;public KeyCode keyCode;public Vector2 mousePosition,delta;public int button,clickCount;public bool control,alt,command,shift;public void Use(){type=EventType.Used;}}
 public static class Application{public static string persistentDataPath=System.IO.Path.Combine(System.IO.Path.GetTempPath(),"paradigm-realm-harness-saves");public static int targetFrameRate;public static void Quit(){}}
 public static class Screen{public static int width=1280,height=800;}
