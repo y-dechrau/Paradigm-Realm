@@ -33,7 +33,7 @@ public partial class World {
  public const int LastWildEra=2,WildMultiple=3,HuntersFrom=8;
  public bool EarlyWilds(){foreach(var o in Enumerable.Range(0,civCount))if(!IsNativeNation(o)&&Era(o)>LastWildEra)return false;return true;}
  [NonSerialized] int openLandCount=-1;
- public int AnimalLimit(){if(!wildlife)return 0;if(openLandCount<0)openLandCount=tiles.Count(t=>t.realm==0&&!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&t.gateLink==0);return Math.Max(2,openLandCount/40*DifficultyTable.Animals[Level]/100)*(EarlyWilds()?WildMultiple:1);}
+ public int AnimalLimit(){if(!wildlife)return 0;if(openLandCount<0)openLandCount=tiles.Count(t=>t.realm==0&&!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&t.gateLink==0);return Math.Max(2,openLandCount/40*DifficultyTable.Animals[Level]/100*animalShare/100)*(EarlyWilds()?WildMultiple:1);}
  void SpawnAnimals(Random r){
   if(keepAnimalsFromSpawning)return;bool early=EarlyWilds();if(!early&&turn<8)return;int limit=AnimalLimit();
   for(int n=early?Math.Max(3,limit/30):Math.Max(1,limit/100);n>0;n--)if(animals.Count<limit&&(early||r.Next(3)==0))SpawnAnimal(r);

@@ -38,7 +38,7 @@ public partial class RealmGame {
   GUILayout.Label("Finances",heading);
   GUILayout.Label("Treasury "+world.gold+" gold   •   Net "+(b.Net>=0?"+":"")+b.Net+" a turn"+(b.Net<0?"   •   empty in "+Math.Max(1,world.gold/Math.Max(1,-b.Net))+" turns":""),body);
   CivicsMoney("City trade and commerce",b.cityGold);CivicsMoney("Buildings and connected cities",b.cityBonus);CivicsMoney("Ports",b.ports);CivicsMoney("Trade routes",b.routes);CivicsMoney("Treaties",b.treaties);CivicsMoney("Villages and tithes",b.tribute);
-  CivicsMoney("City upkeep",-b.cityUpkeep);CivicsMoney("Building upkeep",-b.buildingUpkeep);CivicsMoney("Army support",-b.army);CivicsMoney("Civilian support",-b.civilians);CivicsMoney("Road upkeep ("+world.RoadTiles(0)+" tiles)",-b.roads);CivicsMoney("Luxuries",-b.luxury);CivicsMoney("Treaty payments",-b.treatyCost);
+  CivicsMoney("City upkeep",-b.cityUpkeep);CivicsMoney("Building upkeep",-b.buildingUpkeep);CivicsMoney("Army support",-b.army);CivicsMoney("Civilian support",-b.civilians);CivicsMoney("Road upkeep ("+world.RoadTiles(0)+" tiles)",-b.roads);CivicsMoney("Cost of a large empire",-b.expansion);CivicsMoney("Cities not joined to the others",-b.cutOff);CivicsMoney("Luxuries",-b.luxury);CivicsMoney("Treaty payments",-b.treatyCost);
   GUILayout.Space(8);GUILayout.Label("Economy",heading);
   GUILayout.Label("Priorities: Science "+n.scienceRate+"%   Military "+n.militaryRate+"%   Finance "+world.FinanceRate(0)+"%",body);
   int links=own.Sum(world.LinkTrade);GUILayout.Label("Cities joined by road, river or sea add "+links+" Trade   •   Trade per citizen: "+(own.Sum(c=>c.pop)==0?"0":(me.gnp/(float)own.Sum(c=>c.pop)).ToString("0.0")),body);

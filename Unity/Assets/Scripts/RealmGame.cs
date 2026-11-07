@@ -75,7 +75,7 @@ namespace ParadigmRealm
 
         void StartGame()
         {
-            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; bool custom=setupCiv>=CivilisationCatalog.Count;world=World.New(chosenSeed,custom?proposedName:CivilisationCatalog.Names[setupCiv],setupMap,setupSpeed,1,0,setupSize,setupShape,setupCivs,custom?-1:setupCiv,customLeader,customPortrait,customTraitA,customTraitB,civGroupReal,hex:true,peoplesPerWorld:setupPeoples,level:setupLevel,wild:true,rations:true);setupPage=0;ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
+            int parsed; int chosenSeed=int.TryParse(seedText,out parsed)?parsed:Environment.TickCount&int.MaxValue; bool custom=setupCiv>=CivilisationCatalog.Count;world=World.New(chosenSeed,custom?proposedName:CivilisationCatalog.Names[setupCiv],setupMap,setupSpeed,1,0,setupSize,setupShape,setupCivs,custom?-1:setupCiv,customLeader,customPortrait,customTraitA,customTraitB,civGroupReal,hex:true,peoplesPerWorld:setupPeoples,level:setupLevel,wild:setupAnimals>0,rations:true,animalShare:World.AnimalShares[setupAnimals],climate:setupClimate);setupPage=0;ResetDiplomacyUI();renameText=world.civilisationName;nameSetup=false;
             selected=world.units.First(u=>u.owner==0).id;cityId=-1;
             sideScroll=Vector2.zero;researchScreen=false;detailsScreen="";cityScreen=false;pauseMenu=false;activeSavePath=null;Center();hasSession=true;mainMenu=false;
             // With the tutorial on, its guide replaces the opening help page.
@@ -150,14 +150,14 @@ namespace ParadigmRealm
         bool CustomValid(){return setupCiv<CivilisationCatalog.Count||(!string.IsNullOrWhiteSpace(proposedName)&&customTraitA!=customTraitB);}
         void DrawNameSetup()
         {
-            GUI.Box(setupPage==0?new Rect(56,60,1168,680):new Rect(160,60,960,680),"");
+            GUI.Box(new Rect(56,60,1168,680),"");
             if(setupPage==0){DrawCivilisationChoice();return;}
-            GUI.Label(new Rect(190,74,900,44),"New game — the world",title);
-            GUI.Box(new Rect(185,125,430,500),"");GUI.Box(new Rect(665,125,430,500),"");
+            GUI.Label(new Rect(76,70,900,44),"New game — the world",title);
+            GUI.Box(new Rect(76,120,366,510),"");GUI.Box(new Rect(457,120,366,510),"");GUI.Box(new Rect(838,120,366,510),"");
             DrawSetupOptions();
-            GUI.Label(new Rect(185,636,910,40),SetupSummary(),body);
-            if(GUI.Button(new Rect(185,680,450,46),"Begin civilisation",button)){StartGame();GUIUtility.ExitGUI();}
-            if(GUI.Button(new Rect(645,680,450,46),"Back: civilisation",button)){setupPage=0;GUIUtility.ExitGUI();}
+            GUI.Label(new Rect(76,636,1128,40),SetupSummary(),body);
+            if(GUI.Button(new Rect(76,680,556,46),"Begin civilisation",button)){StartGame();GUIUtility.ExitGUI();}
+            if(GUI.Button(new Rect(648,680,556,46),"Back: civilisation",button)){setupPage=0;GUIUtility.ExitGUI();}
         }
         void DrawCivilisationChoice()
         {

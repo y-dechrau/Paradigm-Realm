@@ -31,7 +31,7 @@ namespace ParadigmRealm {
    // Home rivals likewise, once the early rush of building is over: one turn in three.
    if(u.owner!=0&&turn>80&&(turn+u.id)%3!=0)return;
    // What the whole empire works and needs is the same for each of its workers this turn, so it is found once.
-   if(u.owner==0||aiWorkOwner!=u.owner||aiWorkTurn!=turn){aiWorkOwner=u.owner;aiWorkTurn=turn;var empire=cities.Where(c=>c.owner==u.owner).ToList();aiWorked=new HashSet<Tile>(empire.SelectMany(Worked));aiHunger=empire.Any(c=>Yield(c)[0]<=0);aiPortRoads=PortRoadNeeds(u.owner);aiRoadOk=Budget(u.owner)[2]>=3&&RoadTiles(u.owner)<empire.Count*RoadsPerCity;aiOwnTiles=TilesOwnedBy(u.owner).Where(t=>nations[u.owner].known[t.y*Width+t.x]&&!Barren(t.terrain)).ToList();}
+   if(u.owner==0||aiWorkOwner!=u.owner||aiWorkTurn!=turn){aiWorkOwner=u.owner;aiWorkTurn=turn;var empire=cities.Where(c=>c.owner==u.owner).ToList();aiWorked=new HashSet<Tile>(empire.SelectMany(Worked));aiHunger=empire.Any(c=>Yield(c)[0]<=0);aiPortRoads=PortRoadNeeds(u.owner);aiRoadOk=Budget(u.owner)[2]>=(modernRules&&empire.Any(CutOff)?0:3)&&RoadTiles(u.owner)<empire.Count*RoadsPerCity;aiOwnTiles=TilesOwnedBy(u.owner).Where(t=>nations[u.owner].known[t.y*Width+t.x]&&!Barren(t.terrain)).ToList();}
    var worked=aiWorked;
    // Tiles another of this people's workers has taken, and whether any enemy is in play at all, are worked out once.
    var taken=new HashSet<int>();foreach(var a in units)if(a.owner==u.owner&&a.type==1&&a.id!=u.id){if(a.job>0)taken.Add(a.y*Width+a.x);if(a.hasOrder)taken.Add(a.destinationY*Width+a.destinationX);}

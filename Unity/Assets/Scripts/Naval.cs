@@ -43,11 +43,11 @@ namespace ParadigmRealm
         // ---------- ports ----------
         public Tile PortSite(City c)
         {
-            if(NextToSea(c.x,c.y))return At(c.x,c.y);
+            if(NextToBigWater(c.x,c.y))return At(c.x,c.y);
             Tile best=null;int bestDistance=99;
             for(int dy=-3;dy<=3;dy++)for(int dx=-3;dx<=3;dx++)
             {
-                var t=StepIn(c.x,c.y,dx,dy,3);if(t==null||t.owner!=c.owner||IsWater(t.terrain)||Barren(t.terrain)||!NextToSea(t.x,t.y))continue;
+                var t=StepIn(c.x,c.y,dx,dy,3);if(t==null||t.owner!=c.owner||IsWater(t.terrain)||Barren(t.terrain)||!NextToBigWater(t.x,t.y))continue;
                 if(cities.Any(o=>o.x==t.x&&o.y==t.y))continue;int d=Distance(c.x,c.y,t.x,t.y);if(d<bestDistance){bestDistance=d;best=t;}
             }
             return best;
@@ -91,7 +91,7 @@ namespace ParadigmRealm
         public int PortIncome(City c){return c.portLinked?2:0;}
         public string NavalReason(City c,int u)
         {
-            if(u==BoatUnit)return NextToSea(c.x,c.y)?"":"Requires a city beside the sea or a lake";
+            if(u==BoatUnit)return NextToBigWater(c.x,c.y)?"":"Requires a city beside a body of water of at least "+BigWater+" tiles";
             if(!HasBuilding(c,PortBuilding))return "Requires a Port";
             if(!c.portLinked)return "Port cut off: rebuild the road or drive the enemy off it";
             return LaunchTile(c,u)==null?"No free water beside the port":"";

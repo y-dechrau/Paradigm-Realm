@@ -2,6 +2,19 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 7 Nov: streamlined technology, expansion, water and climate (save version 32)
+
+Checked by Unity `RealmTools.Checks` and `GraphicsChecks`, a Windows build, `-autoShot`, `-inputProbe` and `-frameProbe`. Not hand-played; balance is unproven.
+
+- Technology: 36 technologies, six in each of six ages, instead of 180. Each now has one lasting effect drawn from the small technologies it replaces. An age stays locked until a known technology leads into it. Older saves keep any small technologies already learned.
+- Research time: the pace table is raised and each technology takes at least 10 turns. On a Small map the best rival learns about one technology per 29 turns, reaching new ages around turns 110 and 300 and 14 of 36 by turn 400. The earliest Transcendence was not measured and is probably past turn 800.
+- Expansion: no cost up to 4 cities, then rising (6 cities 1 gold, 10 cities 7, 16 cities 26). A city not joined to another by road, river or sea costs 2 gold and has one citizen fewer content.
+- Water: a port, boats and ships need a body of water of at least 50 tiles beside the city or a port site in its borders.
+- Lists: buildings and units a place can never make are hidden, and a unit leaves the training list when its replacement can really be trained (technology known, resource connected). Upgrades show only once the technology is known.
+- Workers: an animal within 3 tiles makes a worker with no soldier beside it run to the nearest city; with none within 5 it walks back and resumes.
+- New Game: three columns, with Climate (Varied, Temperate, Frozen, Tropical, Arid) and Wild animals (None to Teeming). Climate applies to the home world only.
+- Rivals average a small gold deficit on crowded Small maps under the new costs.
+
 ## Owner requests 6 Nov, fourth batch: freeze fix, armies, roads and gateways (save version 31)
 
 Checked by Unity `RealmTools.Checks` and `GraphicsChecks`, a Windows build, `-inputProbe` and `-routeProbe` on a copy of the owner's save. Not hand-played; balance is unproven.

@@ -42,6 +42,61 @@ public partial class World {
   if(u==null||!(u.hasOrder||u.roadOrder))return new List<Tile>();int x=u.roadOrder?u.roadX:u.destinationX,y=u.roadOrder?u.roadY:u.destinationY;
   var path=Route(u,x,y);return path.Count>0?path:Route(u,x,y,true);
  }
+ // ---------- owner requests, 7 Nov 2026 ----------
+ // modernRules (save version 32): the shorter technology tree's bonuses, expansion costs and penalties for cities cut off from the rest.
+ public bool modernRules;public int animalShare=100,climate;
+ public static readonly string[] ClimateNames={"Varied","Temperate","Frozen","Tropical","Arid"};
+ public static readonly string[] ClimateTexts={"From polar ice to equatorial jungle, like the Earth.","Mild forests and grassland from pole to pole, with few extremes.","An ice age: tundra and pine forest across most of the world.","Hot and wet: jungle and savanna, with little cold land.","Dry steppe and desert, with fertile land only near water."};
+ public static readonly string[] AnimalChoices={"None","Scarce","Some","Common","Teeming"};
+ public static readonly int[] AnimalShares={0,25,50,100,200};
+ // Climate moves the temperature and moisture a sphere is generated with; see BuildClimateWorld.
+ public void ClimateShift(ref double temp,ref double wet){switch(climate){case 1:temp=.5+(temp-.5)*.45;wet=.5+(wet-.5)*.8;break;case 2:temp-=.36;break;case 3:temp=temp*.55+.5;wet+=.18;break;case 4:temp+=.08;wet-=.38;break;}}
+ void RemapFlatClimate(){int[][] swaps={null,new[]{3,0,8,0,13,1,11,1,19,1,16,0},new[]{0,8,1,13,3,8,16,8,11,13,19,13,20,8},new[]{0,16,1,11,8,16,13,11,20,16},new[]{0,20,1,16,11,16,19,3,16,3}};var map=swaps[climate];foreach(var t in tiles){if(t.realm!=0)continue;for(int k=0;k<map.Length;k+=2)if(t.terrain==map[k]){t.terrain=map[k+1];break;}}}
+ void RetireMinorResearch(){foreach(var n in nations){if(n==null||n.research<TechnologyCatalog.KeystoneCount)continue;int o=Array.IndexOf(nations,n);n.research=AvailableTech(o).DefaultIfEmpty(-1).First();}research=nations[0].research;science=research<0?0:nations[0].progress[research];}
+ // Growing too fast costs money: nothing up to four cities, then more with each one. A city not joined to any other by road, river or
+ // sea costs more again and has one citizen fewer content, so it pays to connect what you settle (owner request).
+ public const int FreeCities=4,CutOffGold=2;
+ public static int ExpansionCost(int cityCount){return cityCount>FreeCities?(cityCount-FreeCities)*(cityCount-FreeCities+1)/6:0;}
+ public bool CutOff(City c){LinkTrade(c);int n;return linkCount.TryGetValue(c.id,out n)&&n==0;}
+ // Ports and ships need a body of water of at least this many tiles beside the city or its port (owner request).
+ public const int BigWater=50;
+ [NonSerialized] Dictionary<int,int> seaSizes;
+ internal void ResetWaters(){seaRegion=null;seaSizes=null;}
+ public int WaterBodySize(int x,int y){int region=SeaRegionOf(y*Width+x);if(region==0)return 0;if(seaSizes==null){seaSizes=new Dictionary<int,int>();foreach(int r in seaRegion)if(r!=0){int n;seaSizes.TryGetValue(r,out n);seaSizes[r]=n+1;}}int size;seaSizes.TryGetValue(region,out size);return size;}
+ public bool NextToBigWater(int x,int y){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){if(dx==0&&dy==0)continue;var n=Step(x,y,dx,dy);if(n!=null&&IsWater(n.terrain)&&WaterBodySize(n.x,n.y)>=BigWater)return true;}return false;}
+ // Whether this place can ever make this: anything it cannot is left off its lists (owner request).
+ public bool PlaceAllows(City c,int b){int u=BuildUnit(b);if(u>=0){if(!IsNaval(u))return true;return u==BoatUnit?NextToBigWater(c.x,c.y):HasBuilding(c,PortBuilding)||PortSite(c)!=null;}if(b==43)return AdjacentWater(c);if(b==PortBuilding)return HasBuilding(c,PortBuilding)||PortSite(c)!=null;return true;}
+ // ---------- workers run from wild animals (owner request, 7 Nov 2026) ----------
+ // A worker with no soldier beside it stops work when an animal comes within FleeNear tiles and runs for the nearest city. Once no animal
+ // is within FleeFar it walks back and takes up what it was doing.
+ public const int FleeNear=3,FleeFar=5;
+ [NonSerialized] Dictionary<int,List<Animal>> beastGrid;[NonSerialized] int beastGridTurn=-1,beastGridCount=-1;
+ public bool AnimalNear(int x,int y,int range){
+  if(!wildlife||animals==null||animals.Count==0)return false;
+  if(beastGrid==null||beastGridTurn!=turn||beastGridCount!=animals.Count){beastGrid=new Dictionary<int,List<Animal>>();beastGridTurn=turn;beastGridCount=animals.Count;foreach(var a in animals){int key=(a.y/8)*100000+a.x/8;List<Animal> list;if(!beastGrid.TryGetValue(key,out list)){list=new List<Animal>();beastGrid[key]=list;}list.Add(a);}}
+  int columns=(Width+7)/8;for(int r=y/8-1;r<=y/8+1;r++)for(int k=-1;k<=1;k++){int col=((x/8+k)%columns+columns)%columns;List<Animal> list;if(r>=0&&beastGrid.TryGetValue(r*100000+col,out list))foreach(var a in list)if(a.hp>0&&Distance(a.x,a.y,x,y)<=range)return true;}
+  return false;
+ }
+ bool WorkerSafe(Unit u){if(cities.Any(c=>c.owner==u.owner&&c.x==u.x&&c.y==u.y))return true;foreach(var a in units)if(a.owner==u.owner&&a.x==u.x&&a.y==u.y&&Power[a.type]>0)return true;return false;}
+ City NearestOwnCity(Unit u){City best=null;int least=int.MaxValue;foreach(var c in cities)if(c.owner==u.owner){int d=Distance(u.x,u.y,c.x,c.y);if(d<least||d==least&&best!=null&&c.id<best.id){least=d;best=c;}}return best;}
+ void ResumeWork(Unit u){u.flee=0;u.job=u.fleeJob;u.jobTurns=u.fleeJobTurns;u.hasOrder=u.fleeOrder;u.destinationX=u.fleeDX;u.destinationY=u.fleeDY;u.roadOrder=u.fleeRoad;u.autoWork=u.fleeAuto;if(u.owner==0)Note("A Worker has gone back to work.");}
+ void RunForCity(Unit u){var c=NearestOwnCity(u);if(c==null)return;int keep=u.flee;Order(u,c.x,c.y);u.flee=keep;}
+ internal void WorkersFlee(int owner){
+  if(!wildlife)return;
+  foreach(var u in units.Where(a=>a.owner==owner&&a.type==1).ToList()){
+   if(u.flee==0){
+    if(!AnimalNear(u.x,u.y,FleeNear)||WorkerSafe(u)||NearestOwnCity(u)==null)continue;
+    u.fleeX=u.x;u.fleeY=u.y;u.fleeJob=u.job;u.fleeJobTurns=u.jobTurns;u.fleeOrder=u.hasOrder;u.fleeDX=u.destinationX;u.fleeDY=u.destinationY;u.fleeRoad=u.roadOrder;u.fleeAuto=u.autoWork;
+    u.roadOrder=false;u.autoWork=false;CancelOrder(u);u.flee=1;RunForCity(u);if(owner==0)Note("A Worker has stopped work and is running from wild animals.");
+   }else if(u.flee==1){
+    if(AnimalNear(u.x,u.y,FleeFar)){if(!u.hasOrder&&!WorkerSafe(u))RunForCity(u);continue;}
+    u.flee=2;if(u.x==u.fleeX&&u.y==u.fleeY){ResumeWork(u);continue;}Order(u,u.fleeX,u.fleeY);u.flee=2;if(!u.hasOrder&&!(u.x==u.fleeX&&u.y==u.fleeY))ResumeWork(u);
+   }else{
+    if(AnimalNear(u.x,u.y,FleeNear)&&!WorkerSafe(u)){u.flee=1;RunForCity(u);continue;}
+    if(!u.hasOrder||u.x==u.fleeX&&u.y==u.fleeY)ResumeWork(u);
+   }
+  }
+ }
  // ---------- stacks and escorts (owner request, 6 Nov 2026; after Civilization IV's stacks and Civilization VI's escort formations) ----------
  // Units on one tile can be joined into a stack that moves as one, at the speed of its slowest member. A soldier stacked with a worker
  // or settler is its escort: an attacker has to get through every soldier on the tile first.
@@ -107,7 +162,7 @@ public partial class World {
  // ---------- owner requests, 6 Nov 2026, second batch ----------
  // How long research takes: what is left divided by the science coming in, as in the Civilization series. One technology takes at
  // least MinResearchTurns however much science there is (the Civilization III rule), and what is left over carries to the next.
- public const int MinResearchTurns=4;
+ public const int MinResearchTurns=10;
  public int SciencePerTurn(int owner){int sum=0;foreach(var c in cities)if(c.owner==owner)sum+=Yield(c)[2];return sum;}
  public int ResearchCap(int t,int owner){return Math.Max(1,(ResearchCost(t,owner)+MinResearchTurns-1)/MinResearchTurns);}
  // Turns to finish, or -1 when no science is coming in.
@@ -117,7 +172,7 @@ public partial class World {
  // Choosing a different technology after a discovery takes the left-over science with it.
  public void ChooseNextResearch(int t){int spare=researchOverflow;researchOverflow=0;if(research>=0){int take=Math.Min(spare,science);science-=take;nations[0].progress[research]=science;spare=take;}else spare=0;SelectResearch(t);if(research==t){science+=spare;nations[0].progress[t]=science;}}
  // What the budget is made of; Budget is its totals.
- public sealed class BudgetLines {public int cityGold,cityBonus,ports,routes,treaties,tribute,cityUpkeep,buildingUpkeep,army,civilians,luxury,treatyCost,roads;public int Income{get{return cityGold+cityBonus+ports+routes+treaties+tribute;}}public int Expense{get{return cityUpkeep+buildingUpkeep+army+civilians+luxury+treatyCost+roads;}}public int Net{get{return Income-Expense;}}}
+ public sealed class BudgetLines {public int cityGold,cityBonus,ports,routes,treaties,tribute,cityUpkeep,buildingUpkeep,army,civilians,luxury,treatyCost,roads,expansion,cutOff;public int Income{get{return cityGold+cityBonus+ports+routes+treaties+tribute;}}public int Expense{get{return cityUpkeep+buildingUpkeep+army+civilians+luxury+treatyCost+roads+expansion+cutOff;}}public int Net{get{return Income-Expense;}}}
  public static int SupportCost(int type){return Upkeep[type];}
  public BudgetLines BudgetDetail(int owner){
   var b=new BudgetLines();var own=cities.Where(c=>c.owner==owner).OrderBy(c=>c.id).ToList();
@@ -127,6 +182,7 @@ public partial class World {
   // A big standing army costs more than the sum of its soldiers (as unit maintenance climbs in Civilization V): +1 gold for every three
   // soldiers beyond two per city.
   b.army+=Math.Max(0,soldiers-2*own.Count)/3;b.roads=RoadUpkeep(owner);
+  if(modernRules){b.expansion=ExpansionCost(own.Count);foreach(var c in own)if(CutOff(c))b.cutOff+=CutOffGold;}
   b.civilians=Math.Max(0,free-FreeUnitsPerCity*own.Count-GovernmentSupport(owner));b.luxury=own.Count*nations[owner].luxury;
   b.routes=TradeIncome(owner);b.treaties=DiplomaticIncome(owner);b.tribute=VillageTribute(owner)+ReligionTithe(owner);b.treatyCost=DiplomaticExpense(owner);return b;
  }

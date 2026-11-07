@@ -21,6 +21,10 @@ public static partial class TechnologyCatalog {
   new[]{"microchips|Microprocessors|0|-|S:4","networks|Computer Networks|0|0|G:3","software|Software Engineering|0|0|W:4","gps|Satellite Navigation|1|-|T:4","weather|Weather Satellites|1|-|F:0","reactors|Reactor Design|2|-|W:5","isotopes|Medical Isotopes|2|-|H:1","automation|Factory Automation|3|-|W:5","drones|Drones|3|-|A:ranged","hybrids|Hybrid Crops|4|-|F:16|20","biotech|Biotechnology|4|-|H:1","aquaculture|Aquaculture|4|-|F:4","containers|Container Shipping|5|-|T:4","freetrade|Free Trade Zones|5|-|G:5","tourism|Tourism|5|-|G:3","composite|Composite Armour|3|-|D:melee","jets|Jet Engines|1|-|A:mounted","desalination|Desalination|2|-|F:3","offshore|Offshore Drilling|2|-|R:15:T","fibre|Fibre Optics|0|-|S:3","recycling|Recycling|3|-|P:10","vertical|Vertical Farms|4|-|F:8","stealth|Stealth Hulls|1|-|A:naval","cyber|Cyber Defence|0|-|D:ranged"},
   new[]{"nanofabs|Nanofabricators|0|-|W:6","smartmatter|Smart Matter|0|0|P:5|15","qcomms|Quantum Communication|1|-|S:5","qsensors|Quantum Sensors|1|-|D:ranged","regen|Regenerative Medicine|2|-|H:1","geneforge|Gene Forging|2|-|F:10|14","fusiongrid|Fusion Grid|3|-|W:6","orbitalfarms|Orbital Farms|3|-|F:0|3","plasma|Plasma Weapons|3|-|A:melee","mindnet|Mind Network|4|-|S:5","virtualstates|Virtual States|4|-|G:5","sharedmind|Shared Consciousness|4|10|H:1","starships|Starship Yards|3|-|A:naval","forcefields|Force Fields|0|-|D:melee","terraformers|Terraforming Crews|3|-|F:10|8","weathercontrol|Weather Control|1|-|F:16|20","antigravity|Antigravity|1|-|A:mounted","printers|Matter Printers|0|-|G:4","rifts|Dimensional Rifts|5|-|S:4","timecrystals|Time Crystals|5|-|W:5","harmony|Planetary Harmony|2|-|H:1","deepcore|Deep Core Mining|3|-|P:2|5","oceancities|Ocean Arcologies|2|-|F:4|12","singularity|Singularity Ethics|5|-|G:4"}};
  public static readonly string[] Effects=new string[Count];
+ // The streamlined tree (owner request, 7 Nov 2026): only the 36 keystones are researched now, and each carries one lasting effect in
+ // place of the small technologies that used to hang off it. Older saves keep the bonuses of any minor technologies they had already learned.
+ static readonly string[] KeystoneEffects={"W:5","F:0","A:ranged","P:2","T:0","S:5","G:10","H:1","W:5","S:3","R:6:F","S:5","W:8","D:melee","S:8","G:10","S:5","A:melee","W:10","G:8","A:melee","P:2","H:1","A:mounted","S:8","T:0","W:8","W:8","F:0","G:10","W:8","S:8","H:1","W:8","S:8",""};
+ public static string KeystoneEffect(int t){return t>=0&&t<KeystoneCount?KeystoneEffects[t]:"";}
  public static bool IsKeystone(int t){return t>=0&&t<KeystoneCount;}
  // Adds the minors after the keystones (called at the end of the static constructor).
  static void AddMinors(){
@@ -52,10 +56,10 @@ public partial class World {
  class MinorTotals{public int known=-1;public int[,] terrain=new int[3,21];public int[,] resource=new int[3,16];public int science,gold,production,content;public Dictionary<string,int> attack=new Dictionary<string,int>(),defence=new Dictionary<string,int>();}
  MinorTotals Minors(int owner){
   if(minorCache==null)minorCache=new Dictionary<int,MinorTotals>();MinorTotals m;
-  var tech=owner>=0&&owner<civCount?nations[owner].tech:null;int known=0;if(tech!=null)for(int i=TechnologyCatalog.KeystoneCount;i<tech.Length;i++)if(tech[i])known++;
+  var tech=owner>=0&&owner<civCount?nations[owner].tech:null;int known=0;if(tech!=null)for(int i=modernRules?0:TechnologyCatalog.KeystoneCount;i<tech.Length;i++)if(tech[i])known++;
   if(minorCache.TryGetValue(owner,out m)&&m.known==known)return m;
   m=new MinorTotals{known=known};minorCache[owner]=m;if(tech==null)return m;
-  for(int i=TechnologyCatalog.KeystoneCount;i<tech.Length&&i<TechnologyCatalog.Count;i++){if(!tech[i])continue;var parts=TechnologyCatalog.Effects[i].Split('|');var head=parts[0].Split(':');
+  for(int i=modernRules?0:TechnologyCatalog.KeystoneCount;i<tech.Length&&i<TechnologyCatalog.Count;i++){if(!tech[i])continue;string effect=TechnologyCatalog.IsKeystone(i)?TechnologyCatalog.KeystoneEffect(i):TechnologyCatalog.Effects[i];if(string.IsNullOrEmpty(effect))continue;var parts=effect.Split('|');var head=parts[0].Split(':');
    switch(head[0]){
     case "F":case "P":case "T":{int y=head[0]=="F"?0:head[0]=="P"?1:2;foreach(var s in new[]{head[1]}.Concat(parts.Skip(1)))m.terrain[y,int.Parse(s)]++;break;}
     case "R":{int y=head[2]=="F"?0:head[2]=="P"?1:2;m.resource[y,int.Parse(head[1])]++;break;}

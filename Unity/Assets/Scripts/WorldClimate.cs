@@ -189,7 +189,7 @@ namespace ParadigmRealm
                         }
                         if(hn[i]>.5)m+=.15;
                     }
-                    wet[i]=m;
+                    ClimateShift(ref t,ref m);temp[i]=t;wet[i]=m;
                 }
             }
             temp=BoxSmooth(temp,2);wet=BoxSmooth(wet,2);
