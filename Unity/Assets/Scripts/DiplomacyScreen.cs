@@ -37,6 +37,23 @@ public partial class RealmGame {
   dipRow=new GUIStyle(hudLabel){fontSize=15};
   dipBadge=new GUIStyle(hudLabel){fontSize=13,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter};
  }
+ // Why the leader feels as it does (owner request, 8 Nov 2026, after Civilization VI's visible modifiers): every named reason with its
+ // value, the leader's posture, alarm and coalitions, and the two things influence buys.
+ void DrawOpinionPanel(int partner,Rect inner){
+  var lines=world.OpinionLines(partner,0);int shown=Math.Min(7,lines.Count);
+  var box=new Rect(inner.x+10,inner.yMax-(92+shown*20),inner.width-20,82+shown*20);DipPanel(box,.88f);float y=box.y+6;
+  GUI.Label(new Rect(box.x+12,y,box.width-24,22),"WHY "+world.NationName(partner).ToUpperInvariant()+" FEELS THIS WAY: "+world.Opinion(partner,0)+"     YOUR INFLUENCE: "+world.nations[0].influence+" (+"+world.InfluencePerTurn(0)+")",new GUIStyle(dipCaps){alignment=TextAnchor.MiddleLeft});y+=24;
+  for(int k=0;k<shown;k++){var l=lines[k];GUI.Label(new Rect(box.x+16,y,box.width-110,20),l.Key,new GUIStyle(dipRow){fontSize=13});GUI.Label(new Rect(box.xMax-90,y,76,20),(l.Value>0?"+":"")+l.Value,new GUIStyle(dipRow){fontSize=13,alignment=TextAnchor.MiddleRight,normal={textColor=l.Value>0?new Color(.55f,.9f,.55f):new Color(1f,.55f,.45f)}});y+=20;}
+  if(lines.Count>shown){GUI.Label(new Rect(box.x+16,y-2,box.width-32,18),"+"+(lines.Count-shown)+" smaller reasons under Discuss",hudSmall);}
+  int post=world.Posture(partner);var coalition=world.CoalitionAgainst(0);
+  GUI.Label(new Rect(box.x+12,box.yMax-54,box.width-24,20),"Posture: "+DiplomacyFlavours.PostureNames[post]+" — "+DiplomacyFlavours.PostureTexts[post]+(coalition.Contains(partner)?"  In a coalition against you.":""),new GUIStyle(dipRow){fontSize=12});
+  float bw=(box.width-36)/2;string improve=world.ImproveReason(0,partner),incite=world.InciteReason(0,partner);bool enabled=GUI.enabled;
+  GUI.enabled=enabled&&improve=="";if(DipButton(new Rect(box.x+12,box.yMax-32,bw,26),"Send envoys: "+DiplomacyFlavours.ImproveCost,new Color(.07f,.38f,.4f))){if(world.ImproveRelations(0,partner))dipReply="Your envoys were received. Trust +8.";dipReplyPartner=partner;}
+  GUI.enabled=enabled&&incite=="";if(DipButton(new Rect(box.x+24+bw,box.yMax-32,bw,26),"Incite others: "+DiplomacyFlavours.InciteCost,new Color(.45f,.08f,.07f))){if(world.Incite(0,partner))status="Word of "+world.NationName(partner)+"'s ambitions has spread.";}
+  GUI.enabled=enabled;var mouse=Event.current.mousePosition;
+  if(improve!=""&&new Rect(box.x+12,box.yMax-32,bw,26).Contains(mouse))GUI.Label(new Rect(box.x+12,box.y-22,box.width,20),improve,hudSmall);
+  if(incite!=""&&new Rect(box.x+24+bw,box.yMax-32,bw,26).Contains(mouse))GUI.Label(new Rect(box.x+12,box.y-22,box.width,20),incite,hudSmall);
+ }
  // A navy panel with a gold rule round it, as in the mockup.
  void DipPanel(Rect r,float alpha=.94f){Fill(r,new Color(.05f,.08f,.15f,alpha));var g=new Color(.78f,.62f,.32f);Fill(new Rect(r.x,r.y,r.width,1),g);Fill(new Rect(r.x,r.yMax-1,r.width,1),g);Fill(new Rect(r.x,r.y,1,r.height),g);Fill(new Rect(r.xMax-1,r.y,1,r.height),g);}
  void DipHeading(Rect r,string text){GUI.Label(r,text.ToUpperInvariant(),new GUIStyle(dipCaps){alignment=TextAnchor.MiddleLeft,fontSize=15});Fill(new Rect(r.x+text.Length*11+14,r.center.y,r.xMax-(r.x+text.Length*11+14),1),new Color(.78f,.62f,.32f,.7f));}
@@ -112,6 +129,7 @@ public partial class RealmGame {
   var face=Portrait(pn.portrait,world.Era(partner));
   if(face!=null){float h=inner.height-36,w=h*.9f;var frame=new Rect(inner.x+86,inner.y+18,w,h);DipPanel(new Rect(frame.x-4,frame.y-4,frame.width+8,frame.height+8),1);DrawPortrait(frame,face);}
   // Talks are one on one (owner request): leader cards appear only on the chooser (DrawLeaderChooser), not here.
+  if(world.modernRules&&!diplomacyDiscuss&&diplomacyConfirmation=="")DrawOpinionPanel(partner,inner);
   // ---- Right panel ----
   var side=new Rect(828,74,440,712);DipPanel(side);
   if(diplomacyDiscuss||diplomacyConfirmation!=""){

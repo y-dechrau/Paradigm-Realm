@@ -32,6 +32,9 @@ public partial class RealmGame {
    if(theirs!=null)DrawPortrait(GUILayoutUtility.GetRect(120,160),theirs);
    GUILayout.EndHorizontal();}
   GUILayout.Label(world.Personality(partner),small);GUILayout.Label(world.RelationshipBreakdown(partner,0),body);
+  if(world.modernRules){GUILayout.Label("Your influence: "+world.nations[0].influence+" (+"+world.InfluencePerTurn(0)+" a turn: 1, +1 for each embassy you hold, +1 for each friendship up to 3). "+world.NationName(partner)+" is a "+DiplomacyFlavours.PostureNames[world.Posture(partner)].ToLower()+". Their alarm at your expansion: "+world.Alarm(partner,0)+"; yours at theirs: "+world.Alarm(0,partner)+".",small);
+   var against=world.CoalitionAgainst(0);if(against.Count>0)GUILayout.Label("Coalition against you: "+string.Join(", ",against.Select(world.NationName).ToArray())+". If you attack a member, the others join the war.",small);
+   var flavours=Enumerable.Range(0,DiplomacyFlavours.Names.Length).Select(k=>DiplomacyFlavours.Names[k]+" "+world.Flavour(partner,k)).ToArray();GUILayout.Label("Leader flavours (1-10): "+string.Join(", ",flavours),small);}
   GUILayout.Label("War weariness: "+world.warWeariness[0]+"; your cities lose "+world.WarUnhappiness(0)+" content citizens. Peace recovers 2 weariness/turn.",small);
   GUILayout.Label("Turns remaining — Borders "+Math.Max(0,p.accessUntil-world.turn)+" | Friendship "+Math.Max(0,p.friendUntil-world.turn)+" | Alliance "+Math.Max(0,p.allianceUntil-world.turn)+" | Research "+Math.Max(0,p.researchUntil-world.turn)+" | Truce "+Math.Max(0,p.peaceUntil-world.turn)+" | Embargo "+Math.Max(0,p.embargoUntil-world.turn),body);
   GUILayout.Label("Border promises — You: "+Math.Max(0,p.promiseAUntil-world.turn)+" turns; partner: "+Math.Max(0,p.promiseBUntil-world.turn)+" turns.",small);

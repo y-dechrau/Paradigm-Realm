@@ -13,7 +13,7 @@ public partial class World {
 
  public int SoldierCount(int owner){return units.Count(u=>u.owner==owner&&Power[u.type]>0&&!IsNaval(u.type));}
  // Three soldiers and two a city, half as many again at war.
- public int SoldierLimit(int owner){int limit=(3+2*cities.Count(c=>c.owner==owner))*DifficultyTable.RivalSoldiers[Level]/100;return AtWarWithAnyone(owner)?limit*3/2:limit;}
+ public int SoldierLimit(int owner){int limit=(3+2*cities.Count(c=>c.owner==owner)+PostureSoldiers(owner))*DifficultyTable.RivalSoldiers[Level]/100;return AtWarWithAnyone(owner)?limit*3/2:limit;}
  // What a city trains when it has no settler, worker or ship to make: the best soldier it can, every fourth one a ranged unit.
  int AIMilitaryBuild(City c,List<int> choices,List<Unit> own){
   int owner=c.owner;var soldiers=choices.Where(b=>BuildUnit(b)>=2&&!IsNaval(BuildUnit(b))&&MilitaryValue(BuildUnit(b))>0).OrderByDescending(b=>MilitaryValue(BuildUnit(b))).ToList();
@@ -81,7 +81,9 @@ public partial class World {
  }
  // How much a home rival wants to attack another home civilisation, from what it can see; 50 or more starts it down the road
  // to war. Agendas and traits make leaders differ, and a small roll fixed for each game means they differ between games.
- public int Ambition(int a,int b){
+ // Posture (Aggressor +15, Builder -10, Defensive -25) and coalitions (members +15 against their target) on top of the core reckoning.
+ public int Ambition(int a,int b){int s=AmbitionCore(a,b);if(s==0||!modernRules)return s;return s+PostureAmbition(a)+(InCoalition(a,b)?15:0);}
+ int AmbitionCore(int a,int b){
   // The player gets a longer grace, to build a first army before anyone comes for them.
   if(turn<(b==0?PlayerGraceTurn:40)||!ActiveRival(a)||a==b||(gatesLocked&&IsNativeNation(b))||!HasContact(a,b))return 0;
   var mine=cities.Where(c=>c.owner==a).ToList();var theirs=cities.Where(c=>c.owner==b&&nations[a].known[c.y*Width+c.x]).ToList();if(mine.Count==0||theirs.Count==0)return 0;

@@ -28,6 +28,8 @@ public partial class World {
  public int ArmyShields(City c,int project){return IsCombatBuild(project)?ArmyBudget(c):0;}
  // Shields per turn on the line that holds this project.
  public int LineOutput(City c,int project){return Math.Max(1,Yield(c)[1])+ArmyShields(c,project);}
+ // Shields reaching one line each turn: with modern rules a unit and a building under way share the city's shields (see Produce).
+ public int LineShare(City c,bool building){int output=Math.Max(1,Yield(c)[1]);int army=!building&&c.build>=0?ArmyShields(c,c.build):0;if(modernRules&&c.build>=0&&c.buildingProject>=0){int half=output/2;return Math.Max(1,building?half:output-half+army);}return output+army;}
  // When the city's influence next spreads a ring: with age (one ring per 25 turns up to 4) or with size (ring 5 at size 30).
  public BorderGrowth NextBorderGrowth(City c){
   int r=TerritoryRadius(c);var g=new BorderGrowth{radius=r};
@@ -109,22 +111,41 @@ public partial class World {
   int columns=(Width+7)/8;for(int r=y/8-1;r<=y/8+1;r++)for(int k=-1;k<=1;k++){int col=((x/8+k)%columns+columns)%columns;List<Animal> list;if(r>=0&&beastGrid.TryGetValue(r*100000+col,out list))foreach(var a in list)if(a.hp>0&&Distance(a.x,a.y,x,y)<=range)return true;}
   return false;
  }
- bool WorkerSafe(Unit u){if(cities.Any(c=>c.owner==u.owner&&c.x==u.x&&c.y==u.y)||AtHome(u))return true;foreach(var a in units)if(a.owner==u.owner&&a.x==u.x&&a.y==u.y&&Power[a.type]>0)return true;return false;}
  City NearestOwnCity(Unit u){City best=null;int least=int.MaxValue;foreach(var c in cities)if(c.owner==u.owner){int d=Distance(u.x,u.y,c.x,c.y);if(d<least||d==least&&best!=null&&c.id<best.id){least=d;best=c;}}return best;}
- void ResumeWork(Unit u){u.flee=0;u.job=u.fleeJob;u.jobTurns=u.fleeJobTurns;u.hasOrder=u.fleeOrder;u.destinationX=u.fleeDX;u.destinationY=u.fleeDY;u.roadOrder=u.fleeRoad;u.autoWork=u.fleeAuto;if(u.owner==0)Note("A Worker has gone back to work.");}
- void RunForCity(Unit u){var c=NearestOwnCity(u);if(c==null)return;int keep=u.flee;Order(u,c.x,c.y);u.flee=keep;}
+ void ResumeWork(Unit u){u.flee=0;u.fleeEnemy=false;u.job=u.fleeJob;u.jobTurns=u.fleeJobTurns;u.hasOrder=u.fleeOrder;u.destinationX=u.fleeDX;u.destinationY=u.fleeDY;u.roadOrder=u.fleeRoad;u.autoWork=u.fleeAuto;if(u.owner==0)Note("A Worker has gone back to work.");}
+ // Owner requests, 8 Nov 2026 (modern rules): a worker on its own civilisation's land never runs from animals (they do not cross
+ // borders); outside, it runs for the nearest tile of its own land, or of a civilisation it has open borders, friendship or an
+ // alliance with, rather than the nearest city. Enemy soldiers (a civilisation at war with it, seen within FleeNear tiles) send it
+ // running anywhere, its own land included, to its nearest city; a soldier on its tile or a city keeps it at work.
+ const int RefugeRadius=12;
+ bool Guarded(Unit u){if(cities.Any(c=>c.owner==u.owner&&c.x==u.x&&c.y==u.y))return true;foreach(var a in units)if(a.owner==u.owner&&a.x==u.x&&a.y==u.y&&Power[a.type]>0)return true;return false;}
+ public bool FriendlyGround(int owner,Tile t){if(t==null||t.owner<0)return false;if(t.owner==owner)return true;return !AtWar(owner,t.owner)&&(HasAccess(owner,t.owner)||Friends(owner,t.owner));}
+ bool SafeFromBeasts(Unit u){if(Guarded(u))return true;var t=At(u.x,u.y);return modernRules?FriendlyGround(u.owner,t):AtHome(u);}
+ public bool EnemyNear(Unit u,int range){if(!modernRules)return false;foreach(var a in units){if(a.owner==u.owner||Power[a.type]<=0||IsNaval(a.type)||!AtWar(u.owner,a.owner))continue;if(Distance(a.x,a.y,u.x,u.y)<=range&&VisibleTo(u.owner,a.x,a.y))return true;}return false;}
+ // The nearest own or friendly tile a land unit can stand on, away from animals; the nearest own city if there is none in reach.
+ public Tile Refuge(Unit u){
+  Tile best=null;int least=int.MaxValue;
+  for(int dj=-RefugeRadius;dj<=RefugeRadius;dj++)for(int di=-RefugeRadius;di<=RefugeRadius;di++){var t=StepIn(u.x,u.y,di,dj,RefugeRadius);if(t==null||!FriendlyGround(u.owner,t)||IsWater(t.terrain)||IsImpassable(t.terrain))continue;
+   int d=Distance(u.x,u.y,t.x,t.y)*4+(t.owner==u.owner?0:1);if(d>=least||AnimalNear(t.x,t.y,1))continue;least=d;best=t;}
+  if(best!=null)return best;var c=NearestOwnCity(u);return c==null?null:At(c.x,c.y);
+ }
+ bool RunToRefuge(Unit u){var t=u.fleeEnemy?(NearestOwnCity(u)==null?null:At(NearestOwnCity(u).x,NearestOwnCity(u).y)):modernRules?Refuge(u):(NearestOwnCity(u)==null?null:At(NearestOwnCity(u).x,NearestOwnCity(u).y));if(t==null)return false;int keep=u.flee;Order(u,t.x,t.y);u.flee=keep;return true;}
  internal void WorkersFlee(int owner){
-  if(!wildlife)return;
+  if(!wildlife&&!modernRules)return;
   foreach(var u in units.Where(a=>a.owner==owner&&a.type==1).ToList()){
+   bool beasts=wildlife&&AnimalNear(u.x,u.y,FleeNear)&&!SafeFromBeasts(u),enemies=EnemyNear(u,FleeNear)&&!Guarded(u);
    if(u.flee==0){
-    if(!AnimalNear(u.x,u.y,FleeNear)||WorkerSafe(u)||NearestOwnCity(u)==null)continue;
+    if(!beasts&&!enemies)continue;
+    u.fleeEnemy=enemies;if((enemies?NearestOwnCity(u):null)==null&&enemies&&!beasts)continue;
     u.fleeX=u.x;u.fleeY=u.y;u.fleeJob=u.job;u.fleeJobTurns=u.jobTurns;u.fleeOrder=u.hasOrder;u.fleeDX=u.destinationX;u.fleeDY=u.destinationY;u.fleeRoad=u.roadOrder;u.fleeAuto=u.autoWork;
-    u.roadOrder=false;u.autoWork=false;CancelOrder(u);u.flee=1;RunForCity(u);if(owner==0)Note("A Worker has stopped work and is running from wild animals.");
+    u.roadOrder=false;u.autoWork=false;CancelOrder(u);u.flee=1;if(!RunToRefuge(u)){u.flee=0;ResumeWork(u);continue;}if(owner==0)Note(enemies?"A Worker has stopped work and is running from enemy soldiers.":"A Worker has stopped work and is running from wild animals.");
    }else if(u.flee==1){
-    if(AnimalNear(u.x,u.y,FleeFar)){if(!u.hasOrder&&!WorkerSafe(u))RunForCity(u);continue;}
-    u.flee=2;if(u.x==u.fleeX&&u.y==u.fleeY){ResumeWork(u);continue;}Order(u,u.fleeX,u.fleeY);u.flee=2;if(!u.hasOrder&&!(u.x==u.fleeX&&u.y==u.fleeY))ResumeWork(u);
+    bool still=u.fleeEnemy?EnemyNear(u,FleeFar)&&!Guarded(u):AnimalNear(u.x,u.y,FleeFar);
+    if(!u.fleeEnemy&&enemies){u.fleeEnemy=true;RunToRefuge(u);continue;}
+    if(still){if(!u.hasOrder&&!(u.fleeEnemy?Guarded(u):SafeFromBeasts(u)))RunToRefuge(u);continue;}
+    u.flee=2;u.fleeEnemy=false;if(u.x==u.fleeX&&u.y==u.fleeY){ResumeWork(u);continue;}Order(u,u.fleeX,u.fleeY);u.flee=2;if(!u.hasOrder&&!(u.x==u.fleeX&&u.y==u.fleeY))ResumeWork(u);
    }else{
-    if(AnimalNear(u.x,u.y,FleeNear)&&!WorkerSafe(u)){u.flee=1;RunForCity(u);continue;}
+    if(beasts||enemies){u.flee=1;u.fleeEnemy=enemies;RunToRefuge(u);continue;}
     if(!u.hasOrder||u.x==u.fleeX&&u.y==u.fleeY)ResumeWork(u);
    }
   }

@@ -33,11 +33,11 @@ namespace ParadigmRealm
         // and the costly totals a few times a second.
         List<int> metRivalsMemo;int metRivalsFrame=-1;
         List<int> MetRivals(){if(metRivalsMemo!=null&&metRivalsFrame==Time.frameCount)return metRivalsMemo;metRivalsFrame=Time.frameCount;metRivalsMemo=new List<int>(5);for(int o=1;o<world.civCount&&metRivalsMemo.Count<5;o++)if(world.met[o])metRivalsMemo.Add(o);return metRivalsMemo;}
-        int hudBudget,hudOwnCities,hudCalm,hudScience,hudFood,hudResearchTurns,hudEra,hudTurn=-1;float hudAt;World hudWorld;
+        int hudBudget,hudOwnCities,hudCalm,hudScience,hudFood,hudFaith,hudResearchTurns,hudEra,hudTurn=-1;float hudAt;World hudWorld;
         void RefreshHudNumbers(){
             if(hudWorld==world&&hudTurn==world.turn&&Time.realtimeSinceStartup-hudAt<.3f)return;hudWorld=world;hudTurn=world.turn;hudAt=Time.realtimeSinceStartup;
             hudBudget=world.Budget(0)[2];hudOwnCities=0;hudCalm=0;hudScience=0;foreach(var c in world.cities)if(c.owner==0){hudOwnCities++;if(!world.Disorder(c))hudCalm++;hudScience+=world.Yield(c)[2];}
-            int need;hudFood=world.FoodBalance(0,out need);hudResearchTurns=world.research>=0?world.ResearchTurns(world.research,0):-1;hudEra=world.Era(0);
+            int need;hudFood=world.FoodBalance(0,out need);hudFaith=world.FaithPerTurn(0);hudResearchTurns=world.research>=0?world.ResearchTurns(world.research,0):-1;hudEra=world.Era(0);
         }
         Rect LeaderRect(int i){return new Rect(1274-(i+1)*80,46,74,96);}
         // The current message (what just happened or why an order failed) leads, then the newest log entries of this turn and last.
@@ -122,11 +122,12 @@ namespace ParadigmRealm
                 new KeyValuePair<int,string>(PixelArt.IconGold,"Gold  "+world.gold+"  ("+(budget>=0?"+":"")+budget+")"+(world.nations[0].arrears>0?"  IN DEBT":"")),
                 new KeyValuePair<int,string>(PixelArt.IconScience,"Science  +"+SciencePerTurn()),
                 new KeyValuePair<int,string>(PixelArt.IconFood,"Food  "+(hudFood>=0?"+":"")+hudFood+"  "+world.FoodStateName(0)),
+                new KeyValuePair<int,string>(PixelArt.IconFaith,"Faith  "+world.nations[0].faith+" (+"+hudFaith+")"),
                 new KeyValuePair<int,string>(PixelArt.IconAge,TechnologyCatalog.EraNames[hudEra]+(world.AgeOf(0)!=World.AgeNormal?" · "+World.AgeNames[world.AgeOf(0)].Replace(" Age",""):"")),
                 new KeyValuePair<int,string>(PixelArt.IconOrder,"Order  "+(ownCities==0?"—":(calm*100/ownCities)+"%"))};
-            float x=250;
-            foreach(var item in items){DrawIcon(item.Key,new Rect(x,8,22,22));float w=hudLabel.CalcSize(new GUIContent(item.Value)).x;GUI.Label(new Rect(x+28,9,w+4,22),item.Value,hudLabel);x+=w+52;Fill(new Rect(x-12,10,1,18),new Color(UiGold.r,UiGold.g,UiGold.b,.45f));}
-            DrawIcon(PixelArt.IconTurn,new Rect(1002,8,22,22));GUI.Label(new Rect(1030,9,160,22),"Turn "+world.turn+"  •  "+world.Calendar(),hudLabel);
+            float x=244;
+            foreach(var item in items){DrawIcon(item.Key,new Rect(x,8,22,22));float w=hudLabel.CalcSize(new GUIContent(item.Value)).x;GUI.Label(new Rect(x+28,9,w+4,22),item.Value,hudLabel);x+=w+42;Fill(new Rect(x-10,10,1,18),new Color(UiGold.r,UiGold.g,UiGold.b,.45f));}
+            {float tx=Math.Max(x,1036);DrawIcon(PixelArt.IconTurn,new Rect(tx,8,22,22));GUI.Label(new Rect(tx+26,9,1192-tx-26,22),"Turn "+world.turn+"  •  "+world.Calendar(),hudLabel);}
             bool enabled=GUI.enabled;GUI.enabled=!confirmNew&&pendingUnit==-1&&!turnRunning;
             if(GUI.Button(new Rect(1196,5,34,28),""))guide=true;DrawIcon(PixelArt.IconHelp,new Rect(1201,7,24,24));
             if(GUI.Button(new Rect(1236,5,38,28),"")){pauseMenu=true;GUIUtility.ExitGUI();}DrawIcon(PixelArt.IconMenu,new Rect(1243,7,24,24));
@@ -327,7 +328,7 @@ namespace ParadigmRealm
             int unitLines=Math.Min(3,present.Count)+(present.Count>3?1:0);
             if(t==null||!t.seen){GUI.Box(TileCard,"");GUI.Label(new Rect(TileCard.x,TileCard.y+15,TileCard.width,22),t==null?"Point at the map to inspect a tile":"Unexplored",hudCentre);return;}
             var v=world.TileYield(t);bool known=t.resource>0&&world.ResourceKnown(0,t.resource);if(t.resource>0&&!known){v[0]-=World.ResourceFood[t.resource];v[1]-=World.ResourceShields[t.resource];v[2]-=World.ResourceTrade[t.resource];}
-            var features=new List<string>{World.TerrainNames[t.terrain]};if(t.road)features.Add(World.Forested(t.terrain)?"Trail":"Road");if(t.farm)features.Add("Farm");if(t.mine)features.Add("Mine");if(t.fort)features.Add("Fort");if(known)features.Add(World.ResourceNames[t.resource]);
+            var features=new List<string>{World.TerrainNames[t.terrain]+(World.TerrainDefence(t.terrain)>0?" (defence +"+World.TerrainDefence(t.terrain)+")":"")};if(t.road)features.Add(World.Forested(t.terrain)?"Trail":"Road");if(t.farm)features.Add("Farm");if(t.mine)features.Add("Mine");if(t.fort)features.Add("Fort");if(known)features.Add(World.ResourceNames[t.resource]);
             {var beast=world.wildlife&&world.Visible(t.x,t.y)?world.AnimalAt(t.x,t.y):null;if(beast!=null)features.Add(world.AnimalLabel(beast));}
             // Tribal villages (owner request): named on the card, with the civilisation they joined if any.
             {var ruinTile=world.At(t.x,t.y);if(ruinTile!=null&&ruinTile.ruin)features.Add(ruinTile.realm>0?"Relic site":"Ancient ruins");}

@@ -236,7 +236,7 @@ namespace ParadigmRealm
             var t=world.KnownTile(world.At(x,y));if(t==null)return;
             string text="Unexplored territory";
             if(t.seen){var v=world.TileYield(t);if(t.resource>0&&!world.ResourceKnown(0,t.resource)){v[0]-=World.ResourceFood[t.resource];v[1]-=World.ResourceShields[t.resource];v[2]-=World.ResourceTrade[t.resource];}text=World.TerrainNames[t.terrain]+"  ("+x+", "+y+")";
-                text+="\n"+(t.owner<0?"Unclaimed":world.met[t.owner]?world.NationName(t.owner):"Unknown territory");text+="\n"+(World.IsImpassable(t.terrain)?"Impassable to land units":"Movement: "+(World.RoughTerrain(t.terrain)?3:2));
+                text+="\n"+(t.owner<0?"Unclaimed":world.met[t.owner]?world.NationName(t.owner):"Unknown territory");text+="\n"+(World.IsImpassable(t.terrain)?"Impassable to land units":"Movement: "+(World.RoughTerrain(t.terrain)?3:2));if(World.TerrainDefence(t.terrain)>0)text+="\nDefence: +"+World.TerrainDefence(t.terrain)+" for units standing here";
                 text+="\nFood "+v[0]+" | Production "+v[1]+" | Trade "+v[2];
                 if(t.resource>0&&world.ResourceKnown(0,t.resource))text+="\nResource: "+World.ResourceNames[t.resource]+" (+"+World.ResourceFood[t.resource]+" food, +"+World.ResourceShields[t.resource]+" shields, +"+World.ResourceTrade[t.resource]+" trade when worked"+(t.resource==15?"; +3 shields more with Chemistry":"")+")";
                 if(t.road)text+="\nRoad: 1 movement between connected roads"+(World.RoadTrade(t.terrain)?"; +1 trade":"");if(t.farm)text+="\nFarm / pasture: +2 food";if(t.mine)text+="\nMine: +2 production";if(t.fort)text+="\nFort: +2 defence";

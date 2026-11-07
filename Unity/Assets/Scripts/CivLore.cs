@@ -8,7 +8,9 @@ namespace ParadigmRealm {
 // written histories: each people has a founding, a golden age, a crisis and an ambition. Rules are one clear integer each.
 public sealed class CivEntry {
  public string Epithet,Background,History,Strengths,Weaknesses,Ability,AbilityText,Unit,UnitText,Building,BuildingText,Weakness,WeaknessText;
- public int UnitBase=-1,UnitAttack,UnitDefence,UnitMoves,BuildingBase=-1,Agenda=-1;public int[] Faiths=new int[0];
+ public int UnitBase=-1,UnitAttack,UnitDefence,UnitMoves,BuildingBase=-1,Agenda=-1;
+ // UnitEra: the age from which the unique unit replaces the common one (owner request, 8 Nov 2026: legions from the Classical Age).
+ public int UnitEra;public int[] Faiths=new int[0];
  public PeopleRule AbilityRule,BuildingRule,WeaknessRule;
 }
 public static class CivLore {
@@ -81,7 +83,7 @@ public static class CivLore {
    History="Aurelia began as a market town on seven low hills where several tribes met to trade. Its citizens threw out their last king and swore never to crown another, and their republic spread by colonies, roads and alliances as much as by conquest. A slave revolt and a civil war between rival generals nearly ended the Republic; the Senate survived by granting citizenship to all its allies. Consul Aurelius wants more land for more citizens, and has little patience for long wars that the people tire of.",
    Strengths="Content, well-governed cities; disciplined early infantry; good gold from forums.",Weaknesses="Its citizens tire of war quickly.",
    Ability="Civic Virtue",AbilityText="+1 content citizen in cities with a Courthouse or Colosseum.",
-   Unit="Legionary",UnitBase=2,UnitAttack=1,UnitDefence=1,UnitText="Replaces the Warrior: +1 attack, +1 defence.",
+   Unit="Legionary",UnitBase=2,UnitEra=1,UnitAttack=1,UnitDefence=1,UnitText="Replaces the Warrior from the Classical Age: +1 attack, +1 defence.",
    Building="Forum",BuildingBase=34,BuildingText="Replaces the Courthouse: +2 gold and +1 content citizen as well.",
    Weakness="War-Weary Citizens",WeaknessText="While at war with anyone, every city -1 content citizen.",Agenda=4,Faiths=new[]{14,17,0}};
   entries[10]=new CivEntry{Epithet="Lords of the Rising Isles",
@@ -130,7 +132,7 @@ public static class CivLore {
    History="Rome grew from a small kingdom to a republic in 509 BCE and conquered Italy, Carthage and the Hellenistic east. After decades of civil war, Octavian defeated Antony and Cleopatra in 31 BCE and in 27 BCE took the name Augustus, becoming the first Roman emperor while keeping the forms of the Republic. He reformed the army and the provinces, built across Rome and began two centuries of the Pax Romana. Roman law, Latin and the network of roads outlasted the western empire, which fell in 476 CE; the eastern empire lasted until 1453.",
    Strengths="Road-linked cities prosper; disciplined legions; bath houses keep cities content.",Weaknesses="Far frontiers grow restless.",
    Ability="All Roads Lead to Rome",AbilityText="Cities connected to the capital by road +1 production and +1 gold.",
-   Unit="Legion",UnitBase=7,UnitAttack=1,UnitDefence=1,UnitText="Replaces the Spearman: +1 attack, +1 defence.",
+   Unit="Legion",UnitBase=7,UnitEra=1,UnitAttack=1,UnitDefence=1,UnitText="Replaces the Spearman from the Classical Age: +1 attack, +1 defence.",
    Building="Bath House",BuildingBase=37,BuildingText="Replaces the Aqueduct: +1 food and +1 content citizen as well.",
    Weakness="Overstretched Frontier",WeaknessText="Cities more than 10 tiles from the capital -1 content citizen.",Agenda=4,Faiths=new[]{14,17,0}};
   entries[20]=new CivEntry{Epithet="Cradle of Democracy",
@@ -299,10 +301,12 @@ public partial class World {
  City CapitalOf(int owner){int id=nations[owner].capital;return cities.Find(c=>c.id==id&&c.owner==owner)??cities.Where(c=>c.owner==owner).OrderBy(c=>c.id).FirstOrDefault();}
  int FromCapital(City c){var cap=CapitalOf(c.owner);return cap==null?0:Distance(c.x,c.y,cap.x,cap.y);}
  bool AtWarWithAnyone(int owner){for(int o=0;o<civCount;o++)if(o!=owner&&AtWar(owner,o))return true;return false;}
- public string UnitNameFor(int owner,int type){var e=Civ(owner);return e!=null&&e.UnitBase==type?e.Unit:UnitNames[type];}
+ // The unique unit replaces the common one only once its age is reached; until then the civilisation trains the ordinary unit.
+ public bool UniqueUnit(int owner,int type){var e=Civ(owner);return e!=null&&e.UnitBase==type&&(e.UnitEra<=0||Era(owner)>=e.UnitEra);}
+ public string UnitNameFor(int owner,int type){var e=Civ(owner);return UniqueUnit(owner,type)?e.Unit:UnitNames[type];}
  public string UnitName(Unit u){return u==null?"":UnitNameFor(u.owner,u.type);}
- public string BuildNameFor(int owner,int b){var e=Civ(owner);int u=BuildUnit(b);if(e!=null&&u>=0&&e.UnitBase==u)return e.Unit;if(e!=null&&u<0&&e.BuildingBase==b)return e.Building;return BuildName(b);}
- public int MaxMoves(Unit u){var e=Civ(u.owner);int m=Moves[u.type];if(e!=null&&e.UnitBase==u.type)m+=e.UnitMoves;if(CivId(u.owner)==11&&Mounted(u.type))m+=2;if(CivId(u.owner)==36&&!IsNaval(u.type))m-=2;return Math.Max(2,m);}
+ public string BuildNameFor(int owner,int b){var e=Civ(owner);int u=BuildUnit(b);if(e!=null&&u>=0&&UniqueUnit(owner,u))return e.Unit;if(e!=null&&u<0&&e.BuildingBase==b)return e.Building;return BuildName(b);}
+ public int MaxMoves(Unit u){var e=Civ(u.owner);int m=Moves[u.type];if(e!=null&&UniqueUnit(u.owner,u.type))m+=e.UnitMoves;if(CivId(u.owner)==11&&Mounted(u.type))m+=2;if(CivId(u.owner)==36&&!IsNaval(u.type))m-=2;return Math.Max(2,m);}
  void ApplyCivYields(City c,ref int f,ref int p,ref int s,ref int g){
   int civ=CivId(c.owner);if(civ<0)return;var worked=Worked(c);bool fresh=FreshWater(c.x,c.y);
   if(civ>=SealedPeoples.First){ApplyPeopleYields(c,Civ(c.owner),worked,ref f,ref p,ref s,ref g);return;}
@@ -370,7 +374,7 @@ public partial class World {
  public int CivPressure(int owner){int civ=CivId(owner);return civ==3||civ==27?150:100;}
  public int CivCost(City c,int b,int cost){int civ=CivId(c.owner);int u=BuildUnit(b);if(civ==22&&u>=0&&Mounted(u))cost+=cost/4;if(civ==23&&u==0)cost+=cost/3;return cost;}
  public int CivStrength(Unit u,Unit enemy,bool defending){
-  var e=Civ(u.owner);int s=0;if(e!=null&&e.UnitBase==u.type)s+=defending?e.UnitDefence:e.UnitAttack;int civ=CivId(u.owner);var here=At(u.x,u.y);
+  var e=Civ(u.owner);int s=0;if(e!=null&&UniqueUnit(u.owner,u.type))s+=defending?e.UnitDefence:e.UnitAttack;int civ=CivId(u.owner);var here=At(u.x,u.y);
   if(defending){if(civ==1&&cities.Any(c=>c.x==u.x&&c.y==u.y&&c.walls))s--;if(civ==24&&here!=null&&here.terrain==2)s++;if(civ==30||civ==35)s--;if(civ==38&&here!=null&&(here.terrain==11||here.terrain==9||here.terrain==19))s++;}
   else{if(civ==10&&u.hp>=10)s++;if(civ==12&&!IsNaval(u.type)&&here!=null&&NextToWater(here))s++;if(civ==34)s++;if(civ==37&&!IsNaval(u.type))s--;}
   if(civ==33&&!defending)s++;

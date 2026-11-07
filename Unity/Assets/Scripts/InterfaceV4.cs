@@ -212,7 +212,7 @@ namespace ParadigmRealm
             var v=world.Yield(c);int trade=world.Trade(c),need=world.FoodNeeded(c);
             GUI.Label(new Rect(x,y,w,24),"Food "+(v[0]>=0?"+":"")+v[0]+"   Shields "+v[1]+"   Trade "+trade,heading);y+=28;
             GUI.Label(new Rect(x,y,w,22),"Trade at "+world.nations[0].scienceRate+"% science: Science "+v[2]+"  Gold "+v[3]+(world.nations[0].militaryRate>0?"  Army +"+world.ArmyBudget(c)+" shields":"")+(world.LinkTrade(c)>0?"  (joined cities +"+world.LinkTrade(c)+" Trade)":world.modernRules&&world.CutOff(c)?"  Not joined to your other cities: -1 content, -"+World.CutOffGold+" gold":""),small);y+=26;
-            GUI.Label(new Rect(x,y,w,22),"Faith +"+world.FaithYield(c)+"  •  "+(c.religion>=0?"Follows "+ReligionCatalog.Name(c.religion)+(world.IsHolyCity(c)?" (holy city)":""):"No majority faith")+"  •  Influence "+world.CityInfluence(c),small);y+=22;
+            GUI.Label(new Rect(x,y,w,22),"Faith +"+world.FaithYield(c)+(world.modernRules?" ("+c.faith+" stored)":"")+"  •  "+(c.religion>=0?"Follows "+ReligionCatalog.Name(c.religion)+(world.IsHolyCity(c)?" (holy city)":""):"No majority faith")+"  •  Influence "+world.CityInfluence(c),small);y+=22;
             GUI.Label(new Rect(x,y,w,22),"Growth  "+c.food+" / "+need+" food   •   "+World.PeopleText(world.CityPeople(c))+" people",body);y+=22;DrawBar(new Rect(x,y,w,12),c.food/(float)Math.Max(1,need),new Color(.45f,.75f,.35f));y+=16;
             GUI.Label(new Rect(x,y,w,40),world.GrowthStatus(c),small);y+=42;
             int content=world.ContentCitizens(c),unhappy=world.UnhappyCitizens(c),workers=Math.Max(1,world.Workers(c));
@@ -234,14 +234,14 @@ namespace ParadigmRealm
             GUI.enabled=enabled&&c.entertainers+c.scientists+c.merchants>0;if(GUI.Button(new Rect(x+half+6,y,half,26),"Specialist → back to work",button))world.ReturnToWork(c);GUI.enabled=enabled;y+=32;
             GUI.Label(new Rect(x,y,w,36),"Entertainers +2 content • Scientists +3 science\nTax collectors +3 gold",small);y+=38;
             GUI.Label(new Rect(x,y,w,24),"Buildings",heading);y+=26;
-            var buildings=World.BuildingIds.Where(b=>world.HasBuilding(c,b)).Select(World.BuildName).ToArray();
+            var buildings=World.BuildingIds.Where(b=>world.HasBuilding(c,b)).Concat(World.FaithBuildingIds.Where(b=>b!=36&&world.HasBuilding(c,b))).Select(World.BuildName).ToArray();
             GUI.Label(new Rect(x,y,w,area.yMax-y-6),buildings.Length==0?"None yet.":string.Join(", ",buildings),small);
         }        void DrawProductionLine(City c,bool building,Rect area)
         {
             GUI.Box(area,"");int current=building?c.buildingProject:c.build,progress=building?c.buildingProduction:c.production;var queue=building?c.buildingQueue:c.queue;
             GUI.Label(new Rect(area.x+10,area.y+8,area.width-20,25),(building?"BUILDINGS":"UNIT TRAINING")+" — "+queue.Count+" queued",heading);
             // The next three items with their cost and turns left (turns count up through the queue).
-            int output=building||current<0?Math.Max(1,world.Yield(c)[1]):world.LineOutput(c,current),turns=0;var lines=new System.Collections.Generic.List<string>();
+            int output=world.LineShare(c,building),turns=0;var lines=new System.Collections.Generic.List<string>();
             if(current<0)lines.Add("Idle — choose below");
             else{turns=Math.Max(1,(world.CostFor(c,current)-progress+output-1)/output);lines.Add("1. "+world.BuildNameFor(c.owner,current)+"  "+progress+" / "+world.CostFor(c,current)+" — "+turns+" turns");var reason=world.BuildReason(c,current);if(reason!="")lines.Add("   Paused: "+reason);}
             for(int i=0;i<queue.Count;i++){turns+=Math.Max(1,(world.CostFor(c,queue[i])+output-1)/output);lines.Add((i+2)+". "+world.BuildNameFor(c.owner,queue[i])+"  "+world.CostFor(c,queue[i])+" — "+turns+" turns");}
@@ -255,7 +255,9 @@ namespace ParadigmRealm
             // Only what the civilisation's current technology allows (and is not already built) is listed (owner request).
             int[] options=(building?World.BuildingIds:Enumerable.Range(0,World.UnitNames.Length).Select(World.UnitBuild).ToArray()).Where(p=>world.TechAllows(c,p)).ToArray();
             Vector2 scroll=building?buildingQueueScroll:unitQueueScroll;
-            scroll=GUI.BeginScrollView(new Rect(area.x+8,area.y+130,area.width-16,area.height-140),scroll,new Rect(0,0,area.width-34,options.Length*67+4));
+            // Religious buildings (owner request, 8 Nov 2026): bought with the faith this city has gathered, listed under the others.
+            int[] holy=building&&world.modernRules?World.FaithBuildingIds.Where(b=>world.FaithAllows(c,b)).ToArray():new int[0];
+            scroll=GUI.BeginScrollView(new Rect(area.x+8,area.y+130,area.width-16,area.height-140),scroll,new Rect(0,0,area.width-34,options.Length*67+4+(holy.Length>0?30+holy.Length*67:0)));
             for(int i=0;i<options.Length;i++){
                 int project=options[i];float y=i*67;DrawIcon(new Rect(4,y+5,26,26),building?12+Array.IndexOf(World.BuildingIds,project):-1);
                 if(!building)GUI.DrawTexture(new Rect(4,y+5,26,26),people[World.BuildUnit(project)]);
@@ -266,6 +268,10 @@ namespace ParadigmRealm
                 bool append=e.control;if(GUI.Button(r,world.BuildNameFor(c.owner,project),button)){bool ok=world.ChooseProject(c,project,append);status=ok?(append?"Added to queue.":"Selected one "+world.BuildNameFor(c.owner,project)+"."):"Already built/queued or queue full.";GUIUtility.ExitGUI();}
                 GUI.enabled=enabled;GUI.Label(new Rect(37,y+34,area.width-78,31),reason!=""?reason:world.CostFor(c,project)+" production"+(building?" | "+World.BuildingEffect(project):"")+(ordered?" | Ordered: right-click to cancel":""),small);
             }
+            if(holy.Length>0){float hy=options.Length*67+4;GUI.Label(new Rect(4,hy,area.width-40,24),"Religious buildings — "+c.faith+" faith here (+"+world.FaithYield(c)+")",heading);hy+=30;
+                for(int i=0;i<holy.Length;i++){int b=holy[i];float y=hy+i*67;DrawIcon(PixelArt.IconFaith,new Rect(4,y+5,26,26));var r=new Rect(37,y,area.width-78,32);string reason=world.FaithBuildReason(c,b);bool enabled=GUI.enabled;
+                    GUI.enabled=enabled&&reason==""&&world.result=="";if(GUI.Button(r,World.FaithBuildingName(b)+" — "+world.FaithBuildingCost(b)+" faith",button)){status=world.BuildWithFaith(c,b)?World.FaithBuildingName(b)+" consecrated.":world.FaithBuildReason(c,b);GUIUtility.ExitGUI();}
+                    GUI.enabled=enabled;int faithTurns=world.FaithTurns(c,b);GUI.Label(new Rect(37,y+34,area.width-78,31),(reason!=""?reason+(faithTurns>0&&reason.StartsWith("Needs ")&&reason.Contains("faith in")?" — about "+faithTurns+" turns":""):"Ready")+" | "+World.FaithBuildingTexts[Array.IndexOf(World.FaithBuildingIds,b)],small);}}
             GUI.EndScrollView();if(building)buildingQueueScroll=scroll;else unitQueueScroll=scroll;
         }
         void DrawResearchScreen(){DrawExpandedResearch();}

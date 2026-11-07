@@ -2,6 +2,58 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 8 Nov: Colossal maps, legions, hills, shared shields, workers, faith buildings and deeper diplomacy (save version 35)
+
+**How this was checked:** Unity `RealmTools.Checks` (including `ContentChecks.EighthNovemberChecks`) and `GraphicsChecks` pass, and a Windows build ran `-autoShot` with no exceptions. **Not hand-played.** Balance is unproven.
+
+**Measured:**
+- .NET harness, Small map, Standard speed:
+  - By turn 300 rivals know about 22 of 99 technologies.
+  - They reach the Classical Age by turn 100 and the Medieval Age by turn 200.
+- Colossal turn time: real build, `-frameProbe` Colossal globe with 16 civilisations and 50 sealed peoples (579,000 tiles): turns average 1.2 s at turn 20 and 2.3 s at turn 60 (worst 3.5 s); the map still draws in 6-16 ms a frame; a save takes about 4 s (autosave runs on a worker thread).
+
+**What changed:**
+- **Colossal maps:** a seventh map size, about 1.6 to 1.75 times Massive.
+- **Legionary and Legion:** they replace the Warrior and the Spearman only once Aurelia or Rome reaches the Classical Age. Before then those civilisations train the ordinary unit.
+- **Hills:** they already gave +2 defence (mountains +3, forest and river +1). The tile card, the map tooltip and the attack preview now show it.
+- **Production:** a city's shields are one pool.
+  - With a unit and a building both under way, each gets half (the unit the odd shield).
+  - Either one alone gets all of it.
+  - A building is finished only when the shields put into it reach its cost.
+  - The city screen counts turns from each line's share.
+  - Before this change each line received the city's full output.
+- **New cities:** they start with nothing in training or construction. The founder chooses.
+- **Fleeing workers:**
+  - A worker never flees animals while on its own civilisation's land (animals do not cross borders).
+  - Outside its land it runs for the nearest tile of its own land, or of a civilisation it has open borders, friendship or an alliance with, rather than for the nearest city.
+  - Enemy soldiers (a civilisation at war with it, seen within 3 tiles) make it run to its nearest city, even on its own land.
+  - A soldier on its tile, or being in a city, keeps it at work.
+- **Faith:**
+  - Faith is in the top bar.
+  - Every city keeps its own faith store, filled by its faith each turn (the national pool fills as before), and makes at least 1 faith.
+  - Religious buildings are bought with the city's own faith:
+
+    | Building | Faith (Standard) | Effect | Needs |
+    |---|---|---|---|
+    | Shrine | 25 | +1 faith | — |
+    | Temple | 60 | +2 faith, +2 content | Mysticism and a Shrine |
+    | Monastery | 100 | +2 faith, +2 science | Philosophy and a Temple |
+    | Cathedral | 160 | +3 faith, +3 content | Education and a Temple |
+
+  - They appear under the Buildings tab.
+  - Temples can no longer be built with production; a Temple waiting in a queue is removed when an old save loads.
+  - Rivals buy them too.
+- **Diplomacy** (see `Design/DIPLOMACY-RESEARCH-2026-11-08.md` for sources):
+  - Opinion as named reasons with a panel on the diplomacy screen.
+  - Influence spent on envoys and incitement.
+  - Alarm at expansion, and coalitions that defend their members.
+  - Ruler traits in opinion.
+  - Deals valued by need.
+  - Four rival postures.
+  - Leader flavours.
+
+**Not built:** hidden agendas, sanctions, event-driven diplomacy, and the Loyalty flavour's effect.
+
 ## Owner requests 7 Nov, latest: tree size, game speed, opening gold, animals and population (no save change)
 
 Checked by Unity `RealmTools.Checks` (`ContentChecks.PacingAndPopulationChecks`) and `GraphicsChecks`, a Windows build, `-inputProbe` and `-autoShot`, and a 400-turn game in the .NET harness. Not hand-played.

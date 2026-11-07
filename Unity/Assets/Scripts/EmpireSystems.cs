@@ -14,7 +14,7 @@ public partial class World {
     public bool AdjacentWater(City c){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){if(dx==0&&dy==0)continue;var t=Step(c.x,c.y,dx,dy);if(t!=null&&(t.terrain==4||t.terrain==6||t.terrain==12))return true;}return false;}
     public int GovernmentSupport(int owner){return new[]{6,8,2,0,10}[nations[owner].government];}
     public bool ChangeGovernment(int owner,int government){if(owner<0||owner>=civCount||government<0||government>=Governments.Length||result!="")return false;var n=nations[owner];if(n.government==government||n.revolution>0||(government>0&&!HasTech(owner,GovernmentTech[government])))return false;n.government=government;n.revolution=2;if(owner==0)Note("Revolution: two turns of reduced output before "+Governments[government]+".");return true;}
-    public int ExtraHappiness(City c){var n=nations[c.owner];return c.entertainers*2+n.luxury*2+(n.government==1?1:0)+(HasBuilding(c,36)?2:0)+(HasBuilding(c,42)?3:0)+(OwnWonder(c.owner,61)?2:0)-(n.revolution>0?2:0)-(n.government==3&&units.Any(u=>u.owner==c.owner&&Power[u.type]>0&&At(u.x,u.y).owner>=0&&At(u.x,u.y).owner!=c.owner&&AtWar(c.owner,At(u.x,u.y).owner))?2:0);}
+    public int ExtraHappiness(City c){var n=nations[c.owner];return c.entertainers*2+n.luxury*2+(n.government==1?1:0)+(HasBuilding(c,36)?2:0)+(HasBuilding(c,CathedralBuilding)?3:0)+(HasBuilding(c,42)?3:0)+(OwnWonder(c.owner,61)?2:0)-(n.revolution>0?2:0)-(n.government==3&&units.Any(u=>u.owner==c.owner&&Power[u.type]>0&&At(u.x,u.y).owner>=0&&At(u.x,u.y).owner!=c.owner&&AtWar(c.owner,At(u.x,u.y).owner))?2:0);}
     public void NormaliseSpecialists(City c){while(c.scientists+c.merchants+c.entertainers>c.pop){if(c.scientists>0)c.scientists--;else if(c.merchants>0)c.merchants--;else c.entertainers--;}}
     public bool AdjustSpecialist(City c,int type,int delta){if(c==null||!cities.Contains(c)||result!=""||type<0||type>2||(delta!=1&&delta!=-1))return false;int value=type==0?c.scientists:type==1?c.merchants:c.entertainers;if(delta<0&&value==0||delta>0&&c.scientists+c.merchants+c.entertainers>=c.pop)return false;if(type==0)c.scientists+=delta;else if(type==1)c.merchants+=delta;else c.entertainers+=delta;return true;}
     // With a Sewer system cities grow to 20, to 30 with Electricity and 40 with Computing, so the work area keeps widening
@@ -22,7 +22,7 @@ public partial class World {
 public int GrowthLimit(City c){return HasBuilding(c,41)?20+(HasTech(c.owner,"electricity")?10:0)+(HasTech(c.owner,"computers")?10:0):HasBuilding(c,37)?12:FreshWater(c.x,c.y)?8:6;}
     void ApplyEmpireYields(City c,ref int food,ref int production,ref int science,ref int goldYield){var n=nations[c.owner];science+=c.scientists*3+(n.capital==c.id?DiplomaticScience(c.owner):0);goldYield+=c.merchants*3;
         // Stage 8: flat building bonuses as the design states (University +3); research pacts count once, at the capital.
-        if(HasBuilding(c,38))science+=3;if(HasBuilding(c,40))production=production*3/2;
+        if(HasBuilding(c,38))science+=3;if(HasBuilding(c,MonasteryBuilding))science+=2;if(HasBuilding(c,40))production=production*3/2;
         if(OwnWonder(c.owner,60))science+=3;if(OwnWonder(c.owner,62))goldYield+=3;
         if(n.government==2){science+=2;goldYield+=2;}if(n.government==3){science+=4;goldYield+=3;}if(n.government==4){production+=3;science=Math.Max(1,science-2);}
         if(HasBuilding(c,39))goldYield+=3;
@@ -45,7 +45,10 @@ public int GrowthLimit(City c){return HasBuilding(c,41)?20+(HasTech(c.owner,"ele
     public string CombatPreview(Unit attacker,int x,int y){
         if(attacker==null||Power[attacker.type]==0||!VisibleTo(attacker.owner,x,y)||Distance(attacker.x,attacker.y,x,y)!=1)return "";
         var enemy=BestDefender(attacker,x,y);if(enemy==null)return "";
-        return ExchangeText(attacker,enemy,"Attack")+(AtWar(attacker.owner,enemy.owner)?"":" Declares war.");
+        return ExchangeText(attacker,enemy,"Attack")+DefenceNote(x,y)+(AtWar(attacker.owner,enemy.owner)?"":" Declares war.");
+    }
+    // Hills, forest, rivers and mountains add to the defender's strength (owner request, 8 Nov 2026: shown wherever a battle is judged).
+    public string DefenceNote(int x,int y){var t=At(x,y);if(t==null)return "";int d=TerrainDefence(t.terrain);return d>0?" Defender's "+TerrainNames[t.terrain].ToLower()+": +"+d+" defence (included).":"";
     }
     // Exact outcome of one exchange, as the real attack will resolve it (combat is deterministic).
     public string ExchangeText(Unit attacker,Unit enemy,string kind){
