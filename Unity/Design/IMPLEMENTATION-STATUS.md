@@ -2,6 +2,28 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 8 Nov, latest: sealed peoples' portraits, hills, volcanoes and gateway designs (save version 37)
+
+**How this was checked:**
+- Unity `RealmTools.Checks` (new gateway checks: sealed at start, two different designs per pair, opening one pair opens both ends and no other) and `GraphicsChecks` pass.
+- A Windows build ran `-autoShot` with no exceptions.
+- Screenshots in `Documentation/Unity-Screenshots-2026-11-08-Gates` show hills, Infernal Depths volcanoes, a sealed and an opened gateway on the map, the sealed scene and the opened scene.
+- **Not hand-played.**
+
+**Portraits:** all 40 sealed peoples of the five worlds now have painted portraits matching the others (`leader-39..78`).
+
+**Terrain:**
+- Hills are rounded grassy hills, not flat mounds.
+- Volcanic terrain uses the mountains' cluster of peaks in dark volcanic rock, with a glowing crater and smoke.
+
+**Gateways:**
+- **Nine designs** from the owner's pictures: frost, grove, obsidian, void, sun, arcane, sky scaffold, steam works and rift.
+- **Which design goes where:** a gateway in a parallel world wears its world's design (Fae Wilds grove, Ashen Waste sun, Infernal Depths obsidian, Plague Marshes rift, Drowned Deep frost). A home-world gateway wears one of the four home designs.
+- **Sealed until opened:** every gateway starts sealed (a carved, rune-locked door in the same design) and shows its open portal once that gateway is opened. Gateways now open in pairs, one pair at a time, rather than all at once.
+- **The gateway scene** shows the sealed picture, or once open the owner's painting with its own text.
+
+**Not built yet:** nothing in play opens a gateway. `OpenGate` is ready for a technology, wonder or event to call.
+
 ## Owner requests 8 Nov, later: religion screen in the mockup's style, and new SpriteCook art (no save change)
 
 **How this was checked:**

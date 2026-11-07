@@ -35,7 +35,19 @@ public partial class World {
  public bool RealmDiscovered(int owner,int r){if(r==0)return true;if(!HasRealms)return false;for(int y=RealmTop(r);y<RealmBottom(r);y++)for(int x=0;x<Width;x++){var t=tiles[y*Width+x];if(owner==0?t.seen:nations[owner].known[y*Width+x])return true;}return false;}
  public Tile GateTwin(Tile t){return t==null||t.gateLink<=0||t.gateLink>tiles.Length?null:tiles[t.gateLink-1];}
  int GateRealm(Tile t){var twin=GateTwin(t);return twin==null?0:t.realm==0?twin.realm:t.realm;}
- public string GateName(Tile t){int r=GateRealm(t);if(gatesLocked)return "Sealed ancient gateway";return t.realm==0?"Ancient gateway to the "+RealmNames[r]:"Ancient gateway home";}
+ // Gate designs (owner pictures, 8 Nov 2026): nine looks. A gateway in a parallel world wears its world's design (Fae Wilds forest,
+ // Ashen Waste desert, Infernal Depths obsidian, Plague Marshes rift, Drowned Deep ice); one on the home world wears one of the four
+ // home designs (arcane castle, steam works, sky scaffold, void spires) chosen by the world it leads to. Every gateway starts sealed
+ // and opens on its own (OpenGate), showing its open picture once it does.
+ public static readonly string[] GateStyleNames={"Frost gate","Grove gate","Obsidian gate","Void gate","Sun gate","Arcane gate","Sky gate","Steam gate","Rift gate"};
+ public static readonly int[] RealmGateStyle={5,1,4,2,8,0},HomeGateStyle={5,5,7,6,3,5};
+ public int GateStyle(Tile t){if(t==null)return 5;if(t.realm>0)return RealmGateStyle[Math.Max(0,Math.Min(RealmGateStyle.Length-1,t.realm))];var twin=GateTwin(t);int r=twin!=null?twin.realm:1;return HomeGateStyle[Math.Max(0,Math.Min(HomeGateStyle.Length-1,r))];}
+ int GatePair(Tile t){var twin=GateTwin(t);int a=t.y*Width+t.x;return twin==null?a:Math.Min(a,twin.y*Width+twin.x);}
+ // Save version 37: gateway pairs opened one by one while the rest stay sealed.
+ public List<int> openedGates=new List<int>();
+ public bool GateOpen(Tile t){if(t==null||t.gateLink<=0)return false;if(!gatesLocked)return true;return openedGates!=null&&openedGates.Contains(GatePair(t));}
+ public bool OpenGate(Tile t){if(t==null||t.gateLink<=0||GateOpen(t))return false;if(openedGates==null)openedGates=new List<int>();openedGates.Add(GatePair(t));var twin=GateTwin(t);int r=t.realm>0?t.realm:twin!=null?twin.realm:0;Note("An ancient gateway has opened: the "+GateStyleNames[GateStyle(t)].ToLower()+" to the "+RealmNames[r]+".");return true;}
+ public string GateName(Tile t){int r=GateRealm(t);if(!GateOpen(t))return "Sealed ancient gateway";return t.realm==0?"Ancient gateway to the "+RealmNames[r]:"Ancient gateway home";}
  // Called once a new world has been generated: appends the five worlds and links their gateways to the home world.
  void AddRealms(){
   if(HasRealms||mapShape==1)return;realmHeight=mapHeight;int W=Width,oldH=mapHeight,extra=RealmCount*(RealmHeight+RealmGap);var grown=new Tile[W*(oldH+extra)];
@@ -102,7 +114,7 @@ public partial class World {
  // A land unit that enters a gateway it knows of is carried to the twin gateway (or the nearest free tile beside it).
  void GatewayTravel(Unit u){
   var here=At(u.x,u.y);var twin=GateTwin(here);if(twin==null||IsNaval(u.type))return;
-  if(gatesLocked){if(u.owner==0&&!u.exploring)Note("The ancient gateway is sealed. Your "+UnitName(u)+" cannot open it.");return;}
+  if(!GateOpen(here)){if(u.owner==0&&!u.exploring)Note("The ancient gateway is sealed. Your "+UnitName(u)+" cannot open it.");return;}
   Tile landing=GateLanding(u,twin);
   if(landing==null){if(u.owner==0)Note("The gateway flickers but will not open: the far side is blocked.");return;}
   int from=here.realm;CancelOrder(u);u.exploring=false;u.x=landing.x;u.y=landing.y;u.moves=0;

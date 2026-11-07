@@ -261,6 +261,8 @@ namespace ParadigmRealm
             // A revealed, zoomed-out view so coastlines and banks are visible (this throwaway game only).
             detailsScreen="";foreach(var t in world.tiles){t.seen=true;t.rememberedTerrain=t.terrain;t.rememberedResource=t.resource;t.rememberedOwner=t.owner;t.rememberedRoad=t.road;t.rememberedFarm=t.farm;t.rememberedMine=t.mine;t.rememberedFort=t.fort;}
             isoWidth=48;ClearIso();
+            // Every gateway counts as found from here, so the gate scene does not cover the map pictures that follow.
+            {if(world.gatesFound==null)world.gatesFound=new System.Collections.Generic.List<int>();for(int gi=0;gi<world.tiles.Length;gi++)if(world.tiles[gi].gateLink>0&&!world.gatesFound.Contains(gi))world.gatesFound.Add(gi);gateScene=null;gateScenePicture=null;}
             yield return Shot(folder,"5-world.bmp");
             var coast=world.tiles.FirstOrDefault(t=>!PixelArt.IsWater(t.terrain)&&world.At(t.x,t.y+1)!=null&&PixelArt.IsWater(world.At(t.x,t.y+1).terrain)&&world.At(t.x-1,t.y)!=null&&!PixelArt.IsWater(world.At(t.x-1,t.y).terrain));
             if(coast!=null){isoWidth=96;FocusTile(coast.x,coast.y);}
@@ -290,7 +292,7 @@ namespace ParadigmRealm
             world.tech[TechnologyCatalog.Index("mysticism")]=true;isoWidth=32;IsoZoom(-1);
             yield return Shot(folder,"7-globe.bmp");
             // An ancient gateway, each parallel world beyond it and the Realms screen switcher (this throwaway game only).
-            {var g=world.tiles.FirstOrDefault(t=>t.realm==0&&t.gateLink>0);if(g!=null){globeZoom=false;diamondView=true;isoWidth=128;FocusTile(g.x,g.y);yield return Shot(folder,"9a-gateway.bmp");
+            {var g=world.tiles.FirstOrDefault(t=>t.realm==0&&t.gateLink>0);if(g!=null){globeZoom=false;diamondView=true;isoWidth=128;FocusTile(g.x,g.y);yield return Shot(folder,"9a-gateway.bmp");foreach(var gt in world.tiles.Where(t=>t.gateLink>0&&t.realm==0).ToList())world.OpenGate(gt);yield return Shot(folder,"9a2-gateway-open.bmp");StartGateScene(g);gateScenePicture=null;yield return Shot(folder,"9a3-gate-open-scene.bmp");gateScene=null;gateScenePicture=null;
               foreach(int r in new[]{3,1,2,4,5}){var gate=world.tiles.FirstOrDefault(t=>t.realm==r&&t.gateLink>0);if(gate==null)continue;var visitor=world.Add(0,2,gate.x,gate.y);world.Reveal();selected=visitor.id;isoWidth=96;FocusTile(gate.x,gate.y);yield return Shot(folder,"9b-realm-"+r+".bmp");}
               detailsScreen="Atlas";yield return Shot(folder,"9c-realms-screen.bmp");legendsOpen=true;legendsWorld=3;yield return Shot(folder,"9d-legends.bmp");legendsPeople=CivilisationCatalog.PeoplesOf(3).Last();yield return Shot(folder,"9e-legend-people.bmp");legendsPeople=-1;legendsOpen=false;civLoreOpen=false;detailsScreen="";ShowRealm(0);isoWidth=96;}}
             // Classic view scrolled across the east-west seam.

@@ -26,5 +26,7 @@ Every settlement (`city-0..3-0..3`, with and without `-walled`), `hamlet-0..3`, 
 - `Visuals/faith-event-0..3`: religious event paintings (prophet, schism, discovery, persecution), 512 x 288.
 - `Visuals/unit-15`: the Priest.
 
+- 8 Nov, later still: `Leaders/leader-39..78` (sealed peoples); `Sprites/hills`, `hills-1`, `hills-2` (64 x 64, used for Hills instead of the drawn mounds); `Sprites/terrain-17`, `-1`, `-2` (volcanoes); `Sprites/gate-open-0..8` and `gate-sealed-0..8` (any square-ish size, drawn about 84 px wide at zoom 1 with the ground patch's tip on the tile's lower tip; 0 frost, 1 grove, 2 obsidian, 3 void, 4 sun, 5 arcane, 6 sky, 7 steam, 8 rift); `Visuals/gate-scene-0..8` (the owner's gateway paintings, shown when a gateway opens).
+
 ## Leader portraits
 `Resources/Leaders/leader-NN.png` (300 x 400), and age versions `leader-NN-eE.png` (E = 0 Dawn … 5 Dimensional) for clothing that changes with the age. Jade Dynasty (15) and Serpent League (16) join the game once their portraits exist.
