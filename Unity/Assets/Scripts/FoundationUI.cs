@@ -18,7 +18,10 @@ namespace ParadigmRealm
         void ClampViewRows(){float top=world.RealmTop(viewRealm)*ClassicRowHeight(),bottom=world.RealmBottom(viewRealm)*ClassicRowHeight()+(world.Staggered?tilePixels*.5f:0);mapScroll.y=Mathf.Clamp(mapScroll.y,top,Mathf.Max(top,bottom-MapH));}
         void ClampMapScroll(){if(world.Sphere){float wpx=world.Width*tilePixels;mapScroll.x=((mapScroll.x%wpx)+wpx)%wpx;ClampViewRows();return;}mapScroll.x=Mathf.Clamp(mapScroll.x,0,Mathf.Max(0,world.Width*tilePixels-MapW));ClampViewRows();}
         void OpenCity(City c){tutorialCitySeen=true;cityId=c.id;selected=-1;cityScreen=true;cityScroll=Vector2.zero;cityMapScroll=Vector2.zero;builtScroll=Vector2.zero;unitQueueScroll=Vector2.zero;buildingQueueScroll=Vector2.zero;researchScreen=false;detailsScreen="";GUI.FocusControl(null);ResetMapGesture();GUIUtility.ExitGUI();}
-        bool OrderTeam(Unit u,int x,int y){var team=world.WorkerTeam(u).ToList();bool ok=false;foreach(var member in team)ok=world.Order(member,x,y)||ok;status=ok?"Order issued. Travel continues each turn; new orders replace it.":"Cannot reach that destination.";return ok;}
+        bool OrderTeam(Unit u,int x,int y){var team=world.WorkerTeam(u).ToList();int sx=u.x,sy=u.y;bool ok=false;foreach(var member in team)ok=world.Order(member,x,y)||ok;status=ok?"Order issued. Travel continues each turn; new orders replace it.":"Cannot reach that destination.";
+            // An order that cannot take its first step says why, rather than leaving the unit standing there in silence.
+            if(ok&&u.hasOrder&&u.x==sx&&u.y==sy&&u.moves>0){var path=world.PlannedRoute(u);if(path.Count>0){string why=world.MoveProblem(u,path[0].x,path[0].y);if(why!="")status="Order given, but it cannot move yet: "+why;}}
+            return ok;}
         string UnitDescription(Unit u){return new[]{"Founds new cities","Builds roads and improvements","Basic close-combat infantry","Explores distant territory","Ranged infantry","Armoured mounted troops","Gunpowder infantry","Counters mounted troops","Fast mounted troops","Siege artillery","Helps nearby units heal","Establishes trade routes and supplies wonders","Explores coasts and ferries one land unit","Carries land units across the sea","Fights at sea and bombards coasts","Preaches its faith in cities (2 sermons), keeps a city content and heals nearby units"}[u.type];}
         void HandleGlobalInput(){var e=Event.current;if(e.type!=EventType.KeyDown||turnRunning)return;
             if(e.keyCode==KeyCode.S&&e.control){Save();e.Use();return;}
@@ -127,6 +130,7 @@ namespace ParadigmRealm
             if(u!=null){
                 DrawEmpireUnit(u);
                 GUILayout.Label((World.Power[u.type]>0?"Support "+World.SupportCost(u.type)+" gold a turn":"Support 1 gold beyond the free allowance")+" | Eats "+(World.UnitRation(u.type)==2?"1 food":"half a food")+" a turn | "+World.RankText(u),small);
+                if(world.SameTypeHere(u)>=2&&world.UnitsToStack(u).Count>world.SameTypeHere(u)&&Button("Take all "+world.SameTypeHere(u)+" "+World.UnitNames[u.type]+" units here as one stack")){world.JoinType(u);status="All the "+World.UnitNames[u.type]+" units here now move together.";}
                 if(!World.IsNaval(u.type)&&world.UnitsToStack(u).Count>1){if(u.stack==0&&Button("Stack the units on this tile [G]"))world.JoinStack(u);else if(u.stack!=0&&Button("Break up this stack [G]"))world.LeaveStack(u);}
                 GUILayout.Label("Activity: "+world.Activity(u)+" | "+world.Remaining(u),body);
                 if(u.type==1){GUILayout.Label("Worker team: "+world.WorkerTeam(u).Count,small);

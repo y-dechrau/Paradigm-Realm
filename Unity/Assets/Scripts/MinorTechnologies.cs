@@ -53,10 +53,11 @@ public static partial class TechnologyCatalog {
 // The combined effect of the minor technologies a civilisation knows, cached until it learns another.
 public partial class World {
  [NonSerialized] Dictionary<int,MinorTotals> minorCache;
- class MinorTotals{public int known=-1;public int[,] terrain=new int[3,21];public int[,] resource=new int[3,16];public int science,gold,production,content;public Dictionary<string,int> attack=new Dictionary<string,int>(),defence=new Dictionary<string,int>();}
+ class MinorTotals{public int faith;public int known=-1;public int[,] terrain=new int[3,21];public int[,] resource=new int[3,16];public int science,gold,production,content;public Dictionary<string,int> attack=new Dictionary<string,int>(),defence=new Dictionary<string,int>();}
  MinorTotals Minors(int owner){
   if(minorCache==null)minorCache=new Dictionary<int,MinorTotals>();MinorTotals m;
   var tech=owner>=0&&owner<civCount?nations[owner].tech:null;int known=0;if(tech!=null)for(int i=modernRules?0:TechnologyCatalog.KeystoneCount;i<tech.Length;i++)if(tech[i])known++;
+  if(modernRules&&owner>=0&&owner<civCount)known+=1000*DoctrineCount(owner);
   if(minorCache.TryGetValue(owner,out m)&&m.known==known)return m;
   m=new MinorTotals{known=known};minorCache[owner]=m;if(tech==null)return m;
   for(int i=modernRules?0:TechnologyCatalog.KeystoneCount;i<tech.Length&&i<TechnologyCatalog.Count;i++){if(!tech[i])continue;string effect=TechnologyCatalog.IsKeystone(i)?TechnologyCatalog.KeystoneEffect(i):TechnologyCatalog.Effects[i];if(string.IsNullOrEmpty(effect))continue;var parts=effect.Split('|');var head=parts[0].Split(':');
@@ -68,6 +69,9 @@ public partial class World {
     case "A":{int v;m.attack.TryGetValue(head[1],out v);m.attack[head[1]]=v+1;break;}
     case "D":{int v;m.defence.TryGetValue(head[1],out v);m.defence[head[1]]=v+1;break;}
    }}
+  // Doctrines of the faith tree add their effects in the same way.
+  if(modernRules&&nations[owner].doctrines!=null)for(int d=0;d<DoctrineCatalog.Count&&d<nations[owner].doctrines.Length;d++){if(!nations[owner].doctrines[d])continue;var parts=DoctrineCatalog.Effects[d].Split('|');var head=parts[0].Split(':');
+   switch(head[0]){case "Y":m.faith+=int.Parse(head[1]);break;case "F":case "P":case "T":{int y=head[0]=="F"?0:head[0]=="P"?1:2;m.terrain[y,int.Parse(head[1])]++;break;}case "S":m.science+=int.Parse(head[1]);break;case "G":m.gold+=int.Parse(head[1]);break;case "W":m.production+=int.Parse(head[1]);break;case "H":m.content++;break;case "D":{int v;m.defence.TryGetValue(head[1],out v);m.defence[head[1]]=v+1;break;}}}
   m.science=Math.Min(40,m.science);m.gold=Math.Min(40,m.gold);m.production=Math.Min(40,m.production);m.content=Math.Min(3,m.content);
   foreach(var k in m.attack.Keys.ToList())m.attack[k]=Math.Min(3,m.attack[k]);foreach(var k in m.defence.Keys.ToList())m.defence[k]=Math.Min(3,m.defence[k]);
   return m;
@@ -77,6 +81,7 @@ public partial class World {
  public static string UnitClass(int type){return IsNaval(type)?"naval":IsRanged(type)?(type==9?"siege":"ranged"):Mounted(type)?"mounted":"melee";}
  public int MinorStrength(Unit u,bool defending){if(u==null||Power[u.type]==0&&!defending)return 0;var m=Minors(u.owner);int v;return (defending?m.defence:m.attack).TryGetValue(UnitClass(u.type),out v)?v:0;}
  public int MinorContent(int owner){return owner<0?0:Minors(owner).content;}
+ public int MinorFaith(int owner){return owner<0||!modernRules?0:Minors(owner).faith;}
  public void MinorPercent(int owner,out int science,out int gold,out int production){var m=Minors(owner);science=m.science;gold=m.gold;production=m.production;}
 }
 }

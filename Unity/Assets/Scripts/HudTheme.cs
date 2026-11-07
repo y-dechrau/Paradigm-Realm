@@ -119,7 +119,7 @@ namespace ParadigmRealm
             DrawIcon(PixelArt.IconRealms,new Rect(10,7,24,24));GUI.Label(new Rect(42,8,260,26),"PARADIGM  REALM",hudTitle);
             int budget=hudBudget,ownCities=hudOwnCities,calm=hudCalm;
             var items=new[]{
-                new KeyValuePair<int,string>(PixelArt.IconGold,"Gold  "+world.gold+"  ("+(budget>=0?"+":"")+budget+")"),
+                new KeyValuePair<int,string>(PixelArt.IconGold,"Gold  "+world.gold+"  ("+(budget>=0?"+":"")+budget+")"+(world.nations[0].arrears>0?"  IN DEBT":"")),
                 new KeyValuePair<int,string>(PixelArt.IconScience,"Science  +"+SciencePerTurn()),
                 new KeyValuePair<int,string>(PixelArt.IconFood,"Food  "+(hudFood>=0?"+":"")+hudFood+"  "+world.FoodStateName(0)),
                 new KeyValuePair<int,string>(PixelArt.IconAge,TechnologyCatalog.EraNames[hudEra]+(world.AgeOf(0)!=World.AgeNormal?" · "+World.AgeNames[world.AgeOf(0)].Replace(" Age",""):"")),
@@ -264,7 +264,9 @@ namespace ParadigmRealm
             if(World.Power[u.type]>0&&!World.IsNaval(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconFortify,u.fortified?"Wake":"Fortify"));
             else if(u.type!=1)actions.Add(new KeyValuePair<int,string>(PixelArt.IconSentry,u.sentry?"Wake":"Sentry"));
             bool canStack=!World.IsNaval(u.type)&&world.UnitsToStack(u).Count>1;if(canStack&&u.type!=1)actions.Insert(1,new KeyValuePair<int,string>(PixelArt.IconMilitary,u.stack!=0?"Unstack":"Stack"));
-            actions=actions.Take(u.type==1?5:canStack?5:4).ToList();actions.Add(new KeyValuePair<int,string>(PixelArt.IconMore,moreActions?"Less":"More"));
+            // On a tile of mixed units, one click gathers every unit of this kind (owner request).
+            bool sameKind=canStack&&u.type!=1&&world.SameTypeHere(u)>=2&&world.UnitsToStack(u).Count>world.SameTypeHere(u);if(sameKind)actions.Insert(2,new KeyValuePair<int,string>(PixelArt.IconCities,"All "+world.SameTypeHere(u)));
+            actions=actions.Take(u.type==1?5:sameKind?6:canStack?5:4).ToList();actions.Add(new KeyValuePair<int,string>(PixelArt.IconMore,moreActions?"Less":"More"));
             float w=(row.width-(actions.Count-1)*6)/actions.Count;
             for(int i=0;i<actions.Count;i++)
             {
@@ -279,6 +281,7 @@ namespace ParadigmRealm
                         case "Found":Found();break;
                         case "Stack":status=world.JoinStack(u)?"These units now move together. Soldiers protect any civilians with them.":"";break;
                         case "Unstack":world.LeaveStack(u);status="Stack broken up.";break;
+                        case var all when all.StartsWith("All "):world.JoinType(u);status="All the "+World.UnitNames[u.type]+" units here now move together.";break;
                         case "Road":RoadKey(u);break;
                         case "Farm":case "Mine":case "Clear":{int job=a.Value=="Farm"?2:a.Value=="Clear"?5:3;string reason=world.WorkerTeam(u).Select(m=>world.JobReason(m,job)).FirstOrDefault(s=>s!="")??"";if(!world.StartJob(u,job))status=reason;break;}
                         case "Preach":if(!world.Preach(u))status=world.PreachReason(u);break;

@@ -42,6 +42,38 @@ public partial class World {
   if(u==null||!(u.hasOrder||u.roadOrder))return new List<Tile>();int x=u.roadOrder?u.roadX:u.destinationX,y=u.roadOrder?u.roadY:u.destinationY;
   var path=Route(u,x,y);return path.Count>0?path:Route(u,x,y,true);
  }
+ // Why a unit cannot step onto a neighbouring tile, in words, or "" when it can (also used to explain a stuck order).
+ public string MoveProblem(Unit u,int x,int y){
+  if(u==null||!units.Contains(u))return "No such unit.";var t=At(x,y);if(t==null)return "Edge of the world.";if(Distance(u.x,u.y,t.x,t.y)!=1)return "Not next to it.";
+  if(u.unfed)return "No food: it cannot act until there is more.";if(u.moves<=0)return "No movement left this turn.";
+  if(!Passable(u,t,t.terrain))return "It cannot cross "+TerrainNames[t.terrain]+".";if(!CanEnter(u.owner,t))return "Closed borders.";
+  if(!Capacity(u,t.x,t.y))return "That tile is full.";int cost=StepCost(u,u.x,u.y,t);if(u.moves<cost)return "Not enough movement left ("+u.moves+" of "+cost+").";
+  if(u.stack!=0){var mates=StackOf(u).Where(a=>a!=u&&!a.unfed).ToList();foreach(var m in mates)if(m.moves<StepCost(m,u.x,u.y,t))return "Its stack waits for "+UnitName(m)+", which has no movement left.";}
+  return "";
+ }
+ // ---------- an empty treasury has consequences (owner request, 7 Nov 2026) ----------
+ // While the treasury cannot pay its way: every city has one citizen fewer content and unpaid soldiers fight one point weaker (from the
+ // first turn); from the second turn the costliest soldier deserts each turn; from the third a building is sold off each turn.
+ void DebtConsequences(int owner){
+  var n=nations[owner];if(!modernRules||n.arrears<=0)return;
+  if(n.arrears>=2){var deserter=units.Where(u=>u.owner==owner&&Power[u.type]>0).OrderBy(u=>AtHome(u)?1:0).ThenByDescending(u=>Upkeep[u.type]).ThenByDescending(u=>u.id).FirstOrDefault();if(deserter!=null){units.Remove(deserter);if(owner==0)Note("Unpaid, a "+UnitName(deserter)+" has deserted. The treasury is empty: cut costs or raise money.");}}
+  if(n.arrears>=3){City from=null;int sold=-1;foreach(var c in cities.Where(a=>a.owner==owner)){foreach(int b in c.buildings){if(IsWonder(b)||IsProject(b)||BuildingUpkeep(b)<=0)continue;if(sold<0||BuildingUpkeep(b)>BuildingUpkeep(sold)){sold=b;from=c;}}}
+   if(from!=null){from.buildings.Remove(sold);int price=Cost(sold)/4;n.gold+=price;if(owner==0){gold=n.gold;Note("Creditors seized the "+BuildName(sold)+" in "+from.name+" and sold it for "+price+" gold.");}}}
+ }
+ public string DebtState(int owner){var n=nations[owner];return n.arrears<=0?"":n.arrears==1?"Treasury empty: every city has one citizen fewer content and soldiers fight weaker.":n.arrears==2?"In debt: soldiers have begun to desert.":"Deep in debt: soldiers desert and buildings are being sold.";}
+ // ---------- stacks: room for all, and one kind at a time ----------
+ public List<Unit> FitMates(Unit u,List<Unit> mates,int x,int y){
+  bool city=cities.Any(c=>c.owner==u.owner&&c.x==x&&c.y==y);int soldiers=Power[u.type]>0?1:0,civilians=Power[u.type]==0&&u.type!=1?1:0;
+  foreach(var a in units)if(a.owner==u.owner&&a.x==x&&a.y==y&&!IsNaval(a.type)){if(Power[a.type]>0)soldiers++;else if(a.type!=1)civilians++;}
+  var kept=new List<Unit>();foreach(var m in mates.OrderByDescending(a=>Power[a.type]>0).ThenBy(a=>a.id)){if(m.type==1||IsNaval(m.type)){kept.Add(m);continue;}if(Power[m.type]>0){if(soldiers<SoldierStack){soldiers++;kept.Add(m);}}else if(city||civilians<CivilianStack){civilians++;kept.Add(m);}}
+  return kept;
+ }
+ // Stacks larger than open land can hold (made inside a city before this rule) are cut down to what can travel.
+ void TrimStacks(){foreach(var g in units.Where(u=>u.stack!=0).GroupBy(u=>u.stack).ToList()){var list=g.ToList();var lead=list.OrderByDescending(a=>Power[a.type]>0).ThenBy(a=>a.id).First();var fit=FitMatesOpen(lead,list.Where(a=>a!=lead).ToList());foreach(var m in list)if(m!=lead&&!fit.Contains(m))m.stack=0;}}
+ List<Unit> FitMatesOpen(Unit u,List<Unit> mates){int soldiers=Power[u.type]>0?1:0,civilians=Power[u.type]==0&&u.type!=1?1:0;var kept=new List<Unit>();foreach(var m in mates.OrderByDescending(a=>Power[a.type]>0).ThenBy(a=>a.id)){if(m.type==1){kept.Add(m);continue;}if(Power[m.type]>0){if(soldiers<SoldierStack){soldiers++;kept.Add(m);}}else if(civilians<CivilianStack){civilians++;kept.Add(m);}}return kept;}
+ // All the units of one kind on a tile, taken out of any other stack and made a stack of their own (owner request).
+ public bool JoinType(Unit u){if(u==null||IsNaval(u.type))return false;var same=units.Where(a=>a.owner==u.owner&&a.x==u.x&&a.y==u.y&&a.type==u.type).ToList();if(same.Count<2)return false;int id=nextId++;foreach(var a in same)a.stack=id;return true;}
+ public int SameTypeHere(Unit u){return u==null?0:units.Count(a=>a.owner==u.owner&&a.x==u.x&&a.y==u.y&&a.type==u.type);}
  // ---------- owner requests, 7 Nov 2026 ----------
  // modernRules (save version 32): the shorter technology tree's bonuses, expansion costs and penalties for cities cut off from the rest.
  public bool modernRules;public int animalShare=100,climate;
@@ -77,7 +109,7 @@ public partial class World {
   int columns=(Width+7)/8;for(int r=y/8-1;r<=y/8+1;r++)for(int k=-1;k<=1;k++){int col=((x/8+k)%columns+columns)%columns;List<Animal> list;if(r>=0&&beastGrid.TryGetValue(r*100000+col,out list))foreach(var a in list)if(a.hp>0&&Distance(a.x,a.y,x,y)<=range)return true;}
   return false;
  }
- bool WorkerSafe(Unit u){if(cities.Any(c=>c.owner==u.owner&&c.x==u.x&&c.y==u.y))return true;foreach(var a in units)if(a.owner==u.owner&&a.x==u.x&&a.y==u.y&&Power[a.type]>0)return true;return false;}
+ bool WorkerSafe(Unit u){if(cities.Any(c=>c.owner==u.owner&&c.x==u.x&&c.y==u.y)||AtHome(u))return true;foreach(var a in units)if(a.owner==u.owner&&a.x==u.x&&a.y==u.y&&Power[a.type]>0)return true;return false;}
  City NearestOwnCity(Unit u){City best=null;int least=int.MaxValue;foreach(var c in cities)if(c.owner==u.owner){int d=Distance(u.x,u.y,c.x,c.y);if(d<least||d==least&&best!=null&&c.id<best.id){least=d;best=c;}}return best;}
  void ResumeWork(Unit u){u.flee=0;u.job=u.fleeJob;u.jobTurns=u.fleeJobTurns;u.hasOrder=u.fleeOrder;u.destinationX=u.fleeDX;u.destinationY=u.fleeDY;u.roadOrder=u.fleeRoad;u.autoWork=u.fleeAuto;if(u.owner==0)Note("A Worker has gone back to work.");}
  void RunForCity(Unit u){var c=NearestOwnCity(u);if(c==null)return;int keep=u.flee;Order(u,c.x,c.y);u.flee=keep;}
@@ -178,7 +210,9 @@ public partial class World {
   var b=new BudgetLines();var own=cities.Where(c=>c.owner==owner).OrderBy(c=>c.id).ToList();
   foreach(var c in own){b.cityGold+=Yield(c)[3];b.ports+=PortIncome(c);if(!Disorder(c))b.cityBonus+=(HasBuilding(c,31)?2:0)+(Connected(c)&&c!=own[0]?3:0);int distance=Distance(c.x,c.y,own[0].x,own[0].y)/10;b.cityUpkeep+=Math.Max(0,1+c.pop/4+distance-(HasBuilding(c,34)?2:0));b.buildingUpkeep+=c.buildings.Sum(BuildingUpkeep);}
   // Every soldier and warship is paid for (owner request); only civilians have free support from cities and government.
-  int free=0,soldiers=0;foreach(var u in units)if(u.owner==owner){if(Power[u.type]>0){b.army+=Upkeep[u.type];soldiers++;}else free+=Upkeep[u.type];}
+  int free=0,soldiers=0;
+  if(modernRules){int armyHalves=0,freeHalves=0;foreach(var u in units)if(u.owner==owner){int halves=Upkeep[u.type]*(AtHome(u)?1:2);if(Power[u.type]>0){armyHalves+=halves;soldiers++;}else freeHalves+=halves;}b.army=(armyHalves+1)/2;free=(freeHalves+1)/2;}
+  else foreach(var u in units)if(u.owner==owner){if(Power[u.type]>0){b.army+=Upkeep[u.type];soldiers++;}else free+=Upkeep[u.type];}
   // A big standing army costs more than the sum of its soldiers (as unit maintenance climbs in Civilization V): +1 gold for every three
   // soldiers beyond two per city.
   b.army+=Math.Max(0,soldiers-2*own.Count)/3;b.roads=RoadUpkeep(owner);

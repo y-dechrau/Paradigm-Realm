@@ -2,6 +2,18 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 7 Nov, later: faith tree, debt, stacks and a drunken guide (save version 33)
+
+Checked by Unity `RealmTools.Checks` and `GraphicsChecks`, a Windows build, `-inputProbe`, and `-unitProbe` on a copy of the owner's TEST GAME 2 save. Not hand-played.
+
+- Crownmere's stuck units (owner's save): a stack formed inside the city held a Spearman, four Horsemen and three Settlers. Open land holds two civilians, so the whole stack could not take a single step and nothing said why. Now units without room stay behind and leave the stack, stacks too large for open land are trimmed when a save loads, and an order that cannot start explains the reason. On the owner's save the stack now leaves the city with seven units; one Settler stays.
+- Faith tree: 18 doctrines in three lines (Rites, Learning, Community) across the six ages, after Civilization VI's civics tree beside its technology tree. Devotion equal to faith per turn fills the chosen doctrine without spending faith. A later age's doctrines open only when science has reached that age, and each needs the one before it in its line. Effects use the technology effect types, plus faith percentages.
+- Debt: with an empty treasury every city has one citizen fewer content and soldiers fight a point weaker (as before); from the second turn the costliest soldier deserts each turn; from the third, creditors seize and sell a building each turn. The top bar says IN DEBT and Civics explains.
+- Upkeep: units standing in their own territory cost half.
+- Wild animals: half their old attack and defence, never step inside borders and never attack a unit inside them. Workers inside borders no longer flee.
+- Stacks: "All N" on the unit card and "All N … units together" in the tile picker gather every unit of one kind on a mixed tile into its own stack.
+- Divus Maximus: the tutorial and his prompts are now written drunk and slobbish; the instructions are unchanged.
+
 ## Owner requests 7 Nov: streamlined technology, expansion, water and climate (save version 32)
 
 Checked by Unity `RealmTools.Checks` and `GraphicsChecks`, a Windows build, `-autoShot`, `-inputProbe` and `-frameProbe`. Not hand-played; balance is unproven.

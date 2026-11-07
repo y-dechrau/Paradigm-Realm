@@ -9,7 +9,8 @@ namespace ParadigmRealm {
 [Serializable] public class Animal {public int id,kind,x,y,hp=10;}
 public static class AnimalCatalog {
  public static readonly string[] Names={"Cave lion","Smilodon","Cave bear","Dire wolf","Megatherium","Woolly mammoth","Woolly rhinoceros"};
- public static readonly int[] Attack={3,4,3,2,2,4,5},Defence={2,2,3,1,4,5,4},Steps={3,3,2,3,1,2,2};
+ // Half the strength they had (owner request, 7 Nov 2026; was attack 3,4,3,2,2,4,5 and defence 2,2,3,1,4,5,4).
+ public static readonly int[] Attack={2,2,2,1,1,2,3},Defence={1,1,2,1,2,3,2},Steps={3,3,2,3,1,2,2};
  public static readonly bool[] Carnivore={true,true,true,true,false,false,false};
  public const int Sense=7;
  // Where each is most at home; any open land will do at a pinch.
@@ -22,7 +23,8 @@ public partial class World {
  bool keepAnimalsFromSpawning;
  public Animal AnimalAt(int x,int y){if(animals==null)return null;foreach(var a in animals)if(a.x==x&&a.y==y)return a;return null;}
  bool AnimalGround(Tile t){return t!=null&&t.realm==0&&!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&t.gateLink==0&&!CityCentres().Contains(t.y*Width+t.x);}
- bool OpenToAnimal(Tile t){return AnimalGround(t)&&AnimalAt(t.x,t.y)==null&&!(preyCells!=null?preyCells.Contains(t.y*Width+t.x):units.Any(u=>u.x==t.x&&u.y==t.y));}
+ // Animals never step onto land inside any civilisation's borders (owner request, 7 Nov 2026).
+ bool OpenToAnimal(Tile t){return AnimalGround(t)&&t.owner<0&&AnimalAt(t.x,t.y)==null&&!(preyCells!=null?preyCells.Contains(t.y*Width+t.x):units.Any(u=>u.x==t.x&&u.y==t.y));}
  // Units sorted into blocks of 8 x 8 tiles for the animals' turn, so a beast looks only at what is near it.
  [NonSerialized] Dictionary<int,List<Unit>> preyGrid;[NonSerialized] HashSet<int> preyCells;
  void IndexPrey(){preyGrid=new Dictionary<int,List<Unit>>();preyCells=new HashSet<int>();foreach(var u in units){int key=(u.y/8)*100000+u.x/8;List<Unit> list;if(!preyGrid.TryGetValue(key,out list)){list=new List<Unit>();preyGrid[key]=list;}list.Add(u);preyCells.Add(u.y*Width+u.x);}}
@@ -51,7 +53,7 @@ public partial class World {
  }
  int HexOr(int k,bool first){if(hexGrid)return first?HexDi[k]:HexDj[k];return first?new[]{1,0,-1,0,1,-1}[k]:new[]{0,1,0,-1,1,-1}[k];}
  // The strongest defender on the tile takes the blow, as in any battle. A unit in a city is safe, and so is one on water.
- Unit AnimalPrey(int x,int y){var t=At(x,y);if(t==null||IsWater(t.terrain)||cities.Any(c=>c.x==x&&c.y==y))return null;return units.Where(u=>u.x==x&&u.y==y).OrderByDescending(u=>Power[u.type]>0).ThenByDescending(u=>Strength(u,null,true)).ThenByDescending(u=>u.hp).ThenBy(u=>u.id).FirstOrDefault();}
+ Unit AnimalPrey(int x,int y){var t=At(x,y);if(t==null||IsWater(t.terrain)||t.owner>=0||cities.Any(c=>c.x==x&&c.y==y))return null;return units.Where(u=>u.x==x&&u.y==y).OrderByDescending(u=>Power[u.type]>0).ThenByDescending(u=>Strength(u,null,true)).ThenByDescending(u=>u.hp).ThenBy(u=>u.id).FirstOrDefault();}
  void AnimalAttacks(Animal a,Unit prey){
   int atk=AnimalCatalog.Attack[a.kind],def=Strength(prey,null,true);prey.hp-=Damage(atk,def);if(Power[prey.type]>0)a.hp-=Damage(def,atk);string name=AnimalCatalog.Names[a.kind];CancelOrder(prey);
   if(prey.owner==0)Note(prey.hp<=0?"A "+name+" killed your "+UnitName(prey)+".":"A "+name+" attacked your "+UnitName(prey)+".");

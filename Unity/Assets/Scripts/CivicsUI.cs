@@ -36,6 +36,7 @@ public partial class RealmGame {
   GUILayout.Space(30);GUILayout.BeginVertical(GUILayout.Width(480));
   var b=world.BudgetDetail(0);
   GUILayout.Label("Finances",heading);
+  if(world.DebtState(0)!="")GUILayout.Label(world.DebtState(0),heading);
   GUILayout.Label("Treasury "+world.gold+" gold   •   Net "+(b.Net>=0?"+":"")+b.Net+" a turn"+(b.Net<0?"   •   empty in "+Math.Max(1,world.gold/Math.Max(1,-b.Net))+" turns":""),body);
   CivicsMoney("City trade and commerce",b.cityGold);CivicsMoney("Buildings and connected cities",b.cityBonus);CivicsMoney("Ports",b.ports);CivicsMoney("Trade routes",b.routes);CivicsMoney("Treaties",b.treaties);CivicsMoney("Villages and tithes",b.tribute);
   CivicsMoney("City upkeep",-b.cityUpkeep);CivicsMoney("Building upkeep",-b.buildingUpkeep);CivicsMoney("Army support",-b.army);CivicsMoney("Civilian support",-b.civilians);CivicsMoney("Road upkeep ("+world.RoadTiles(0)+" tiles)",-b.roads);CivicsMoney("Cost of a large empire",-b.expansion);CivicsMoney("Cities not joined to the others",-b.cutOff);CivicsMoney("Luxuries",-b.luxury);CivicsMoney("Treaty payments",-b.treatyCost);

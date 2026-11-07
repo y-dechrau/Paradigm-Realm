@@ -43,13 +43,16 @@ public partial class RealmGame {
  void DrawTilePicker(){
   var c=world.cities.Find(a=>a.owner==0&&a.x==pickerX&&a.y==pickerY);var own=world.units.Where(u=>u.owner==0&&u.x==pickerX&&u.y==pickerY).ToList();
   if(c==null&&own.Count==0){tilePicker=false;return;}
-  GUI.enabled=true;int rows=(c!=null?1:0)+own.Count;var box=new Rect(Mathf.Min(pickerAt.x+12,1280-270),Mathf.Min(pickerAt.y+12,800-(rows*34+44)),258,rows*34+44);
+  // Each kind with two or more here can be taken together as one stack (owner request).
+  var kinds=own.Where(u=>!World.IsNaval(u.type)).GroupBy(u=>u.type).Where(g=>g.Count()>=2&&g.Count()<own.Count).Select(g=>g.First()).ToList();
+  GUI.enabled=true;int rows=(c!=null?1:0)+own.Count+kinds.Count;var box=new Rect(Mathf.Min(pickerAt.x+12,1280-270),Mathf.Min(pickerAt.y+12,800-(rows*34+44)),258,rows*34+44);
   var e=Event.current;
   // The second click of a double click lands here, because the first opened this chooser: it opens the city (owner request).
   if(e.type==EventType.MouseDown&&e.button==0&&c!=null&&(e.clickCount==2||Time.realtimeSinceStartup-pickerOpened<.6f)&&!box.Contains(e.mousePosition)){int tx,ty;if(MapTileAt(e.mousePosition,out tx,out ty)&&tx==pickerX&&ty==pickerY){tilePicker=false;e.Use();OpenCity(c);return;}}
   if(e.type==EventType.MouseDown&&!box.Contains(e.mousePosition)){tilePicker=false;e.Use();return;}
   GUI.Box(box,"");GUI.Label(new Rect(box.x+12,box.y+6,box.width-24,22),"Select",heading);float y=box.y+34;
   if(c!=null){if(GUI.Button(new Rect(box.x+10,y,box.width-20,30),"City: "+c.name,button)){cityId=c.id;selected=-1;tilePicker=false;}y+=34;}
+  foreach(var first in kinds){int count=own.Count(a=>a.type==first.type);if(GUI.Button(new Rect(box.x+10,y,box.width-20,30),"All "+count+" "+World.UnitNames[first.type]+" units together",button)){world.JoinType(first);selected=first.id;cityId=-1;tilePicker=false;status="All the "+World.UnitNames[first.type]+" units here now move together.";}y+=34;}
   foreach(var u in own){if(GUI.Button(new Rect(box.x+10,y,box.width-20,30),world.UnitName(u)+" — "+world.Activity(u),button)){selected=u.id;cityId=-1;tilePicker=false;}y+=34;}
  }
 }

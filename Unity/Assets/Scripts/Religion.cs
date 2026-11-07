@@ -55,7 +55,8 @@ public partial class World {
  public int FoundingCost(){return 60+20*nations.Count(n=>n.founded>=0);}
  public int MaxReligions(){return Math.Min(8,Math.Max(3,civCount));}
  public bool IsHolyCity(City c){return nations.Any(n=>n.holyCity==c.id&&n.founded>=0);}
- public int FaithYield(City c){if(Disorder(c))return 0;var n=nations[c.owner];int f=n.capital==c.id?1:0;if(HasBuilding(c,36))f+=2;if(IsHolyCity(c))f+=3;if(n.pantheon==4)f++;if(ReligionCatalog.Tenet(c.religion)==5)f+=2;return Math.Max(0,f+CivFaith(c)+AgeFaith(c));}
+ public int FaithYield(City c){if(Disorder(c))return 0;int f=BaseFaith(c);int extra=MinorFaith(c.owner);return extra>0?f+f*extra/100:f;}
+ int BaseFaith(City c){var n=nations[c.owner];int f=n.capital==c.id?1:0;if(HasBuilding(c,36))f+=2;if(IsHolyCity(c))f+=3;if(n.pantheon==4)f++;if(ReligionCatalog.Tenet(c.religion)==5)f+=2;return Math.Max(0,f+CivFaith(c)+AgeFaith(c));}
  public int FaithPerTurn(int owner){return cities.Where(c=>c.owner==owner).Sum(FaithYield);}
  // Tenets help the cities that follow the faith; the pantheon helps every city of its civilisation.
  void ApplyReligionYields(City c,ref int f,ref int p,ref int s,ref int g){int pan=nations[c.owner].pantheon;if(pan==0)f++;else if(pan==1)p++;else if(pan==2)g+=2;else if(pan==3)s++;switch(ReligionCatalog.Tenet(c.religion)){case 0:f++;break;case 1:p++;break;case 2:g+=2;break;case 3:s+=2;break;}}
@@ -78,7 +79,7 @@ public partial class World {
  void UpdateMajority(City c,bool tell){if(c.faithPressure==null||c.faithPressure.Length!=ReligionCatalog.Count)c.faithPressure=Grow(c.faithPressure??new int[0],ReligionCatalog.Count);int best=-1,top=59;for(int r=0;r<ReligionCatalog.Count;r++)if(c.faithPressure[r]>top){top=c.faithPressure[r];best=r;}if(best!=c.religion){if(c.owner==0&&(tell||best>=0))Note(c.name+(best>=0?" now follows "+ReligionCatalog.Name(best)+".":" no longer has a majority faith."));c.religion=best;if(best>=0)for(int o=0;o<civCount;o++)if(nations[o].founded==best&&!(nations[o].holyCity==c.id))AddEraScore(o,2,c.name+" converted to "+ReligionCatalog.Name(best));}}
  // Once a turn: faith is gathered, rivals act, then every city presses its majority faith on cities within ten tiles.
  public void UpdateReligion(){
-  for(int o=0;o<civCount;o++){nations[o].faith+=FaithPerTurn(o);if(o>0)ReligionAI(o);}
+  for(int o=0;o<civCount;o++){nations[o].faith+=FaithPerTurn(o);AdvanceDoctrines(o);if(o>0)ReligionAI(o);}
   var adds=new Dictionary<City,int[]>();
   foreach(var s in cities){if(s.religion<0)continue;int r=s.religion,power=(IsHolyCity(s)&&nations.Any(n=>n.holyCity==s.id&&n.founded==r)?8:4)+(HasBuilding(s,36)?2:0);if(ReligionCatalog.Tenet(r)==6)power=power*3/2;power=power*CivPressure(s.owner)/100;
    foreach(var t in cities){int d=Distance(s.x,s.y,t.x,t.y);if(d>10)continue;int gain=t==s?power:Math.Max(1,power*(11-d)/10);int[] a;if(!adds.TryGetValue(t,out a)){a=new int[ReligionCatalog.Count];adds[t]=a;}a[r]+=gain;}}

@@ -6,10 +6,30 @@ namespace ParadigmRealm {
 // religions, the faiths of the world, and missionaries.
 public partial class RealmGame {
  bool religionAncient;
+ // The faith tree: six ages across, three lines down. Devotion from faith fills the chosen doctrine, alongside science.
+ void DrawFaithTree(){
+  var me=world.nations[0];if(!world.modernRules)return;
+  GUILayout.Space(6);GUILayout.Label("Faith tree",heading);
+  string current=me.doctrine>=0?DoctrineCatalog.Names[me.doctrine]+" — devotion "+me.devotion+" / "+DoctrineCatalog.Cost(me.doctrine)+(world.DoctrineTurns(0)>0?", "+world.DoctrineTurns(0)+" turns":", no faith coming in"):"Nothing to learn just now";
+  GUILayout.Label("Devotion comes from your faith each turn, without spending it. Learning now: "+current+". A doctrine of a later age opens when science brings you to that age.",small);
+  var card=new GUIStyle(button){wordWrap=true,fontSize=11,alignment=TextAnchor.MiddleCenter};
+  for(int line=0;line<DoctrineCatalog.PerAge;line++){
+   GUILayout.BeginHorizontal();GUILayout.Label(DoctrineCatalog.Lines[line],small,GUILayout.Width(66));
+   for(int age=0;age<TechnologyCatalog.EraCount;age++){
+    int d=age*DoctrineCatalog.PerAge+line;bool known=world.DoctrineKnown(0,d),open=world.DoctrineOpen(0,d),chosen=me.doctrine==d;
+    string label=(known?"✓ ":chosen?"▸ ":"")+DoctrineCatalog.Names[d]+"\n"+DoctrineCatalog.EffectText(d)+"\n"+(known?"Adopted":open?DoctrineCatalog.Cost(d)+" devotion":world.DoctrineReason(0,d));
+    bool was=GUI.enabled;GUI.enabled=was&&open&&!chosen;var colour=GUI.backgroundColor;if(known)GUI.backgroundColor=new Color(.5f,1f,.6f);else if(chosen)GUI.backgroundColor=new Color(1f,.85f,.4f);
+    if(GUILayout.Button(label,card,GUILayout.Width(172),GUILayout.Height(66))){world.ChooseDoctrine(0,d);status="Your priests turn to "+DoctrineCatalog.Names[d]+".";}
+    GUI.backgroundColor=colour;GUI.enabled=was;
+   }
+   GUILayout.EndHorizontal();
+  }
+ }
  void DrawReligion(){
   var me=world.nations[0];
   GUILayout.Label("Faith "+me.faith+"  (+"+world.FaithPerTurn(0)+" a turn)",heading);
   GUILayout.Label("Faith comes from your capital (+1), Temples (+2), a holy city (+3) and some beliefs. A pantheon costs "+World.PantheonCost+" faith; founding a faith costs "+world.FoundingCost()+" and needs Mysticism and a city with a Temple, which becomes the holy city. Cities press their majority faith on every city within ten tiles; the stronger pressure wins the city. This world can hold "+world.MaxReligions()+" faiths.",small);
+  DrawFaithTree();
   GUILayout.Space(6);GUILayout.Label("Pantheon",heading);
   if(me.pantheon<0)GUILayout.Label("Until your civilisation names a god, its villages pray apart and their devotion goes to waste. Divus Maximus will ask you to choose as soon as enough faith has gathered.",small);
   if(me.pantheon>=0)GUILayout.Label(ReligionCatalog.PantheonNames[me.pantheon]+" — "+ReligionCatalog.PantheonText[me.pantheon],body);

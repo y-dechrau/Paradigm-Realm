@@ -16,6 +16,7 @@ namespace ParadigmRealm
             var args=Environment.GetCommandLineArgs();int i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
             i=Array.IndexOf(args,"-frameProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FrameProbe(args[i+1],i+2<args.Length?int.Parse(args[i+2]):4,i+3<args.Length?int.Parse(args[i+3]):120));
+            i=Array.IndexOf(args,"-unitProbe");if(i>=0&&i+2<args.Length)StartCoroutine(UnitProbe(args[i+1],args[i+2]));
             i=Array.IndexOf(args,"-routeProbe");if(i>=0&&i+1<args.Length)StartCoroutine(RouteProbe(args[i+1]));
             i=Array.IndexOf(args,"-inputProbe");if(i>=0&&i+1<args.Length)StartCoroutine(InputProbeRun(args[i+1]));
             i=Array.IndexOf(args,"-flickerProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FlickerProbe(args[i+1]));
@@ -75,6 +76,19 @@ namespace ParadigmRealm
             }
             settler.x=sx;settler.y=sy;settler.hasOrder=false;Application.Quit();
         }
+        // Development aid: "-unitProbe <save> <city>" explains why the player's units in or beside that city cannot move.
+        IEnumerator UnitProbe(string save,string cityName)
+        {
+            yield return Frames(5);tutorialOn=false;tutorialStep=-1;LoadFile(save);activeSavePath=null;Debug.Log("PROBE loaded: "+status+" turn "+world.turn+" gold "+world.gold+" food state "+world.FoodStateName(0)+" short "+world.nations[0].rationShort+" unfed "+world.UnfedUnits(0));
+            var c=world.cities.Find(a=>a.name==cityName);if(c==null){Debug.Log("PROBE no city "+cityName);Application.Quit();yield break;}
+            Debug.Log("PROBE city "+c.name+" owner "+c.owner+" at "+c.x+","+c.y);
+            foreach(var u in world.units.Where(a=>a.owner==0&&world.Distance(a.x,a.y,c.x,c.y)<=1)){
+             Debug.Log("PROBE unit "+u.id+" "+World.UnitNames[u.type]+" at "+u.x+","+u.y+" moves "+u.moves+"/"+world.MaxMoves(u)+" unfed "+u.unfed+" stack "+u.stack+" order "+u.hasOrder+" to "+u.destinationX+","+u.destinationY+" job "+u.job+" flee "+u.flee+" fortified "+u.fortified+" sentry "+u.sentry+" exploring "+u.exploring+" auto "+u.autoWork+" road "+u.roadOrder+" hp "+u.hp);
+             for(int k=0;k<6;k++){var n=world.Step(u.x,u.y,World.HexDi[k],World.HexDj[k]);if(n==null)continue;Debug.Log("PROBE   to "+n.x+","+n.y+" "+World.TerrainNames[n.terrain]+" owner "+n.owner+": "+(world.MoveProblem(u,n.x,n.y) is var why&&why==""?"can move":why));}
+            }
+            {var mover=world.units.FirstOrDefault(a=>a.owner==0&&a.x==c.x&&a.y==c.y&&World.Power[a.type]>0);if(mover!=null){var land=Enumerable.Range(0,6).Select(k=>world.Step(c.x,c.y,World.HexDi[k],World.HexDj[k])).FirstOrDefault(n=>n!=null&&world.MoveProblem(mover,n.x,n.y)=="");Debug.Log("PROBE move test: "+(land!=null&&world.Move(mover,land.x,land.y)?"moved to "+mover.x+","+mover.y+" with "+world.StackOf(mover).Count+" in its stack":"could not move"));}}
+            Application.Quit();
+        }
         IEnumerator InputProbeRun(string folder)
         {
             Directory.CreateDirectory(folder);yield return Frames(5);
@@ -109,6 +123,7 @@ namespace ParadigmRealm
             {detailsScreen="Cities";citiesPick=city.id;citiesPickBuilding=false;yield return Shot(folder,"10m-cities.bmp");citiesPick=-1;detailsScreen="";}
             {var door=world.tiles.FirstOrDefault(t=>t.realm==0&&t.gateLink>0);if(door!=null){door.seen=true;StartGateScene(door);if(world.gatesFound==null)world.gatesFound=new System.Collections.Generic.List<int>();world.gatesFound.Add(door.y*world.Width+door.x);yield return new WaitForSeconds(5f);yield return Shot(folder,"10n-gate-scene.bmp");yield return ClickAt(680,610);Probe("Continue closes the gateway scene",gateScene==null);FocusTile(door.x,door.y);isoWidth=64;BuildAtlasTexture();yield return Shot(folder,"10o-gate-on-map.bmp");door.seen=false;world.gatesFound.Clear();FocusTile(city.x,city.y);}}
             {world.tech[TechnologyCatalog.Index("wheel")]=true;var hand=world.Add(0,1,city.x,city.y);selected=hand.id;cityId=-1;isoWidth=96;FocusTile(city.x,city.y);RoadKey(hand);Probe("R starts road plotting",roadMode);float rx,ry;var aim=world.tiles.First(t=>t.realm==0&&t.seen&&world.Distance(t.x,t.y,city.x,city.y)==3&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain));IsoScreen(aim.x,aim.y,out rx,out ry);yield return Send(Mouse(EventType.MouseUp,rx,ry));yield return Shot(folder,"10p-road-plot.bmp");yield return ClickAt(rx,ry);Probe("a click orders the plotted road",!roadMode&&hand.roadOrder&&hand.roadX==aim.x&&hand.roadY==aim.y);world.units.Remove(hand);selected=-1;isoWidth=64;}
+            {detailsScreen="Religion";detailsScroll=Vector2.zero;yield return Shot(folder,"10q-faith-tree.bmp");detailsScreen="";}
             {var me=world.nations[0];int keepFaith=me.faith;me.faith=World.PantheonCost;me.pantheon=-1;yield return Shot(folder,"10l-god-prompt.bmp");Probe("the god prompt is waiting",PromptOpen());me.faith=keepFaith;}
             {// A crowded tile: the box must show every word.
              var spot=world.tiles.FirstOrDefault(t=>t.realm==0&&t.owner==0&&!PixelArt.IsWater(t.terrain)&&world.Distance(t.x,t.y,city.x,city.y)==1);if(spot!=null){spot.road=true;spot.farm=true;spot.village=true;var a=world.Add(0,2,spot.x,spot.y);var b=world.Add(0,4,spot.x,spot.y);var beast=new Animal{id=9901,kind=5,x=spot.x,y=spot.y};world.animals.Add(beast);selected=a.id;cityId=-1;isoWidth=64;FocusTile(spot.x,spot.y);yield return Send(Mouse(EventType.MouseUp,640,20));yield return Shot(folder,"10k-tile-card.bmp");world.animals.Remove(beast);world.units.Remove(a);world.units.Remove(b);selected=-1;}}

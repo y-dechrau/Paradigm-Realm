@@ -35,9 +35,9 @@ public partial class RealmGame {
   var p=world.NextBuildPrompt();if(p!=null)DrawBuildPrompt(p);
  }
  // Enough faith has gathered: the player must name a god (owner request, 6 Nov 2026). There is no putting it off.
- const string PantheonPlea="Your people have begun leaving offerings at shrines, but every village prays to a different power, and they quarrel over whose rites come first. All that devotion is going to waste. Name one god as patron of your whole civilisation: its priests will bring your cities under one calendar of rites, and its blessing will reach every one of them. The choice is for all time, so choose what your people will need most.";
+ const string PantheonPlea="Your people are leaving offerings at every shrine in sight, but each village prays to a different power and they squabble over whose feast comes first. *hic* All that devotion, going to waste, like good wine left out in the sun. Pick ONE god as patron of your whole civilisation: its priests put your cities on one calendar of rites, and its blessing reaches every one of them. It's forever, mind, so choose what your people really need. Not just the one with the best parties.";
  void DrawPantheonPrompt(){
-  float y;var names=ReligionCatalog.PantheonNames;var box=GuidePanel(PantheonPlea,44+128+names.Length*40+14,out y,128);
+  float y;var names=ReligionCatalog.PantheonNames;var box=GuidePanel(PantheonPlea,44+156+names.Length*40+14,out y,156);
   var text=new GUIStyle(hudSmall){wordWrap=true,alignment=TextAnchor.MiddleLeft};text.normal.textColor=UiText;
   for(int p=0;p<names.Length;p++){if(GUI.Button(new Rect(box.x+14,y,box.width-28,36),"",button)){world.ChoosePantheon(0,p);status="Your people now follow the "+names[p]+".";GUIUtility.ExitGUI();}GUI.Label(new Rect(box.x+24,y,150,36),names[p],new GUIStyle(hudCaption){alignment=TextAnchor.MiddleLeft});GUI.Label(new Rect(box.x+176,y,box.width-200,36),ReligionCatalog.PantheonText[p],text);y+=40;}
  }
@@ -46,7 +46,7 @@ public partial class RealmGame {
   if(choices.Count==0){world.researchPrompts.RemoveAt(0);return;}
   // The cheapest few, always including the one research has already moved on to.
   var shown=choices.Take(6).ToList();if(world.research>=0&&!shown.Contains(world.research)){shown[shown.Count-1]=world.research;}
-  float y;var box=GuidePanel(World.TechNames[found]+" has been discovered.\nWhat do you want to research next?",106+shown.Count*34+50,out y);
+  float y;var box=GuidePanel("*hic* "+World.TechNames[found]+"! They've only gone and discovered "+World.TechNames[found]+". Marvellous. Now what d'you want them to study next? Pick one before I nod off.",106+shown.Count*34+50,out y);
   foreach(int t in shown){
    int turns=world.ResearchTurns(t,0);
    string[] gains=World.ActiveTechBenefits(t);string gain=gains.Length>0?"  —  "+gains[0]:"";
@@ -62,7 +62,7 @@ public partial class RealmGame {
  }
  void DrawBuildPrompt(BuildPrompt p){
   var c=world.cities.Find(a=>a.id==p.city);var shown=p.options.Take(5).ToList();int more=world.buildPrompts.Count-1;
-  float y;var box=GuidePanel(World.TechNames[p.tech]+" opens up something new, and "+c.name+" is not building anything.\nWhat should it build?"+(more>0?"  ("+more+" more "+(more==1?"city":"cities")+" after this)":""),106+shown.Count*34+50,out y);
+  float y;var box=GuidePanel(World.TechNames[p.tech]+" lets "+c.name+" build something new, and "+c.name+"'s just sat there doing nothing. Like me. *burp* What should it build?"+(more>0?"  ("+more+" more "+(more==1?"city":"cities")+" after this)":""),106+shown.Count*34+50,out y);
   int output=Math.Max(1,world.Yield(c)[1]);
   foreach(int b in shown){
    int turns=Math.Max(1,(world.CostFor(c,b)+output-1)/output);
