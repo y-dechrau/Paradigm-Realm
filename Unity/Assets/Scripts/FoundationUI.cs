@@ -119,7 +119,7 @@ namespace ParadigmRealm
             setupCivs=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupCivs,2,maxCivs));
             GUILayout.Space(6);GUILayout.Label("Peoples in each sealed world: "+setupPeoples+(setupPeoples>4?" (slower turns on large maps)":""),body);setupPeoples=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupPeoples,1,10));
             GUILayout.Space(10);GUILayout.Label("Wild animals: "+World.AnimalChoices[setupAnimals],body);setupAnimals=GUILayout.SelectionGrid(setupAnimals,World.AnimalChoices,5);GUILayout.Label(setupAnimals==0?"No wild animals at all.":"Three times as many until a civilisation passes the Medieval Age.",small);
-            GUILayout.Space(10);tutorialOn=GUILayout.Toggle(tutorialOn," Play with the tutorial: "+GuideName+" talks you through the first turns");
+            GUILayout.Space(10);tutorialOn=GUILayout.Toggle(tutorialOn," Play with the tutorial");GUILayout.Label(GuideName+" talks you through the first turns.",small);
             GUILayout.EndArea();
         }
         string SetupSummary(){return (setupCiv<CivilisationCatalog.Count?CivilisationCatalog.Names[setupCiv]+" ("+CivilisationCatalog.Leaders[setupCiv]+")":(string.IsNullOrWhiteSpace(proposedName)?"Your civilisation":proposedName.Trim()))+" on a "+World.MapSizeNames[setupSize].ToLower()+" "+(setupShape==1?"sphere":"flat map")+" with "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+", "+new[]{"quick","standard","long"}[Mathf.Clamp(setupSpeed,0,2)]+" speed.";}        void DrawFoundationPanel(Unit u)
