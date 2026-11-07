@@ -14,14 +14,14 @@ namespace ParadigmRealm
         // ---------- layout ----------
         public const float MapX=0,MapY=0,MapW=1280,MapH=800;
         static readonly Rect MapView=new Rect(MapX,MapY,MapW,MapH);
-        static readonly Rect TopBar=new Rect(0,0,1280,38),ResearchCard=new Rect(80,46,300,52),UnitCard=new Rect(8,592,410,200),
-            TileCard=new Rect(472,742,336,52),MiniMap=new Rect(1060,590,178,138),MiniButtons=new Rect(1242,590,32,138),
+        static readonly Rect TopBar=new Rect(0,0,1280,38),ResearchCard=new Rect(174,46,300,52),UnitCard=new Rect(8,592,410,200),
+            TileCard=new Rect(571,694,336,52),MiniMap=new Rect(1060,590,178,138),MiniButtons=new Rect(1242,590,32,138),
             EndTurnRect=new Rect(1060,738,214,54),MorePanel=new Rect(8,246,410,340);
         static readonly string[] RailScreens={"Economy","Civics","Research","Diplomacy","Religion","Cities","Military","Atlas","Victory","Chronicle","Identity"};
         static readonly string[] RailLabels={"Empire","Civics","Research","Diplomacy","Religion","Cities","Military","Realms","Victory","Chronicle","Identity"};
         static readonly int[] RailIcons={PixelArt.IconEmpire,PixelArt.IconCivics,PixelArt.IconResearch,PixelArt.IconDiplomacy,PixelArt.IconFaith,PixelArt.IconCities,PixelArt.IconMilitary,PixelArt.IconRealms,PixelArt.IconVictory,PixelArt.IconChronicle,PixelArt.IconIdentity};
-        const float RailItem=49;
-        static Rect RailRect{get{return new Rect(0,44,72,RailScreens.Length*RailItem+8);}}
+        const float RailItem=44;
+        static Rect RailRect{get{return new Rect(0,44,166,RailScreens.Length*RailItem+8);}}
         readonly List<Rect> hudRects=new List<Rect>();
         bool moreActions,moveMode,roadMode;
         // A label whose font shrinks (down to minimum) until the whole text fits the box (owner request: nothing cut off).
@@ -49,7 +49,7 @@ namespace ParadigmRealm
         void BuildHudRects()
         {
             hudRects.Clear();if(world==null)return;
-            hudRects.Add(TopBar);hudRects.Add(RailRect);hudRects.Add(ResearchCard);hudRects.Add(MiniMap);hudRects.Add(MiniButtons);hudRects.Add(EndTurnRect);hudRects.Add(TileCard);
+            hudRects.Add(TopBar);hudRects.Add(RailRect);hudRects.Add(ResearchCard);hudRects.Add(MiniMap);hudRects.Add(MiniButtons);hudRects.Add(EndTurnRect);hudRects.Add(TileCard);hudRects.Add(MedalBar);
             if(CardShown())hudRects.Add(UnitCard);if(moreActions&&CardShown())hudRects.Add(MorePanel);
             for(int i=0;i<MetRivals().Count;i++)hudRects.Add(LeaderRect(i));
             for(int i=0;i<RecentNotes().Count;i++)hudRects.Add(NoteRect(i));
@@ -80,7 +80,7 @@ namespace ParadigmRealm
             // Panel headings across the game use the same lettering.
             if(displayFont!=null){title.font=displayFont;heading.font=displayFont;}title.normal.textColor=UiGold;heading.normal.textColor=UiGold;
         }
-        Texture2D Icon(int k){return IsoPicture(8,k,0);}
+        Texture2D Icon(int k){return UiIcon(k)??IsoPicture(8,k,0);}
         void DrawIcon(int k,Rect r){GUI.DrawTexture(r,Icon(k),ScaleMode.ScaleToFit,true);}
         void Bar(Rect r,float fraction,Color ink){Fill(r,UiTrough);Fill(new Rect(r.x,r.y,r.width*Mathf.Clamp01(fraction),r.height),ink);Fill(new Rect(r.x,r.y,r.width*Mathf.Clamp01(fraction),1),Color.Lerp(ink,Color.white,.4f));}
         // A framed button with an icon over a caption; "active" shows the teal pressed state of the mockup.
@@ -99,7 +99,7 @@ namespace ParadigmRealm
             bool idle=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen()&&!turnRunning;GUI.enabled=idle;
             DrawRail();DrawResearchCard();DrawLeaders();DrawNotices();DrawMiniMap();
             if(CardShown()){if(moreActions)DrawMoreActions();DrawUnitCard();}else moreActions=false;
-            DrawTileCard();DrawBuildNotice();DrawRivalCall();
+            DrawTileCard();DrawMedalBar();DrawBuildNotice();DrawRivalCall();
 
             GUI.enabled=idle&&world.result=="";
 
@@ -116,17 +116,30 @@ namespace ParadigmRealm
         {
             HudStyles();RefreshHudNumbers();
             Fill(TopBar,new Color(.035f,.055f,.095f,.96f));Fill(new Rect(0,TopBar.yMax-2,1280,1),UiGold);Fill(new Rect(0,TopBar.yMax-1,1280,1),new Color(0,0,0,.6f));
-            DrawIcon(PixelArt.IconRealms,new Rect(10,7,24,24));GUI.Label(new Rect(42,8,260,26),"PARADIGM  REALM",hudTitle);
+            // The compass-rose emblem and name on a gold-framed plate, as in the mockup.
+            {var plate=new Rect(2,1,228,36);GUI.Box(plate,"");var logo=UiTex("logo");if(logo!=null)GUI.DrawTexture(new Rect(6,0,38,38),logo,ScaleMode.ScaleToFit,true);else DrawIcon(PixelArt.IconRealms,new Rect(12,7,24,24));FitLabel(new Rect(50,8,172,26),"PARADIGM  REALM",hudTitle,11);}
             int budget=hudBudget,ownCities=hudOwnCities,calm=hudCalm;
+            // Resources as in the mockup: a large painted icon, the amount, and the change per turn in green (red when falling).
+            // Hovering an item names it.
             var items=new[]{
-                new KeyValuePair<int,string>(PixelArt.IconGold,"Gold  "+world.gold+"  ("+(budget>=0?"+":"")+budget+")"+(world.nations[0].arrears>0?"  IN DEBT":"")),
-                new KeyValuePair<int,string>(PixelArt.IconScience,"Science  +"+SciencePerTurn()),
-                new KeyValuePair<int,string>(PixelArt.IconFood,"Food  "+(hudFood>=0?"+":"")+hudFood+"  "+world.FoodStateName(0)),
-                new KeyValuePair<int,string>(PixelArt.IconFaith,"Faith  "+world.nations[0].faith+" (+"+hudFaith+")"),
-                new KeyValuePair<int,string>(PixelArt.IconAge,TechnologyCatalog.EraNames[hudEra]+(world.AgeOf(0)!=World.AgeNormal?" · "+World.AgeNames[world.AgeOf(0)].Replace(" Age",""):"")),
-                new KeyValuePair<int,string>(PixelArt.IconOrder,"Order  "+(ownCities==0?"—":(calm*100/ownCities)+"%"))};
-            float x=244;
-            foreach(var item in items){DrawIcon(item.Key,new Rect(x,8,22,22));float w=hudLabel.CalcSize(new GUIContent(item.Value)).x;GUI.Label(new Rect(x+28,9,w+4,22),item.Value,hudLabel);x+=w+42;Fill(new Rect(x-10,10,1,18),new Color(UiGold.r,UiGold.g,UiGold.b,.45f));}
+                new KeyValuePair<int,string[]>(PixelArt.IconGold,new[]{world.gold.ToString(),(budget>=0?"+":"")+budget+(world.nations[0].arrears>0?"  IN DEBT":""),"Gold in the treasury and the change per turn"}),
+                new KeyValuePair<int,string[]>(PixelArt.IconScience,new[]{"","+"+SciencePerTurn(),"Science per turn"}),
+                new KeyValuePair<int,string[]>(PixelArt.IconFood,new[]{world.FoodStateName(0),(hudFood>=0?"+":"")+hudFood,"Food for the army: "+world.FoodStateName(0)}),
+                new KeyValuePair<int,string[]>(PixelArt.IconFaith,new[]{world.nations[0].faith.ToString(),"+"+hudFaith,"Faith and faith per turn"}),
+                new KeyValuePair<int,string[]>(PixelArt.IconAge,new[]{TechnologyCatalog.EraNames[hudEra]+(world.AgeOf(0)!=World.AgeNormal?" · "+World.AgeNames[world.AgeOf(0)].Replace(" Age",""):""),"","Your age"}),
+                new KeyValuePair<int,string[]>(PixelArt.IconOrder,new[]{ownCities==0?"—":(calm*100/ownCities)+"%","","Cities in order"})};
+            float x=244;string hoverTip=null;var mouse=Event.current.mousePosition;
+            var deltaUp=new GUIStyle(hudLabel){fontSize=12};deltaUp.normal.textColor=new Color(.45f,.85f,.4f);var deltaDown=new GUIStyle(deltaUp);deltaDown.normal.textColor=new Color(.95f,.4f,.3f);
+            var amount=new GUIStyle(hudLabel){fontSize=15};if(displayFont!=null)amount.font=displayFont;
+            foreach(var item in items)
+            {
+                float start=x;DrawIcon(item.Key,new Rect(x,4,30,30));x+=34;
+                if(item.Value[0]!=""){float w=amount.CalcSize(new GUIContent(item.Value[0])).x;GUI.Label(new Rect(x,8,w+4,24),item.Value[0],amount);x+=w+6;}
+                if(item.Value[1]!=""){var st=item.Value[1].StartsWith("-")?deltaDown:deltaUp;float w=st.CalcSize(new GUIContent(item.Value[1])).x;GUI.Label(new Rect(x,11,w+4,20),item.Value[1],st);x+=w+4;}
+                if(new Rect(start,2,x-start,34).Contains(mouse))hoverTip=item.Value[2];
+                x+=18;Fill(new Rect(x-10,9,1,20),new Color(UiGold.r,UiGold.g,UiGold.b,.45f));
+            }
+            if(hoverTip!=null){var size=hudSmall.CalcSize(new GUIContent(hoverTip));var tr=new Rect(Mathf.Min(mouse.x,1270-size.x-12),40,size.x+12,size.y+6);Fill(tr,new Color(.05f,.08f,.16f,.95f));Fill(new Rect(tr.x,tr.yMax-1,tr.width,1),UiGold);GUI.Label(new Rect(tr.x+6,tr.y+3,size.x+2,size.y),hoverTip,hudSmall);}
             {float tx=Math.Max(x,1036);DrawIcon(PixelArt.IconTurn,new Rect(tx,8,22,22));GUI.Label(new Rect(tx+26,9,1192-tx-26,22),"Turn "+world.turn+"  •  "+world.Calendar(),hudLabel);}
             bool enabled=GUI.enabled;GUI.enabled=!confirmNew&&pendingUnit==-1&&!turnRunning;
             if(GUI.Button(new Rect(1196,5,34,28),""))guide=true;DrawIcon(PixelArt.IconHelp,new Rect(1201,7,24,24));
@@ -135,17 +148,18 @@ namespace ParadigmRealm
         }
         void DrawRail()
         {
+            // The left menu after the mockup: a gold-framed column of gold-trimmed bars, each a painted icon and its name.
             var rail=RailRect;GUI.Box(rail,"");
             int offers=world.offers.Count(o=>o.to==0&&o.status==0&&o.expires>world.turn);
+            var railLabel=new GUIStyle(hudLabel){fontSize=14,alignment=TextAnchor.MiddleLeft};if(displayFont!=null)railLabel.font=displayFont;
             for(int i=0;i<RailScreens.Length;i++)
             {
-                var r=new Rect(rail.x+4,rail.y+4+i*RailItem,rail.width-8,RailItem-2);
-                if(HudButton(r,RailIcons[i],RailLabels[i]))
-                {
-                    if(RailScreens[i]=="Research"){researchScreen=true;detailsScreen="";ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
-                    else OpenDetails(RailScreens[i]);
-                }
-                if(RailScreens[i]=="Diplomacy"&&offers>0){var b=new Rect(r.xMax-20,r.y+3,16,16);Fill(b,new Color(.75f,.18f,.14f));GUI.Label(b,offers.ToString(),hudCentre);}
+                var r=new Rect(rail.x+5,rail.y+5+i*RailItem,rail.width-10,RailItem-3);bool over=r.Contains(Event.current.mousePosition)&&GUI.enabled;
+                DrawButtonFace(r,over);var art=RailScreens[i]=="Religion"?UiTex("icon-religion"):UiIcon(RailIcons[i]);
+                var iconRect=new Rect(r.x+14,r.y+5,r.height-10,r.height-10);if(art!=null)GUI.DrawTexture(iconRect,art,ScaleMode.ScaleToFit,true);else DrawIcon(RailIcons[i],iconRect);
+                railLabel.normal.textColor=over?new Color(1f,.9f,.6f):UiText;FitLabel(new Rect(iconRect.xMax+6,r.y,r.xMax-iconRect.xMax-30,r.height),RailLabels[i],railLabel,10);
+                if(GUI.Button(r,"",GUIStyle.none))OpenRailScreen(RailScreens[i]);
+                if(RailScreens[i]=="Diplomacy"&&offers>0){var b=new Rect(r.xMax-24,r.y+4,16,16);Fill(b,new Color(.75f,.18f,.14f));GUI.Label(b,offers.ToString(),hudCentre);}
             }
         }
         void DrawResearchCard()

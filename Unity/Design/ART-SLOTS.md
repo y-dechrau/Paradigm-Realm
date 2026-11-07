@@ -20,6 +20,10 @@ The map is drawn by code (`PixelArt.cs`). Any picture put in `Unity/Assets/Resou
 ## Filled so far (30 Oct 2026, SpriteCook)
 Every settlement (`city-0..3-0..3`, with and without `-walled`), `hamlet-0..3`, `port`, `cloud-0..3`, `Visuals/unit-12..14`, and terrain `00-0..3`, `01` (+`-1`, `-2`), `05` (+`-1`, `-2`), `09`, `11`, `13`, `15`, `16`, `18`, `19`, `20`. Most carry their own small ground patch, fitted so its tip row sits on the tile centre row (44 for settlements, 40 otherwise). Grassland open-meadow variants 4-7 still use the drawn art.
 
+## Interface art (`Resources/UI`, 8 Nov 2026)
+- `icon-<name>` (128 x 128, transparent) replaces interface icon ids by name: empire, research, diplomacy, cities, military, realms, victory, chronicle, identity, gold, science, age, order, turn, menu, crown, food, shields, explore, skip, fortify, found, more, zoomin, zoomout, layers, sentry, road, trade, help, next, moodgood, moodneutral, moodbad, move, faith, axe, civics. Extra pictures: religion, culture, compass, empire2, research2, diplomacy2, military2.
+- `logo` (compass rose, top bar), `panel` (160 x 90 frame for every GUI.Box, 12-pixel border), `frame` (the same frame with edge gems, 512 wide), `button` (left menu bar, ends 40 of 512 pixels kept whole), `medallion` (bottom bar).
+
 ## Added 8 Nov 2026 (SpriteCook)
 - `Leaders/leader-15`, `leader-16` (Jade Dynasty, Serpent League) with `-e0` and `-e3`; `leader-29..38` (native peoples); `-e3` for `leader-17..23`, `25..28` (Menelik II, 24, was refused by the content filter).
 - `Visuals/faith-holy-0..4`: the holy place on the Religion screen by core belief (polytheism, monotheism, philosophical, animism, ancestor worship), 400 x 400.

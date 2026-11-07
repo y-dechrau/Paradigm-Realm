@@ -95,6 +95,8 @@ namespace ParadigmRealm {
     var hover=PanelTexture(UiButtonHover,UiGold,true);
     var active=PanelTexture(UiButtonActive,UiAccent,true);
     visualSkin.box.normal.background=panel;visualSkin.box.border=new RectOffset(5,5,5,5);visualSkin.box.normal.textColor=UiText;
+    // Painted gold-cornered frame (Resources/UI/panel, owner request 8 Nov 2026) for every panel when present.
+    {var framed=UiTex("panel");if(framed!=null){framed.wrapMode=TextureWrapMode.Clamp;visualSkin.box.normal.background=framed;visualSkin.box.border=new RectOffset(12,12,12,12);}}
     foreach(var s in new[]{visualSkin.button,visualSkin.textField,visualSkin.textArea}){
      s.normal.background=normal;s.hover.background=hover;s.active.background=active;s.focused.background=hover;
      s.onNormal.background=active;s.onHover.background=hover;s.onActive.background=active;

@@ -2,6 +2,26 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner request 8 Nov: interface in the style of the mockup (no save change)
+
+**How this was checked:**
+- Unity `RealmTools.Checks` and `GraphicsChecks` pass.
+- A Windows build ran `-autoShot`; screenshots are in `Documentation/Unity-Screenshots-2026-11-08-MockupUI`.
+- **Not hand-played.**
+
+**New art** (SpriteCook, with the owner's Religion mockup as the style reference; files in `Resources/UI`):
+- 46 painted icons that replace every drawn interface icon (resources, menu, unit orders, moods, zoom, help and menu buttons).
+- The compass-rose logo.
+- A gold-cornered navy frame used by every panel in the game.
+- A gold-trimmed menu bar and a round gold medallion.
+
+**Layout:**
+- **Left menu:** wider, each entry a gold-trimmed bar with its painted icon and name. The research card moved right to make room.
+- **Top bar:** the logo on a framed plate; each resource shows a larger icon, the amount and the change per turn (green rising, red falling). Hovering a resource names it.
+- **Bottom bar:** nine round medallions open Empire, Research, Civics, Chronicle, Victory, Diplomacy, Military, Realms and Religion. The hovered-tile card moved up above them.
+
+**Not the same as the mockup:** the mockup is itself a painting, so this is the same style rather than a copy. Detail screens keep their own layouts inside the new frame, and the left menu shows only on the map, not over other screens. The mockup's Economy, Policies, Culture and World Events entries have no screens of their own yet.
+
 ## Owner requests 8 Nov, latest: sealed peoples' portraits, hills, volcanoes and gateway designs (save version 37)
 
 **How this was checked:**
