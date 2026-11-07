@@ -9,10 +9,10 @@ namespace ParadigmRealm
         void DrawVictoryStatus()
         {
             float[] progress;var lines=world.VictoryText(out progress);
-            GUILayout.Label(world.result==""?"Three ways to win. Whichever bar fills first ends the game.":world.result,heading);
-            var colours=new[]{new Color(.9f,.45f,.35f),new Color(.45f,.7f,.95f),new Color(.5f,.85f,.5f)};
-            string[] names={"Conquest","Transcendence","Concord"};
-            for(int i=0;i<3;i++)
+            GUILayout.Label(world.result==""?(lines.Length==4?"Four":"Three")+" ways to win. Whichever bar fills first ends the game.":world.result,heading);
+            var colours=new[]{new Color(.9f,.45f,.35f),new Color(.45f,.7f,.95f),new Color(.5f,.85f,.5f),new Color(.95f,.8f,.4f)};
+            string[] names={"Conquest","Transcendence","Concord","Religion"};
+            for(int i=0;i<lines.Length;i++)
             {
                 GUILayout.Space(12);GUILayout.Label(names[i],heading);
                 var r=GUILayoutUtility.GetRect(900,26);

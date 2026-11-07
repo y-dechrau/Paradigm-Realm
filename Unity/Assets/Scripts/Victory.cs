@@ -92,7 +92,7 @@ if(CivilisationCatalog.IsNative(nations[o].civ)&&!CivilisationCatalog.IsNative(n
         // Progress figures for the Victory screen. Each is 0..1 with a one-line explanation.
         public string[] VictoryText(out float[] progress)
         {
-            progress=new float[3];
+            progress=new float[modernRules?4:3];string faithLine="";if(modernRules)progress[3]=ReligiousProgress(0,out faithLine);
             int rivals=civCount-1,held=Enumerable.Range(1,Math.Max(0,rivals)).Count(o=>Conquered(0,o));
             progress[0]=rivals==0?1f:held/(float)rivals;
             progress[1]=ProjectProgress(0);
@@ -102,7 +102,7 @@ if(CivilisationCatalog.IsNative(nations[o].civ)&&!CivilisationCatalog.IsNative(n
             return new[]{
                 "Conquest: "+held+" of "+rivals+" rivals conquered (their capital held by you, or eliminated). A rival holding every capital, yours included, wins instead.",
                 "Transcendence: "+ProjectStatus(0)+". Three stages of 300, 400 and 500 shields in one city of size "+ProjectSize+" or more with Computing; each activates over "+ActivationTurns(0)+" turns. Losing the city loses the project. "+rivalLine,
-                "Concord: "+concordTurns+" of "+ConcordTargetFor(0)+" turns in a row at friendship or alliance with every surviving rival. A broken treaty or a rival you have not met resets the count."};
+                "Concord: "+concordTurns+" of "+ConcordTargetFor(0)+" turns in a row at friendship or alliance with every surviving rival. A broken treaty or a rival you have not met resets the count.","Religion: "+faithLine}.Take(progress.Length).ToArray();
         }
     }
 }

@@ -2,6 +2,30 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner design 8 Nov: Faith, Belief and Religious Power (save version 36)
+
+**How this was checked:**
+- Unity `RealmTools.Checks` (including `ContentChecks.FaithDesignChecks`) and `GraphicsChecks` pass.
+- A Windows build ran `-autoShot`, including all six Religion tabs and a decision panel, with no exceptions.
+- **Not hand-played.**
+
+**Measured** (.NET harness, Small map, Standard speed, 300 turns):
+- Rivals founded three faiths, at turns 196, 230 and 287.
+- Prophets appeared and state churches were chosen.
+- Institutions reached level 6.
+- No schism happened in that run.
+- Technology pacing was unchanged.
+
+**What changed:** see `Design/RELIGION-DESIGN-2026-11-08.md` for the full mapping from the owner's design. In short:
+- **Origins and beliefs:** origins from events; beliefs chosen at founding (core, social, economic, afterlife).
+- **Authority and institutions:** Religious Authority and eight institution levels; church and state; religious policy.
+- **Faith in cities:** each city has faith shares; conversion is gradual with resistance.
+- **Holy places:** holy cities and sacred sites.
+- **Diplomacy:** religious opinion and five religious actions.
+- **Evolution:** reformation, the reform movement and schisms into named branches.
+- **Events and victory:** four religious events; religious victory.
+- **Screen:** a six-tab Religion screen.
+
 ## Owner requests 8 Nov: Colossal maps, legions, hills, shared shields, workers, faith buildings and deeper diplomacy (save version 35)
 
 **How this was checked:** Unity `RealmTools.Checks` (including `ContentChecks.EighthNovemberChecks`) and `GraphicsChecks` pass, and a Windows build ran `-autoShot` with no exceptions. **Not hand-played.** Balance is unproven.

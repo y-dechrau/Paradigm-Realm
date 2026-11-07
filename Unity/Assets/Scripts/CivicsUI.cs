@@ -29,7 +29,7 @@ public partial class RealmGame {
   GUILayout.Space(8);GUILayout.Label("Society",heading);
   var own=world.cities.Where(c=>c.owner==0).ToList();var largest=own.OrderByDescending(c=>c.pop).ThenBy(c=>c.id).FirstOrDefault();int unrest=own.Count(world.Disorder);
   GUILayout.Label("Government: "+World.Governments[n.government]+"   •   "+TechnologyCatalog.EraNames[world.Era(0)]+(world.AgeOf(0)!=World.AgeNormal?" ("+World.AgeNames[world.AgeOf(0)]+")":""),body);
-  GUILayout.Label("Faith: "+(n.founded>=0?ReligionCatalog.Name(n.founded)+" (founder)":own.Any(c=>c.religion>=0)?ReligionCatalog.Name(own.Where(c=>c.religion>=0).GroupBy(c=>c.religion).OrderByDescending(g=>g.Count()).First().Key):"None yet"),body);
+  GUILayout.Label("Faith: "+(n.founded>=0?world.FaithName(n.founded)+" (founder)":own.Any(c=>c.religion>=0)?world.FaithName(own.Where(c=>c.religion>=0).GroupBy(c=>c.religion).OrderByDescending(g=>g.Count()).First().Key):"None yet"),body);
   GUILayout.Label("Largest city: "+(largest==null?"none":largest.name+" (size "+largest.pop+")")+"   •   Cities in disorder: "+unrest,body);
   GUILayout.Label("Technologies known: "+n.tech.Count(a=>a)+"   •   Wonders: "+own.Sum(c=>c.buildings.Count(World.IsWonder))+"   •   Roads: "+me.roads+" tiles",body);
   GUILayout.EndVertical();

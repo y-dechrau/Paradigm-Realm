@@ -245,7 +245,7 @@ namespace ParadigmRealm
             researchScreen=false;
             // Religion screen with a pantheon and a founded faith (this throwaway game only).
             if(city!=null){var me=world.nations[0];foreach(var id in new[]{"mysticism","laws","philosophy"})world.tech[TechnologyCatalog.Index(id)]=true;if(!city.buildings.Contains(36))city.buildings.Add(36);me.faith=200;world.ChoosePantheon(0,0);world.FoundReligion(0,3);}
-            {var pr=world.BuyPriest(0,city);if(pr==null&&city!=null){pr=world.Add(0,World.PriestUnit,city.x,city.y);pr.faith=city.religion;pr.charges=2;}}detailsScreen="Religion";yield return Shot(folder,"4b4-religion.bmp");religionAncient=true;yield return Shot(folder,"4b5-religion-ancient.bmp");religionAncient=false;detailsScreen="";
+            {var pr=world.BuyPriest(0,city);if(pr==null&&city!=null){pr=world.Add(0,World.PriestUnit,city.x,city.y);pr.faith=city.religion;pr.charges=2;}}detailsScreen="Religion";yield return Shot(folder,"4b4-religion.bmp");religionAncient=true;yield return Shot(folder,"4b5-religion-ancient.bmp");religionAncient=false;for(faithTab=1;faithTab<6;faithTab++)yield return Shot(folder,"4b6-faith-tab-"+faithTab+".bmp");faithTab=0;detailsScreen="";world.RaiseEventForChecks(new FaithEvent{kind=FaithCatalog.ProphetEvent,owner=0,religion=world.nations[0].founded,city=city!=null?city.id:-1});yield return Shot(folder,"4b7-faith-event.bmp");world.faithEvents.Clear();
             // Victory screen with a stage-1 project activating (this throwaway game only).
             if(city!=null){world.tech[TechnologyCatalog.Index("computers")]=true;city.pop=8;var n=world.nations[0];n.projectCity=city.id;n.projectStage=1;n.projectActivation=6;}
             detailsScreen="Victory";

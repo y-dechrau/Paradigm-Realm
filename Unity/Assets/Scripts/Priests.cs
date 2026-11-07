@@ -12,15 +12,15 @@ public partial class World {
  public const int PriestUnit=15,PriestCharges=2,PriestFaithCost=50,PreachPressure=200;
  public string PriestReason(City c){if(c.religion<0)return "Requires a city that follows a faith";if(!HasBuilding(c,36))return "Requires a Temple";return "";}
  public string BuyPriestReason(int owner,City c){if(c==null||c.owner!=owner)return "Not your city.";string why=PriestReason(c);if(why!="")return why+".";if(!HasTech(owner,"mysticism"))return "Requires Mysticism.";if(!Capacity(new Unit{owner=owner,type=PriestUnit,id=-1},c.x,c.y))return "No room in the city.";return nations[owner].faith<PriestFaithCost?"Needs "+PriestFaithCost+" faith.":"";}
- public Unit BuyPriest(int owner,City c){if(BuyPriestReason(owner,c)!="")return null;nations[owner].faith-=PriestFaithCost;var p=Add(owner,PriestUnit,c.x,c.y);p.moves=0;p.homeCity=c.id;p.faith=c.religion;p.charges=PriestCharges;if(owner==0)Note("A Priest of "+ReligionCatalog.Name(p.faith)+" was ordained in "+c.name+".");return p;}
+ public Unit BuyPriest(int owner,City c){if(BuyPriestReason(owner,c)!="")return null;nations[owner].faith-=PriestFaithCost;var p=Add(owner,PriestUnit,c.x,c.y);p.moves=0;p.homeCity=c.id;p.faith=c.religion;p.charges=PriestCharges;if(owner==0)Note("A Priest of "+FaithName(p.faith)+" was ordained in "+c.name+".");return p;}
  City PreachTarget(Unit u){return cities.Where(c=>Distance(c.x,c.y,u.x,u.y)<=1).OrderBy(c=>Distance(c.x,c.y,u.x,u.y)).FirstOrDefault();}
  public string PreachReason(Unit u){if(u==null||u.type!=PriestUnit)return "Only priests preach.";if(u.moves<=0)return "The priest needs movement.";if(u.faith<0||u.charges<=0)return "This priest has no sermons left.";var c=PreachTarget(u);if(c==null)return "Stand in or next to a city.";if(AtWar(u.owner,c.owner))return "Cannot preach in an enemy city.";return "";}
  public bool Preach(Unit u){
   if(PreachReason(u)!="")return false;var c=PreachTarget(u);
   bool guarded=units.Any(p=>p.type==PriestUnit&&p.owner==c.owner&&p.faith>=0&&p.faith!=u.faith&&p.x==c.x&&p.y==c.y);
   c.faithPressure[u.faith]=Math.Min(3000,c.faithPressure[u.faith]+(guarded?PreachPressure/2:PreachPressure));UpdateMajority(c,u.owner==0);u.charges--;u.moves=0;
-  if(u.owner==0)Note("Your priest preached "+ReligionCatalog.Name(u.faith)+" in "+c.name+(guarded?" (a resident priest of another faith resisted)":"")+".");
-  else if(c.owner==0)Note("A priest of "+NationName(u.owner)+" preached "+ReligionCatalog.Name(u.faith)+" in "+c.name+".");
+  if(u.owner==0)Note("Your priest preached "+FaithName(u.faith)+" in "+c.name+(guarded?" (a resident priest of another faith resisted)":"")+".");
+  else if(c.owner==0)Note("A priest of "+NationName(u.owner)+" preached "+FaithName(u.faith)+" in "+c.name+".");
   if(u.charges<=0){units.Remove(u);if(u.owner==0)Note("The priest has given a last sermon and retires to a monastery.");}
   return true;
  }

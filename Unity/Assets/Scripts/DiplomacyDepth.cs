@@ -155,6 +155,7 @@ public partial class World {
    if(InCoalition(o,t))Part(lines,ref sum,"In a coalition against you",-10);
    bool shared=false;for(int x=0;x<civCount&&!shared;x++)if(x!=o&&x!=t&&AtWar(o,x)&&AtWar(t,x))shared=true;if(shared)Part(lines,ref sum,"Shared enemy",10);
    sum+=RulerOpinion(o,t,lines);
+   FaithOpinion(o,t,lines,ref sum);
   }
   return sum;
  }
