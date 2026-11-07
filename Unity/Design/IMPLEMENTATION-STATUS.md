@@ -22,7 +22,15 @@
 - **Sealed until opened:** every gateway starts sealed (a carved, rune-locked door in the same design) and shows its open portal once that gateway is opened. Gateways now open in pairs, one pair at a time, rather than all at once.
 - **The gateway scene** shows the sealed picture, or once open the owner's painting with its own text.
 
-**Not built yet:** nothing in play opens a gateway. `OpenGate` is ready for a technology, wonder or event to call.
+**How gateways open** (owner: "by both"):
+- **Knowledge:** the first home civilisation to learn a world's key technology breaks the seals of every gateway to that world. The keys are Fae Wilds Philosophy, Drowned Deep Printing Press, Plague Marshes Medicine, Ashen Waste Industry and Infernal Depths Nuclear Fission.
+- **A wonder:** the Gatekeeper's Key (Mysticism) can only be built in a city within 10 tiles of a sealed gateway. It opens the nearest one.
+- **A quest:** a Priest standing on a sealed gateway can perform the rite of unsealing for 100 faith; the priest is spent.
+- Once every pair is open, the gateways count as unlocked.
+
+**Measured:** headless game on a Small map, 400 turns. The first gateway opened around turns 200-250, the second by turn 300, the third by 350 and the fourth by 400.
+
+**Not hand-played.**
 
 ## Owner requests 8 Nov, later: religion screen in the mockup's style, and new SpriteCook art (no save change)
 

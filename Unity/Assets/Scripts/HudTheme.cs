@@ -260,6 +260,7 @@ namespace ParadigmRealm
             // out (owner request). Fort and the rest are in More.
             if(u.type==1){actions.Add(new KeyValuePair<int,string>(PixelArt.IconRoad,"Road"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconFood,"Farm"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconShields,"Mine"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconAxe,"Clear"));}
             if(u.type==World.PriestUnit)actions.Add(new KeyValuePair<int,string>(PixelArt.IconFaith,"Preach"));
+            if(u.type==World.PriestUnit&&world.At(u.x,u.y)!=null&&world.At(u.x,u.y).gateLink>0&&!world.GateOpen(world.At(u.x,u.y)))actions.Add(new KeyValuePair<int,string>(PixelArt.IconRealms,"Unseal"));
             if(World.CanExplore(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconExplore,"Explore"));
             actions.Add(new KeyValuePair<int,string>(PixelArt.IconSkip,"Skip"));
             if(World.Power[u.type]>0&&!World.IsNaval(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconFortify,u.fortified?"Wake":"Fortify"));
@@ -286,6 +287,7 @@ namespace ParadigmRealm
                         case "Road":RoadKey(u);break;
                         case "Farm":case "Mine":case "Clear":{int job=a.Value=="Farm"?2:a.Value=="Clear"?5:3;string reason=world.WorkerTeam(u).Select(m=>world.JobReason(m,job)).FirstOrDefault(s=>s!="")??"";if(!world.StartJob(u,job))status=reason;break;}
                         case "Preach":if(!world.Preach(u))status=world.PreachReason(u);break;
+                        case "Unseal":{var gateTile=world.At(u.x,u.y);string why=world.RiteReason(u);if(why!=""||!world.PerformRite(u))status=why;else{status="The rite is done: the gateway opens.";StartGateScene(gateTile);}break;}
                         case "Explore":if(u.exploring)world.CancelActivity(u);else world.AutoExplore(u);break;
                         case "Skip":world.SkipTurn(u);status=world.UnitName(u)+" skips this turn.";break;
                         case "Fortify":case "Wake":if(World.Power[u.type]>0&&!World.IsNaval(u.type)){bool fortify=!u.fortified;world.CancelActivity(u);u.fortified=fortify;}else{bool watch=!u.sentry;world.CancelActivity(u);u.sentry=watch;}break;
