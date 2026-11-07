@@ -66,7 +66,7 @@ namespace ParadigmRealm {
    }
    return chosen.Select(t=>t.Tile).ToList();
   }
-  public int FoodNeeded(City c){return DifficultyFood(c,10+c.pop*4+CivFoodNeeded(c));}
+  public int FoodNeeded(City c){return DifficultyFood(c,(10+c.pop*4+CivFoodNeeded(c))*DemographicPercent(c)/100);}
   // Stage 7 (design): click a tile to lock a citizen onto it, click again to release. Locks are capped at the number of working
   // citizens; a lock on a tile the city can no longer work is simply ignored.
   public bool ToggleLock(City c,Tile t){
@@ -100,6 +100,7 @@ namespace ParadigmRealm {
     GrowthStatus(c);
   }
   void ProcessCityFood(City c,int net){
+   if(modernRules)Epidemic(c);
    int oldPop=c.pop,previous=c.food,threshold=FoodNeeded(c);c.food+=net;
    if(c.food>=threshold&&c.pop<GrowthLimit(c)&&Happiness(c)>=0){
     c.food=c.granary?threshold/2:0;c.pop++;

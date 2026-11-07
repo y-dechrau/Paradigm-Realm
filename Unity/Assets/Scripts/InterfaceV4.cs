@@ -213,7 +213,7 @@ namespace ParadigmRealm
             GUI.Label(new Rect(x,y,w,24),"Food "+(v[0]>=0?"+":"")+v[0]+"   Shields "+v[1]+"   Trade "+trade,heading);y+=28;
             GUI.Label(new Rect(x,y,w,22),"Trade at "+world.nations[0].scienceRate+"% science: Science "+v[2]+"  Gold "+v[3]+(world.nations[0].militaryRate>0?"  Army +"+world.ArmyBudget(c)+" shields":"")+(world.LinkTrade(c)>0?"  (joined cities +"+world.LinkTrade(c)+" Trade)":world.modernRules&&world.CutOff(c)?"  Not joined to your other cities: -1 content, -"+World.CutOffGold+" gold":""),small);y+=26;
             GUI.Label(new Rect(x,y,w,22),"Faith +"+world.FaithYield(c)+"  •  "+(c.religion>=0?"Follows "+ReligionCatalog.Name(c.religion)+(world.IsHolyCity(c)?" (holy city)":""):"No majority faith")+"  •  Influence "+world.CityInfluence(c),small);y+=22;
-            GUI.Label(new Rect(x,y,w,22),"Growth  "+c.food+" / "+need+" food",body);y+=22;DrawBar(new Rect(x,y,w,12),c.food/(float)Math.Max(1,need),new Color(.45f,.75f,.35f));y+=16;
+            GUI.Label(new Rect(x,y,w,22),"Growth  "+c.food+" / "+need+" food   •   "+World.PeopleText(world.CityPeople(c))+" people",body);y+=22;DrawBar(new Rect(x,y,w,12),c.food/(float)Math.Max(1,need),new Color(.45f,.75f,.35f));y+=16;
             GUI.Label(new Rect(x,y,w,40),world.GrowthStatus(c),small);y+=42;
             int content=world.ContentCitizens(c),unhappy=world.UnhappyCitizens(c),workers=Math.Max(1,world.Workers(c));
             GUI.Label(new Rect(x,y,w,22),"Content "+content+"   Unhappy "+unhappy+(world.Disorder(c)?"   — disorder: no shields or gold":""),body);y+=22;

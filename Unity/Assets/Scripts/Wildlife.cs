@@ -40,8 +40,12 @@ public partial class World {
   if(keepAnimalsFromSpawning)return;bool early=EarlyWilds();if(!early&&turn<8)return;int limit=AnimalLimit();
   for(int n=early?Math.Max(3,limit/30):Math.Max(1,limit/100);n>0;n--)if(animals.Count<limit&&(early||r.Next(3)==0))SpawnAnimal(r);
  }
+ // Grazers outnumber hunters three to one (owner request, 7 Nov 2026), as large plant-eaters always outnumber the beasts that hunt them.
+ public const int GrazersPerHunter=3;
+ static readonly int[] HunterKinds={0,1,2,3},GrazerKinds={4,5,6};
  void SpawnAnimal(Random r){
-  int kind=r.Next(AnimalCatalog.Names.Length);var homes=AnimalCatalog.Homes[kind];
+  int hunters=animals.Count(a=>AnimalCatalog.Carnivore[a.kind]),grazers=animals.Count-hunters;
+  var pool=grazers<hunters*GrazersPerHunter+GrazersPerHunter?GrazerKinds:HunterKinds;int kind=pool[r.Next(pool.Length)];var homes=AnimalCatalog.Homes[kind];
   for(int attempt=0;attempt<40;attempt++){
    // Scavengers are drawn to graveyards.
    var grave=attempt<4&&r.Next(3)==0?GraveyardFor(r):null;var t=grave??tiles[r.Next(mapHeight*Width)];if(!OpenToAnimal(t)||t.owner>=0)continue;if(grave==null&&attempt<25&&!homes.Contains(t.terrain))continue;
@@ -67,12 +71,16 @@ public partial class World {
    if(!animals.Contains(a)||a.hp<=0)continue;a.hp=Math.Min(10,a.hp+1);
    if(AnimalCatalog.Carnivore[a.kind]){
     for(int step=0;step<AnimalSteps(a)&&a.hp>0;step++){
-     // The first turns give every people the chance to settle before the hunters find them.
-     var prey=turn<HuntersFrom?null:NearestPrey(a,AnimalCatalog.Sense);if(prey==null){AnimalWander(a,r,false);continue;}
-     if(Distance(a.x,a.y,prey.x,prey.y)==1){AnimalAttacks(a,prey);break;}
-     Tile best=null;int least=Distance(a.x,a.y,prey.x,prey.y);for(int k=0;k<6;k++){var n=Step(a.x,a.y,HexOr(k,true),HexOr(k,false));if(!OpenToAnimal(n))continue;int d=Distance(n.x,n.y,prey.x,prey.y);if(d<least){least=d;best=n;}}
+     // The first turns give every people the chance to settle before the hunters find them. Hunters also stalk grazers, whichever
+     // quarry is nearer.
+     var prey=turn<HuntersFrom?null:NearestPrey(a,AnimalCatalog.Sense);var meal=NearestGrazer(a,AnimalCatalog.Sense);
+     if(prey==null&&meal==null){AnimalWander(a,r,false);continue;}
+     bool unit=prey!=null&&(meal==null||Distance(a.x,a.y,prey.x,prey.y)<=Distance(a.x,a.y,meal.x,meal.y));int tx=unit?prey.x:meal.x,ty=unit?prey.y:meal.y;
+     if(Distance(a.x,a.y,tx,ty)==1){if(unit)AnimalAttacks(a,prey);else HuntGrazer(a,meal);break;}
+     Tile best=null;int least=Distance(a.x,a.y,tx,ty);for(int k=0;k<6;k++){var n=Step(a.x,a.y,HexOr(k,true),HexOr(k,false));if(!OpenToAnimal(n)||RivalHunterNear(a,n.x,n.y))continue;int d=Distance(n.x,n.y,tx,ty);if(d<least){least=d;best=n;}}
      if(best==null)break;a.x=best.x;a.y=best.y;
     }
+    if(a.hp>0)HuntersClash(a);
    }else{
     var close=NearestPrey(a,1);if(close!=null)AnimalAttacks(a,close);
     else if(r.Next(2)==0)for(int step=0;step<AnimalSteps(a);step++)AnimalWander(a,r,true);
@@ -85,7 +93,20 @@ public partial class World {
  public int AnimalSteps(Animal a){int steps=AnimalCatalog.Steps[a.kind];var t=At(a.x,a.y);if(t==null||t.owner<0)return steps;return (steps+((turn+a.id)&1))/2;}
  // A herbivore keeps a clear tile between itself and every unit, so it never wanders into a fight.
  void AnimalWander(Animal a,Random r,bool keepClear){
-  for(int attempt=0;attempt<6;attempt++){int k=r.Next(6);var n=Step(a.x,a.y,HexOr(k,true),HexOr(k,false));if(!OpenToAnimal(n))continue;if(keepClear&&PreyNear(n.x,n.y).Any(u=>Distance(u.x,u.y,n.x,n.y)<2))continue;a.x=n.x;a.y=n.y;return;}
+  for(int attempt=0;attempt<6;attempt++){int k=r.Next(6);var n=Step(a.x,a.y,HexOr(k,true),HexOr(k,false));if(!OpenToAnimal(n))continue;if(AnimalCatalog.Carnivore[a.kind]&&RivalHunterNear(a,n.x,n.y))continue;if(keepClear&&PreyNear(n.x,n.y).Any(u=>Distance(u.x,u.y,n.x,n.y)<2))continue;a.x=n.x;a.y=n.y;return;}
+ }
+ // Hunters of different kinds keep out of each other's way (owner request, 7 Nov 2026); forced within a tile of one another, they fight.
+ bool RivalHunterNear(Animal a,int x,int y){foreach(var o in animals)if(o!=a&&o.hp>0&&o.kind!=a.kind&&AnimalCatalog.Carnivore[o.kind]&&Distance(o.x,o.y,x,y)<=1)return true;return false;}
+ void HuntersClash(Animal a){
+  var foe=animals.FirstOrDefault(o=>o!=a&&o.hp>0&&o.kind!=a.kind&&AnimalCatalog.Carnivore[o.kind]&&Distance(o.x,o.y,a.x,a.y)<=1);if(foe==null)return;
+  foe.hp-=Damage(AnimalCatalog.Attack[a.kind],AnimalCatalog.Defence[foe.kind]);a.hp-=Damage(AnimalCatalog.Attack[foe.kind],AnimalCatalog.Defence[a.kind]);
+  if(VisibleTo(0,a.x,a.y))Note("A "+AnimalCatalog.Names[a.kind]+" and a "+AnimalCatalog.Names[foe.kind]+" fight over hunting ground.");
+ }
+ Animal NearestGrazer(Animal a,int range){Animal best=null;int least=range+1;foreach(var o in animals){if(o.hp<=0||AnimalCatalog.Carnivore[o.kind])continue;int d=Distance(a.x,a.y,o.x,o.y);if(d<least){least=d;best=o;}}return best;}
+ // A grazer fights back with its weight; a hunter that kills one feeds and heals.
+ void HuntGrazer(Animal a,Animal g){
+  g.hp-=Damage(AnimalCatalog.Attack[a.kind],AnimalCatalog.Defence[g.kind]);a.hp-=Damage(AnimalCatalog.Attack[g.kind],AnimalCatalog.Defence[a.kind]);
+  if(g.hp<=0){animals.Remove(g);if(a.hp>0)a.hp=Math.Min(10,a.hp+4);}
  }
  // A unit attacks an animal by moving onto it. Civilians cannot. Combat has no dice, so the result can be known in advance.
  public void AnimalExchange(Unit u,Animal a,out int dealt,out int taken){int own=Strength(u,null,false);dealt=Damage(own,AnimalCatalog.Defence[a.kind]);taken=IsRanged(u.type)?0:Damage(AnimalCatalog.Defence[a.kind],own);}

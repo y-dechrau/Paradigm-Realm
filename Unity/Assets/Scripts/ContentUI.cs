@@ -26,7 +26,7 @@ namespace ParadigmRealm
             techDepth=Enumerable.Repeat(-1,TechnologyCatalog.Count).ToArray();techRow=new int[TechnologyCatalog.Count];
             var rows=new Dictionary<int,int>();foreach(int i in EraTechs(researchEra).OrderBy(i=>TechnologyCatalog.IsKeystone(i)?0:1).ThenBy(i=>i)){int depth=TechDepth(i);if(!rows.ContainsKey(depth))rows[depth]=0;techRow[i]=rows[depth]++;}
         }
-        IEnumerable<int> EraTechs(int era){return Enumerable.Range(0,TechnologyCatalog.KeystoneCount).Where(i=>TechnologyCatalog.Eras[i]==era);}
+        IEnumerable<int> EraTechs(int era){return Enumerable.Range(0,TechnologyCatalog.Count).Where(i=>TechnologyCatalog.Active[i]&&TechnologyCatalog.Eras[i]==era);}
         // An era can be opened once it is reached, or once a known technology leads into it.
         bool EraViewable(int era){return era<=world.Era(0)||EraTechs(era).Any(t=>World.Requirements[t].Any(p=>world.tech[p]));}
         Rect ExpandedTechRect(int i){return new Rect(20+techDepth[i]*252,20+techRow[i]*230,220,200);}
@@ -47,7 +47,7 @@ namespace ParadigmRealm
                 GUI.enabled=was;if(era==researchEra)Fill(new Rect(tab.x,tab.yMax-2,tab.width,2),new Color(.86f,.7f,.39f));
             }
             var header=new GUIStyle(small){clipping=TextClipping.Clip,wordWrap=false};
-            GUI.Label(new Rect(42,211,1190,26),TechnologyCatalog.KeystoneCount+" technologies, "+TechnologyCatalog.PerEra+" per era • You are in the "+TechnologyCatalog.EraNames[world.Era(0)]+" • "+World.EraThreshold+" of an era's "+TechnologyCatalog.PerEra+" keystones complete it • Ctrl + wheel zooms, hold the wheel to pan",header);
+            GUI.Label(new Rect(42,211,1190,26),TechnologyCatalog.ActiveCount+" technologies, "+TechnologyCatalog.EraSize[researchEra]+" in this age • You are in the "+TechnologyCatalog.EraNames[world.Era(0)]+" • "+World.EraThreshold+" of an era's "+TechnologyCatalog.PerEra+" keystones complete it • Ctrl + wheel zooms, hold the wheel to pan",header);
             // Hold the mouse wheel (middle button) and drag to pan around the tree.
             var shown=EraTechs(researchEra).ToList();var treeView=new Rect(40,243,790,465);
             // Hold Ctrl and turn the wheel to zoom the tree around the pointer (owner request). The cards are drawn at the zoomed

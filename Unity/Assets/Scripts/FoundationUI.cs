@@ -93,7 +93,7 @@ namespace ParadigmRealm
                 status="No valid autosave available.";
             }catch(Exception e){status="Could not load autosave: "+e.Message;}
         }
-        static readonly string[] SpeedTexts={"Quick: research and building cost half as much.","Standard pacing.","Long: research and building cost half as much again."};
+        static readonly string[] SpeedTexts={"Quick: research takes a third of a Long game (4 turns or more a technology); building costs half.","Standard: research takes two thirds of a Long game (7 turns or more).","Long: the slowest research (10 turns or more a technology); building costs half as much again."};
         void DrawSetupOptions()
         {
             GUILayout.BeginArea(new Rect(88,128,342,496));

@@ -2,6 +2,17 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 7 Nov, latest: tree size, game speed, opening gold, animals and population (no save change)
+
+Checked by Unity `RealmTools.Checks` (`ContentChecks.PacingAndPopulationChecks`) and `GraphicsChecks`, a Windows build, `-inputProbe` and `-autoShot`, and a 400-turn game in the .NET harness. Not hand-played.
+
+- Technology tree: 99 researchable technologies, 10 in the Dawn Age, 14 Classical, 15 Medieval, 20 Industrial, 25 Modern and 15 Dimensional. Each age keeps its 6 keystones (4 still complete an age) and adds minor technologies spread over the keystones, each with its prerequisite. The other 81 minors stay retired; older saves keep any they learned.
+- Game speed: research in a Long game now costs what Standard did (Agriculture took about 75 turns on Standard at the start). Standard is two thirds of that (about 50 turns) and Quick one third. A technology needs at least 10, 7 or 4 turns.
+- Opening gold: before the first city a people pays no upkeep and forages +1 gold a turn, so a new game with a Warrior and a Worker shows +1. The capital keeps one soldier as its guard for free.
+- Animals: three grazers for each hunter. Hunters stalk grazers as well as units (whichever is nearer); a grazer fights back, and a hunter that kills one heals. Hunters of different kinds keep a tile apart; forced side by side, they fight.
+- Population after history (Chandler/Modelski city estimates, HYDE and UN urban shares, the demographic transition): a city's people grow with the square of its size, scaled by age (a size 8 Dawn city about 64,000, a size 14 Classical city about a million, a size 20 Industrial city 4.8 million, a size 38 Modern city about 36 million). Countryside people are added so that 5% live in cities in the Dawn Age, 8% Classical, 10% Medieval, 40% Industrial, 75% Modern, 85% Dimensional. Before Medicine, cities above size 8 need 15% more food to grow for each size over 8 and risk an epidemic (1% a turn per size, halved by an Aqueduct); Medicine cuts the food needed by a quarter and ends epidemics; in the Modern Age, cities above 12 slow again. Life expectancy follows the age (25 years in the Dawn Age to 72 in the Modern). Shown on the city screen, the Cities table, the Economy city list and Civics ("Living in cities").
+- Measured (Small map, Standard, 400 turns, harness): rivals know 31 of 99 technologies and reach the Industrial Age around turn 350; 84 animals of which 21 hunters at turn 50; largest nation 41 million and largest city 4.8 million at turn 400.
+
 ## Owner request 7 Nov: the living world, after RimWorld and Dwarf Fortress (save version 34)
 
 Checked by Unity `RealmTools.Checks` (`ContentChecks.LivingWorldChecks`) and `GraphicsChecks`, a Windows build and `-frameProbe`. Not hand-played; balance unproven.

@@ -25,6 +25,23 @@ public static partial class TechnologyCatalog {
  // place of the small technologies that used to hang off it. Older saves keep the bonuses of any minor technologies they had already learned.
  static readonly string[] KeystoneEffects={"W:5","F:0","A:ranged","P:2","T:0","S:5","G:10","H:1","W:5","S:3","R:6:F","S:5","W:8","D:melee","S:8","G:10","S:5","A:melee","W:10","G:8","A:melee","P:2","H:1","A:mounted","S:8","T:0","W:8","W:8","F:0","G:10","W:8","S:8","H:1","W:8","S:8",""};
  public static string KeystoneEffect(int t){return t>=0&&t<KeystoneCount?KeystoneEffects[t]:"";}
+ // The researched tree (owner request, 7 Nov 2026): 10 technologies in the Dawn Age, 14 Classical, 15 Medieval, 20 Industrial,
+ // 25 Modern and 15 Dimensional, 99 in all. Each age keeps its 6 keystones (an age still completes at 4 of them) and takes the rest
+ // from its minor technologies, spread across the keystones and always with their own prerequisites. Other minors stay retired.
+ public static readonly int[] EraSize={10,14,15,20,25,15};
+ public static readonly bool[] Active=new bool[Count];
+ public static int ActiveCount{get{return EraSize.Sum();}}
+ public static bool IsActive(int t){return t>=0&&t<Count&&Active[t];}
+ static void ChooseActive(){
+  for(int i=0;i<KeystoneCount;i++)Active[i]=true;
+  for(int era=0;era<EraCount;era++){
+   var rows=MinorTable[era].Select((row,k)=>{var f=row.Split('|');return new{k,key=int.Parse(f[2]),pre=f[3]=="-"?-1:int.Parse(f[3])};}).ToList();
+   var order=rows.Select(r=>new{r.k,r.key,r.pre,rank=rows.Count(o=>o.key==r.key&&o.k<r.k)}).OrderBy(r=>r.rank).ThenBy(r=>r.key).ThenBy(r=>r.k).ToList();
+   var chosen=new HashSet<int>();int want=EraSize[era]-PerEra;bool more=true;
+   while(chosen.Count<want&&more){more=false;foreach(var r in order){if(chosen.Count>=want)break;if(chosen.Contains(r.k)||r.pre>=0&&!chosen.Contains(r.pre))continue;chosen.Add(r.k);more=true;break;}}
+   foreach(int k in chosen)Active[KeystoneCount+era*MinorPerEra+k]=true;
+  }
+ }
  public static bool IsKeystone(int t){return t>=0&&t<KeystoneCount;}
  // Adds the minors after the keystones (called at the end of the static constructor).
  static void AddMinors(){
@@ -37,6 +54,7 @@ public static partial class TechnologyCatalog {
    Effects[i]=string.Join("|",f.Skip(4).ToArray());Unlocks[i]=new string[0];Folded[i]=new[]{Ids[i]};
    Descriptions[i]=f[1]+": "+EffectText(Effects[i])+".";
   }
+  ChooseActive();
  }
  public static string EffectText(string effect){
   if(string.IsNullOrEmpty(effect))return "";var parts=effect.Split('|');var head=parts[0].Split(':');

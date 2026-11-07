@@ -32,7 +32,7 @@ public partial class RealmGame {
     }
     void DrawCitizenManagement(){
         var c=world.cities.Find(a=>a.id==managedCity&&a.owner==0);if(c==null){GUILayout.Label("Select a city first.",body);return;}
-        GUILayout.Label(c.name+" — population "+c.pop+" / growth limit "+world.GrowthLimit(c),heading);
+        GUILayout.Label(c.name+" — size "+c.pop+" ("+World.PeopleText(world.CityPeople(c))+" people) / growth limit "+world.GrowthLimit(c),heading);
         GUILayout.Label("Each specialist replaces one worked tile and still consumes food. Scientists: +3 science; merchants: +3 gold; entertainers: +2 content citizens.",body);
         string[] names={"Scientists","Merchants","Entertainers"};int[] values={c.scientists,c.merchants,c.entertainers};
         for(int i=0;i<3;i++){GUILayout.Label(names[i]+": "+values[i],heading);GUILayout.BeginHorizontal();if(GUILayout.Button("- "+names[i]))world.AdjustSpecialist(c,i,-1);if(GUILayout.Button("+ "+names[i]))world.AdjustSpecialist(c,i,1);GUILayout.EndHorizontal();}

@@ -7,14 +7,14 @@ namespace ParadigmRealm {
 // Demographics screens of the Civilization series, measured only against the home civilisations you have met; the rest is what
 // you need to run the empire: where the money goes, what the army costs, and the state of society.
 public partial class RealmGame {
- static readonly string[] CivicsRows={"Population","Cities","Land (tiles)","Literacy","Approval","Life expectancy","Trade (GNP)","Goods (shields)","Crop yield (food)","Science","Soldiers","Army strength"};
+ static readonly string[] CivicsRows={"Population","Cities","Land (tiles)","Literacy","Approval","Life expectancy","Trade (GNP)","Goods (shields)","Crop yield (food)","Science","Soldiers","Army strength","Living in cities"};
  List<CivicStats> civicsRivals;CivicStats civicsMine;int civicsTurn=-1;float civicsAt;
  void RefreshCivics(){
   if(civicsMine!=null&&civicsTurn==world.turn&&Time.realtimeSinceStartup-civicsAt<1f)return;civicsTurn=world.turn;civicsAt=Time.realtimeSinceStartup;civicsMine=world.StatsFor(0);
   civicsRivals=Enumerable.Range(1,world.civCount-1).Where(o=>!world.IsNativeNation(o)&&world.met[o]&&world.cities.Any(c=>c.owner==o)).Select(world.StatsFor).ToList();
  }
- static long CivicValue(CivicStats s,int row){switch(row){case 0:return s.population;case 1:return s.cities;case 2:return s.land;case 3:return s.literacy;case 4:return s.approval;case 5:return s.lifeExpectancy;case 6:return s.gnp;case 7:return s.goods;case 8:return s.crops;case 9:return s.science;case 10:return s.soldiers;default:return s.strength;}}
- static string CivicText(int row,long v){return row==0?v.ToString("N0"):row==3||row==4?v+"%":row==5?v+" years":v.ToString("N0");}
+ static long CivicValue(CivicStats s,int row){switch(row){case 0:return s.population;case 1:return s.cities;case 2:return s.land;case 3:return s.literacy;case 4:return s.approval;case 5:return s.lifeExpectancy;case 6:return s.gnp;case 7:return s.goods;case 8:return s.crops;case 9:return s.science;case 10:return s.soldiers;case 11:return s.strength;default:return s.urbanShare;}}
+ static string CivicText(int row,long v){return row==0?v.ToString("N0"):row==3||row==4||row==12?v+"%":row==5?v+" years":v.ToString("N0");}
  void DrawCivics(){
   RefreshCivics();var me=civicsMine;var n=world.nations[0];
   // Demographics, ranked against the civilisations you know.
@@ -38,7 +38,7 @@ public partial class RealmGame {
   GUILayout.Label("Finances",heading);
   if(world.DebtState(0)!="")GUILayout.Label(world.DebtState(0),heading);
   GUILayout.Label("Treasury "+world.gold+" gold   •   Net "+(b.Net>=0?"+":"")+b.Net+" a turn"+(b.Net<0?"   •   empty in "+Math.Max(1,world.gold/Math.Max(1,-b.Net))+" turns":""),body);
-  CivicsMoney("City trade and commerce",b.cityGold);CivicsMoney("Buildings and connected cities",b.cityBonus);CivicsMoney("Ports",b.ports);CivicsMoney("Trade routes",b.routes);CivicsMoney("Treaties",b.treaties);CivicsMoney("Villages and tithes",b.tribute);
+  CivicsMoney("Foraging (no city yet)",b.foraging);CivicsMoney("City trade and commerce",b.cityGold);CivicsMoney("Buildings and connected cities",b.cityBonus);CivicsMoney("Ports",b.ports);CivicsMoney("Trade routes",b.routes);CivicsMoney("Treaties",b.treaties);CivicsMoney("Villages and tithes",b.tribute);
   CivicsMoney("City upkeep",-b.cityUpkeep);CivicsMoney("Building upkeep",-b.buildingUpkeep);CivicsMoney("Army support",-b.army);CivicsMoney("Civilian support",-b.civilians);CivicsMoney("Road upkeep ("+world.RoadTiles(0)+" tiles)",-b.roads);CivicsMoney("Cost of a large empire",-b.expansion);CivicsMoney("Cities not joined to the others",-b.cutOff);CivicsMoney("Luxuries",-b.luxury);CivicsMoney("Treaty payments",-b.treatyCost);
   GUILayout.Space(8);GUILayout.Label("Economy",heading);
   GUILayout.Label("Priorities: Science "+n.scienceRate+"%   Military "+n.militaryRate+"%   Finance "+world.FinanceRate(0)+"%",body);
@@ -79,7 +79,7 @@ public partial class RealmGame {
   foreach(var c in world.cities.Where(a=>a.owner==0).ToList()){
    var y=world.Yield(c);GUILayout.BeginHorizontal();
    if(GUILayout.Button(c.name,button,GUILayout.Width(190),GUILayout.Height(28)))OpenCity(c);
-   GUILayout.Label("Size "+c.pop+"   Food "+(y[0]>=0?"+":"")+y[0]+"   Shields "+y[1],small,GUILayout.Width(180));
+   GUILayout.Label("Size "+c.pop+" ("+World.PeopleText(world.CityPeople(c))+")   Food "+(y[0]>=0?"+":"")+y[0]+"   Shields "+y[1],small,GUILayout.Width(250));
    if(GUILayout.Button(CityLineText(c,false),button,GUILayout.Width(345),GUILayout.Height(28))){bool open=citiesPick==c.id&&!citiesPickBuilding;citiesPick=open?-1:c.id;citiesPickBuilding=false;GUIUtility.ExitGUI();}
    if(GUILayout.Button(CityLineText(c,true),button,GUILayout.Width(345),GUILayout.Height(28))){bool open=citiesPick==c.id&&citiesPickBuilding;citiesPick=open?-1:c.id;citiesPickBuilding=true;GUIUtility.ExitGUI();}
    GUILayout.EndHorizontal();

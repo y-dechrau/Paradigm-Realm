@@ -432,7 +432,7 @@ namespace ParadigmRealm
             if(building){if(c.buildingProject<0)return false;c.buildingProject=-1;c.buildingProduction=0;}else{if(c.build<0)return false;c.build=-1;c.production=0;}return true;}
         public void SkipTurn(Unit u){if(u==null||!units.Contains(u)||u.owner!=0||result!="")return;CancelOrder(u);u.fortified=false;u.moves=0;}
         public static string StackLabel(IEnumerable<Unit> source){var stack=source.ToList();if(stack.Count==0)return "";if(stack.GroupBy(u=>u.owner).Any(g=>g.Select(u=>u.type).Distinct().Count()>1))return "";return stack.Count>1?"Stack":UnitNames[stack[0].type];}
-        public List<int> AvailableTech(int owner=0){return Enumerable.Range(0,TechnologyCatalog.KeystoneCount).Where(i=>!nations[owner].tech[i]&&Requirements[i].All(j=>nations[owner].tech[j])).ToList();}
+        public List<int> AvailableTech(int owner=0){return Enumerable.Range(0,TechnologyCatalog.Count).Where(i=>TechnologyCatalog.Active[i]&&!nations[owner].tech[i]&&Requirements[i].All(j=>nations[owner].tech[j])).ToList();}
         // Base cost scaled by game speed; a fifth cheaper (rounded down) once two civilisations this one has met know it (design).
         // Stage 8 pacing: the design's cost (20 x e^2 + 5 x e x i) scaled per era, in percent, so a standard game meets the
         // design's targets (eras complete around turns 40, 80, 125, 170 and 210; Transcendence around 230). Measured with
@@ -440,7 +440,7 @@ namespace ParadigmRealm
         // Doubled at the owner's request, 6 Nov 2026 (was 150, 190, 280, 400, 420, 420).
         // Raised again with the shorter tree (owner request, 6 Nov 2026): every age's six technologies now hold the whole age's research.
         public static readonly int[] ResearchPace={500,800,1300,1900,2200,2400};
-        public int ResearchCost(int t,int owner=0){int cost=TechCosts[t]*ResearchPace[TechnologyCatalog.Eras[t]]/100*(speed==0?1:speed==2?3:2)/2;if(owner>=0&&owner<civCount&&Enumerable.Range(0,civCount).Count(o=>o!=owner&&HasContact(owner,o)&&nations[o].tech[t])>=2)cost-=cost/5;return DifficultyResearch(owner,cost);}
+        public int ResearchCost(int t,int owner=0){int cost=TechCosts[t]*ResearchPace[TechnologyCatalog.Eras[t]]/100*(speed==0?1:speed==2?3:2)/(modernRules?3:2);if(owner>=0&&owner<civCount&&Enumerable.Range(0,civCount).Count(o=>o!=owner&&HasContact(owner,o)&&nations[o].tech[t])>=2)cost-=cost/5;return DifficultyResearch(owner,cost);}
         public void SelectResearch(int t){if(!AvailableTech().Contains(t))return;nations[0].progress[research<0?0:research]=science;research=t;nations[0].research=t;science=nations[0].progress[t];}
         public void CancelOrder(Unit u){if(u==null)return;u.exploring=false;u.sentry=false;u.hasOrder=false;u.job=0;u.jobTurns=0;}
         public int[] PeaceOwners(Unit u,int x,int y){if(u==null||!VisibleTo(u.owner,x,y))return new int[0];var owners=units.Where(a=>a.x==x&&a.y==y).Select(a=>a.owner).Concat(cities.Where(a=>a.x==x&&a.y==y).Select(a=>a.owner));var t=At(x,y);if(t!=null&&t.owner>=0&&!CanEnter(u.owner,t))owners=owners.Concat(new[]{t.owner});return owners.Where(a=>a!=u.owner&&!AtWar(u.owner,a)).Distinct().ToArray();}

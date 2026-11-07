@@ -5,7 +5,7 @@ namespace ParadigmRealm {
 // The empire's priorities (owner request, 6 Nov 2026, after Galactic Civilizations II): three linked sliders share each city's
 // Trade between science, the army and the treasury. They always total 100; moving one moves the other two in proportion.
 // The military share becomes extra shields for any combat unit a city is training. Rivals keep it at 0 for now.
-public sealed class CivicStats {public long population;public int cities,land,roads,literacy,approval,lifeExpectancy,gnp,goods,crops,science,soldiers,strength;}
+public sealed class CivicStats {public long population,urban;public int urbanShare;public int cities,land,roads,literacy,approval,lifeExpectancy,gnp,goods,crops,science,soldiers,strength;}
 public sealed class BorderGrowth {public int radius,done,span,turnsLeft=-1,citizensAt=-1;public bool full;}
 // What a discovery asks of the player (owner request, 6 Nov 2026): what to research next, then each idle city that gained a building.
 public sealed class BuildPrompt {public int city,tech;public List<int> options=new List<int>();}
@@ -84,7 +84,7 @@ public partial class World {
  // Climate moves the temperature and moisture a sphere is generated with; see BuildClimateWorld.
  public void ClimateShift(ref double temp,ref double wet){switch(climate){case 1:temp=.5+(temp-.5)*.45;wet=.5+(wet-.5)*.8;break;case 2:temp-=.36;break;case 3:temp=temp*.55+.5;wet+=.18;break;case 4:temp+=.08;wet-=.38;break;}}
  void RemapFlatClimate(){int[][] swaps={null,new[]{3,0,8,0,13,1,11,1,19,1,16,0},new[]{0,8,1,13,3,8,16,8,11,13,19,13,20,8},new[]{0,16,1,11,8,16,13,11,20,16},new[]{0,20,1,16,11,16,19,3,16,3}};var map=swaps[climate];foreach(var t in tiles){if(t.realm!=0)continue;for(int k=0;k<map.Length;k+=2)if(t.terrain==map[k]){t.terrain=map[k+1];break;}}}
- void RetireMinorResearch(){foreach(var n in nations){if(n==null||n.research<TechnologyCatalog.KeystoneCount)continue;int o=Array.IndexOf(nations,n);n.research=AvailableTech(o).DefaultIfEmpty(-1).First();}research=nations[0].research;science=research<0?0:nations[0].progress[research];}
+ void RetireMinorResearch(){foreach(var n in nations){if(n==null||n.research<0||TechnologyCatalog.IsActive(n.research))continue;int o=Array.IndexOf(nations,n);n.research=AvailableTech(o).DefaultIfEmpty(-1).First();}research=nations[0].research;science=research<0?0:nations[0].progress[research];}
  // Growing too fast costs money: nothing up to four cities, then more with each one. A city not joined to any other by road, river or
  // sea costs more again and has one citizen fewer content, so it pays to connect what you settle (owner request).
  public const int FreeCities=4,CutOffGold=2;
@@ -196,7 +196,11 @@ public partial class World {
  // least MinResearchTurns however much science there is (the Civilization III rule), and what is left over carries to the next.
  public const int MinResearchTurns=10;
  public int SciencePerTurn(int owner){int sum=0;foreach(var c in cities)if(c.owner==owner)sum+=Yield(c)[2];return sum;}
- public int ResearchCap(int t,int owner){return Math.Max(1,(ResearchCost(t,owner)+MinResearchTurns-1)/MinResearchTurns);}
+ public int ResearchCap(int t,int owner){int least=MinTurns();return Math.Max(1,(ResearchCost(t,owner)+least-1)/least);}
+ // Game speed (owner request, 7 Nov 2026): research in a Long game now takes what Standard used to; Standard takes two thirds of that
+ // and Quick one third, and so does the least number of turns a technology needs.
+ public static readonly int[] SpeedMinTurns={4,7,10};
+ public int MinTurns(){return modernRules?SpeedMinTurns[Math.Max(0,Math.Min(2,speed))]:MinResearchTurns;}
  // Turns to finish, or -1 when no science is coming in.
  public int ResearchTurns(int t,int owner){int rate=Math.Min(SciencePerTurn(owner),ResearchCap(t,owner));if(rate<=0)return -1;int done=owner==0&&t==research?science:nations[owner].progress[t];int left=Math.Max(0,ResearchCost(t,owner)-done);return Math.Max(1,(left+rate-1)/rate);}
  bool ResearchOpen(int owner,int t){var n=nations[owner];if(n.tech[t])return false;foreach(int r in Requirements[t])if(!n.tech[r])return false;return true;}
@@ -204,14 +208,16 @@ public partial class World {
  // Choosing a different technology after a discovery takes the left-over science with it.
  public void ChooseNextResearch(int t){int spare=researchOverflow;researchOverflow=0;if(research>=0){int take=Math.Min(spare,science);science-=take;nations[0].progress[research]=science;spare=take;}else spare=0;SelectResearch(t);if(research==t){science+=spare;nations[0].progress[t]=science;}}
  // What the budget is made of; Budget is its totals.
- public sealed class BudgetLines {public int cityGold,cityBonus,ports,routes,treaties,tribute,cityUpkeep,buildingUpkeep,army,civilians,luxury,treatyCost,roads,expansion,cutOff;public int Income{get{return cityGold+cityBonus+ports+routes+treaties+tribute;}}public int Expense{get{return cityUpkeep+buildingUpkeep+army+civilians+luxury+treatyCost+roads+expansion+cutOff;}}public int Net{get{return Income-Expense;}}}
+ public sealed class BudgetLines {public int cityGold,cityBonus,ports,routes,treaties,tribute,cityUpkeep,buildingUpkeep,army,civilians,luxury,treatyCost,roads,expansion,cutOff,foraging;public int Income{get{return cityGold+cityBonus+ports+routes+treaties+tribute+foraging;}}public int Expense{get{return cityUpkeep+buildingUpkeep+army+civilians+luxury+treatyCost+roads+expansion+cutOff;}}public int Net{get{return Income-Expense;}}}
  public static int SupportCost(int type){return Upkeep[type];}
  public BudgetLines BudgetDetail(int owner){
   var b=new BudgetLines();var own=cities.Where(c=>c.owner==owner).OrderBy(c=>c.id).ToList();
   foreach(var c in own){b.cityGold+=Yield(c)[3];b.ports+=PortIncome(c);if(!Disorder(c))b.cityBonus+=(HasBuilding(c,31)?2:0)+(Connected(c)&&c!=own[0]?3:0);int distance=Distance(c.x,c.y,own[0].x,own[0].y)/10;b.cityUpkeep+=Math.Max(0,1+c.pop/4+distance-(HasBuilding(c,34)?2:0));b.buildingUpkeep+=c.buildings.Sum(BuildingUpkeep);}
   // Every soldier and warship is paid for (owner request); only civilians have free support from cities and government.
   int free=0,soldiers=0;
-  if(modernRules){int armyHalves=0,freeHalves=0;foreach(var u in units)if(u.owner==owner){int halves=Upkeep[u.type]*(AtHome(u)?1:2);if(Power[u.type]>0){armyHalves+=halves;soldiers++;}else freeHalves+=halves;}b.army=(armyHalves+1)/2;free=(freeHalves+1)/2;}
+  // A wandering people with no city yet pays nothing, and the capital keeps one soldier as its guard for free (owner request,
+  // 7 Nov 2026: a new game with a Warrior and a Worker makes +1 gold a turn once the capital stands).
+  if(modernRules){int armyHalves=0,freeHalves=0,guard=0;foreach(var u in units)if(u.owner==owner){int halves=Upkeep[u.type]*(AtHome(u)?1:2);if(Power[u.type]>0){armyHalves+=halves;soldiers++;guard=Math.Max(guard,Math.Min(4,halves));}else freeHalves+=halves;}if(own.Count==0){armyHalves=0;b.foraging=1;}else armyHalves-=guard;b.army=(armyHalves+1)/2;free=(freeHalves+1)/2;}
   else foreach(var u in units)if(u.owner==owner){if(Power[u.type]>0){b.army+=Upkeep[u.type];soldiers++;}else free+=Upkeep[u.type];}
   // A big standing army costs more than the sum of its soldiers (as unit maintenance climbs in Civilization V): +1 gold for every three
   // soldiers beyond two per city.
@@ -277,13 +283,14 @@ public partial class World {
  // ---------- Civics ----------
  public CivicStats StatsFor(int owner){
   var s=new CivicStats();var own=cities.Where(c=>c.owner==owner).ToList();s.cities=own.Count;int citizens=0,read=0,calm=0,hungry=0;
-  foreach(var c in own){s.population+=(long)(1000*Math.Pow(c.pop,2.8));citizens+=c.pop;if(HasBuilding(c,8)||HasBuilding(c,38))read+=c.pop;var y=Yield(c);s.gnp+=Trade(c);s.goods+=y[1];s.crops+=y[0]+c.pop*2;s.science+=y[2];calm+=ContentCitizens(c)-UnhappyCitizens(c);if(y[0]<0)hungry++;}
+  foreach(var c in own){s.population+=CityPeople(c);s.urban+=CityPeople(c);citizens+=c.pop;if(HasBuilding(c,8)||HasBuilding(c,38))read+=c.pop;var y=Yield(c);s.gnp+=Trade(c);s.goods+=y[1];s.crops+=y[0]+c.pop*2;s.science+=y[2];calm+=ContentCitizens(c)-UnhappyCitizens(c);if(y[0]<0)hungry++;}
   foreach(var t in tiles)if(t.owner==owner){s.land++;if(t.road)s.roads++;}
   foreach(var u in units)if(u.owner==owner&&Power[u.type]>0){s.soldiers++;s.strength+=MilitaryValue(u.type)+u.promotion*2;}
   s.literacy=citizens==0?0:read*100/citizens;
   // Approval as in Civilization III: half, plus the balance of content over unhappy citizens.
   s.approval=citizens==0?50:Math.Max(0,Math.Min(100,50+calm*50/citizens));
-  s.lifeExpectancy=own.Count==0?0:28+Era(owner)*8+own.Count(c=>c.granary)*6/own.Count-hungry*6/own.Count;
+  s.lifeExpectancy=own.Count==0?0:(modernRules?LifeExpectancy(owner):28+Era(owner)*8)+own.Count(c=>c.granary)*6/own.Count-hungry*6/own.Count;
+  if(modernRules){s.population+=RuralPeople(owner,s.urban);s.urbanShare=s.population==0?0:(int)(s.urban*100/s.population);}
   return s;
  }
  [NonSerialized] public List<int> researchPrompts=new List<int>();

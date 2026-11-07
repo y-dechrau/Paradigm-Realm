@@ -8,8 +8,8 @@ static int K(string id){return TechnologyCatalog.Index(id);}
 public static void Run(){
     var w=World.New(137);Check(w.tech[TechnologyCatalog.Start]&&w.nations.All(n=>n.tech[TechnologyCatalog.Start]),"every civilisation starts with Stone Tools");
     Check(w.AvailableTech().Where(TechnologyCatalog.IsKeystone).OrderBy(i=>i).SequenceEqual(new[]{K("agriculture"),K("archery"),K("bronze")}.OrderBy(i=>i)),"Stone Tools opens Agriculture, Archery and Bronze Working (and Dawn minors)");
-    var researched=new HashSet<int>{TechnologyCatalog.Start};while(researched.Count<TechnologyCatalog.KeystoneCount){var available=w.AvailableTech();Check(available.Count>0,"no cycle or unreachable research");foreach(int i in available){Check(World.Requirements[i].All(p=>researched.Contains(p)),"prerequisites already complete");researched.Add(i);w.tech[i]=true;}}
-    Check(researched.Count==36&&TechnologyCatalog.KeystoneCount==36&&TechnologyCatalog.EraNames.Length==6&&Enumerable.Range(0,6).All(e=>Enumerable.Range(0,180).Count(t=>TechnologyCatalog.Eras[t]==e)==30),"180 technologies, 36 keystones, 30 per era");
+    var researched=new HashSet<int>{TechnologyCatalog.Start};while(researched.Count<TechnologyCatalog.ActiveCount){var available=w.AvailableTech();Check(available.Count>0,"no cycle or unreachable research");foreach(int i in available){Check(World.Requirements[i].All(p=>researched.Contains(p)),"prerequisites already complete");researched.Add(i);w.tech[i]=true;}}
+    Check(researched.Count==99&&TechnologyCatalog.ActiveCount==99&&Enumerable.Range(0,6).All(e=>Enumerable.Range(0,180).Count(t=>TechnologyCatalog.Active[t]&&TechnologyCatalog.Eras[t]==e)==TechnologyCatalog.EraSize[e])&&TechnologyCatalog.KeystoneCount==36&&TechnologyCatalog.EraNames.Length==6&&Enumerable.Range(0,6).All(e=>Enumerable.Range(0,180).Count(t=>TechnologyCatalog.Eras[t]==e)==30),"180 technologies, 36 keystones, 30 per era");
     Check(Enumerable.Range(36,144).All(t=>World.Requirements[t].Length>0&&World.Requirements[t].All(p=>TechnologyCatalog.Eras[p]==TechnologyCatalog.Eras[t])&&World.ActiveTechBenefits(t).Length==1),"each minor technology needs only its own era and has one listed effect");w.CheckVictory();Check(w.result=="","researching every keystone no longer wins by itself (Stage 6: Transcendence is a project)");
     StageFive();
     PlayerRequestChecks();
@@ -19,6 +19,7 @@ public static void Run(){
     FifthRequestChecks();
     SixthRequestChecks();
     LivingWorldChecks();
+    PacingAndPopulationChecks();
     var cold=World.New(3);var settler=cold.units.First(u=>u.owner==0&&u.type==0);cold.At(settler.x,settler.y).terrain=8;cold.tech[K("fire")]=false;Check(cold.Found(settler)==null,"cold settlement needs Fire");cold.tech[K("fire")]=true;Check(cold.Found(settler)!=null,"Fire (Stone Tools) permits cold settlement");
     var terrainTypes=new HashSet<int>();for(int seed=0;seed<6;seed++){var map=World.New(seed);Check(map.Valid(),"biome map validates");foreach(var tile in map.tiles){terrainTypes.Add(tile.terrain);Check(map.TileYield(tile).Length==3,"all terrain has yields");}}
     Check(terrainTypes.Count==21,"all texture terrain types generated");
@@ -265,6 +266,28 @@ static void PlayerRequestChecks(){
     {var old=World.New(212,natives:false);old.version=27;old.UpgradeSave();Check(old.version==34&&old.nations.All(a=>a.militaryRate==0)&&old.Valid(),"older saves spend nothing on the army");}
 }
 // The living world: people, memory, materials and the map (owner request, 7 Nov 2026).
+// Owner requests of 7 Nov 2026, latest: tree size, speed, opening budget, animals and population.
+static void PacingAndPopulationChecks(){
+    Check(TechnologyCatalog.EraSize.SequenceEqual(new[]{10,14,15,20,25,15}),"10, 14, 15, 20, 25 and 15 technologies by age");
+    for(int i=0;i<TechnologyCatalog.Count;i++)if(TechnologyCatalog.Active[i])Check(World.Requirements[i].All(TechnologyCatalog.IsActive),"every prerequisite is itself researchable: "+TechnologyCatalog.Names[i]);
+    // Long now costs what Standard used to; Standard two thirds and Quick one third.
+    {var q=World.New(261,"Pace",0,0,1,0,1,2,4,hex:true,natives:false,rations:true);var s=World.New(261,"Pace",0,1,1,0,1,2,4,hex:true,natives:false,rations:true);var l=World.New(261,"Pace",0,2,1,0,1,2,4,hex:true,natives:false,rations:true);int t=K("agriculture");int old=World.TechCosts[t]*World.ResearchPace[0]/100;
+     Check(l.ResearchCost(t,-1)==old&&s.ResearchCost(t,-1)==old*2/3&&q.ResearchCost(t,-1)==old/3,"Long research equals the old Standard");Check(q.MinTurns()==4&&s.MinTurns()==7&&l.MinTurns()==10,"fewest turns a technology: 4, 7, 10");
+     // A Warrior and a Worker: nothing to pay before the capital, +1 gold a turn after.
+     Check(s.units.Count(u=>u.owner==0&&u.type!=0)==2&&s.BudgetDetail(0).Net==1,"a new game with a Warrior and a Worker makes +1 gold a turn");var cap=s.Found(s.units.First(u=>u.owner==0&&u.type==0));Check(s.BudgetDetail(0).Net==1,"and the capital's guard is free, so this capital still makes +1, not "+s.BudgetDetail(0).Net);
+     var warrior=s.units.First(u=>u.owner==0&&World.Power[u.type]>0);var away=s.tiles.First(x=>x.owner<0&&!PixelArt.IsWater(x.terrain)&&!World.IsImpassable(x.terrain)&&s.Distance(x.x,x.y,cap.x,cap.y)>6);warrior.x=away.x;warrior.y=away.y;Check(s.BudgetDetail(0).Net==1,"still +1 with the Warrior out exploring");
+     // Population after history.
+     cap.pop=8;Check(s.CityPeople(cap)==64000,"a size 8 Dawn city holds about 64,000 people");var st=s.StatsFor(0);Check(st.urbanShare==5&&st.population==64000L*20,"one person in twenty lives in a city in the Dawn Age");
+     cap.pop=10;Check(s.DemographicPercent(cap)==130&&s.EpidemicChance(cap)==30,"crowded towns before Medicine grow slowly and risk sickness");s.nations[0].tech[K("medicine")]=true;Check(s.DemographicPercent(cap)==75&&s.EpidemicChance(cap)==0,"Medicine: faster growth, no epidemics");
+     Check(World.PeopleText(1200000)=="1.2 million"&&World.PeopleText(64000)=="64,000","people figures read naturally");}
+    // Animals: three grazers to each hunter; hunters take grazers; different hunters avoid each other or fight.
+    {var w=World.New(262,"Wild",0,1,1,0,2,2,4,hex:true,natives:false,wild:true,rations:true);w.animals.Clear();for(int k=0;k<80;k++)w.SpawnAnimalsForChecks();int hunters=w.animals.Count(a=>AnimalCatalog.Carnivore[a.kind]),grazers=w.animals.Count-hunters;Check(hunters>0&&grazers>=hunters*2,"grazers outnumber hunters ("+grazers+" to "+hunters+")");
+     var open=w.tiles.Where(t=>t.owner<0&&t.realm==0&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!w.units.Any(u=>w.Distance(u.x,u.y,t.x,t.y)<9)&&!w.cities.Any(c=>w.Distance(c.x,c.y,t.x,t.y)<9)).ToList();
+     Tile Beside(Tile t){for(int k=0;k<6;k++){var n=w.Step(t.x,t.y,World.HexDi[k],World.HexDj[k]);if(n!=null&&open.Contains(n))return n;}return null;}
+     var spot=open.First(t=>Beside(t)!=null&&w.animals.All(a=>w.Distance(a.x,a.y,t.x,t.y)>12));var next=Beside(spot);w.animals.Clear();
+     var lion=new Animal{id=9001,kind=0,x=spot.x,y=spot.y};var mammoth=new Animal{id=9002,kind=5,x=next.x,y=next.y};w.animals.Add(lion);w.animals.Add(mammoth);w.TickAnimalsForChecks(false);Check(mammoth.hp<10||!w.animals.Contains(mammoth),"a hunter attacks a grazer beside it");
+     w.animals.Clear();var wolf=new Animal{id=9003,kind=3,x=next.x,y=next.y};lion.hp=10;lion.x=spot.x;lion.y=spot.y;w.animals.Add(lion);w.animals.Add(wolf);w.TickAnimalsForChecks(false);Check(lion.hp<10||wolf.hp<10||w.Distance(lion.x,lion.y,wolf.x,wolf.y)>1,"rival hunters forced together fight, or part");}
+}
 static void LivingWorldChecks(){
     var w=World.New(281,"Living",0,1,1,0,1,2,4,hex:true,natives:false,rations:true);Check(w.livingWorld&&w.log.Any(l=>l.StartsWith("Before history"))&&w.grudges.Count>0,"the world starts with a remembered past");
     var city=w.Found(w.units.First(u=>u.owner==0&&u.type==0));w.EndTurn();var gov=w.GovernorOf(city);Check(w.Ruler(0)!=null&&gov!=null&&gov.traitA!=gov.traitB&&gov.name!="","rulers and governors are people with two traits");
@@ -319,15 +342,15 @@ static void SixthRequestChecks(){
 static void FifthRequestChecks(){
     var w=World.New(251,"Fifth",0,1,1,0,1,2,4,hex:true,natives:false,rations:true);var city=w.Found(w.units.First(u=>u.owner==0&&u.type==0));
     // A streamlined tree: only the 36 keystones are researched; ages stay locked until a technology leads into them.
-    Check(w.AvailableTech(0).All(TechnologyCatalog.IsKeystone),"only the main technologies can be researched");
+    Check(w.AvailableTech(0).All(TechnologyCatalog.IsActive)&&w.AvailableTech(0).Any(t=>!TechnologyCatalog.IsKeystone(t)),"only the 99 technologies of the tree can be researched");
     Check(Enumerable.Range(0,TechnologyCatalog.KeystoneCount-1).All(t=>World.ActiveTechBenefits(t).Length>0),"every technology does something");
     int writing=K("printing");Check(!w.AvailableTech(0).Any(t=>TechnologyCatalog.Eras[t]>=2),"later ages are locked at the start");
     Check(Enumerable.Range(0,36).Where(t=>TechnologyCatalog.Eras[t]>0).All(t=>World.Requirements[t].Length>0),"every later technology has something leading into it");
     Check(Enumerable.Range(1,5).All(e=>Enumerable.Range(0,36).Any(t=>TechnologyCatalog.Eras[t]==e&&World.Requirements[t].Any(p=>TechnologyCatalog.Eras[p]==e-1))),"each age is entered from the one before");
-    {int cost=w.ResearchCost(K("agriculture"),-1);Check(cost==World.TechCosts[K("agriculture")]*World.ResearchPace[0]/100,"research costs follow the age");Check(World.MinResearchTurns==10&&w.ResearchCap(K("agriculture"),0)*10>=w.ResearchCost(K("agriculture"),0),"a technology takes at least ten turns");}
+    {int cost=w.ResearchCost(K("agriculture"),-1);Check(cost==World.TechCosts[K("agriculture")]*World.ResearchPace[0]/100*2/3,"research costs follow the age (Standard is two thirds of Long)");Check(w.MinTurns()==7&&w.ResearchCap(K("agriculture"),0)*7>=w.ResearchCost(K("agriculture"),0),"a technology takes at least seven turns on Standard");}
     {int before=w.Yield(city)[0];}
     // Older saves that were researching a retired technology move on.
-    {var old=World.New(252,natives:false);int minor=TechnologyCatalog.KeystoneCount;old.research=minor;old.nations[0].research=minor;old.version=31;old.UpgradeSave();Check(old.version==34&&old.research<TechnologyCatalog.KeystoneCount&&old.modernRules&&old.Valid(),"an older save researching a retired technology moves on");}
+    {var old=World.New(252,natives:false);int minor=Enumerable.Range(TechnologyCatalog.KeystoneCount,144).First(t=>!TechnologyCatalog.Active[t]);old.research=minor;old.nations[0].research=minor;old.version=31;old.UpgradeSave();Check(old.version==34&&old.research<TechnologyCatalog.KeystoneCount&&old.modernRules&&old.Valid(),"an older save researching a retired technology moves on");}
     // Expansion costs more, especially cut off from the rest.
     Check(World.ExpansionCost(4)==0&&World.ExpansionCost(6)==1&&World.ExpansionCost(10)==7&&World.ExpansionCost(16)==26,"a large empire costs more and more");
     {var g=World.New(253,"Links",0,1,1,0,1,1,3,natives:false,rations:true);var a=g.Found(g.units.First(u=>u.owner==0&&u.type==0));var land=g.tiles.First(t=>!World.IsImpassable(t.terrain)&&!PixelArt.IsWater(t.terrain)&&g.Distance(t.x,t.y,a.x,a.y)==7&&!g.cities.Any(c=>g.Distance(c.x,c.y,t.x,t.y)<6));var b=g.Found(g.Add(0,0,land.x,land.y));g.RebuildTerritory();g.ResetLinks();Check(g.CutOff(a)&&g.CutOff(b)&&g.BudgetDetail(0).cutOff==2*World.CutOffGold,"cities with no link cost extra gold");int content=g.ContentSlots(a);
