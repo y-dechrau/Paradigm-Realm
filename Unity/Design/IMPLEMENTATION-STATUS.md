@@ -2,6 +2,27 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 8 Nov, later: religion screen in the mockup's style, and new SpriteCook art (no save change)
+
+**How this was checked:**
+- Unity `RealmTools.Checks` and `GraphicsChecks` pass.
+- A Windows build ran `-autoShot` with no exceptions. Screenshots of the Religion screen, the event panel, the native leaders' diplomacy and New Game are in `Documentation/Unity-Screenshots-2026-11-08-ReligionStyle`.
+- **Not hand-played.**
+
+**What changed:**
+- **Religion screen:** now drawn in the style of the owner's mockup (`FaithScreen.cs`):
+  - Header: sun emblem, faith name and motto, followers, faith and authority.
+  - Gold tabs.
+  - Overview: holy-city painting, doctrine medallions, a faith map of the explored world, one city's demographics with religious satisfaction, key institutions, and faith actions (the new Fund Pilgrimage: 40 faith, +1 gold in the holy city up to 3, +3 authority).
+  - Right column: religious summary, recent events with turns ago, and the faiths of the world.
+- **New art** (SpriteCook, matching the existing painterly pixel-art portraits):
+  - Jade Dynasty and Serpent League leaders, so both civilisations are now playable.
+  - The ten native leaders, replacing their code-drawn faces.
+  - Modern-age portraits for eleven real-world leaders, and ancient and modern portraits for Mei and Itzel. Menelik II's was refused twice by the service's content filter, so he keeps his single portrait.
+  - Five holy-city paintings, one per core belief.
+  - Four religious event paintings.
+  - A Priest unit sprite.
+
 ## Owner design 8 Nov: Faith, Belief and Religious Power (save version 36)
 
 **How this was checked:**

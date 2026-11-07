@@ -325,6 +325,23 @@ public partial class World {
   if(f!=null&&CouncilReason(o)==""&&f.reform>=60)CallCouncil(o);
   if(f!=null&&n.faith>=80){var targets=Enumerable.Range(0,civCount).Where(b=>b!=o&&FundReason(o,b)=="").OrderByDescending(b=>Opinion(o,b)).ToList();if(targets.Count>0)FundClergy(o,targets[0]);}
  }
+ // ---------- for the Religion screen (owner mockup, 8 Nov 2026) ----------
+ static readonly string[] Mottos={"Many gods, one people.","One god. One truth. One people.","Wisdom. Balance. Peace.","Earth, river and sky.","We honour those who came before."};
+ public string Motto(int r){var f=Record(r);return f==null?"":Mottos[Math.Max(0,Math.Min(Mottos.Length-1,f.core))];}
+ public int WorldShare(int r){long all=cities.Where(c=>At(c.x,c.y).realm==0).Sum(c=>CityPeople(c));return all<=0?0:(int)(WorldFollowers(r)*1000/all);}
+ public string FaithSummary(int r){
+  if(r<0)return "Your people have no faith of their own yet. Choose a pantheon, learn Mysticism and raise a Temple, then found one under Beliefs.";
+  var f=Record(r);int share=WorldShare(r);string standing=share>=500?"A dominant faith":share>=200?"A great faith":share>=50?"A growing faith":"A young faith";
+  string core=f==null?"":new[]{"many gods","one god","the way of wisdom","the spirits of nature","reverence for the ancestors"}[Math.Max(0,Math.Min(4,f.core))];int civs=cities.Where(c=>c.religion==r).Select(c=>c.owner).Distinct().Count();
+  return standing+", "+FaithName(r)+(core!=""?" teaches "+core:"")+" in "+Followers(r)+(Followers(r)==1?" city":" cities")+" of "+civs+(civs==1?" civilisation":" civilisations")+"."+(f!=null&&f.reform>=60?" A reform movement is stirring.":f!=null&&f.authority>=75?" Its clergy speak with great authority.":"");
+ }
+ // How content a city's believers are with their faith's place in it (percent): minorities, suppression and unrest lower it.
+ public int ReligiousSatisfaction(City c){int state=StateReligion(c.owner);int v=100-LargestMinority(c,state)/2-20*ReligiousUnrest(c);if(state>=0&&c.religion!=state)v-=15;if(c.suppressedUntil>turn)v-=15;return Math.Max(0,Math.Min(100,v));}
+ // Pilgrimage programme: 40 faith brings pilgrims to the holy city (+1 gold there, up to 3) and +3 authority.
+ public string PilgrimageReason(int owner){if(!modernRules)return "Not in this game's rules.";var f=Record(nations[owner].founded);if(f==null)return "Found a faith first.";var holy=cities.Find(c=>c.id==f.holyCity&&c.owner==owner);if(holy==null)return "You do not hold the holy city.";if(holy.pilgrims>=3)return "Pilgrims already crowd "+holy.name+".";if(nations[owner].faith<40)return "Needs 40 faith.";return "";}
+ public bool FundPilgrimage(int owner){if(PilgrimageReason(owner)!="")return false;var f=Record(nations[owner].founded);var holy=cities.Find(c=>c.id==f.holyCity);nations[owner].faith-=40;holy.pilgrims++;f.authority=Math.Min(100,f.authority+3);History("Pilgrimage to "+holy.name+": +1 gold there, authority +3.");return true;}
+ // Recent religious history as (text, turns ago).
+ public List<KeyValuePair<string,int>> RecentFaith(int count){var list=new List<KeyValuePair<string,int>>();if(faithHistory==null)return list;foreach(var h in faithHistory){if(list.Count>=count)break;int colon=h.IndexOf(':');int t;if(h.StartsWith("Turn ")&&colon>5&&int.TryParse(h.Substring(5,colon-5),out t))list.Add(new KeyValuePair<string,int>(h.Substring(colon+1).Trim(),turn-t));else list.Add(new KeyValuePair<string,int>(h,0));}return list;}
  // ---------- the turn ----------
  internal void FaithTurn(){
   if(!modernRules)return;if(faithRecords==null)faithRecords=new List<FaithRecord>();if(faithEvents==null)faithEvents=new List<FaithEvent>();

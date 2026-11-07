@@ -138,10 +138,12 @@ public partial class RealmGame {
  bool FaithPromptOpen(){return world!=null&&world.modernRules&&!turnRunning&&world.result==""&&!guide&&!confirmNew&&pendingUnit==-1&&world.NextFaithEvent()!=null;}
  void DrawFaithPrompt(){
   var e=world.NextFaithEvent();if(e==null)return;GUI.enabled=true;var choices=FaithCatalog.EventChoices[e.kind];
-  var box=new Rect(330,150,620,150+choices.Length*48);Fill(new Rect(0,0,1280,800),new Color(0,0,0,.35f));DrawGuideFrame(box);
-  GUI.Label(new Rect(box.x+20,box.y+12,box.width-40,30),FaithCatalog.EventNames[e.kind].ToUpperInvariant(),hudTitle);
-  GUI.Label(new Rect(box.x+20,box.y+48,box.width-40,84),world.EventText(e),new GUIStyle(body){wordWrap=true});
-  float y=box.y+136;
+  var picture=Art("faith-event-"+e.kind);float ph=picture!=null?212:0;
+  var box=new Rect(330,Mathf.Max(44,400-(150+ph+choices.Length*48)/2),620,150+ph+choices.Length*48);Fill(new Rect(0,0,1280,800),new Color(0,0,0,.35f));FaithFrame(box,.97f);
+  if(picture!=null){var pr=new Rect(box.x+12,box.y+12,box.width-24,ph-12);GUI.DrawTexture(pr,picture,ScaleMode.ScaleAndCrop);Fill(new Rect(pr.x,pr.yMax-1,pr.width,1),FaithGold);}
+  GUI.Label(new Rect(box.x+20,box.y+ph+12,box.width-40,30),FaithCatalog.EventNames[e.kind].ToUpperInvariant(),hudTitle);
+  GUI.Label(new Rect(box.x+20,box.y+ph+48,box.width-40,84),world.EventText(e),new GUIStyle(body){wordWrap=true});
+  float y=box.y+ph+136;
   for(int k=0;k<choices.Length;k++){string why=world.ChoiceReason(e,k);bool was=GUI.enabled;GUI.enabled=why=="";if(GUI.Button(new Rect(box.x+20,y,box.width-40,40),choices[k]+(why!=""?"  — "+why:""),new GUIStyle(button){wordWrap=true})){world.ResolveEvent(e,k);status=FaithCatalog.EventNames[e.kind]+": decided.";GUIUtility.ExitGUI();}GUI.enabled=was;y+=48;}
  }
 }

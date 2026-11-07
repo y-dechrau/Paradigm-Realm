@@ -52,6 +52,7 @@ namespace ParadigmRealm
         void DrawDetailsScreen()
         {
             if(detailsScreen=="Diplomacy"){DrawDiplomacyScreen();return;}
+            if(detailsScreen=="Religion"&&world.modernRules){DrawFaithScreen();return;}
             ChronicleStyles();GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(50,detailsScreen=="Chronicle"?107:115,800,detailsScreen=="Chronicle"?56:40),detailsScreen=="Atlas"?"Realms":detailsScreen=="Economy"?"Empire":detailsScreen,detailsScreen=="Chronicle"?chronicleTitle:title);
             if(GUI.Button(new Rect(1040,115,190,34),"Back",button)){detailsScreen="";GUI.FocusControl(null);GUIUtility.ExitGUI();}
             GUILayout.BeginArea(new Rect(55,175,1160,520));detailsScroll=GUILayout.BeginScrollView(detailsScroll);
