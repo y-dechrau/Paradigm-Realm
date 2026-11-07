@@ -43,7 +43,8 @@ public partial class World {
  void SpawnAnimal(Random r){
   int kind=r.Next(AnimalCatalog.Names.Length);var homes=AnimalCatalog.Homes[kind];
   for(int attempt=0;attempt<40;attempt++){
-   var t=tiles[r.Next(mapHeight*Width)];if(!OpenToAnimal(t)||t.owner>=0)continue;if(attempt<25&&!homes.Contains(t.terrain))continue;
+   // Scavengers are drawn to graveyards.
+   var grave=attempt<4&&r.Next(3)==0?GraveyardFor(r):null;var t=grave??tiles[r.Next(mapHeight*Width)];if(!OpenToAnimal(t)||t.owner>=0)continue;if(grave==null&&attempt<25&&!homes.Contains(t.terrain))continue;
    if(units.Any(u=>Distance(u.x,u.y,t.x,t.y)<6)||cities.Any(c=>Distance(c.x,c.y,t.x,t.y)<6))continue;
    animals.Add(new Animal{id=nextId++,kind=kind,x=t.x,y=t.y});
    // Dire wolves come in pairs.

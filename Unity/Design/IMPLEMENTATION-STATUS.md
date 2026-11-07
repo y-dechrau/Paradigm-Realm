@@ -2,6 +2,19 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner request 7 Nov: the living world, after RimWorld and Dwarf Fortress (save version 34)
+
+Checked by Unity `RealmTools.Checks` (`ContentChecks.LivingWorldChecks`) and `GraphicsChecks`, a Windows build and `-frameProbe`. Not hand-played; balance unproven.
+
+Implemented, a first version of each of the four ideas:
+- People: every home civilisation has a ruler and each city a governor, with a name and two of ten traits (Ambitious, Loyal, Greedy, Honest, Paranoid, Stoic, Neurotic, Pious, Brave, Drunkard). Stress comes from unrest, hunger, war, debt, occupation and the city's scars. At 85 a governor snaps (tantrum: the city's production stops two turns; binge: gold lost; withdrawal: loyalty lost) and so can a ruler (purge of the least loyal governor, melancholy, follies). Ambitious or neurotic governors start feuds. Corruption grows with distance from the capital and greed, falls with honesty and a Courthouse, and skims production and gold. A governor below 15 loyalty for five turns leads a rising: a garrison of a third of the city's size puts it down (leaving a scar); otherwise the city defects to the nearest home neighbour, or strikes if there is none.
+- Memory: cities keep permanent scars (Famine, Conquest, a put-down rising; up to two content citizens lost). Civilisations keep grudges that never fade (10 opinion each, up to 40): capture, rebellion, and two to six wrongs written into a short history before turn 1, shown in the Chronicle.
+- Materials: soldiers get gear (Poor, Common, Fine, Masterwork) from a Workshop or Barracks, connected iron or bronze, and Military Science; gear wears in battle and is mended in a city with a Workshop or Barracks. A breakthrough's blueprint is kept in the city with the most science; capturing it gives half that technology.
+- Living map: every tile remembers its battles; 2 make a battlefield and 6 dead a graveyard, marked on the map. A graveyard gives nearby cities +2 faith from pilgrims, can spread sickness, draws scavenging animals, and a people resents whoever holds the graves of its dead.
+- Imperial priority (Civics, The court): None, Fortify, Feed the people, Expand, Learning or Commerce. A city follows it only if its governor's loyalty, corruption and scars allow; the rest see to their own needs, and corrupt ones skim gold.
+
+Not built yet from the proposal: physical caravans, warehouses and supply lines; interest-group factions and ideological schisms; migration; per-material equipment slots; artifacts as map objects.
+
 ## Owner requests 7 Nov, later: faith tree, debt, stacks and a drunken guide (save version 33)
 
 Checked by Unity `RealmTools.Checks` and `GraphicsChecks`, a Windows build, `-inputProbe`, and `-unitProbe` on a copy of the owner's TEST GAME 2 save. Not hand-played.

@@ -232,7 +232,7 @@ namespace ParadigmRealm
                 // What the unit is doing, on its own line (owner request), with the time left for jobs and journeys; rank below.
                 string doing=world.Activity(u);if(!u.unfed&&(u.job>0||u.hasOrder))doing+=" — "+world.Remaining(u);if(u.stack!=0)doing=world.StackOf(u).Count+" in stack: "+doing;
                 FitLabel(new Rect(tx,r.y+97,tw-8,20),doing,new GUIStyle(hudLabel){fontSize=13,normal={textColor=UiGold}});
-                FitLabel(new Rect(tx,r.y+117,tw-8,16),World.RankText(u),hudSmall,8);
+                FitLabel(new Rect(tx,r.y+117,tw-8,16),World.RankText(u)+world.GearText(u),hudSmall,8);
                 DrawUnitActions(u,new Rect(r.x+10,r.y+136,r.width-20,56));
             }
             else if(c!=null)
@@ -333,6 +333,7 @@ namespace ParadigmRealm
             {var ruinTile=world.At(t.x,t.y);if(ruinTile!=null&&ruinTile.ruin)features.Add(ruinTile.realm>0?"Relic site":"Ancient ruins");}
             // Ancient gateways name their world once you have been there.
             {var gateTile=world.At(t.x,t.y);if(gateTile!=null&&gateTile.gateLink>0){int far=world.GateTwin(gateTile).realm;features.Add(world.gatesLocked?world.GateName(gateTile):gateTile.realm>0?"Ancient gateway home":world.RealmDiscovered(0,far)?world.GateName(gateTile):"Ancient gateway (destination unknown)");}}
+            {string story=world.StoryText(t.x,t.y);if(story!="")features.Add(story);}
             {var live=world.At(t.x,t.y);if(live!=null&&live.village)features.Add(live.villageOwner>=0?"Village (joined "+world.NationName(live.villageOwner)+")":"Tribal village");}
             // Border influence: how far a rival has swung this tile (it changes hands at 90%).
             {var live=world.At(t.x,t.y);if(live!=null&&live.swayCiv>=0&&live.sway>0)features.Add("Influence "+live.sway+"% to "+world.NationName(live.swayCiv));}

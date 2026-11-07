@@ -98,7 +98,7 @@ namespace ParadigmRealm
         void DrawCityScreen()
         {
             var c=world.cities.Find(a=>a.owner==0&&a.id==cityId);if(c==null){cityScreen=false;return;}
-            GUI.Box(new Rect(24,100,1232,630),"");if(GUI.Button(new Rect(865,110,180,34),"Zoom to city",button)){cityScreen=false;GUI.FocusControl(null);if(world.Hex||diamondView)isoWidth=128;else tilePixels=96;FocusTile(c.x,c.y);GUIUtility.ExitGUI();}GUI.Label(new Rect(40,106,700,38),c.name+" — size "+c.pop+(world.Disorder(c)?"   DISORDER":"")+(c.occupation>0?"   occupied "+c.occupation+" turns":""),title);
+            GUI.Box(new Rect(24,100,1232,630),"");if(GUI.Button(new Rect(865,110,180,34),"Zoom to city",button)){cityScreen=false;GUI.FocusControl(null);if(world.Hex||diamondView)isoWidth=128;else tilePixels=96;FocusTile(c.x,c.y);GUIUtility.ExitGUI();}{var gov=world.GovernorOf(c);if(gov!=null){var line=new GUIStyle(small){wordWrap=false,clipping=TextClipping.Overflow};FitLabel(new Rect(430,112,425,16),"Governor "+gov.name+" ("+world.TraitLine(gov)+")",line,8);FitLabel(new Rect(430,128,425,16),"Stress "+gov.stress+"  •  Loyalty "+gov.loyalty+"  •  Corruption "+gov.corruption+"%  •  "+(world.nations[0].priority>0?(world.Obeys(c)?"follows your priority":"ignores your priority"):"no priority set")+(c.strike>0?"  •  ON STRIKE":""),line,8);}}GUI.Label(new Rect(40,106,700,38),c.name+" — size "+c.pop+(world.Disorder(c)?"   DISORDER":"")+(c.occupation>0?"   occupied "+c.occupation+" turns":""),title);
             if(GUI.Button(new Rect(1055,110,180,34),"Back to map",button)){cityScreen=false;GUI.FocusControl(null);GUIUtility.ExitGUI();}
             DrawCityTiles(c,new Rect(40,150,440,520));
             DrawCityTotals(c,new Rect(495,150,370,520));
@@ -106,7 +106,7 @@ namespace ParadigmRealm
             if(GUI.Button(new Rect(890,158,165,28),(cityBuildingTab?"":"● ")+"Units",button))cityBuildingTab=false;
             if(GUI.Button(new Rect(1060,158,165,28),(cityBuildingTab?"● ":"")+"Buildings",button))cityBuildingTab=true;
             DrawProductionLine(c,cityBuildingTab,new Rect(880,190,355,480));
-            GUI.Label(new Rect(40,682,110,30),"Governor",heading);
+            GUI.Label(new Rect(40,682,110,30),"Focus",heading);
             c.focus=GUI.SelectionGrid(new Rect(150,678,1085,34),c.focus,GovernorNames,5);
             GUI.Label(new Rect(24,744,1232,42),status,body);
         }

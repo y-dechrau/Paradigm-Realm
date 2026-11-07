@@ -105,7 +105,7 @@ namespace ParadigmRealm {
     c.food=c.granary?threshold/2:0;c.pop++;
     if(c.owner==0)Note(c.name+" grew to population "+c.pop+".");
    }
-   if(c.food<0){c.pop=Math.Max(1,c.pop-1);c.food=0;NormaliseSpecialists(c);if(c.owner==0)Note(c.name+(c.pop<oldPop?" lost a citizen to starvation.":" has no food reserves.")+" Reduce specialists or improve food tiles.");}
+   if(c.food<0){if(livingWorld&&c.pop>1){AddScar(c,LivingCatalog.ScarFamine);if(c.owner==0)Note(c.name+" will remember this famine.");}c.pop=Math.Max(1,c.pop-1);c.food=0;NormaliseSpecialists(c);if(c.owner==0)Note(c.name+(c.pop<oldPop?" lost a citizen to starvation.":" has no food reserves.")+" Reduce specialists or improve food tiles.");}
    // Blocked cities cannot bank centuries of food and grow every turn later.
    c.food=Math.Min(c.food,FoodNeeded(c));
    if(c.owner==0&&previous<threshold&&c.food>=threshold&&c.pop==oldPop)Note(c.name+": "+GrowthStatus(c));
