@@ -299,10 +299,13 @@ namespace ParadigmRealm
                 // At sea the ship is drawn, not the units it carries.
                 if(picked==null&&water&&stackAt!=null){var ship=stackAt.Find(a=>World.IsNaval(a.type)&&(a.owner==0||visible));if(ship!=null)first=ship;}
                 var shown=picked??first;
-                if(visible&&world.wildlife){Animal beast;viewAnimals.TryGetValue(cell,out beast);if(beast!=null){var feet=new Rect(sx-20*s,gy-8*s,40*s,15*s);GUI.DrawTexture(feet,IsoPicture(4,8,0));GUI.DrawTexture(new Rect(sx-32*s,gy-42*s,64*s,64*s),IsoPicture(12,beast.kind,0));
+                if(visible&&world.wildlife){Animal beast;viewAnimals.TryGetValue(cell,out beast);if(beast!=null){var feet=new Rect(sx-20*s,gy-8*s,40*s,15*s);GUI.DrawTexture(feet,IsoPicture(4,8,0));// The painted animals are cropped tight, so they are drawn smaller than the old 64-pixel cells: about unit size, the
+                    // mammoth, sloth and rhinoceros a little larger.
+                    {bool painted=SpriteSlot("animal-"+beast.kind)!=null;float size=painted?(AnimalCatalog.Carnivore[beast.kind]?40:48):64;
+                     GUI.DrawTexture(painted?new Rect(sx-size/2*s,gy-(size-6)*s,size*s,size*s):new Rect(sx-32*s,gy-42*s,64*s,64*s),IsoPicture(12,beast.kind,0),ScaleMode.ScaleToFit,true);}
                     // An animal's health shows during a fight (owner request, 8 Nov 2026): whenever it is hurt or one of your
                     // units stands within two tiles, a bar over its back, red-edged for a hunter.
-                    if(beast.hp<10||AnimalNearPlayer(beast)){float bh=Mathf.Max(3,2.8f*s),bw=34*s,by=gy-40*s;bool hunter=AnimalCatalog.Carnivore[beast.kind];
+                    if(beast.hp<10||AnimalNearPlayer(beast)){float bh=Mathf.Max(3,2.8f*s),bw=34*s,by=gy-(AnimalCatalog.Carnivore[beast.kind]?38:46)*s;bool hunter=AnimalCatalog.Carnivore[beast.kind];
                         Fill(new Rect(sx-bw/2-1,by-1,bw+2,bh+2),hunter?new Color(.45f,.08f,.06f,.9f):new Color(.08f,.1f,.12f,.85f));
                         Fill(new Rect(sx-bw/2,by,bw*Mathf.Clamp01(beast.hp/10f),bh),beast.hp>5?new Color(.37f,.8f,.47f):beast.hp>2?new Color(.95f,.75f,.3f):new Color(.9f,.3f,.25f));}}}
                 if(shown!=null){var unitRect=new Rect(sx-20*s,gy-36*s,40*s,40*s);DrawUnitArt(shown,unitRect,count);isoUnitDraws.Add(new KeyValuePair<Unit,Rect>(shown,unitRect));isoUnitCounts.Add(count);}
