@@ -36,7 +36,7 @@ namespace ParadigmRealm
 
         // Bottom bar of round medallions (after the mockup): quick ways into the main screens.
         static readonly string[] MedalScreens={"Economy","Research","Civics","Chronicle","Victory","Diplomacy","Military","Atlas","Religion"};
-        static readonly string[] MedalTips={"Empire","Research","Civics","Chronicle","Victory","Diplomacy","Military","Realms","Religion"};
+        static readonly string[] MedalTips={"Empire","Research","Civics","Chronicle","Victory","Diplomacy","Units: active and idle","Realms","Religion"};
         static readonly string[] MedalArt={"crown","research2","civics","chronicle","victory","diplomacy","military2","realms","faith"};
         const float MedalSize=46,MedalGap=50;
         static Rect MedalBar{get{float w=MedalScreens.Length*MedalGap;return new Rect(739-w/2,750,w,MedalSize);}}

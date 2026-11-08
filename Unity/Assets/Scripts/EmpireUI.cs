@@ -65,8 +65,17 @@ public partial class RealmGame {
     }
     void DrawMilitaryAdviser(){
         GUILayout.Label("Select a unit to centre the map. Every soldier and warship costs gold each turn (2 to 4 by type), and a large army costs more: +1 gold for every three soldiers beyond two per city. Each city supports "+World.FreeUnitsPerCity+" civilian units free, plus your government's support; each civilian beyond that costs 1 gold per turn.",body);
-        foreach(var u in world.units.Where(u=>u.owner==0).ToList())
-            if(Button(world.UnitName(u)+" #"+u.id+" | HP "+u.hp+" | "+world.Activity(u))){selected=u.id;cityId=-1;detailsScreen="";cityScreen=false;Center();GUIUtility.ExitGUI();}
+        // Units split into those waiting for orders and those busy (owner request, 8 Nov 2026). Click one to select it on the map.
+        var mine=world.units.Where(u=>u.owner==0).ToList();var idle=mine.Where(world.UnitIdle).ToList();var busy=mine.Where(u=>!world.UnitIdle(u)).ToList();
+        GUILayout.Space(6);GUILayout.Label("Idle — waiting for orders ("+idle.Count+")",heading);
+        if(idle.Count==0)GUILayout.Label("Every unit has something to do.",small);
+        foreach(var u in idle)UnitRow(u);
+        GUILayout.Space(8);GUILayout.Label("Active ("+busy.Count+")",heading);
+        foreach(var u in busy)UnitRow(u);
+    }
+    void UnitRow(Unit u){
+        var city=world.cities.Find(c=>c.x==u.x&&c.y==u.y);string where=city!=null?" in "+city.name:"";
+        if(Button(world.UnitName(u)+where+" | HP "+u.hp+" | Moves "+u.moves+" | "+world.Activity(u))){selected=u.id;cityId=-1;detailsScreen="";cityScreen=false;Center();GUIUtility.ExitGUI();}
     }
     Texture2D atlasTexture,globeTexture;Color[] atlasPixels;bool globeMode=true;float globeLon,globeLat,globeDrawnLon=-99,globeDrawnLat=-99;int globeDrawnAtlas;World atlasWorld;float atlasBuilt;readonly Color[] atlasColours=new Color[64];readonly bool[] atlasColourReady=new bool[64];
     Color AtlasColour(int id){

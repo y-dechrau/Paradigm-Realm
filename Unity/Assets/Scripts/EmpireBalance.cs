@@ -125,7 +125,8 @@ public partial class World {
  const int RefugeRadius=12;
  bool Guarded(Unit u){if(cities.Any(c=>c.owner==u.owner&&c.x==u.x&&c.y==u.y))return true;foreach(var a in units)if(a.owner==u.owner&&a.x==u.x&&a.y==u.y&&Power[a.type]>0)return true;return false;}
  public bool FriendlyGround(int owner,Tile t){if(t==null||t.owner<0)return false;if(t.owner==owner)return true;return !AtWar(owner,t.owner)&&(HasAccess(owner,t.owner)||Friends(owner,t.owner));}
- bool SafeFromBeasts(Unit u){if(Guarded(u))return true;var t=At(u.x,u.y);return modernRules?FriendlyGround(u.owner,t):AtHome(u);}
+ // Workers ignore animals anywhere inside any civilisation's borders (owner request, 8 Nov 2026): animals never enter borders.
+ bool SafeFromBeasts(Unit u){if(Guarded(u))return true;var t=At(u.x,u.y);if(t!=null&&t.owner>=0)return true;return modernRules?FriendlyGround(u.owner,t):AtHome(u);}
  public bool EnemyNear(Unit u,int range){if(!modernRules)return false;foreach(var a in units){if(a.owner==u.owner||Power[a.type]<=0||IsNaval(a.type)||!AtWar(u.owner,a.owner))continue;if(Distance(a.x,a.y,u.x,u.y)<=range&&VisibleTo(u.owner,a.x,a.y))return true;}return false;}
  // The nearest own or friendly tile a land unit can stand on, away from animals; the nearest own city if there is none in reach.
  public Tile Refuge(Unit u){

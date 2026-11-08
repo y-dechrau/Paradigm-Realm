@@ -60,8 +60,12 @@ public partial class World {
  // The strongest defender on the tile takes the blow, as in any battle. A unit in a city is safe, and so is one on water.
  Unit AnimalPrey(int x,int y){var t=At(x,y);if(t==null||IsWater(t.terrain)||t.owner>=0||cities.Any(c=>c.x==x&&c.y==y))return null;return units.Where(u=>u.x==x&&u.y==y).OrderByDescending(u=>Power[u.type]>0).ThenByDescending(u=>Strength(u,null,true)).ThenByDescending(u=>u.hp).ThenBy(u=>u.id).FirstOrDefault();}
  void AnimalAttacks(Animal a,Unit prey){
-  int atk=AnimalCatalog.Attack[a.kind],def=Strength(prey,null,true);prey.hp-=Damage(atk,def);if(Power[prey.type]>0)a.hp-=Damage(def,atk);string name=AnimalCatalog.Names[a.kind];CancelOrder(prey);
-  if(prey.owner==0)Note(prey.hp<=0?"A "+name+" killed your "+UnitName(prey)+".":"A "+name+" attacked your "+UnitName(prey)+".");
+  int atk=AnimalCatalog.Attack[a.kind],def=Strength(prey,null,true);prey.hp-=Damage(atk,def);if(Power[prey.type]>0)a.hp-=Damage(def,atk);string name=AnimalCatalog.Names[a.kind];
+  // A unit under orders keeps going after the warning (owner request, 8 Nov 2026): one on a route carries on along it unless the
+  // player orders otherwise, and an explorer gets away from the beast, heals if hurt, then explores on (ExploreStep). Only
+  // sentries and fortified or working units are shaken out of what they were doing.
+  bool carryOn=prey.hasOrder||prey.exploring;if(prey.exploring)prey.recover=true;if(!carryOn)CancelOrder(prey);else prey.sentry=false;prey.fortified=false;
+  if(prey.owner==0)Note(prey.hp<=0?"A "+name+" killed your "+UnitName(prey)+".":"A "+name+" attacked your "+UnitName(prey)+(prey.exploring?"; it is getting away and will explore on.":prey.hasOrder?"; it carries on along its route.":"."));
   if(prey.hp<=0){units.Remove(prey);DrownStranded();}else if(a.hp<=0){Victory(prey);if(prey.owner==0)Note("Your "+UnitName(prey)+" killed the "+name+".");}
  }
  Unit NearestPrey(Animal a,int range){Unit best=null;int least=int.MaxValue;foreach(var u in PreyNear(a.x,a.y)){int d=Distance(a.x,a.y,u.x,u.y);if(d>range||d>=least||AnimalPrey(u.x,u.y)==null)continue;best=u;least=d;}return best==null?null:AnimalPrey(best.x,best.y);}

@@ -60,7 +60,7 @@ public partial class RealmGame {
   for(int k=0;k<FaithTabs.Length;k++){var r=new Rect(84+k*149,142,143,32);if(FaithTabButton(r,FaithTabs[k],faithTab==k)){faithTab=k;faithTabScroll=Vector2.zero;}}
   if(faithTab==0)DrawFaithOverview(state,rec);
   else{var body=new Rect(80,182,900,610);FaithFrame(body);GUILayout.BeginArea(new Rect(body.x+16,body.y+12,body.width-26,body.height-22));faithTabScroll=GUILayout.BeginScrollView(faithTabScroll);
-   switch(faithTab){case 1:FaithBeliefs();break;case 2:FaithInstitutions();break;case 3:FaithExpansion();break;case 4:FaithDiplomacy();break;default:FaithHistory();break;}
+   switch(faithTab){case 1:DrawFaithTree();break;case 2:FaithBeliefs();break;default:FaithMore();break;}
    GUILayout.EndScrollView();GUILayout.EndArea();}
   DrawFaithSide(state);
   if(faithHint!="")GUI.Label(new Rect(80,776,900,20),faithHint,FaithText(12,TextAnchor.MiddleCenter,false,new Color(1f,.8f,.5f)));
@@ -77,34 +77,22 @@ public partial class RealmGame {
    var painting=rec!=null?Art("faith-holy-"+rec.core):null;if(painting!=null)GUI.DrawTexture(inner,painting,ScaleMode.ScaleAndCrop);
    if(holy!=null){var art=painting!=null?null:CityArt(holy);if(art!=null)GUI.DrawTexture(new Rect(inner.center.x-130,inner.yMax-232,260,260),art,ScaleMode.ScaleToFit,true);
     Fill(new Rect(inner.x,inner.yMax-30,inner.width,30),new Color(.03f,.05f,.1f,.75f));GUI.Label(new Rect(inner.x,inner.yMax-30,inner.width,30),(rec!=null?"Holy city: ":"")+holy.name+(holy.owner!=0?" (held by "+world.NationName(holy.owner)+")":""),FaithText(14,TextAnchor.MiddleCenter));}}
-  // Doctrines.
-  {var box=new Rect(446,182,230,318);FaithFrame(box);FaithTitle(box,"Doctrines");
-   var rows=rec==null?new[]{new KeyValuePair<int,string>(PixelArt.IconFaith,"Pantheon\n"+(me.pantheon>=0?ReligionCatalog.PantheonNames[me.pantheon]:"none yet"))}:new[]{
-    new KeyValuePair<int,string>(PixelArt.IconAge,"Core belief\n"+FaithCatalog.Cores[rec.core]),new KeyValuePair<int,string>(PixelArt.IconMoodGood,"Social doctrine\n"+FaithCatalog.Socials[rec.social]),
-    new KeyValuePair<int,string>(PixelArt.IconGold,"Economic doctrine\n"+FaithCatalog.Economics[rec.economic]),new KeyValuePair<int,string>(PixelArt.IconFaith,"Afterlife\n"+FaithCatalog.Afterlives[rec.afterlife])};
-   float y=box.y+46;foreach(var row in rows){DrawFaithMedallion(new Rect(box.x+12,y,56,56),row.Key);var parts=row.Value.Split('\n');GUI.Label(new Rect(box.x+76,y+6,box.width-84,20),parts[0],FaithText(12,TextAnchor.MiddleLeft,false,FaithMuted));GUI.Label(new Rect(box.x+76,y+24,box.width-84,26),parts[1],FaithText(15));y+=66;}
-   if(rec==null){GUI.Label(new Rect(box.x+14,y+4,box.width-28,120),world.FoundingReason(0,-1) is var why&&why!=""?why:"Ready to found a faith: choose its beliefs under Beliefs.",FaithText(13,TextAnchor.UpperLeft,false,FaithMuted));}}
-  // Religious influence: the map and its legend.
-  {var box=new Rect(682,182,298,318);FaithFrame(box);FaithTitle(box,"Religious Influence");var mapRect=new Rect(box.x+12,box.y+46,box.width-24,150);Fill(mapRect,new Color(.02f,.03f,.06f));GUI.DrawTextureWithTexCoords(mapRect,FaithMap(),FaithMapView(mapRect));
-   var faiths=Enumerable.Range(0,ReligionCatalog.Count).Where(x=>world.WorldShare(x)>0).OrderByDescending(x=>world.WorldShare(x)).Take(3).ToList();int shown=0;float y=mapRect.yMax+10;
-   foreach(int x in faiths){Fill(new Rect(box.x+16,y+5,12,12),FaithColour(x));GUI.Label(new Rect(box.x+36,y,170,22),world.FaithName(x),FaithText(14));GUI.Label(new Rect(box.xMax-80,y,66,22),(world.WorldShare(x)/10f).ToString("0.0")+"%",FaithText(14,TextAnchor.MiddleRight,false,new Color(.6f,.9f,.55f)));shown+=world.WorldShare(x);y+=25;}
-   Fill(new Rect(box.x+16,y+5,12,12),FaithColour(-1));GUI.Label(new Rect(box.x+36,y,170,22),"Other and unaffiliated",FaithText(14));GUI.Label(new Rect(box.xMax-80,y,66,22),((1000-shown)/10f).ToString("0.0")+"%",FaithText(14,TextAnchor.MiddleRight,false,new Color(.6f,.9f,.55f)));}
-  // The faiths of one city.
-  {var own=world.cities.Where(c=>c.owner==0).OrderByDescending(c=>c.pop).ThenBy(c=>c.id).ToList();var box=new Rect(80,506,360,286);FaithFrame(box);
-   if(own.Count==0){FaithTitle(box,"Religious Demographics");GUI.Label(new Rect(box.x+14,box.y+50,box.width-28,40),"Found a city first.",FaithText(14));}
-   else{faithCityIndex=(faithCityIndex%own.Count+own.Count)%own.Count;var c=own[faithCityIndex];FaithTitle(box,"Demographics – "+(c.name.Length>16?c.name.Substring(0,15)+"…":c.name));
-    if(own.Count>1){if(GUI.Button(new Rect(box.xMax-62,box.y+10,24,22),"◀",button))faithCityIndex--;if(GUI.Button(new Rect(box.xMax-34,box.y+10,24,22),"▶",button))faithCityIndex++;}
-    var thumb=new Rect(box.x+12,box.y+46,130,100);Fill(thumb,new Color(.2f,.3f,.2f));var art=CityArt(c);if(art!=null)GUI.DrawTexture(thumb,art,ScaleMode.ScaleToFit,true);
-    GUI.Label(new Rect(box.x+12,box.y+150,130,26),World.PeopleText(world.CityPeople(c)),FaithText(20,TextAnchor.MiddleCenter));GUI.Label(new Rect(box.x+12,box.y+174,130,20),"Total population",FaithText(12,TextAnchor.MiddleCenter,false,FaithMuted));
-    var d=world.Demographics(c);var bar=new Rect(box.x+152,box.y+50,box.width-166,22);float bx=bar.x;foreach(var a in d){float wd=bar.width*a.Value/100f;Fill(new Rect(bx,bar.y,wd,bar.height),FaithColour(a.Key));bx+=wd;}Fill(new Rect(bar.x,bar.y,bar.width,1),FaithGold);Fill(new Rect(bar.x,bar.yMax-1,bar.width,1),FaithGold);
-    float y=bar.yMax+10;foreach(var a in d.Where(a=>a.Value>0||a.Key<0).Take(5)){Fill(new Rect(bar.x,y+5,12,12),FaithColour(a.Key));GUI.Label(new Rect(bar.x+20,y,140,22),a.Key<0?"Unaffiliated":world.FaithName(a.Key),FaithText(14));GUI.Label(new Rect(bar.xMax-60,y,60,22),a.Value+".0%",FaithText(14,TextAnchor.MiddleRight,false,new Color(.6f,.9f,.55f)));y+=24;}
-    int sat=world.ReligiousSatisfaction(c);DrawIcon(sat>=70?PixelArt.IconMoodGood:sat>=40?PixelArt.IconMoodNeutral:PixelArt.IconMoodBad,new Rect(box.x+70,box.yMax-38,22,22));GUI.Label(new Rect(box.x+96,box.yMax-40,box.width-110,26),"Religious satisfaction: "+sat+"%"+(world.ReligiousUnrest(c)>0?"  (unrest -"+world.ReligiousUnrest(c)+")":""),FaithText(14));}}
-  // Key institutions.
-  {var box=new Rect(446,506,262,286);FaithFrame(box);FaithTitle(box,"Key Institutions");int level=state>=0?world.InstitutionLevel(state):0;
-   int temples=world.cities.Count(c=>c.owner==0&&world.HasBuilding(c,36)),templeFaith=temples*2;
-   var rows=new[]{new KeyValuePair<string,string>("Temples ("+temples+")","+"+templeFaith+" faith / turn"),new KeyValuePair<string,string>(FaithCatalog.Institutions[level],level>0?"Level "+level+" of 8: +"+5*level+"% spread":"Found a faith"),new KeyValuePair<string,string>("Religious Council",level>=5?(world.CouncilReason(0)==""?"Ready to meet: +15 authority":world.CouncilReason(0)):"Opens at level 5")};
-   float y=box.y+48;int[] icons={PixelArt.IconCities,PixelArt.IconIdentity,PixelArt.IconEmpire};for(int k=0;k<rows.Length;k++){DrawIcon(icons[k],new Rect(box.x+14,y+4,34,34));GUI.Label(new Rect(box.x+56,y,box.width-66,22),rows[k].Key,FaithText(15));GUI.Label(new Rect(box.x+56,y+20,box.width-66,36),rows[k].Value,FaithText(12,TextAnchor.UpperLeft,false,new Color(.6f,.9f,.55f)));y+=62;}
-   if(FaithActionButton(new Rect(box.x+40,box.yMax-48,box.width-80,34),"View Details →",PixelArt.IconCivics,"")){faithTab=2;faithTabScroll=Vector2.zero;}}
+  // Streamlined (owner request, 8 Nov 2026: "too much information"): one plain next step, the faith tree's progress and three
+  // actions. Institutions, policy, missions in detail, diplomacy and history moved to the More tab.
+  {var box=new Rect(446,182,534,318);FaithFrame(box);FaithTitle(box,"What to do next");var step=world.FaithNextStep(0);
+   GUI.Label(new Rect(box.x+18,box.y+52,box.width-36,150),step,FaithText(17,TextAnchor.UpperLeft));
+   if(me.founded<0&&world.FoundingReason(0,-1)==""&&FaithActionButton(new Rect(box.x+18,box.yMax-60,box.width-36,40),"Choose your faith's beliefs →",PixelArt.IconFaith,"")){faithTab=2;faithTabScroll=Vector2.zero;}
+   if(rec!=null)GUI.Label(new Rect(box.x+18,box.yMax-58,box.width-36,44),"Your faith teaches "+FaithCatalog.Cores[rec.core]+" and "+FaithCatalog.Socials[rec.social]+". Followers: "+(world.WorldShare(state)/10f).ToString("0.0")+"% of the world.",FaithText(13,TextAnchor.UpperLeft,false,FaithMuted));}
+  // The faith tree at a glance.
+  {var box=new Rect(80,506,628,286);FaithFrame(box);FaithTitle(box,"Faith Tree");
+   if(!world.modernRules)GUI.Label(new Rect(box.x+18,box.y+52,box.width-36,60),"The faith tree belongs to games with the modern rules.",FaithText(14,TextAnchor.UpperLeft,false,FaithMuted));
+   else{int adopted=Enumerable.Range(0,DoctrineCatalog.Count).Count(d=>world.DoctrineKnown(0,d));
+    GUI.Label(new Rect(box.x+18,box.y+50,box.width-36,26),adopted+" of "+DoctrineCatalog.Count+" doctrines adopted. Devotion comes from your faith each turn without spending it.",FaithText(14,TextAnchor.UpperLeft));
+    if(me.doctrine>=0){GUI.Label(new Rect(box.x+18,box.y+86,box.width-36,26),"Learning: "+DoctrineCatalog.Names[me.doctrine]+" — "+DoctrineCatalog.EffectText(me.doctrine),FaithText(15,TextAnchor.UpperLeft));
+     var bar=new Rect(box.x+18,box.y+120,box.width-36,14);Fill(bar,new Color(.1f,.12f,.18f));Fill(new Rect(bar.x,bar.y,bar.width*Mathf.Clamp01(me.devotion/(float)Mathf.Max(1,DoctrineCatalog.Cost(me.doctrine))),bar.height),FaithGold);
+     GUI.Label(new Rect(box.x+18,box.y+138,box.width-36,22),me.devotion+" / "+DoctrineCatalog.Cost(me.doctrine)+" devotion"+(world.DoctrineTurns(0)>0?", about "+world.DoctrineTurns(0)+" turns":""),FaithText(12,TextAnchor.UpperLeft,false,FaithMuted));}
+    else GUI.Label(new Rect(box.x+18,box.y+86,box.width-36,40),"No doctrine chosen: devotion is waiting. Pick one in the Faith Tree.",FaithText(15,TextAnchor.UpperLeft,false,new Color(1f,.8f,.5f)));
+    if(FaithActionButton(new Rect(box.x+18,box.yMax-60,260,40),"Open the Faith Tree →",PixelArt.IconCivics,"")){faithTab=1;faithTabScroll=Vector2.zero;}}}
   // Faith actions.
   {var box=new Rect(714,506,266,286);FaithFrame(box);FaithTitle(box,"Faith Actions");float y=box.y+48;var r=new Rect(box.x+14,y,box.width-28,44);
    var target=world.cities.Where(c=>c.religion!=me.founded&&world.At(c.x,c.y).seen&&world.MissionReason(0,c)=="").OrderBy(c=>c.owner==0?0:1).ThenByDescending(c=>c.pop).FirstOrDefault();
@@ -112,15 +100,11 @@ public partial class RealmGame {
    if(FaithActionButton(r,"Send Missionary"+(target!=null?" to "+target.name:""),PixelArt.IconDiplomacy,mission)){world.SendMissionaries(0,target);status="Missionaries set out for "+target.name+".";}r.y+=52;
    var temple=world.cities.Where(c=>c.owner==0&&!world.HasBuilding(c,36)).OrderByDescending(c=>c.faith).FirstOrDefault();string build=temple==null?"Every city has a Temple.":world.FaithBuildReason(temple,world.HasBuilding(temple,World.ShrineBuilding)?36:World.ShrineBuilding);
    if(FaithActionButton(r,temple==null?"Build Temple":(world.HasBuilding(temple,World.ShrineBuilding)?"Build Temple in ":"Build Shrine in ")+temple.name,PixelArt.IconCities,build)){int b=world.HasBuilding(temple,World.ShrineBuilding)?36:World.ShrineBuilding;world.BuildWithFaith(temple,b);status=World.FaithBuildingName(b)+" consecrated in "+temple.name+".";}r.y+=52;
-   if(FaithActionButton(r,"Enact Religious Reform",PixelArt.IconChronicle,me.founded<0?"Found a faith first.":"")){faithTab=1;faithTabScroll=Vector2.zero;}r.y+=52;
+   if(FaithActionButton(r,"Enact Religious Reform",PixelArt.IconChronicle,me.founded<0?"Found a faith first.":"")){faithTab=2;faithTabScroll=Vector2.zero;}r.y+=52;
    if(FaithActionButton(r,"Fund Pilgrimage (40 faith)",PixelArt.IconMove,world.PilgrimageReason(0))){world.FundPilgrimage(0);status="Pilgrims set out for the holy city.";}}
  }
  void DrawFaithSide(int state){
-  {var box=new Rect(988,46,284,172);FaithFrame(box);FaithTitle(box,"Religious Summary");GUI.Label(new Rect(box.x+14,box.y+44,box.width-28,box.height-52),world.FaithSummary(state),FaithText(14,TextAnchor.UpperLeft));}
-  {var box=new Rect(988,224,284,276);FaithFrame(box);FaithTitle(box,"Recent Events");var recent=world.RecentFaith(4);float y=box.y+46;
-   if(world.NextFaithEvent()!=null){Fill(new Rect(box.x+10,y,box.width-20,26),new Color(.5f,.36f,.1f,.9f));GUI.Label(new Rect(box.x+16,y,box.width-30,26),"Decision: "+FaithCatalog.EventNames[world.NextFaithEvent().kind],FaithText(13));y+=32;}
-   if(recent.Count==0)GUI.Label(new Rect(box.x+14,y,box.width-28,40),"Nothing yet. Prophets, schisms and discoveries will be recorded here.",FaithText(13,TextAnchor.UpperLeft,false,FaithMuted));
-   foreach(var e in recent){if(y>box.yMax-50)break;DrawIcon(PixelArt.IconChronicle,new Rect(box.x+12,y+4,26,26));var text=e.Key.Length>90?e.Key.Substring(0,88)+"…":e.Key;GUI.Label(new Rect(box.x+44,y,box.width-54,40),text,FaithText(12,TextAnchor.UpperLeft));GUI.Label(new Rect(box.x+44,y+38,box.width-54,16),e.Value==0?"this turn":e.Value==1?"1 turn ago":e.Value+" turns ago",FaithText(11,TextAnchor.UpperLeft,false,FaithMuted));y+=58;}}
+  {var box=new Rect(988,46,284,454);FaithFrame(box);FaithTitle(box,"Religious Summary");GUI.Label(new Rect(box.x+14,box.y+44,box.width-28,box.height-52),world.FaithSummary(state),FaithText(14,TextAnchor.UpperLeft));}
   {var box=new Rect(988,506,284,286);FaithFrame(box);FaithTitle(box,"Faiths of the World");var faiths=Enumerable.Range(0,ReligionCatalog.Count).Where(x=>world.Followers(x)>0||world.Record(x)!=null).OrderByDescending(x=>world.WorldShare(x)).Take(7).ToList();float y=box.y+48;
    if(faiths.Count==0)GUI.Label(new Rect(box.x+14,y,box.width-28,40),"No faith has been founded yet.",FaithText(13,TextAnchor.UpperLeft,false,FaithMuted));
    foreach(int x in faiths){var f=world.Record(x);Fill(new Rect(box.x+14,y+5,12,12),FaithColour(x));GUI.Label(new Rect(box.x+32,y,box.width-90,20),world.FaithName(x),FaithText(13));GUI.Label(new Rect(box.xMax-60,y,48,20),(world.WorldShare(x)/10f).ToString("0.0")+"%",FaithText(13,TextAnchor.MiddleRight));

@@ -22,6 +22,7 @@ public static void Run(){
     PacingAndPopulationChecks();
     EighthNovemberChecks();
     FaithDesignChecks();
+    EveningRequestChecks();
     var cold=World.New(3);var settler=cold.units.First(u=>u.owner==0&&u.type==0);cold.At(settler.x,settler.y).terrain=8;cold.tech[K("fire")]=false;Check(cold.Found(settler)==null,"cold settlement needs Fire");cold.tech[K("fire")]=true;Check(cold.Found(settler)!=null,"Fire (Stone Tools) permits cold settlement");
     var terrainTypes=new HashSet<int>();for(int seed=0;seed<6;seed++){var map=World.New(seed);Check(map.Valid(),"biome map validates");foreach(var tile in map.tiles){terrainTypes.Add(tile.terrain);Check(map.TileYield(tile).Length==3,"all terrain has yields");}}
     Check(terrainTypes.Count==21,"all texture terrain types generated");
@@ -292,6 +293,49 @@ static void PacingAndPopulationChecks(){
      w.animals.Clear();var wolf=new Animal{id=9003,kind=3,x=next.x,y=next.y};lion.hp=10;lion.x=spot.x;lion.y=spot.y;w.animals.Add(lion);w.animals.Add(wolf);w.TickAnimalsForChecks(false);Check(lion.hp<10||wolf.hp<10||w.Distance(lion.x,lion.y,wolf.x,wolf.y)>1,"rival hunters forced together fight, or part");}
 }
 // Faith, Belief and Religious Power (owner design, 8 Nov 2026).
+// Owner requests, 8 Nov 2026 evening: explorers spread out and recover from animals, routes survive attacks, workers on a city
+// tile and in borders, city auto-manage, mood reasons, growth limits before the technology, faiths in historical order, and
+// supplied scenery losing its painted ground.
+static void EveningRequestChecks(){
+    var w=World.New(421,"Evening",0,1,1,0,1,2,3,hex:true,natives:false,rations:true);var settler=w.units.First(u=>u.owner==0&&u.type==0);var home=w.Found(settler);
+    Check(home!=null,"a city is founded for the evening checks");
+    // Mood: the reasons add up to the city's content places exactly.
+    Check(w.MoodReasons(home).Sum(r=>r.Value)==w.ContentSlots(home),"mood reasons add up to the content places ("+w.MoodReasons(home).Sum(r=>r.Value)+" vs "+w.ContentSlots(home)+")");
+    home.pop=9;Check(w.MoodRemedies(home).Count>0&&w.MoodReasons(home).Any(r=>r.Key.StartsWith("Every city")),"an unhappy city lists what can be done");
+    // Growth limit: the Aqueduct is named only once its technology is known.
+    home.pop=w.GrowthLimit(home);w.nations[0].tech[World.BuildingTech[Array.IndexOf(World.BuildingIds,37)]]=false;Check(!w.GrowthStatus(home).Contains("Aqueduct"),"an unknown building is not suggested for growth");
+    w.nations[0].tech[World.BuildingTech[Array.IndexOf(World.BuildingIds,37)]]=true;Check(w.GrowthStatus(home).Contains("Aqueduct"),"once known, the Aqueduct is named");home.pop=1;
+    // Workers on the city's tile; idle and active units.
+    var hand=w.Add(0,1,home.x,home.y);Check(w.WorkerInCity(hand)&&w.UnitIdle(hand),"a worker in its city is recognised, and idle");hand.sentry=true;Check(!w.UnitIdle(hand),"a sentry is not idle");hand.sentry=false;
+    // Workers ignore animals inside borders.
+    w.wildlife=true;w.animals.Clear();w.RebuildTerritory();var inside=w.tiles.FirstOrDefault(t=>t.owner==0&&!(t.x==home.x&&t.y==home.y)&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain));
+    if(inside!=null){hand.x=inside.x;hand.y=inside.y;var near=w.tiles.First(t=>t!=inside&&w.Distance(t.x,t.y,inside.x,inside.y)==2&&!PixelArt.IsWater(t.terrain));w.animals.Add(new Animal{id=9001,kind=0,x=near.x,y=near.y});w.WorkersFlee(0);Check(hand.flee==0,"a worker inside borders does not run from animals");w.animals.Clear();}
+    // A route survives an animal attack; an explorer gets away and explores on.
+    {var open=w.tiles.Where(t=>t.owner<0&&t.realm==0&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!World.Barren(t.terrain)).ToList();
+     Tile a=null,b=null;foreach(var t in open){var n=open.FirstOrDefault(o=>w.Distance(o.x,o.y,t.x,t.y)==1);if(n!=null&&w.units.All(u=>w.Distance(u.x,u.y,t.x,t.y)>3)){a=t;b=n;break;}}
+     if(a!=null){var walker=w.Add(0,2,a.x,a.y);walker.hasOrder=true;walker.destinationX=home.x;walker.destinationY=home.y;w.animals.Add(new Animal{id=9002,kind=3,x=b.x,y=b.y});w.turn=Math.Max(w.turn,World.HuntersFrom+1);
+      w.TickAnimalsForChecks(false);Check(!w.units.Contains(walker)||walker.hasOrder,"a unit on a route keeps its order after an animal attacks");
+      if(w.units.Contains(walker)){walker.hasOrder=false;walker.exploring=true;walker.x=a.x;walker.y=a.y;w.animals.RemoveAll(x=>x.id!=9002);if(w.animals.Count==0)w.animals.Add(new Animal{id=9003,kind=3,x=b.x,y=b.y});else{w.animals[0].x=b.x;w.animals[0].y=b.y;}
+       w.TickAnimalsForChecks(false);if(w.units.Contains(walker))Check(walker.exploring&&(walker.recover||walker.hp==10),"an attacked explorer keeps exploring and sets out to recover");}
+      w.units.Remove(walker);w.animals.Clear();}}
+    // Two explorers from one place head for different frontiers.
+    {var s1=w.Add(0,3,home.x,home.y);var s2=w.Add(0,3,home.x,home.y);w.AutoExplore(s1);w.AutoExplore(s2);
+     int c1=w.ExploreClaim(s1),c2=w.ExploreClaim(s2);Check(c1>=0&&c2>=0&&c1!=c2,"two explorers claim different frontier tiles");
+     Console.WriteLine("Explorer claims "+w.Distance(c1%w.Width,c1/w.Width,c2%w.Width,c2/w.Width)+" tiles apart.");}
+    // Auto-manage never trains a unit it cannot afford.
+    {home.build=-1;home.pop=3;w.SetAutoManage(home,true);Check(home.autoManage,"auto-manage switches on");if(home.build>=0&&World.BuildUnit(home.build)>=0)Check(w.UnitAffordable(home,World.BuildUnit(home.build)),"auto-manage only trains an affordable unit");
+     w.nations[0].gold=0;home.build=-1;var keep=w.Budget(0)[2];w.AutoManageCity(home);if(home.build>=0&&World.BuildUnit(home.build)>=0)Check(keep-(World.Power[World.BuildUnit(home.build)]>0?World.SupportCost(World.BuildUnit(home.build)):1)>=0,"auto-manage keeps gold per turn at zero or above");}
+    // Faiths in historical order: Mysticism alone offers only the Bronze Age faiths.
+    {var g=World.New(422,"Faiths",0,1,1,0,1,2,3,hex:true,natives:false,rations:true);foreach(var id in new[]{"mysticism","writing"})g.nations[0].tech[K(id)]=true;
+     var open=Enumerable.Range(0,ReligionCatalog.FoundableCount).Where(r=>g.HasTech(0,ReligionCatalog.Tech(r))).Select(ReligionCatalog.Name).ToList();
+     Check(open.Count==2&&open.Contains("Mesopotamian Religion")&&open.Contains("Egyptian Religion"),"Mysticism opens only the faiths of Mesopotamia and Egypt ("+string.Join(", ",open)+")");
+     Check(ReligionCatalog.Tech(ReligionCatalog.FoundableCount-12+0)!=null&&TechnologyCatalog.Index(ReligionCatalog.Tech(1))>TechnologyCatalog.Index(ReligionCatalog.Tech(0)),"Islam comes after Christianity");}
+    // Scenery: the painted ground diamond goes, the object on it stays; grove fruit turns to leaves.
+    {int n=64;var px=new uint[n*n];float cx=31.5f,cy=47.5f;for(int y=0;y<n;y++)for(int x=0;x<n;x++){if(Math.Abs(x-cx)/32f+Math.Abs(y-cy)/16f<=1)px[y*n+x]=0xFF8CCD4Fu;}
+     for(int y=14;y<44;y++)for(int x=24;x<40;x++)px[y*n+x]=(x==24||x==39||y==14||y==43)?0xFF000000u:0xFF2E6B30u;px[20*n+30]=0xFFD02020u;
+     var o=SceneryArt.StripGround(px,n,n,true);Check((o[61*n+31]>>24)==0&&(o[47*n+4]>>24)==0,"the painted ground is removed");Check((o[30*n+30]>>24)==255&&(o[14*n+30]>>24)==255,"the tree on it stays");Check(!SceneryArt.IsFruit(o[20*n+30]),"fruit becomes leaves");
+     var f=SceneryArt.FeatherRim(px,n,n);Check((f[63*n+31]>>24)<60&&(f[30*n+30]>>24)==255,"landforms only lose their hard rim");}
+}
 static void FaithDesignChecks(){
     var w=World.New(311,"Faith",0,1,1,0,1,2,4,hex:true,natives:false,rations:true);var home=w.Found(w.units.First(u=>u.owner==0&&u.type==0));var me=w.nations[0];
     foreach(var id in new[]{"mysticism","laws","philosophy","writing"})me.tech[K(id)]=true;home.buildings.Add(36);me.faith=500;w.ChoosePantheon(0,0);

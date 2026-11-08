@@ -9,33 +9,38 @@ namespace ParadigmRealm {
 // beliefs comes first, a faith is founded in a city with a Temple (its holy city), cities press their majority faith on cities
 // within ten tiles, and faith buys missionaries. Here the tenet belongs to the faith itself rather than being picked.
 public static class ReligionCatalog {
+ // Founding technologies follow history (owner request, 8 Nov 2026): at Mysticism only the Bronze Age faiths of Mesopotamia and
+ // Egypt; then Canaan (Currency), Vedic Hinduism and Judaism (Code of Laws), Zoroastrianism and the Celts (Mathematics), the
+ // Greek and Roman gods (Sailing), the Axial Age teachers (Philosophy), Christianity, Mithraism and Manichaeism (Engineering), Norse,
+ // Tengri and Shinto as first written down (Feudalism), Islam (Education), Aztec and Inca (Banking), Sikhism (Printing Press),
+ // the Baha'i Faith (Industry).
  // name | tradition | origin and history | adherents today | technology needed to found | tenet kind | tenet name | tenet text
  // Tenet kinds: 0 +1 food, 1 +1 production, 2 +2 gold, 3 +2 science, 4 +1 content, 5 +2 faith, 6 spreads half again as fast
  // (all in the cities that follow the faith, whoever owns them).
  static readonly string[][] Table={
-  new[]{"Christianity","Abrahamic","Founded on the teaching of Jesus of Nazareth in Roman Judea in the 1st century CE; spread by Paul and other missionaries and made the Roman state religion in 380.","About 2.3 billion (Pew, 2020)","philosophy","6","Great Commission","Missionary zeal: spreads half again as fast."},
+  new[]{"Christianity","Abrahamic","Founded on the teaching of Jesus of Nazareth in Roman Judea in the 1st century CE; spread by Paul and other missionaries and made the Roman state religion in 380.","About 2.3 billion (Pew, 2020)","engineering","6","Great Commission","Missionary zeal: spreads half again as fast."},
   new[]{"Islam","Abrahamic","Revealed to the Prophet Muhammad in Mecca from 610 CE, recorded in the Qur'an; within a century it reached from Iberia to Central Asia.","About 2.0 billion (Pew, 2020)","education","2","Zakat","Almsgiving: +2 gold in following cities."},
-  new[]{"Hinduism","Dharmic","Grew from the Vedic religion of north India, its oldest texts from about 1500 BCE; no single founder, many traditions of devotion and philosophy.","About 1.2 billion (Pew, 2020)","philosophy","4","Dharma","Duty and order: +1 content citizen in following cities."},
+  new[]{"Hinduism","Dharmic","Grew from the Vedic religion of north India, its oldest texts from about 1500 BCE; no single founder, many traditions of devotion and philosophy.","About 1.2 billion (Pew, 2020)","laws","4","Dharma","Duty and order: +1 content citizen in following cities."},
   new[]{"Buddhism","Dharmic","Founded by Siddhartha Gautama, the Buddha, in north India around the 5th century BCE; carried across Asia, helped by the emperor Ashoka.","About 300-500 million (estimates vary)","philosophy","4","Middle Way","Calm of the sangha: +1 content citizen in following cities."},
-  new[]{"Judaism","Abrahamic","The covenant faith of the Israelites in the Iron Age Levant, centred on the Torah; it survived exile and dispersion through study and law.","About 15-17 million (Pew, 2020)","philosophy","3","Torah Study","Learning as worship: +2 science in following cities."},
+  new[]{"Judaism","Abrahamic","The covenant faith of the Israelites in the Iron Age Levant, centred on the Torah; it survived exile and dispersion through study and law.","About 15-17 million (Pew, 2020)","laws","3","Torah Study","Learning as worship: +2 science in following cities."},
   new[]{"Sikhism","Dharmic","Founded by Guru Nanak in Punjab around 1500 CE and shaped by nine later Gurus; scripture is the Guru Granth Sahib.","About 25-30 million","printing","0","Langar","The free community kitchen: +1 food in following cities."},
   new[]{"Taoism","Taoic","Chinese tradition traced to Laozi and the Tao Te Ching (6th-4th century BCE); harmony with the Tao, the way of nature.","Tens of millions, mainly China and Taiwan (estimates vary widely)","philosophy","0","Wu Wei","Harmony with nature: +1 food in following cities."},
   new[]{"Confucianism","Taoic","The ethical and ritual teaching of Confucius (551-479 BCE); state orthodoxy of imperial China and the basis of its examinations.","Practised widely in East Asia; rarely counted as a separate faith","philosophy","3","Civil Examinations","Learned officials: +2 science in following cities."},
-  new[]{"Shinto","Japanese","The way of the kami, the spirits of Japan's land and ancestors, with shrines from prehistory; first written down in the 8th century.","About 3 million counted alone; far more take part in its rites","philosophy","5","Kami Shrines","Sacred places everywhere: +2 faith in following cities."},
+  new[]{"Shinto","Japanese","The way of the kami, the spirits of Japan's land and ancestors, with shrines from prehistory; first written down in the 8th century.","About 3 million counted alone; far more take part in its rites","feudalism","5","Kami Shrines","Sacred places everywhere: +2 faith in following cities."},
   new[]{"Jainism","Dharmic","Taught in its present form by Mahavira, a contemporary of the Buddha, in the 6th-5th century BCE; non-violence (ahimsa) above all.","About 4-5 million","philosophy","4","Ahimsa","Non-violence: +1 content citizen in following cities."},
-  new[]{"Zoroastrianism","Iranian","Founded by the prophet Zarathustra (dated between the 15th and 6th centuries BCE); faith of the Achaemenid and Sasanian empires of Persia.","About 100,000-200,000","philosophy","5","Fire Temples","Eternal flames: +2 faith in following cities."},
+  new[]{"Zoroastrianism","Iranian","Founded by the prophet Zarathustra (dated between the 15th and 6th centuries BCE); faith of the Achaemenid and Sasanian empires of Persia.","About 100,000-200,000","maths","5","Fire Temples","Eternal flames: +2 faith in following cities."},
   new[]{"Baha'i Faith","Abrahamic","Founded by Baha'u'llah in Persia in 1863; teaches the oneness of God, of religion and of humanity.","About 5-7 million","industrialisation","6","Unity of Humanity","Open to all: spreads half again as fast."},
   new[]{"Egyptian Religion","Ancient","The gods of the Nile - Ra, Osiris, Isis, Horus - from before 3000 BCE; the last temple, at Philae, was closed in the 6th century CE.","No longer practised (modern revivals only)","mysticism","1","Monument Builders","Temples and tombs: +1 production in following cities."},
   new[]{"Mesopotamian Religion","Ancient","Gods of Sumer, Akkad, Babylon and Assyria such as Anu, Enlil, Inanna and Marduk, worshipped in ziggurat temples from the 4th millennium BCE.","No longer practised","mysticism","0","Temple Granaries","Temple estates: +1 food in following cities."},
-  new[]{"Greco-Roman Religion","Ancient","The Olympian gods of Greece and their Roman counterparts, honoured with civic festivals and oracles until the Theodosian decrees of the 390s CE.","No longer practised (modern revivals only)","mysticism","4","Civic Festivals","Games and feasts: +1 content citizen in following cities."},
-  new[]{"Norse Religion","Ancient","Odin, Thor, Freyja and the other gods of Scandinavia, known from the Eddas; replaced by Christianity around 1000-1100 CE.","No longer practised (modern revivals only)","mysticism","1","Valhalla","Warrior's honour: +1 production in following cities."},
-  new[]{"Manichaeism","Iranian","Founded by the prophet Mani in Sasanian Persia in the 3rd century CE; at its height it reached from North Africa to China before dying out.","Extinct","philosophy","2","Silk Road Merchants","Carried by traders: +2 gold in following cities."},
-  new[]{"Mithraism","Ancient","A Roman mystery cult of the god Mithras, popular with soldiers from the 1st to the 4th century CE and worshipped in underground temples.","Extinct","philosophy","1","Soldiers' Mysteries","Disciplined brotherhood: +1 production in following cities."},
-  new[]{"Tengrism","Steppe","Worship of Tengri, the Eternal Blue Sky, by Turkic and Mongol peoples of the steppe, including the empire of Genghis Khan.","Small modern revival","mysticism","5","Eternal Blue Sky","Sky and spirits: +2 faith in following cities."},
-  new[]{"Aztec Religion","Ancient","The gods of the Mexica - Huitzilopochtli, Tlaloc, Quetzalcoatl - worshipped at the Templo Mayor of Tenochtitlan until 1521.","No longer practised","mysticism","1","The Fifth Sun","Great temple works: +1 production in following cities."},
-  new[]{"Inca Religion","Ancient","Worship of Inti the sun, Pachamama the earth and the ancestors across the Andes, centred on Cusco until the Spanish conquest of the 1530s.","No longer practised","mysticism","0","Ayni","Shared labour on terraces: +1 food in following cities."},
-  new[]{"Celtic Druidism","Ancient","The religion of the Celtic peoples of Gaul and the British Isles, kept by druid priests; suppressed under Rome and gone by early medieval times.","No longer practised (modern revivals only)","mysticism","3","Druidic Lore","Keepers of knowledge: +2 science in following cities."},
-  new[]{"Canaanite Religion","Ancient","Gods of the Levant and Phoenicia such as El, Baal and Asherah, carried by Phoenician sailors across the Mediterranean.","No longer practised","mysticism","2","Sea Traders","Phoenician commerce: +2 gold in following cities."},
+  new[]{"Greco-Roman Religion","Ancient","The Olympian gods of Greece and their Roman counterparts, honoured with civic festivals and oracles until the Theodosian decrees of the 390s CE.","No longer practised (modern revivals only)","sailing","4","Civic Festivals","Games and feasts: +1 content citizen in following cities."},
+  new[]{"Norse Religion","Ancient","Odin, Thor, Freyja and the other gods of Scandinavia, known from the Eddas; replaced by Christianity around 1000-1100 CE.","No longer practised (modern revivals only)","feudalism","1","Valhalla","Warrior's honour: +1 production in following cities."},
+  new[]{"Manichaeism","Iranian","Founded by the prophet Mani in Sasanian Persia in the 3rd century CE; at its height it reached from North Africa to China before dying out.","Extinct","engineering","2","Silk Road Merchants","Carried by traders: +2 gold in following cities."},
+  new[]{"Mithraism","Ancient","A Roman mystery cult of the god Mithras, popular with soldiers from the 1st to the 4th century CE and worshipped in underground temples.","Extinct","engineering","1","Soldiers' Mysteries","Disciplined brotherhood: +1 production in following cities."},
+  new[]{"Tengrism","Steppe","Worship of Tengri, the Eternal Blue Sky, by Turkic and Mongol peoples of the steppe, including the empire of Genghis Khan.","Small modern revival","feudalism","5","Eternal Blue Sky","Sky and spirits: +2 faith in following cities."},
+  new[]{"Aztec Religion","Ancient","The gods of the Mexica - Huitzilopochtli, Tlaloc, Quetzalcoatl - worshipped at the Templo Mayor of Tenochtitlan until 1521.","No longer practised","banking","1","The Fifth Sun","Great temple works: +1 production in following cities."},
+  new[]{"Inca Religion","Ancient","Worship of Inti the sun, Pachamama the earth and the ancestors across the Andes, centred on Cusco until the Spanish conquest of the 1530s.","No longer practised","banking","0","Ayni","Shared labour on terraces: +1 food in following cities."},
+  new[]{"Celtic Druidism","Ancient","The religion of the Celtic peoples of Gaul and the British Isles, kept by druid priests; suppressed under Rome and gone by early medieval times.","No longer practised (modern revivals only)","maths","3","Druidic Lore","Keepers of knowledge: +2 science in following cities."},
+  new[]{"Canaanite Religion","Ancient","Gods of the Levant and Phoenicia such as El, Baal and Asherah, carried by Phoenician sailors across the Mediterranean.","No longer practised","currency","2","Sea Traders","Phoenician commerce: +2 gold in following cities."},
   // Eight slots for branches born of schisms (FaithWorld.cs); their names and tenets come from the world, never founded directly.
   new[]{"Branch","Branch","A branch that broke away from an older faith.","-","mysticism","4","Inherited rites","As its parent faith."},new[]{"Branch","Branch","A branch that broke away from an older faith.","-","mysticism","4","Inherited rites","As its parent faith."},new[]{"Branch","Branch","A branch that broke away from an older faith.","-","mysticism","4","Inherited rites","As its parent faith."},new[]{"Branch","Branch","A branch that broke away from an older faith.","-","mysticism","4","Inherited rites","As its parent faith."},
   new[]{"Branch","Branch","A branch that broke away from an older faith.","-","mysticism","4","Inherited rites","As its parent faith."},new[]{"Branch","Branch","A branch that broke away from an older faith.","-","mysticism","4","Inherited rites","As its parent faith."},new[]{"Branch","Branch","A branch that broke away from an older faith.","-","mysticism","4","Inherited rites","As its parent faith."},new[]{"Branch","Branch","A branch that broke away from an older faith.","-","mysticism","4","Inherited rites","As its parent faith."}
@@ -124,6 +129,22 @@ public partial class World {
   if(lost>0)Note(lost+(lost==1?" border tile":" border tiles")+" passed to "+taker+", whose culture and faith there are stronger.");
   if(gained>0)Note(gained+(gained==1?" border tile":" border tiles")+" joined your territory, drawn by your culture and faith.");
   if(changed)networks=null;
+ }
+}
+}
+namespace ParadigmRealm {
+public partial class World {
+ // One plain next step for the Religion screen (owner request, 8 Nov 2026: fewer things at once).
+ public string FaithNextStep(int owner){
+  var n=nations[owner];var e=NextFaithEvent();if(owner==0&&e!=null)return "A decision awaits: "+FaithCatalog.EventNames[e.kind]+".";
+  if(n.pantheon<0){string why=PantheonReason(owner);return why==""?"Your people are ready to choose a pantheon, the gods of their fields and hearths.":"Gather faith for a pantheon: "+n.faith+" of "+PantheonCost+" (+"+FaithPerTurn(owner)+" a turn). Every city makes some faith.";}
+  int state=StateReligion(owner);
+  if(n.founded<0&&state<0){string why=FoundingReason(owner,-1);return why==""?"You can found a faith. Choose what it teaches.":"Next, found a faith. "+why;}
+  if(modernRules&&n.doctrine<0&&Enumerable.Range(0,DoctrineCatalog.Count).Any(d=>DoctrineReason(owner,d)==""))return "Choose a doctrine in the Faith Tree: your devotion is waiting.";
+  var noTemple=cities.Where(c=>c.owner==owner&&!HasBuilding(c,36)).OrderByDescending(c=>c.pop).FirstOrDefault();
+  if(noTemple!=null)return "Give "+noTemple.name+" a Shrine, then a Temple: they raise faith and press your beliefs on the cities around.";
+  if(n.founded>=0)return "Spread your faith: send missionaries to cities nearby, and keep learning the Faith Tree.";
+  return "Your people follow "+FaithName(state)+". Keep learning the Faith Tree.";
  }
 }
 }

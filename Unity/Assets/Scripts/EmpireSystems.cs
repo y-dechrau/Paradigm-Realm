@@ -76,11 +76,12 @@ public int GrowthLimit(City c){return HasBuilding(c,41)?20+(HasTech(c.owner,"ele
     // Auto-explore: a breadth-first search over known, enterable land finds the nearest tile beside unexplored ground, and the
     // unit follows a proper route there, so it no longer gets stuck in dead ends (owner request).
     void ExploreStep(Unit u){
+        if(u.recover&&!Recover(u))return;
         for(int guard=0;guard<12&&u.exploring&&u.moves>0&&units.Contains(u);guard++){
             if(VisibleThreat(u)){u.exploring=false;if(u.owner==0)Note(UnitNames[u.type]+" stopped exploring: enemy nearby.");return;}
             // Nearest land tile beside undiscovered ground (owner request); one the unit cannot reach is skipped, not a reason to stop.
             var skip=new HashSet<int>();Tile target=null;List<Tile> path=null;var beasts=u.type==3?AnimalsInSight(u):null;
-            for(int tries=0;tries<6;tries++){target=ExploreTarget(u,skip,beasts);if(target==null)break;path=Route(u,target.x,target.y);if(path.Count>0&&(beasts==null||!path.Take(4).Any(p=>NearBeast(p,beasts))))break;skip.Add(target.y*Width+target.x);target=null;}
+            for(int tries=0;tries<6;tries++){target=ExploreTarget(u,skip,beasts);if(target==null)break;path=Route(u,target.x,target.y);if(path.Count>0&&(beasts==null||!path.Take(4).Any(p=>NearBeast(p,beasts)))){exploreClaims[u.id]=target.y*Width+target.x;break;}skip.Add(target.y*Width+target.x);target=null;}
             if(target==null){if(beasts!=null&&beasts.Count>0)return;u.exploring=false;if(u.owner==0)Note(UnitNames[u.type]+" has explored everything it can reach.");return;}
             var t=path[0];if(u.moves<StepCost(u,u.x,u.y,t))return;
             if(!Move(u,t.x,t.y))return;
@@ -90,22 +91,55 @@ public int GrowthLimit(City c){return HasBuilding(c,41)?20+(HasTech(c.owner,"ele
     const int ScoutGap=2;
     List<Animal> AnimalsInSight(Unit u){var seen=new List<Animal>();if(!wildlife||animals==null)return seen;foreach(var a in animals)if(Distance(u.x,u.y,a.x,a.y)<=12&&VisibleTo(u.owner,a.x,a.y))seen.Add(a);return seen;}
     bool NearBeast(Tile t,List<Animal> beasts){foreach(var a in beasts)if(Distance(t.x,t.y,a.x,a.y)<=ScoutGap)return true;return false;}
+    // An explorer that a hunter attacked (owner request, 8 Nov 2026) keeps moving away from every hunter within four tiles, then
+    // rests where it is until healed (a unit that does not move heals), then explores on. True once it may explore again.
+    const int RecoverGap=4;
+    bool Recover(Unit u){
+        Func<Tile,int> gap=t=>{int least=99;if(animals!=null)foreach(var a in animals)if(a.hp>0&&AnimalCatalog.Carnivore[a.kind]){int d=Distance(t.x,t.y,a.x,a.y);if(d<least)least=d;}return least;};
+        for(int guard=0;guard<12&&u.moves>0&&units.Contains(u);guard++){
+            var here=At(u.x,u.y);int now=gap(here);if(now>=RecoverGap)break;Tile best=null;int bestGap=now;
+            for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){
+                if(dx==0&&dy==0)continue;var n=Step(u.x,u.y,dx,dy);if(n==null||IsWater(n.terrain)&&!IsNaval(u.type)||!IsNaval(u.type)&&(IsImpassable(n.terrain)||Barren(n.terrain))||!CanEnter(u.owner,n)||AnimalAt(n.x,n.y)!=null)continue;
+                if(units.Any(a=>a.owner!=u.owner&&a.x==n.x&&a.y==n.y)||!Capacity(u,n.x,n.y)||u.moves<StepCost(u,u.x,u.y,n))continue;
+                int g=gap(n);if(g>bestGap){bestGap=g;best=n;}
+            }
+            if(best==null||!Move(u,best.x,best.y))break;
+        }
+        if(!units.Contains(u))return false;
+        if(gap(At(u.x,u.y))<RecoverGap)return false;
+        if(u.hp<10)return false;
+        u.recover=false;if(u.owner==0)Note(UnitNames[u.type]+" has recovered and explores on.");return true;
+    }
+    // Several explorers spread out (owner request, 8 Nov 2026): each claims the frontier tile it heads for, and a tile is chosen by
+    // how much unknown land it would uncover, how far it is, and how close it lies to another explorer's claim or position.
+    [NonSerialized] Dictionary<int,int> exploreClaims=new Dictionary<int,int>();
+    public int ExploreClaim(Unit u){int cell;return exploreClaims!=null&&exploreClaims.TryGetValue(u.id,out cell)?cell:-1;}
+    int UnknownAround(Tile t,bool[] known){int n=0;for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){var k=StepIn(t.x,t.y,dx,dy,2);if(k!=null&&!known[k.y*Width+k.x])n++;}return n;}
     Tile ExploreTarget(Unit u,HashSet<int> skip=null,List<Animal> beasts=null){
-        var known=nations[u.owner].known;var seen=new HashSet<int>{u.y*Width+u.x};var queue=new Queue<Tile>();queue.Enqueue(At(u.x,u.y));int budget=4000;
+        if(exploreClaims==null)exploreClaims=new Dictionary<int,int>();
+        var others=units.Where(a=>a!=u&&a.owner==u.owner&&a.exploring&&IsNaval(a.type)==IsNaval(u.type)).ToList();
+        var known=nations[u.owner].known;var seen=new HashSet<int>{u.y*Width+u.x};var queue=new Queue<Tile>();var depth=new Dictionary<int,int>{{u.y*Width+u.x,0}};queue.Enqueue(At(u.x,u.y));int budget=4000;
+        Tile best=null;int bestScore=int.MinValue,firstDepth=-1;
         while(queue.Count>0&&budget-->0){
-            var t=queue.Dequeue();
+            var t=queue.Dequeue();int dt=depth[t.y*Width+t.x];
+            if(firstDepth>=0&&dt>firstDepth+10)break;
             if(t.x!=u.x||t.y!=u.y){bool frontier=false;for(int dy=-1;dy<=1&&!frontier;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n!=null&&!known[n.y*Width+n.x]){frontier=true;break;}}
-                if(frontier&&(skip==null||!skip.Contains(t.y*Width+t.x))&&!units.Any(a=>a.owner!=u.owner&&a.x==t.x&&a.y==t.y)&&(beasts==null||!NearBeast(t,beasts)))return t;}
+                if(frontier&&(skip==null||!skip.Contains(t.y*Width+t.x))&&!units.Any(a=>a.owner!=u.owner&&a.x==t.x&&a.y==t.y)&&(beasts==null||!NearBeast(t,beasts)))
+                {
+                    if(firstDepth<0)firstDepth=dt;int score=UnknownAround(t,known)*2-dt*3;
+                    foreach(var o in others){int claim=ExploreClaim(o);if(claim>=0&&Distance(t.x,t.y,claim%Width,claim/Width)<=4)score-=14;if(Distance(t.x,t.y,o.x,o.y)<=3)score-=6;}
+                    if(score>bestScore){bestScore=score;best=t;}
+                }}
             for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){
                 if(dx==0&&dy==0)continue;var n=Step(t.x,t.y,dx,dy);if(n==null)continue;int idx=n.y*Width+n.x;
-                if(seen.Contains(idx)||!known[idx])continue;seen.Add(idx);
+                if(seen.Contains(idx)||!known[idx])continue;seen.Add(idx);depth[idx]=dt+1;
                 int terrain=u.owner==0&&!Visible(n.x,n.y)?KnownTerrain(n):n.terrain;
                 // Land explorers keep to land: water is never a target or a way through.
                 if((IsNaval(u.type)?!Passable(u,n,terrain):Barren(terrain)||IsWater(terrain)||IsImpassable(terrain))||!CanEnter(u.owner,n)||(beasts!=null&&beasts.Count>0&&NearBeast(n,beasts)))continue;
                 queue.Enqueue(n);
             }
         }
-        return null;
+        return best;
     }    bool VisibleThreat(Unit u){return units.Any(e=>AtWar(u.owner,e.owner)&&VisibleTo(u.owner,e.x,e.y)&&Distance(u.x,u.y,e.x,e.y)<=4);}
     void ProcessEmpireOrders(int owner){WorkersFlee(owner);foreach(var u in units.Where(a=>a.owner==owner).ToList()){if(u.flee!=0)continue;if(u.roadOrder)RoadStep(u);else if(u.autoWork&&u.job==0&&!u.hasOrder&&u.moves>0)ImproveAI(u);if(u.sentry&&VisibleThreat(u)){u.sentry=false;if(owner==0)Note(UnitNames[u.type]+" sentry spotted an enemy.");}if(u.exploring)ExploreStep(u);}}
     void EmpireAI(int owner){var n=nations[owner];AIChooseEdicts(owner);if(n.government==0&&HasTech(owner,"laws"))ChangeGovernment(owner,1);n.luxury=cities.Any(c=>c.owner==owner&&Happiness(c)<0)&&n.gold>20?1:0;foreach(var c in cities.Where(c=>c.owner==owner)){if(c.build<0&&HasTech(owner,"currency")&&cities.Count(a=>a.owner==owner)>1&&units.Count(u=>u.owner==owner&&u.type==11)==0&&tradeRoutes.Count(r=>r.originOwner==owner)<2)ChooseProject(c,UnitBuild(11),false);}}

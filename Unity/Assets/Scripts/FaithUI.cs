@@ -7,7 +7,7 @@ namespace ParadigmRealm {
 // plus the decision panel for religious events. Older games without modern rules keep the earlier single page (DrawReligionClassic).
 public partial class RealmGame {
  int faithTab,pickFaith=-1,pickCore=-1,pickSocial=-1,pickEconomic=-1,pickAfterlife=0,reformSocial=-1,reformEconomic=-1;
- static readonly string[] FaithTabs={"Overview","Beliefs","Institutions","Expansion","Diplomacy","History"};
+ static readonly string[] FaithTabs={"Overview","Faith Tree","Beliefs","More"};int faithMoreSection;
  void DrawReligion(){
   if(!world.modernRules){DrawReligionClassic();return;}
   var me=world.nations[0];
@@ -64,9 +64,12 @@ public partial class RealmGame {
   GUILayout.Label("Social doctrine",heading);pickSocial=GUILayout.SelectionGrid(pickSocial,FaithCatalog.Socials,5);GUILayout.Label(FaithCatalog.SocialTexts[pickSocial],small);
   GUILayout.Label("Economic doctrine",heading);pickEconomic=GUILayout.SelectionGrid(pickEconomic,FaithCatalog.Economics,6);GUILayout.Label(FaithCatalog.EconomicTexts[pickEconomic],small);
   GUILayout.Label("Afterlife",heading);pickAfterlife=GUILayout.SelectionGrid(pickAfterlife,FaithCatalog.Afterlives,7);GUILayout.Label(FaithCatalog.AfterlifeTexts[pickAfterlife],small);
-  GUILayout.Space(6);GUILayout.BeginHorizontal();GUILayout.Label("The faith",heading,GUILayout.Width(300));
-  if(GUILayout.Button((religionAncient?"":"▸ ")+"Living faiths",button,GUILayout.Width(170)))religionAncient=false;if(GUILayout.Button((religionAncient?"▸ ":"")+"Faiths of the ancient world",button,GUILayout.Width(240)))religionAncient=true;GUILayout.EndHorizontal();
-  for(int r=0;r<ReligionCatalog.FoundableCount;r++){bool ancient=r>=12;if(ancient!=religionAncient)continue;string founder=world.ReligionFounder(r);string reason=world.FoundingReason(0,r);
+  // Only the faiths your people could know of by now are offered, in the order history found them (owner request, 8 Nov 2026).
+  GUILayout.Space(6);GUILayout.Label("The faith",heading);
+  var known=Enumerable.Range(0,ReligionCatalog.FoundableCount).Where(r=>world.HasTech(0,ReligionCatalog.Tech(r))||world.ReligionFounder(r)!="").OrderBy(r=>TechnologyCatalog.Index(ReligionCatalog.Tech(r))).ToList();
+  var later=Enumerable.Range(0,ReligionCatalog.FoundableCount).Where(r=>!known.Contains(r)).OrderBy(r=>TechnologyCatalog.Index(ReligionCatalog.Tech(r))).ToList();
+  if(later.Count>0)GUILayout.Label(later.Count+" more faiths will arise as your civilisation learns. Next: "+ReligionCatalog.Name(later[0])+", with "+World.TechNames[TechnologyCatalog.Index(ReligionCatalog.Tech(later[0]))]+".",small);
+  foreach(int r in known){string founder=world.ReligionFounder(r);string reason=world.FoundingReason(0,r);
    GUILayout.BeginHorizontal();GUILayout.Label(ReligionCatalog.Name(r)+"  ("+ReligionCatalog.Tradition(r)+")",body,GUILayout.Width(330));
    GUILayout.Label(founder!=""?"Founded by "+founder:"Needs "+World.TechNames[TechnologyCatalog.Index(ReligionCatalog.Tech(r))],small,GUILayout.Width(330));
    if(founder==""){bool was=GUI.enabled;GUI.enabled=was&&reason=="";if(GUILayout.Button("Found with these beliefs",button,GUILayout.Width(220))){if(world.FoundReligion(0,r,pickCore,pickSocial,pickEconomic,pickAfterlife))status=ReligionCatalog.Name(r)+" founded.";}GUI.enabled=was;}
@@ -88,7 +91,7 @@ public partial class RealmGame {
   {var temples=world.cities.Where(c=>c.owner==0&&c.religion>=0&&world.HasBuilding(c,36)).OrderBy(c=>c.name).ToList();GUILayout.Space(6);GUILayout.Label("Priests ("+World.PriestFaithCost+" faith)",heading);
    if(temples.Count==0)GUILayout.Label("None of your cities both follows a faith and has a Temple yet.",small);
    foreach(var c in temples.Take(10)){GUILayout.BeginHorizontal();GUILayout.Label(c.name+" — "+world.FaithName(c.religion),body,GUILayout.Width(560));string why=world.BuyPriestReason(0,c);bool was=GUI.enabled;GUI.enabled=was&&why=="";if(GUILayout.Button("Buy a Priest",button,GUILayout.Width(200)))world.BuyPriest(0,c);GUI.enabled=was;GUILayout.EndHorizontal();}}
-  DrawFaithTree();
+  // The faith tree has its own tab now.
  }
  static string InstitutionNeed(int l){switch(l){case 1:return "the faith is founded";case 2:return "a following city has a Shrine";case 3:return "a following city has a Temple";case 4:return "three following cities have Temples";case 5:return "six following cities and authority 40";case 6:return "followed in two civilisations";case 7:return "twelve following cities and authority 60";default:return "the capitals of half the civilisations and authority 75";}}
  string GovernmentFaith(){int g=world.nations[0].government;string[] text={"tribal ways: ancestor rites and spirits","the divine right of kings","the church stands apart from the state","religious freedom and pluralism","the state regulates organised religion"};return World.Governments[Math.Max(0,Math.Min(text.Length-1,g))]+": "+text[Math.Max(0,Math.Min(text.Length-1,g))]+" (any church and policy may be combined with it).";}
@@ -126,6 +129,17 @@ public partial class RealmGame {
   GUILayout.Label("Sharing a faith counts +10 in every leader's opinion; persecuting their followers -15; protecting them +5. A defensive alliance between civilisations of one faith is easier to agree.",small);
  }
  void FaithAction(string label,string why,Action act){bool was=GUI.enabled;GUI.enabled=was&&why=="";if(GUILayout.Button(new GUIContent(label,why),button,GUILayout.Width(240)))act();GUI.enabled=was;}
+ // The More tab: the detail that used to fill four tabs, one section open at a time (owner request, 8 Nov 2026).
+ static readonly string[] FaithMoreNames={"Institutions and policy","Missions and your cities","Faith and other leaders","History"};
+ void FaithMore(){
+  GUILayout.Label("Most players never need these; open one when you want the detail.",small);
+  for(int k=0;k<FaithMoreNames.Length;k++){
+   if(GUILayout.Button((faithMoreSection==k?"▾ ":"▸ ")+FaithMoreNames[k],button,GUILayout.Height(30)))faithMoreSection=faithMoreSection==k?-1:k;
+   if(faithMoreSection!=k)continue;GUILayout.Space(4);
+   switch(k){case 0:FaithInstitutions();break;case 1:FaithExpansion();break;case 2:FaithDiplomacy();break;default:FaithHistory();break;}
+   GUILayout.Space(8);
+  }
+ }
  void FaithHistory(){
   GUILayout.Label("Religious history",heading);
   foreach(var e in world.faithEvents)GUILayout.Label("Awaiting your decision: "+FaithCatalog.EventNames[e.kind],body);

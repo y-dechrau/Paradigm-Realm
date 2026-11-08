@@ -82,12 +82,22 @@ namespace ParadigmRealm {
   // Sends one specialist back to work the land: an entertainer first, then a scientist, then a tax collector.
   public bool ReturnToWork(City c){if(c==null)return false;foreach(int type in new[]{2,0,1})if(AdjustSpecialist(c,type,-1))return true;return false;}
   public bool ConvertSpecialist(City c,int from,int to){if(c==null||from==to||from<0||from>2||to<0||to>2)return false;if(!AdjustSpecialist(c,from,-1))return false;if(AdjustSpecialist(c,to,1))return true;AdjustSpecialist(c,from,1);return false;}
+  // Why a city has stopped at its limit (owner request, 8 Nov 2026): the building that lifts it is named only once its technology
+  // is known; before that the city simply lacks the knowledge to keep a bigger population supplied with clean water.
+  public string GrowthLimitReason(City c){
+   if(HasBuilding(c,41))return "Maximum city size reached.";
+   int next=HasBuilding(c,37)?41:37;bool known=KnowsBuildingTech(c.owner,next);
+   if(known)return "Build "+(next==37?"an Aqueduct":"a Sewer system")+".";
+   return next==37?"Without a way to bring clean water from afar, more people would crowd round the wells and fall sick. Your scholars must learn how to build for water before the city can grow further."
+                  :"The streets cannot carry away the waste of more people. The city needs new knowledge of public works before it can grow further.";
+  }
+  bool KnowsBuildingTech(int owner,int b){int i=Array.IndexOf(BuildingIds,b);return i>=0&&nations[owner].tech[BuildingTech[i]];}
   public string GrowthStatus(City c){
    int net=Yield(c)[0]-c.ration;
    // Disorder comes first: it stops production and gold as well as growth.
    if(Disorder(c))return "Disorder: "+UnhappyCitizens(c)+" unhappy outnumber "+ContentCitizens(c)+" content. No production, no gold and no growth; add entertainers, build a Temple or raise the science rate to 60%.";
    if(net<0)return "Food shortage: "+(-net)+"/turn. "+(c.food/(-net)+1)+" turns until stores run out; reduce specialists or improve food tiles.";
-   if(c.pop>=GrowthLimit(c))return "Growth blocked: population limit "+GrowthLimit(c)+". "+(HasBuilding(c,41)?"Maximum city size reached.":HasBuilding(c,37)?"Build a Sewer system.":"Build an Aqueduct.");
+   if(c.pop>=GrowthLimit(c))return "Growth blocked: population limit "+GrowthLimit(c)+". "+GrowthLimitReason(c);
    if(c.food>=FoodNeeded(c))return "Population will grow next turn.";
    if(net<=0&&c.scientists+c.merchants+c.entertainers>0&&Workers(c)<Workable(c).Count)return "No food surplus: "+(c.scientists+c.merchants+c.entertainers)+" of "+c.pop+" citizens are specialists and work no land. Use Specialist → back to work.";
    if(net==0)return "No food surplus: growth is stalled.";

@@ -13,7 +13,7 @@ namespace ParadigmRealm {
    c.scientists=0;c.focus=4;var gold=w.At(c.x-1,c.y);gold.resource=3;w.nations[c.owner].tech[TechnologyCatalog.Index("bronze")]=false;int hidden=w.EffectiveTileYield(c,gold)[2];w.nations[c.owner].tech[TechnologyCatalog.Index("bronze")]=true;Check(w.EffectiveTileYield(c,gold)[2]==hidden+World.ResourceTrade[3]&&!w.ResourceKnown(-1,0)==false,"gold gives nothing until Bronze Working (mining) is known");Check(w.Worked(c).Contains(gold),"commerce values gold while feeding city");
    int before=w.EffectiveTileYield(c,food)[0];w.tech[TechnologyCatalog.Index("chemistry")]=true;
    Check(w.EffectiveTileYield(c,food)[0]==before+1,"technology food counted in tile allocation");
-   c.pop=6;Check(w.GrowthStatus(c).Contains("Aqueduct"),"growth blocker names remedy");
+   c.pop=6;{int aq=World.BuildingTech[Array.IndexOf(World.BuildingIds,37)];bool had=w.nations[c.owner].tech[aq];w.nations[c.owner].tech[aq]=false;Check(w.GrowthStatus(c).Contains("Growth blocked")&&!w.GrowthStatus(c).Contains("Aqueduct"),"growth blocker explains without naming an unknown building");w.nations[c.owner].tech[aq]=true;Check(w.GrowthStatus(c).Contains("Aqueduct"),"growth blocker names remedy once known");w.nations[c.owner].tech[aq]=had;}
    foreach(var t in w.Workable(c)){t.terrain=0;t.farm=true;}
    c.food=10000;w.EndTurn();Check(c.pop==6&&c.food==w.FoodNeeded(c),"blocked storage bounded, population preserved");
    foreach(var n in w.nations)for(int i=0;i<n.tech.Length;i++)n.tech[i]=true;

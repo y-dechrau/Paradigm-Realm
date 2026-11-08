@@ -4,6 +4,10 @@ namespace ParadigmRealm {
 // Worker orders (owner request, 31 Oct 2026): a road route builds a road on every tile of the cheapest way to a destination
 // (R, then right-drag), and auto develop hands the worker to the same planner the rival workers use (ImproveAI).
 public partial class World {
+ // A worker on a city's own tile has nothing to develop there (owner request, 8 Nov 2026): the interface greys out its jobs.
+ // A unit with nothing to do: no route, exploring, sentry, fortification, job, road route, auto develop or flight.
+ public bool UnitIdle(Unit u){return u!=null&&!u.hasOrder&&!u.exploring&&!u.sentry&&!u.fortified&&u.job==0&&!u.roadOrder&&!u.autoWork&&u.flee==0&&!u.recover;}
+ public bool WorkerInCity(Unit u){return u!=null&&u.type==1&&cities.Any(c=>c.x==u.x&&c.y==u.y);}
  public string RoadRoute(Unit u,int x,int y){
   if(u==null||u.type!=1)return "Only workers build roads.";if(!HasTech(u.owner,"wheel"))return "Requires The Wheel.";
   var goal=At(x,y);if(goal==null)return "That is beyond the edge of the world.";

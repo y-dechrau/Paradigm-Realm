@@ -18,7 +18,7 @@ namespace ParadigmRealm
             TileCard=new Rect(571,694,336,52),MiniMap=new Rect(1060,590,178,138),MiniButtons=new Rect(1242,590,32,138),
             EndTurnRect=new Rect(1060,738,214,54),MorePanel=new Rect(8,246,410,340);
         static readonly string[] RailScreens={"Economy","Civics","Research","Diplomacy","Religion","Cities","Military","Atlas","Victory","Chronicle","Identity"};
-        static readonly string[] RailLabels={"Empire","Civics","Research","Diplomacy","Religion","Cities","Military","Realms","Victory","Chronicle","Identity"};
+        static readonly string[] RailLabels={"Empire","Civics","Research","Diplomacy","Religion","Cities","Units","Realms","Victory","Chronicle","Identity"};
         static readonly int[] RailIcons={PixelArt.IconEmpire,PixelArt.IconCivics,PixelArt.IconResearch,PixelArt.IconDiplomacy,PixelArt.IconFaith,PixelArt.IconCities,PixelArt.IconMilitary,PixelArt.IconRealms,PixelArt.IconVictory,PixelArt.IconChronicle,PixelArt.IconIdentity};
         const float RailItem=44;
         static Rect RailRect{get{return new Rect(0,44,166,RailScreens.Length*RailItem+8);}}
@@ -268,6 +268,8 @@ namespace ParadigmRealm
         void DrawUnitActions(Unit u,Rect row)
         {
             var actions=new List<KeyValuePair<int,string>>();bool idle=GUI.enabled&&world.result=="";
+            // A worker standing in a city can only cancel, fortify or heal, keep sentry, move off or be disbanded (owner request, 8 Nov 2026).
+            bool cityWorker=world.WorkerInCity(u);
             actions.Add(new KeyValuePair<int,string>(PixelArt.IconMove,"Move"));
             if(u.type==0)actions.Add(new KeyValuePair<int,string>(PixelArt.IconFound,"Found"));
             // Workers always show Road, Farm, Mine and Clear (woodland); a job the civilisation lacks the technology for is greyed
@@ -288,7 +290,7 @@ namespace ParadigmRealm
             {
                 var a=actions[i];bool active=a.Value=="Explore"&&u.exploring||a.Value=="Wake"||a.Value=="Less"||a.Value=="Move"&&moveMode||a.Value=="Road"&&roadMode||a.Value=="Unstack";
                 int barJob=a.Value=="Road"?1:a.Value=="Farm"?2:a.Value=="Mine"?3:a.Value=="Clear"?5:0;
-                bool enabled=GUI.enabled;GUI.enabled=enabled&&(idle||a.Key==PixelArt.IconMore)&&(barJob==0||world.JobTechMissing(u.owner,barJob)=="");
+                bool enabled=GUI.enabled;GUI.enabled=enabled&&!(cityWorker&&(barJob>0||a.Value=="Skip"))&&(idle||a.Key==PixelArt.IconMore)&&(barJob==0||world.JobTechMissing(u.owner,barJob)=="");
                 if(HudButton(new Rect(row.x+i*(w+6),row.y,w,row.height),a.Key,a.Value,active))
                 {
                     switch(a.Value)
@@ -322,10 +324,12 @@ namespace ParadigmRealm
                 GUILayout.Label("All orders",heading);
                 bool enabled=GUI.enabled;GUI.enabled=enabled&&world.result=="";
                 // Auto develop: the worker picks its own jobs each turn (roads, farms, mines, clearing) until told otherwise.
+                if(world.WorkerInCity(u))GUI.enabled=false;
                 if(u.type==1&&Button(u.autoWork?"Stop auto develop":"Auto develop")){bool on=!u.autoWork;world.SetAutoWork(u,on);status=on?"Worker set to auto develop.":"Auto develop stopped.";}
                 if(u.type==1&&Button("Road to a destination [R, then right-drag]"))RoadKey(u);
                 // Every worker activity stays listed; those needing an unknown technology are greyed out and say which (owner request).
                 if(u.type==1){GUILayout.Label("Worker activities",body);int team=world.WorkerTeam(u).Count;foreach(int job in new[]{1,2,3,5,4}){string missing=world.JobTechMissing(u.owner,job);bool was=GUI.enabled;GUI.enabled=was&&missing=="";string label=World.JobNames[job]+(missing!=""?" — "+missing:" ("+((world.JobWork(u,job)+team-1)/team)+" turns)");if(Button(label)){string reason=world.WorkerTeam(u).Select(a=>world.JobReason(a,job)).FirstOrDefault(r=>r!="")??"";if(!world.StartJob(u,job))status=reason;}GUI.enabled=was;}}
+                GUI.enabled=enabled&&world.result=="";
                 if(u.hasOrder){GUILayout.Label("Destination: "+u.destinationX+", "+u.destinationY,body);if(Button("Cancel movement order [X]"))world.CancelActivity(u);}
                 GUI.enabled=enabled;
             }

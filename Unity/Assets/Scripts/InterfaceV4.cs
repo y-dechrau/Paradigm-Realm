@@ -99,16 +99,23 @@ namespace ParadigmRealm
         void DrawCityScreen()
         {
             var c=world.cities.Find(a=>a.owner==0&&a.id==cityId);if(c==null){cityScreen=false;return;}
-            GUI.Box(new Rect(24,100,1232,630),"");if(GUI.Button(new Rect(865,110,180,34),"Zoom to city",button)){cityScreen=false;GUI.FocusControl(null);if(world.Hex||diamondView)isoWidth=128;else tilePixels=96;FocusTile(c.x,c.y);GUIUtility.ExitGUI();}{var gov=world.GovernorOf(c);if(gov!=null){var line=new GUIStyle(small){wordWrap=false,clipping=TextClipping.Overflow};FitLabel(new Rect(430,112,425,16),"Governor "+gov.name+" ("+world.TraitLine(gov)+")",line,8);FitLabel(new Rect(430,128,425,16),"Stress "+gov.stress+"  •  Loyalty "+gov.loyalty+"  •  Corruption "+gov.corruption+"%  •  "+(world.nations[0].priority>0?(world.Obeys(c)?"follows your priority":"ignores your priority"):"no priority set")+(c.strike>0?"  •  ON STRIKE":""),line,8);}}GUI.Label(new Rect(40,106,700,38),c.name+" — size "+c.pop+(world.Disorder(c)?"   DISORDER":"")+(c.occupation>0?"   occupied "+c.occupation+" turns":""),title);
-            if(GUI.Button(new Rect(1055,110,180,34),"Back to map",button)){cityScreen=false;GUI.FocusControl(null);GUIUtility.ExitGUI();}
+            GUI.Box(new Rect(24,100,1232,630),"");if(GUI.Button(new Rect(865,110,180,34),"Zoom to city",button)){cityScreen=false;GUI.FocusControl(null);if(world.Hex||diamondView)isoWidth=128;else tilePixels=96;FocusTile(c.x,c.y);GUIUtility.ExitGUI();}{var gov=world.GovernorOf(c);if(gov!=null){var line=new GUIStyle(small){wordWrap=false,clipping=TextClipping.Overflow};FitLabel(new Rect(430,112,340,16),"Governor "+gov.name+" ("+world.TraitLine(gov)+")",line,8);FitLabel(new Rect(430,128,340,16),"Stress "+gov.stress+"  •  Loyalty "+gov.loyalty+"  •  Corruption "+gov.corruption+"%  •  "+(world.nations[0].priority>0?(world.Obeys(c)?"follows your priority":"ignores your priority"):"no priority set")+(c.strike>0?"  •  ON STRIKE":""),line,8);}}GUI.Label(new Rect(40,106,700,38),c.name+" — size "+c.pop+(world.Disorder(c)?"   DISORDER":"")+(c.occupation>0?"   occupied "+c.occupation+" turns":""),title);
+            // Arrows step through your cities (owner request, 8 Nov 2026); Back to map returns to the city first opened.
+            {var mine=world.cities.Where(a=>a.owner==0).OrderBy(a=>a.id).ToList();int at=mine.IndexOf(c);bool many=mine.Count>1,was=GUI.enabled;GUI.enabled=was&&many;
+             if(GUI.Button(new Rect(780,110,38,34),"◀",button)){OpenCityKeepOrigin(mine[(at-1+mine.Count)%mine.Count]);}
+             if(GUI.Button(new Rect(822,110,38,34),"▶",button)){OpenCityKeepOrigin(mine[(at+1)%mine.Count]);}
+             GUI.enabled=was;}
+            if(GUI.Button(new Rect(1055,110,180,34),"Back to map",button)){cityScreen=false;moodPanel=false;GUI.FocusControl(null);var origin=world.cities.Find(a=>a.owner==0&&a.id==cityOrigin);if(origin!=null)FocusTile(origin.x,origin.y);cityOrigin=-1;GUIUtility.ExitGUI();}
             DrawCityTiles(c,new Rect(40,150,440,520));
+            if(moodPanel)DrawMoodPanel(c,new Rect(40,150,440,520));
             DrawCityTotals(c,new Rect(495,150,370,520));
             GUI.Box(new Rect(880,150,355,520),"");
             if(GUI.Button(new Rect(890,158,165,28),(cityBuildingTab?"":"● ")+"Units",button))cityBuildingTab=false;
             if(GUI.Button(new Rect(1060,158,165,28),(cityBuildingTab?"● ":"")+"Buildings",button))cityBuildingTab=true;
             DrawProductionLine(c,cityBuildingTab,new Rect(880,190,355,480));
             GUI.Label(new Rect(40,682,110,30),"Focus",heading);
-            c.focus=GUI.SelectionGrid(new Rect(150,678,1085,34),c.focus,GovernorNames,5);
+            {bool was=GUI.enabled;GUI.enabled=was&&!c.autoManage;c.focus=GUI.SelectionGrid(new Rect(150,678,885,34),c.focus,GovernorNames,5);GUI.enabled=was;}
+            if(GUI.Button(new Rect(1045,678,190,34),c.autoManage?"● Auto-manage on":"Auto-manage off",button)){world.SetAutoManage(c,!c.autoManage);status=c.autoManage?c.name+" now manages itself: focus, order, buildings, and units only when gold and food stay at zero or above.":c.name+" is back under your control.";}
             GUI.Label(new Rect(24,744,1232,42),status,body);
         }
         // The land around the city as one continuous piece of the pixel-art map (owner request: organic, no rigid cells with
@@ -206,6 +213,22 @@ namespace ParadigmRealm
             Color[] colours={new Color(.42f,.8f,.32f),new Color(.93f,.55f,.22f),new Color(1f,.83f,.25f)};float x=r.x;
             for(int k=0;k<3;k++){for(int n=0;n<Math.Min(6,v[k]);n++){Fill(new Rect(x,r.y,8,8),new Color(.1f,.1f,.1f,.85f));Fill(new Rect(x+1,r.y+1,6,6),colours[k]);x+=8;}if(v[k]>0)x+=4;}
         }        void DrawBar(Rect r,float fraction,Color colour){Fill(r,UiTrough);Fill(new Rect(r.x,r.y,r.width*Mathf.Clamp01(fraction),r.height),colour);}
+        // Why citizens are content or unhappy, and what can be done (owner request, 8 Nov 2026). Drawn over the land view.
+        bool moodPanel;int cityOrigin=-1;Vector2 moodScroll;
+        void OpenCityKeepOrigin(City next){OpenCity(next);}
+        void DrawMoodPanel(City c,Rect area)
+        {
+            GUI.Box(area,"");GUI.Box(area,"");float x=area.x+14,w=area.width-28,y=area.y+10;
+            GUI.Label(new Rect(x,y,w-70,26),"Mood in "+c.name,heading);if(GUI.Button(new Rect(area.xMax-74,y,60,24),"Close",button))moodPanel=false;y+=30;
+            GUI.Label(new Rect(x,y,w,22),world.MoodSummary(c),body);y+=26;
+            var reasons=world.MoodReasons(c);var tips=world.MoodRemedies(c);
+            float inner=reasons.Count*20+30+tips.Count*38+10;
+            moodScroll=GUI.BeginScrollView(new Rect(x,y,w,area.yMax-y-8),moodScroll,new Rect(0,0,w-18,inner));float iy=0;
+            foreach(var r in reasons){GUI.Label(new Rect(0,iy,w-80,20),r.Key,small);var keep=GUI.color;GUI.color=r.Value>0?new Color(.55f,.9f,.6f):new Color(1f,.55f,.45f);GUI.Label(new Rect(w-76,iy,50,20),(r.Value>0?"+":"")+r.Value,small);GUI.color=keep;iy+=20;}
+            iy+=6;GUI.Label(new Rect(0,iy,w-18,24),"What you can do",heading);iy+=24;
+            foreach(var t in tips){GUI.Label(new Rect(0,iy,w-24,36),"• "+t,small);iy+=38;}
+            GUI.EndScrollView();
+        }
         void DrawCityTotals(City c,Rect area)
         {
             GUI.Box(area,"");float x=area.x+12,w=area.width-24,y=area.y+8;
@@ -217,7 +240,8 @@ namespace ParadigmRealm
             GUI.Label(new Rect(x,y,w,22),"Growth  "+c.food+" / "+need+" food   •   "+World.PeopleText(world.CityPeople(c))+" people",body);y+=22;DrawBar(new Rect(x,y,w,12),c.food/(float)Math.Max(1,need),new Color(.45f,.75f,.35f));y+=16;
             GUI.Label(new Rect(x,y,w,40),world.GrowthStatus(c),small);y+=42;
             int content=world.ContentCitizens(c),unhappy=world.UnhappyCitizens(c),workers=Math.Max(1,world.Workers(c));
-            GUI.Label(new Rect(x,y,w,22),"Content "+content+"   Unhappy "+unhappy+(world.Disorder(c)?"   — disorder: no shields or gold":"")+(world.ReligiousUnrest(c)>0?"   (religious unrest -"+world.ReligiousUnrest(c)+")":""),body);y+=22;
+            GUI.Label(new Rect(x,y,w-64,22),"Content "+content+"   Unhappy "+unhappy+(world.Disorder(c)?"   — disorder: no shields or gold":"")+(world.ReligiousUnrest(c)>0?"   (religious unrest -"+world.ReligiousUnrest(c)+")":""),body);
+            if(GUI.Button(new Rect(x+w-60,y-1,60,22),moodPanel?"Close":"Why?",button))moodPanel=!moodPanel;y+=22;
             Fill(new Rect(x,y,w,12),UiTrough);Fill(new Rect(x,y,w*content/workers,12),new Color(.4f,.72f,.5f));Fill(new Rect(x+w*content/workers,y,w*unhappy/workers,12),new Color(.9f,.45f,.35f));y+=22;
             GUI.Label(new Rect(x,y,w,24),"Citizens",heading);y+=26;
             GUI.Label(new Rect(x,y,w,22),"Working "+world.Workers(c)+"  Entertainers "+c.entertainers+"  Scientists "+c.scientists+"  Tax collectors "+c.merchants,small);y+=24;

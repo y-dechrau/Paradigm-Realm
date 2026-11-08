@@ -2,6 +2,47 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 8 Nov, evening (no save version change; `Unit.recover` and `City.autoManage` load as off from older saves)
+
+**How this was checked:**
+- .NET engine checks pass, including new `ContentChecks.EveningRequestChecks`:
+  - Mood reasons add up exactly to a city's content places.
+  - Growth messages name the Aqueduct only once its technology is known.
+  - A worker inside borders does not run from animals, and a worker in its own city is recognised.
+  - A unit on a route keeps its order after an animal attack, and an attacked explorer keeps exploring and sets out to recover.
+  - Two explorers starting on one tile claim different frontiers (9 tiles apart in the test game).
+  - Auto-manage trains only units it can afford.
+  - Mysticism alone opens only the Mesopotamian and Egyptian faiths.
+  - Ground stripping keeps the object and turns fruit into leaves.
+- The ground stripping was also run on every supplied scenery and city picture and compared side by side before and after (`SceneryArt`).
+- The old Strategy check "growth blocker names remedy" now checks both cases: before the technology, and after it.
+- Unity checks and the build are reported in the session.
+- **Not hand-played.**
+
+**What changed:**
+- **Seamless map:** supplied tree, forest, jungle, city, hamlet and terrain pictures lose their painted ground diamond when loaded (`SceneryArt.StripGround`). Mountains, hills, volcanoes and glaciers keep their ground and only lose the hard rim (`FeatherRim`). The files are unchanged.
+- **Groves:** grassland grove trees are drawn at 55% so they match the forest trees. The apples on one grove picture become leaves, so they no longer look like a food resource.
+- **Wild animals** have painted sprites (SpriteCook, `Sprites/animal-0..6` in `AnimalCatalog` order). The drawn ones are the fallback.
+- **Animal health:** a health bar shows over an animal while it is hurt or one of your units is within two tiles. A hunter's bar has a red edge.
+- **Explorers spread out:** each explorer claims the frontier tile it heads for. Targets are scored by unknown land uncovered, distance, and nearness to another explorer's claim or position (`ExploreTarget`, `ExploreClaim`).
+- **Attacked explorers:** an explorer attacked by an animal keeps exploring. It moves away until no hunter is within 4 tiles, rests until healed, then explores on (`Unit.recover`, `Recover`).
+- **Routes survive attacks:** a unit on a route keeps going after an animal attack, unless the player orders otherwise; the warning says so.
+- **Workers:**
+  - They ignore animals anywhere inside any civilisation's borders (`SafeFromBeasts`).
+  - On a city tile their jobs, Skip, auto develop, road and grouping are greyed out. Cancel, Fortify/heal, Sentry, Move and Disband stay. Sentry is now offered to every civilian.
+- **Move order and panning:** while the right button holds a destination, holding the middle button as well pans the map.
+- **Cities:**
+  - A "Why?" button beside Content/Unhappy opens every reason with its effect, and what can be done now (`MoodReasons`, `MoodRemedies`).
+  - Arrows step to the previous or next city. Back to map returns to the city first opened.
+  - An Auto-manage switch replaces manual focus (`CityCare.cs`). The city sets its own focus, keeps order with entertainers, and chooses buildings whose upkeep it can pay. It trains a Worker, a Settler or one defender only when gold per turn, its own food and the empire's rations stay at zero or above (`UnitAffordable`).
+  - A city at its population limit names the Aqueduct or Sewer only once that technology is known; before that it explains why it cannot grow.
+- **Units screen:** the Military entry is now "Units". It lists idle units (waiting for orders) first, then active ones, with place, health, moves and activity.
+- **Religion:**
+  - Faiths unlock in historical order: at Mysticism only Mesopotamia and Egypt; then Canaan (Currency), Hinduism and Judaism (Code of Laws), Zoroastrianism and Celtic druidism (Mathematics), Greek and Roman gods (Sailing), the Axial Age teachings (Philosophy), Christianity, Mithraism and Manichaeism (Engineering), Norse, Tengri and Shinto (Feudalism), Islam (Education), Aztec and Inca (Banking), Sikhism (Printing Press) and the Baha'i Faith (Industry).
+  - The founding list shows only faiths your people know of, and names the next one.
+  - The Religion screen has four tabs: Overview, Faith Tree, Beliefs and More. The Overview shows one plain next step (`FaithNextStep`), the faith tree's progress and three actions. Institutions, policy, missions, diplomacy and history are folded sections under More.
+- **Not built:** governor rework (research done; waiting on the owner's answers).
+
 ## Owner reports 8 Nov: menu seam and Empire priorities (no save change)
 
 **How this was checked:**

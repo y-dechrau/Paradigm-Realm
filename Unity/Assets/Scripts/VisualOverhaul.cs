@@ -136,7 +136,11 @@ namespace ParadigmRealm {
   // Art slots: pictures in Assets/Resources/Sprites (for example from SpriteCook) replace the drawn ones by name. Missing
   // names fall back to the procedural art, so slots can be filled one at a time. Naming: Design/ART-SLOTS.md.
   readonly Dictionary<string,Texture2D> spriteSlots=new Dictionary<string,Texture2D>();
-  Texture2D SpriteSlot(string name){Texture2D t;if(!spriteSlots.TryGetValue(name,out t)){t=Resources.Load<Texture2D>("Sprites/"+name);if(t!=null)t.filterMode=FilterMode.Bilinear;spriteSlots[name]=t;}return t;}
+  // Scenery and settlements lose their painted ground diamond (owner request, 8 Nov 2026: no square base, seamless map);
+  // see SceneryArt. The processed copy is cached in place of the loaded picture, which stays unchanged on disk.
+  Texture2D SpriteSlot(string name){Texture2D t;if(!spriteSlots.TryGetValue(name,out t)){t=Resources.Load<Texture2D>("Sprites/"+name);if(t!=null)t.filterMode=FilterMode.Bilinear;
+   if(t!=null&&SceneryArt.IsScenery(name)){try{var cv=new PixelCanvas(t.width,t.height);Array.Copy(SceneryArt.Prepare(name,ReadArtPixels(t),t.width,t.height),cv.p,cv.p.Length);t=SoftTexture(cv);}catch(Exception){}}
+   spriteSlots[name]=t;}return t;}
   void DrawCityArt(City c,Rect r){GUI.DrawTexture(r,SettlementTexture(CityVisualEra(c.owner),c.pop,SettlementFlags(c),c.id),ScaleMode.ScaleToFit,true);}
   // Outlying farmsteads: from size 5, one neighbouring land tile of the city's own territory per two citizens (up to 8)
   // gets a few houses, chosen in a fixed order per city so they do not jump about.

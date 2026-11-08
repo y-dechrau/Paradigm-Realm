@@ -339,6 +339,11 @@ namespace ParadigmRealm
             }
             if(e.type==EventType.MouseUp&&e.button==0&&mapPointerDown){if(inside&&x==pressX&&y==pressY)Click(x,y);mapPointerDown=false;e.Use();}
             if(e.type==EventType.MouseDown&&e.button==1&&inside){var mover=Selected();if(mover!=null){dragUnit=mover.id;dragging=true;pressMouse=e.mousePosition;e.Use();}}
+            // While the right button holds a destination, holding the middle button (the wheel) as well pans the map, so a goal
+            // beyond the screen can be reached without letting go (owner request, 8 Nov 2026).
+            if(dragging&&(e.type==EventType.MouseDrag||e.type==EventType.MouseMove)&&(e.button==2||Input.GetMouseButton(2))){if(diamondView)IsoPan(-e.delta.x,-e.delta.y);else{mapScroll-=e.delta;ClampMapScroll();}if(diamondView)ClampCamera();e.Use();return;}
+            if(dragging&&e.type==EventType.MouseDown&&e.button==2){e.Use();return;}
+            if(dragging&&e.type==EventType.MouseUp&&e.button==2){e.Use();return;}
             if(e.type==EventType.MouseDrag&&e.button==1&&dragging)e.Use();
             if(e.type==EventType.MouseUp&&e.button==1&&dragging){var mover=world.units.Find(u=>u.id==dragUnit);dragUnit=-1;dragging=false;if(inside&&mover!=null&&!(mover.x==x&&mover.y==y)){if(roadMode&&mover.type==1)OrderRoad(mover,x,y);else IssueOrder(mover,x,y);}roadMode=false;e.Use();}
         }

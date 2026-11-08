@@ -17,7 +17,7 @@ namespace ParadigmRealm
         // The classic view scrolls only over the rows of the world being viewed (home or a parallel world).
         void ClampViewRows(){float top=world.RealmTop(viewRealm)*ClassicRowHeight(),bottom=world.RealmBottom(viewRealm)*ClassicRowHeight()+(world.Staggered?tilePixels*.5f:0);mapScroll.y=Mathf.Clamp(mapScroll.y,top,Mathf.Max(top,bottom-MapH));}
         void ClampMapScroll(){if(world.Sphere){float wpx=world.Width*tilePixels;mapScroll.x=((mapScroll.x%wpx)+wpx)%wpx;ClampViewRows();return;}mapScroll.x=Mathf.Clamp(mapScroll.x,0,Mathf.Max(0,world.Width*tilePixels-MapW));ClampViewRows();}
-        void OpenCity(City c){tutorialCitySeen=true;cityId=c.id;selected=-1;cityScreen=true;cityScroll=Vector2.zero;cityMapScroll=Vector2.zero;builtScroll=Vector2.zero;unitQueueScroll=Vector2.zero;buildingQueueScroll=Vector2.zero;researchScreen=false;detailsScreen="";GUI.FocusControl(null);ResetMapGesture();GUIUtility.ExitGUI();}
+        void OpenCity(City c){if(!cityScreen)cityOrigin=c.id;tutorialCitySeen=true;cityId=c.id;selected=-1;cityScreen=true;cityScroll=Vector2.zero;cityMapScroll=Vector2.zero;builtScroll=Vector2.zero;unitQueueScroll=Vector2.zero;buildingQueueScroll=Vector2.zero;researchScreen=false;detailsScreen="";GUI.FocusControl(null);ResetMapGesture();GUIUtility.ExitGUI();}
         bool OrderTeam(Unit u,int x,int y){var team=world.WorkerTeam(u).ToList();int sx=u.x,sy=u.y;bool ok=false;foreach(var member in team)ok=world.Order(member,x,y)||ok;status=ok?"Order issued. Travel continues each turn; new orders replace it.":"Cannot reach that destination.";
             // An order that cannot take its first step says why, rather than leaving the unit standing there in silence.
             if(ok&&u.hasOrder&&u.x==sx&&u.y==sy&&u.moves>0){var path=world.PlannedRoute(u);if(path.Count>0){string why=world.MoveProblem(u,path[0].x,path[0].y);if(why!="")status="Order given, but it cannot move yet: "+why;}}
@@ -130,18 +130,23 @@ namespace ParadigmRealm
             if(u!=null){
                 DrawEmpireUnit(u);
                 GUILayout.Label((World.Power[u.type]>0?"Support "+World.SupportCost(u.type)+" gold a turn":"Support 1 gold beyond the free allowance")+" | Eats "+(World.UnitRation(u.type)==2?"1 food":"half a food")+" a turn | "+World.RankText(u),small);
-                if(world.SameTypeHere(u)>=2&&world.UnitsToStack(u).Count>world.SameTypeHere(u)&&Button("Take all "+world.SameTypeHere(u)+" "+World.UnitNames[u.type]+" units here as one stack")){world.JoinType(u);status="All the "+World.UnitNames[u.type]+" units here now move together.";}
+                bool cityWorker=world.WorkerInCity(u),wasOn=GUI.enabled;if(cityWorker){GUILayout.Label("In a city a worker can only cancel its activity, fortify or heal, keep sentry, move out or be disbanded.",small);GUI.enabled=false;}
+                if(world.SameTypeHere(u)>=2&&world.UnitsToStack(u).Count>world.SameTypeHere(u)&&Button("Take all"+world.SameTypeHere(u)+" "+World.UnitNames[u.type]+" units here as one stack")){world.JoinType(u);status="All the "+World.UnitNames[u.type]+" units here now move together.";}
                 if(!World.IsNaval(u.type)&&world.UnitsToStack(u).Count>1){if(u.stack==0&&Button("Stack the units on this tile [G]"))world.JoinStack(u);else if(u.stack!=0&&Button("Break up this stack [G]"))world.LeaveStack(u);}
                 GUILayout.Label("Activity: "+world.Activity(u)+" | "+world.Remaining(u),body);
                 if(u.type==1){GUILayout.Label("Worker team: "+world.WorkerTeam(u).Count,small);
                     if(u.workerGroup>0){if(Button("Ungroup workers (stop current work)")){world.UngroupWorkers(u);status="Workers ungrouped; current work cancelled.";}}
                     if(world.units.Count(a=>a.owner==u.owner&&a.type==1&&a.x==u.x&&a.y==u.y)>1&&Button("Group all workers here (restart work)")){world.GroupWorkers(u);status="Workers grouped. Choose their shared activity.";}}
-                if((u.job>0||u.hasOrder||u.fortified)&&Button("Cancel activity / route [X]")){world.CancelActivity(u);status="Activity and route cancelled.";}
+                GUI.enabled=wasOn;
+                if((u.job>0||u.hasOrder||u.fortified||u.sentry||u.roadOrder||u.autoWork)&&Button("Cancel activity / route [X]")){world.CancelActivity(u);status="Activity and route cancelled.";}
                 if(Button(u.fortified?"Wake unit":"Fortify / heal")){bool fortify=!u.fortified;world.CancelActivity(u);foreach(var member in world.WorkerTeam(u))member.fortified=fortify;}
+                if(World.Power[u.type]==0&&Button(u.sentry?"Wake from sentry":"Sentry until an enemy approaches")){bool watch=!u.sentry;world.CancelActivity(u);u.sentry=watch;}
+                if(cityWorker)GUI.enabled=false;
                 
                 int target=world.UpgradeTarget(u);if(target>=0&&(World.UnitTech[target]<0||world.nations[0].tech[World.UnitTech[target]])&&Button("Upgrade to "+World.UnitNames[target]+" ("+((World.UnitCosts[target]-World.UnitCosts[u.type])*2)+" gold)"))status=world.Upgrade(u)?"Unit upgraded.":"Requires technology, connected resources, gold, movement and a city owned by your civilisation.";
                 if(Powerful(u)&&Button("Pillage enemy improvement"))status=world.Pillage(u)?"Enemy infrastructure pillaged.":"Requires movement and an improved enemy tile at war.";
                 if(u.type==4||u.type==9)foreach(var e in world.RangedTargets(u)){if(Button("Fire at "+World.UnitNames[e.type]+" ["+e.x+","+e.y+"]"))status=world.Ranged(u,e.id)?"Ranged attack resolved.":"No movement or line of sight blocked.";GUILayout.Label(world.RangedPreview(u,e),small);}
+                GUI.enabled=wasOn;
                 if(Button("Disband this unit permanently")){world.units.Remove(u);selected=-1;world.CheckVictory();GUIUtility.ExitGUI();}
             }
             GUILayout.Space(10);

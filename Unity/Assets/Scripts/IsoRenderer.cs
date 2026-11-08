@@ -61,6 +61,8 @@ namespace ParadigmRealm
             // Hills use the painted rounded hills (owner request, 8 Nov 2026: "hills-V"); the old boulder file stays unused.
             string slot=kind==1&&a==2?"hills":kind==1?"terrain-"+a.ToString("00"):kind==6?"hamlet-"+a:kind==7?"port":kind==9?"cloud":null;
             if(slot!=null){var supplied=SpriteSlot(slot+"-"+(kind==9?a:b))??SpriteSlot(slot);if(supplied!=null){isoPictures[key]=supplied;return supplied;}}
+            // Painted wild animals (SpriteCook, 8 Nov 2026: Sprites/animal-0..6 in AnimalCatalog order); the drawn ones remain the fallback.
+            if(kind==12){var beastArt=SpriteSlot("animal-"+a);if(beastArt!=null){isoPictures[key]=beastArt;return beastArt;}}
             PixelCanvas cv=null;
             if(kind==1)cv=PixelArt.Sprite(a,b);else if(kind==6)cv=PixelArt.Hamlet(a,b);else if(kind==7)cv=PixelArt.PortSprite();else if(kind==8)cv=PixelArt.HudIcon(a);else if(kind==9)cv=PixelArt.CloudPuff(a);else if(kind==2)cv=PixelArt.Farm(a);else if(kind==3)cv=PixelArt.Road(a);else if(kind==5)cv=PixelArt.ResourceIcon(a);else cv=PixelArt.Misc(a);
             // Tile-shaped overlays (farms, roads, borders, selection, unexplored) are drawn as diamonds in the diagonal view.
@@ -69,6 +71,7 @@ namespace ParadigmRealm
             // Icons are drawn at four times their design size and sprites at twice, so they stay sharp on large screens.
             tex=cv==null?null:kind==8?SoftTexture(PixelArt.Scale2x(PixelArt.Scale2x(cv))):kind==1||kind==6||kind==7||kind==9||kind==12||kind==5?SoftTexture(PixelArt.Scale2x(cv)):kind==2||kind==3||kind==4||kind==10||kind==11?TileTexture(PixelArt.Scale2x(cv)):PixelTexture(cv);isoPictures[key]=tex;return tex;
         }
+        bool AnimalNearPlayer(Animal a){foreach(var u in world.units)if(u.owner==0&&world.Distance(u.x,u.y,a.x,a.y)<=2)return true;return false;}
         void ClearIso()
         {
             // Supplied art (spriteSlots) is a loaded asset shared by the cache, so only the drawn pictures are destroyed.
@@ -272,7 +275,9 @@ namespace ParadigmRealm
                 City suburbOf;bool hamlet=false;if(!water&&suburbCells.TryGetValue(t.y*width+t.x,out suburbOf)&&(visible||suburbOf.owner==0)){sprite=HamletTexture(suburbOf,t.x,t.y);hamlet=true;}
                 City portOf=null;if(!water&&portCells.TryGetValue(t.y*width+t.x,out portOf)&&(visible||portOf.owner==0))sprite=IsoPicture(7,0,0);else portOf=null;
                 // Savanna acacias are drawn at 60% so they read as scattered trees on grassland, not woodland (owner request).
-                float treeScale=t.terrain==16&&!hamlet&&portOf==null?.6f:1f;
+                // Grassland grove pictures hold two or three large trees; at 55% they match the trees in the forest pictures
+                // (owner request, 8 Nov 2026). Only the supplied variants 0-3; meadows (4-7) are drawn tufts.
+                float treeScale=t.terrain==16&&!hamlet&&portOf==null?.6f:meadow&&!hamlet&&portOf==null&&GroveVariant(t.x,t.y)<4?.55f:1f;
                 if(sprite!=null)GUI.DrawTexture(new Rect(sx-PixelArt.AX*s*treeScale,gy-PixelArt.AY*s*treeScale,64*s*treeScale,64*s*treeScale),sprite);
                 if(portOf!=null&&!portOf.portLinked&&portOf.owner==0){var warn=new Rect(sx+8*s,gy-22*s,9*s,9*s);Fill(warn,new Color(.85f,.2f,.15f,.92f));GUI.Label(warn,"!",small);}
                 var improvement=new Rect(sx-18*s,gy-22*s,36*s,36*s);
@@ -294,7 +299,12 @@ namespace ParadigmRealm
                 // At sea the ship is drawn, not the units it carries.
                 if(picked==null&&water&&stackAt!=null){var ship=stackAt.Find(a=>World.IsNaval(a.type)&&(a.owner==0||visible));if(ship!=null)first=ship;}
                 var shown=picked??first;
-                if(visible&&world.wildlife){Animal beast;viewAnimals.TryGetValue(cell,out beast);if(beast!=null){var feet=new Rect(sx-20*s,gy-8*s,40*s,15*s);GUI.DrawTexture(feet,IsoPicture(4,8,0));GUI.DrawTexture(new Rect(sx-32*s,gy-42*s,64*s,64*s),IsoPicture(12,beast.kind,0));}}
+                if(visible&&world.wildlife){Animal beast;viewAnimals.TryGetValue(cell,out beast);if(beast!=null){var feet=new Rect(sx-20*s,gy-8*s,40*s,15*s);GUI.DrawTexture(feet,IsoPicture(4,8,0));GUI.DrawTexture(new Rect(sx-32*s,gy-42*s,64*s,64*s),IsoPicture(12,beast.kind,0));
+                    // An animal's health shows during a fight (owner request, 8 Nov 2026): whenever it is hurt or one of your
+                    // units stands within two tiles, a bar over its back, red-edged for a hunter.
+                    if(beast.hp<10||AnimalNearPlayer(beast)){float bh=Mathf.Max(3,2.8f*s),bw=34*s,by=gy-40*s;bool hunter=AnimalCatalog.Carnivore[beast.kind];
+                        Fill(new Rect(sx-bw/2-1,by-1,bw+2,bh+2),hunter?new Color(.45f,.08f,.06f,.9f):new Color(.08f,.1f,.12f,.85f));
+                        Fill(new Rect(sx-bw/2,by,bw*Mathf.Clamp01(beast.hp/10f),bh),beast.hp>5?new Color(.37f,.8f,.47f):beast.hp>2?new Color(.95f,.75f,.3f):new Color(.9f,.3f,.25f));}}}
                 if(shown!=null){var unitRect=new Rect(sx-20*s,gy-36*s,40*s,40*s);DrawUnitArt(shown,unitRect,count);isoUnitDraws.Add(new KeyValuePair<Unit,Rect>(shown,unitRect));isoUnitCounts.Add(count);}
             }
             // Fog of war as dark mist (owner request): a thin drifting veil over land seen before but not watched now, and

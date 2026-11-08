@@ -34,3 +34,5 @@ Every settlement (`city-0..3-0..3`, with and without `-walled`), `hamlet-0..3`, 
 
 ## Leader portraits
 `Resources/Leaders/leader-NN.png` (300 x 400), and age versions `leader-NN-eE.png` (E = 0 Dawn … 5 Dimensional) for clothing that changes with the age. Jade Dynasty (15) and Serpent League (16) join the game once their portraits exist.
+
+- 8 Nov, evening: `Sprites/animal-0..6` (wild animals in `AnimalCatalog` order: cave lion, smilodon, cave bear, dire wolf, megatherium, woolly mammoth, woolly rhinoceros; about 150-190 px square, transparent, facing down-left), drawn 64 px at zoom 1 in place of the drawn animals. Supplied scenery and settlement pictures (`terrain-*`, `hills*`, `hamlet-*`, `city-*`) now lose their painted ground diamond at load (`SceneryArt`); landforms (`hills*`, `terrain-05`, `-15`, `-17`) keep it and only lose the hard rim. New pictures for those slots no longer need a ground patch.
