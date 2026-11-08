@@ -230,7 +230,8 @@ static void PlayerRequestChecks(){
     w.SetPriority(0,World.AxisMilitary,100);Check(n.scienceRate==0&&n.militaryRate==100&&w.FinanceRate(0)==0,"military can take everything");
     w.SetPriority(0,World.AxisFinance,50);Check(n.militaryRate==50&&w.FinanceRate(0)==50,"lowering one slider hands the share to the others");
     w.SetPriority(0,World.AxisMilitary,0);w.SetPriority(0,World.AxisScience,50);Check(n.scienceRate==50&&n.militaryRate==0&&w.Yield(city)[3]==before[3]&&w.Yield(city)[2]==before[2],"at no military spending yields match the old split");
-    int trade=w.Trade(city);w.SetPriority(0,World.AxisMilitary,50);Check(w.ArmyBudget(city)==trade*n.militaryRate/100&&w.Yield(city)[1]==before[1],"the military share is counted from Trade and leaves ordinary production alone");
+    int trade=w.Trade(city);w.SetPriority(0,World.AxisMilitary,50);Check(w.ArmyBudget(city)==Math.Min(trade-w.ScienceShare(city),World.ShareOf(trade,n.militaryRate))&&w.Yield(city)[1]==before[1],"the military share is counted from Trade and leaves ordinary production alone");
+    {int keep=city.build;city.build=-1;int idleGold=w.Yield(city)[3];city.build=World.UnitBuild(1);int trainingGold=w.Yield(city)[3];city.build=keep;Check(idleGold>=trainingGold&&idleGold==w.Trade(city)-w.ScienceShare(city),"a city not training a soldier keeps its military share as gold");}
     city.build=World.UnitBuild(2);city.production=0;w.tech[K("toolmaking")]=true;n.tech=w.tech;w.Produce(city,1);Check(city.production==1+w.ArmyBudget(city),"a combat unit gets the army's shields");
     city.build=World.UnitBuild(1);city.production=0;w.Produce(city,1);Check(city.production==1,"a Worker does not get the army's shields");city.build=-1;city.production=0;
     w.SetPriority(0,World.AxisMilitary,0);

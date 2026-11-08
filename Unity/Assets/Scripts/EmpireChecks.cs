@@ -54,8 +54,10 @@ public static class EmpireChecks {
   c.pop=2;foreach(var a in w.Workable(c)){a.terrain=0;a.resource=0;a.road=false;}Check(w.Trade(c)==World.CentreYield(0)[2],"citizens add no Trade of their own (bridging rule retired in Stage 5)");
   c.pop=3;foreach(var a in w.Workable(c)){a.terrain=4;a.resource=0;}
   int total=w.Trade(c);Check(total>=7,"worked ocean adds trade");
-  for(int rate=0;rate<=60;rate+=10){w.SetScienceRate(0,rate);Check(w.Yield(c)[3]==total-total*rate/100,"gold is the trade left after science at "+rate+"%");}
-  w.SetScienceRate(0,0);int science0=w.Yield(c)[2];w.SetScienceRate(0,60);Check(w.Yield(c)[2]==science0+total*60/100,"science share is trade x rate / 100, rounded down");
+  for(int rate=0;rate<=60;rate+=10){w.SetScienceRate(0,rate);Check(w.Yield(c)[3]==total-World.ShareOf(total,rate),"gold is the trade left after science at "+rate+"%");}
+  w.SetScienceRate(0,0);int science0=w.Yield(c)[2];w.SetScienceRate(0,60);Check(w.Yield(c)[2]==science0+World.ShareOf(total,60),"science share is trade x rate / 100, rounded to nearest");
+  {int last=-1,steps=0;for(int rate=0;rate<=60;rate+=10){w.SetScienceRate(0,rate);if(w.Yield(c)[2]!=last)steps++;last=w.Yield(c)[2];}Check(steps>=Math.Min(7,total/2),"most science steps change science ("+steps+" of 7 with "+total+" Trade)");}
+  {Check(World.ShareOf(4,20)==1&&World.ShareOf(4,40)==2&&World.ShareOf(4,0)==0&&World.ShareOf(4,100)==4,"shares of 4 Trade round to nearest");}
   int noLibrary=w.Yield(c)[2];c.library=true;Check(w.Yield(c)[2]==noLibrary+2,"Library adds 2 science");c.library=false;
   int income=w.Budget(0)[0];c.buildings.Add(31);Check(w.Budget(0)[0]==income+2,"Market adds 2 gold");
   w.SetScienceRate(0,50);int normal=w.ContentSlots(c);w.SetScienceRate(0,60);Check(w.ContentSlots(c)==normal+1,"60% science (low tax) adds a content slot");w.SetScienceRate(0,30);Check(w.ContentSlots(c)==normal-1,"30% science (high tax) removes a content slot");w.SetScienceRate(0,50);

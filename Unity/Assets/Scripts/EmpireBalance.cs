@@ -23,7 +23,12 @@ public partial class World {
   n.scienceRate=rates[AxisScience];n.militaryRate=rates[AxisMilitary];n.tax=TaxLevel(n.scienceRate+n.militaryRate);return true;
  }
  // Shields this city's military share adds per turn, whether or not it is training anything.
- public int ArmyBudget(City c){int rate=nations[c.owner].militaryRate;if(rate<=0||Disorder(c))return 0;int shields=Trade(c)*rate/100;return c.occupation>0?shields/2:shields;}
+ // A share of Trade at a priority, rounded to the nearest point.
+ public static int ShareOf(int trade,int rate){return Math.Max(0,(trade*rate+50)/100);}
+ public int ScienceShare(City c){return ShareOf(Trade(c),nations[c.owner].scienceRate);}
+ public int ArmyBudget(City c){int rate=nations[c.owner].militaryRate;if(rate<=0||Disorder(c))return 0;int trade=Trade(c),shields=Math.Min(trade-ScienceShare(c),ShareOf(trade,rate));return c.occupation>0?shields/2:shields;}
+ // Gold from Trade: what science takes is gone, and the military share only while the city trains a combat unit.
+ public int GoldShare(City c){int trade=Trade(c),s=ScienceShare(c);return trade-s-(IsCombatBuild(c.build)?Math.Min(trade-s,ShareOf(trade,nations[c.owner].militaryRate)):0);}
  public static bool IsCombatBuild(int project){int u=BuildUnit(project);return u>=0&&Power[u]>0;}
  public int ArmyShields(City c,int project){return IsCombatBuild(project)?ArmyBudget(c):0;}
  // Shields per turn on the line that holds this project.

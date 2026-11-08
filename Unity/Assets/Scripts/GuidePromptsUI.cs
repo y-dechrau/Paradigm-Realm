@@ -81,7 +81,8 @@ public partial class RealmGame {
  void DrawEmpireBalance(){
   var n=world.nations[0];int[] rates={n.scienceRate,n.militaryRate,world.FinanceRate(0)};
   var own=world.cities.Where(c=>c.owner==0).ToList();int trade=own.Sum(c=>world.Trade(c));
-  int[] flow={trade*rates[0]/100,own.Sum(c=>world.ArmyBudget(c)),trade-trade*rates[0]/100-trade*rates[1]/100};
+  bool training=own.Any(c=>World.IsCombatBuild(c.build));
+  int[] flow={own.Sum(c=>world.ScienceShare(c)),own.Where(c=>World.IsCombatBuild(c.build)).Sum(c=>world.ArmyBudget(c)),own.Sum(c=>world.GoldShare(c))};
   string[] unit={" science"," shields"," gold"};
   GUILayout.Label("Empire priorities",heading);
   for(int axis=0;axis<3;axis++){
@@ -90,8 +91,7 @@ public partial class RealmGame {
    GUILayout.Space(16);GUILayout.Label("+"+flow[axis]+unit[axis]+" a turn from Trade",body,GUILayout.Width(300));GUILayout.EndHorizontal();
    if(moved!=rates[axis]){world.SetPriority(0,axis,moved);rates=new[]{n.scienceRate,n.militaryRate,world.FinanceRate(0)};}
   }
-  bool training=own.Any(c=>World.IsCombatBuild(c.build));
-  GUILayout.Label("Your cities' Trade is shared between these three, always totalling 100%. Military adds shields to any combat unit a city is training"+(n.militaryRate>0&&!training?" (none is training one now, so that share is going unused)":"")+". Science stops at "+world.ScienceCap(0)+"%. Finance of 40% or less counts as low tax (+1 content citizen per city); 70% or more is high tax (-1). Each city supports 3 units free; government adds more.",body);
+  GUILayout.Label("Your cities' Trade is shared between these three, always totalling 100%. Military adds shields to any combat unit a city is training"+(n.militaryRate>0&&!training?" (none is training one now, so that share stays in the treasury as gold)":"; a city not training one keeps that share as gold")+". Science stops at "+world.ScienceCap(0)+"%. Finance of 40% or less counts as low tax (+1 content citizen per city); 70% or more is high tax (-1). Each city supports 3 units free; government adds more.",body);
  }
  // ---------- the Chronicle's lettering ----------
  GUIStyle chronicleText,chronicleHeading,chronicleTitle;

@@ -20,6 +20,10 @@ namespace ParadigmRealm
         // The left menu face: a gold-trimmed navy bar stretched sideways, its pointed ends kept whole.
         void DrawButtonFace(Rect r,bool lit)
         {
+            // Menu-sized bars use one ready-made picture (button-menu, 3 x 156 x 41): drawing three stretched pieces left a
+            // visible seam running down every bar at some screen sizes (owner report, 8 Nov 2026).
+            var whole=UiTex("button-menu");
+            if(whole!=null&&Mathf.Abs(r.width/r.height-whole.width/(float)whole.height)<.6f){var keep=GUI.color;if(lit)GUI.color=new Color(1.25f,1.12f,.85f,keep.a);GUI.DrawTexture(r,whole,ScaleMode.StretchToFill,true);GUI.color=keep;return;}
             var t=UiTex("button");if(t==null){GUI.Box(r,"");return;}
             float endTex=40f/t.width,endW=Mathf.Min(r.width/2,r.height*40f/t.height);
             var old=GUI.color;if(lit)GUI.color=new Color(1.25f,1.12f,.85f,old.a);

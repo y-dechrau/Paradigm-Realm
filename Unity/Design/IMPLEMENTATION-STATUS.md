@@ -2,6 +2,20 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner reports 8 Nov: menu seam and Empire priorities (no save change)
+
+**How this was checked:**
+- Unity `RealmTools.Checks` pass, including new checks: shares round to the nearest point, most science steps change science, and a city not training a soldier keeps its military share.
+- A .NET test game was run at several priority settings.
+- Screenshots were taken at 1280 x 800 and 1920 x 1080.
+- **Not hand-played.**
+
+**What changed:**
+- **Seam line on the left menu:** each bar is now one picture rather than three stretched pieces, so no seam runs down the menu.
+- **Priorities have an effect:**
+  - Science and Military shares of each city's Trade are rounded to the nearest point, not down. A city with 4 Trade at 20% science now makes 1 science (it made 0).
+  - A city not training a combat unit keeps its military share as gold, instead of losing it.
+
 ## Owner request 8 Nov: interface in the style of the mockup (no save change)
 
 **How this was checked:**
