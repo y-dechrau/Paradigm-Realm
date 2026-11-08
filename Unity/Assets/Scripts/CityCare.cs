@@ -13,7 +13,7 @@ public partial class World {
   add("Every city holds this many content citizens",BaseContent);
   add("Empire's food: "+(n.foodState>0?"well fed":"hungry"),n.foodState>0?1:n.foodState<0?-1:0);
   add("Not joined to your other cities by road, river or sea",modernRules&&CutOff(c)?-1:0);
-  add("Governor, ruler and the city's memories",LivingContent(c));
+  add("Governor's policy, the ruler and the city's memories",LivingContent(c));
   add("Edicts",EdictContent(c.owner));add("Technologies",MinorContent(c.owner));add("Faith",ReligionContent(c));add("Your civilisation",CivContent(c));
   add("Priests nearby",PriestContent(c));add("The age (golden or dark)",AgeContent(c));add("Spiritual trait",HasTrait(c.owner,TraitSpiritual)?1:0);
   add("Entertainers (2 each)",c.entertainers*2);add("Luxury spending",n.luxury*2);add("Government",n.government==1?1:0);

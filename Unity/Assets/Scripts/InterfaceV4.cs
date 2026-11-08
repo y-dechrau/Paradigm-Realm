@@ -99,15 +99,15 @@ namespace ParadigmRealm
         void DrawCityScreen()
         {
             var c=world.cities.Find(a=>a.owner==0&&a.id==cityId);if(c==null){cityScreen=false;return;}
-            GUI.Box(new Rect(24,100,1232,630),"");if(GUI.Button(new Rect(865,110,180,34),"Zoom to city",button)){cityScreen=false;GUI.FocusControl(null);if(world.Hex||diamondView)isoWidth=128;else tilePixels=96;FocusTile(c.x,c.y);GUIUtility.ExitGUI();}{var gov=world.GovernorOf(c);if(gov!=null){var line=new GUIStyle(small){wordWrap=false,clipping=TextClipping.Overflow};FitLabel(new Rect(430,112,340,16),"Governor "+gov.name+" ("+world.TraitLine(gov)+")",line,8);FitLabel(new Rect(430,128,340,16),"Stress "+gov.stress+"  •  Loyalty "+gov.loyalty+"  •  Corruption "+gov.corruption+"%  •  "+(world.nations[0].priority>0?(world.Obeys(c)?"follows your priority":"ignores your priority"):"no priority set")+(c.strike>0?"  •  ON STRIKE":""),line,8);}}GUI.Label(new Rect(40,106,700,38),c.name+" — size "+c.pop+(world.Disorder(c)?"   DISORDER":"")+(c.occupation>0?"   occupied "+c.occupation+" turns":""),title);
+            GUI.Box(new Rect(24,100,1232,630),"");if(GUI.Button(new Rect(865,110,180,34),"Zoom to city",button)){cityScreen=false;GUI.FocusControl(null);if(world.Hex||diamondView)isoWidth=128;else tilePixels=96;FocusTile(c.x,c.y);GUIUtility.ExitGUI();}{var gov=world.GovernorOf(c);if(gov!=null){var line=new GUIStyle(small){wordWrap=false,clipping=TextClipping.Overflow};FitLabel(new Rect(430,112,340,16),"Governor "+gov.name+" ("+world.TraitLine(gov)+")  ▸ manage",line,8);if(GUI.Button(new Rect(430,110,340,36),new GUIContent("","Policy, traits, swap or replace the governor"),GUIStyle.none)){governorPanel=!governorPanel;moodPanel=false;}FitLabel(new Rect(430,128,340,16),"Stress "+gov.stress+"  •  Loyalty "+gov.loyalty+"  •  "+GovernorCatalog.Policies[gov.policy]+(world.GovernorSettled(gov)?"":" (settling in "+gov.settle+")")+"  •  "+(world.nations[0].priority>0?(world.Obeys(c)?"follows your priority":"ignores your priority"):"no priority set")+(c.strike>0?"  •  ON STRIKE":""),line,8);}}GUI.Label(new Rect(40,106,700,38),c.name+" — size "+c.pop+(world.Disorder(c)?"   DISORDER":"")+(c.occupation>0?"   occupied "+c.occupation+" turns":""),title);
             // Arrows step through your cities (owner request, 8 Nov 2026); Back to map returns to the city first opened.
             {var mine=world.cities.Where(a=>a.owner==0).OrderBy(a=>a.id).ToList();int at=mine.IndexOf(c);bool many=mine.Count>1,was=GUI.enabled;GUI.enabled=was&&many;
              if(GUI.Button(new Rect(780,110,38,34),"◀",button)){OpenCityKeepOrigin(mine[(at-1+mine.Count)%mine.Count]);}
              if(GUI.Button(new Rect(822,110,38,34),"▶",button)){OpenCityKeepOrigin(mine[(at+1)%mine.Count]);}
              GUI.enabled=was;}
-            if(GUI.Button(new Rect(1055,110,180,34),"Back to map",button)){cityScreen=false;moodPanel=false;GUI.FocusControl(null);var origin=world.cities.Find(a=>a.owner==0&&a.id==cityOrigin);if(origin!=null)FocusTile(origin.x,origin.y);cityOrigin=-1;GUIUtility.ExitGUI();}
+            if(GUI.Button(new Rect(1055,110,180,34),"Back to map",button)){cityScreen=false;moodPanel=false;governorPanel=false;GUI.FocusControl(null);var origin=world.cities.Find(a=>a.owner==0&&a.id==cityOrigin);if(origin!=null)FocusTile(origin.x,origin.y);cityOrigin=-1;GUIUtility.ExitGUI();}
             DrawCityTiles(c,new Rect(40,150,440,520));
-            if(moodPanel)DrawMoodPanel(c,new Rect(40,150,440,520));
+            if(moodPanel)DrawMoodPanel(c,new Rect(40,150,440,520));else if(governorPanel)DrawGovernorPanel(c,new Rect(40,150,440,520));
             DrawCityTotals(c,new Rect(495,150,370,520));
             GUI.Box(new Rect(880,150,355,520),"");
             if(GUI.Button(new Rect(890,158,165,28),(cityBuildingTab?"":"● ")+"Units",button))cityBuildingTab=false;
@@ -241,7 +241,7 @@ namespace ParadigmRealm
             GUI.Label(new Rect(x,y,w,40),world.GrowthStatus(c),small);y+=42;
             int content=world.ContentCitizens(c),unhappy=world.UnhappyCitizens(c),workers=Math.Max(1,world.Workers(c));
             GUI.Label(new Rect(x,y,w-64,22),"Content "+content+"   Unhappy "+unhappy+(world.Disorder(c)?"   — disorder: no shields or gold":"")+(world.ReligiousUnrest(c)>0?"   (religious unrest -"+world.ReligiousUnrest(c)+")":""),body);
-            if(GUI.Button(new Rect(x+w-60,y-1,60,22),moodPanel?"Close":"Why?",button))moodPanel=!moodPanel;y+=22;
+            if(GUI.Button(new Rect(x+w-60,y-1,60,22),moodPanel?"Close":"Why?",button)){moodPanel=!moodPanel;governorPanel=false;}y+=22;
             Fill(new Rect(x,y,w,12),UiTrough);Fill(new Rect(x,y,w*content/workers,12),new Color(.4f,.72f,.5f));Fill(new Rect(x+w*content/workers,y,w*unhappy/workers,12),new Color(.9f,.45f,.35f));y+=22;
             GUI.Label(new Rect(x,y,w,24),"Citizens",heading);y+=26;
             GUI.Label(new Rect(x,y,w,22),"Working "+world.Workers(c)+"  Entertainers "+c.entertainers+"  Scientists "+c.scientists+"  Tax collectors "+c.merchants,small);y+=24;

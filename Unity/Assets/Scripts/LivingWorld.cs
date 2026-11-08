@@ -13,7 +13,9 @@ namespace ParadigmRealm {
 //  4 Living map: tiles remember their battles; a battlefield becomes a graveyard that draws pilgrims, breeds disease and draws
 //    scavengers, and a people resents whoever holds the graves of its dead.
 //  Plus imperial priorities: the ruler sets one aim, and each city carries it out only if its governor is loyal and honest enough.
-[Serializable] public class Character {public int id,owner,city=-1,traitA,traitB,stress,loyalty=60,corruption,rival=-1,breakTurns,breakKind;public string name="";}
+[Serializable] public class Character {public int id,owner,city=-1,traitA,traitB,stress,loyalty=60,corruption,rival=-1,breakTurns,breakKind;public string name="";
+ // Save version 38 (Governors.cs): turns left to settle in (0 = settled) and the policy the governor runs.
+ public int settle,policy;}
 [Serializable] public class Grudge {public int holder,against,reason,turn;public string text="";}
 [Serializable] public class TileStory {public int cell,battles,deaths,lastTurn;public List<int> fallen=new List<int>();}
 [Serializable] public class Artifact {public int city,tech,maker;}
@@ -52,7 +54,7 @@ public partial class World {
   if(characters==null)characters=new List<Character>();var r=new Random(seed*13+turn*7+characters.Count);
   {var alive=new HashSet<long>(cities.Select(c=>(long)c.id*100+c.owner));characters.RemoveAll(p=>p.city>=0&&!alive.Contains((long)p.city*100+p.owner));}
   for(int o=0;o<civCount;o++)if(HasPeople(o)&&cities.Any(c=>c.owner==o)&&Ruler(o)==null)MakePerson(o,-1,r);
-  foreach(var c in cities)if(HasPeople(c.owner)&&GovernorOf(c)==null){var g=MakePerson(c.owner,c.id,r);if(c.owner==0&&turn>1)Note(g.name+" ("+TraitLine(g)+") now governs "+c.name+".");}
+  foreach(var c in cities)if(HasPeople(c.owner)&&GovernorOf(c)==null){var g=MakePerson(c.owner,c.id,r);g.settle=SettleFor(g);if(c.owner==0&&turn>1)Note(g.name+" ("+TraitLine(g)+") now governs "+c.name+".");}
  }
  // Once a turn for each home civilisation, before its cities work.
  void LivingTurn(int owner){
@@ -72,6 +74,7 @@ public partial class World {
    int target=60+(HasTrait(g,LivingCatalog.Loyal)?20:0)-(HasTrait(g,LivingCatalog.Ambitious)?15:0)-g.stress/3-g.corruption/4-scars*5-(CutOff(c)?10:0)+(c==capital?20:0)+(ruler!=null&&ruler.stress>=70?-5:0)+(HasBuilding(c,34)?10:0);
    g.loyalty+=Math.Sign(target-g.loyalty)*Math.Min(3,Math.Abs(target-g.loyalty));g.loyalty=Math.Max(0,Math.Min(100,g.loyalty));
    if(c.strike>0)c.strike--;
+   GovernorTurn(c,g);
    if(g.breakTurns>0)g.breakTurns--;else if(g.stress>=85)GovernorBreak(c,g,r);
    Rebellion(c,g);
   }
@@ -168,7 +171,7 @@ public partial class World {
  }
  int CityDefender(City c){return Choices(c).Where(b=>BuildUnit(b)>=2&&!IsNaval(BuildUnit(b))&&Power[BuildUnit(b)]>0).OrderByDescending(b=>Defence[BuildUnit(b)]).DefaultIfEmpty(-1).First();}
  // The content citizen a city gains or loses from its people: old wounds, a feuding or broken governor, a ruler's melancholy.
- public int LivingContent(City c){if(!livingWorld)return 0;int v=-(c.scars==null?0:Math.Min(2,c.scars.Count));var g=GovernorOf(c);if(g!=null&&(g.rival>=0||g.breakTurns>0))v--;var ruler=Ruler(c.owner);if(ruler!=null&&ruler.breakKind==5&&ruler.breakTurns>0)v--;return v;}
+ public int LivingContent(City c){if(!livingWorld)return 0;int v=GovernorContent(c)-(c.scars==null?0:Math.Min(2,c.scars.Count));var g=GovernorOf(c);if(g!=null&&(g.rival>=0||g.breakTurns>0))v--;var ruler=Ruler(c.owner);if(ruler!=null&&ruler.breakKind==5&&ruler.breakTurns>0)v--;return v;}
  void StartLivingWorld(){livingWorld=true;EnsurePeople();WriteAncientHistory();}
 }
 }

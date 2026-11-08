@@ -2,6 +2,37 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner choice 8 Nov: governors with a purpose (save version 38; `Governors.cs`, `GovernorsUI.cs`)
+
+The owner picked ideas 1, 2 and 4 from research on other games: Old World, Civilization VI and Imperator: Rome.
+
+**How this was checked:**
+- `ContentChecks.GovernorChecks` pass:
+  - A new governor has no effect while settling in.
+  - Traits change yields once the governor is settled.
+  - A disloyal governor refuses a new policy.
+  - Tax hard gives +25% gold and one citizen fewer content, and the mood reasons still add up.
+  - A corrupt governor skims half of each gain.
+  - Fortify gives defenders in the city +1.
+  - Swapped governors move cities and settle in again.
+  - Replacing a governor costs 25 gold.
+  - Version 37 saves upgrade with governors settled.
+- **Not hand-played; the balance of the percentages is untested.**
+
+**What changed:**
+- **Traits change yields:** each of the ten traits raises or lowers food, shields, science or gold by 5-15% (`GovernorCatalog.TraitPercent`; for example Ambitious +15% shields and -5% gold, Stoic +10% food).
+- **Settling in:** a new governor, or one moved to another city, has no effect for 5 turns (3 if Loyal). Governors already in office in older saves count as settled.
+- **Policy:** each governor runs one of six policies:
+  - Steady: no change.
+  - Tax hard: +25% gold, -1 content.
+  - Pacify: +1 content, -15% shields.
+  - Grow: +15% food, -10% gold.
+  - Fortify: defenders +1 and +10% shields, -10% science.
+  - Assimilate: an occupation ends twice as fast with +1 content while occupied, -10% science.
+- **Loyalty and corruption now bite:** a governor below 35 loyalty will not change policy, and one at 30% corruption or more keeps that share of every gain. A governor in a breakdown gives half.
+- **Who chooses:** rival cities and auto-managed cities choose their policy by need (`ChoosePolicy`).
+- **City screen:** click the governor line to open the governor panel. It shows traits and their effects, settling-in turns, the effect now and the policy buttons. You can swap with another city's governor (both settle in again) or replace the governor for 25 gold (your other governors lose 2 loyalty).
+
 ## Owner requests 8 Nov, evening (no save version change; `Unit.recover` and `City.autoManage` load as off from older saves)
 
 **How this was checked:**
