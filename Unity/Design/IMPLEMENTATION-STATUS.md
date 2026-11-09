@@ -2,6 +2,15 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner request 9 Nov: animated movement (no save change; `MotionUI.cs`)
+
+- On the diagonal and staggered map, units glide from tile to tile along the steps they really took, with a small hop for each step. The steps come from `World.moveLog`, which is filled by `Move` and not saved.
+- Animals glide to their new tile.
+- Only what you can see is animated. Long walks play faster (6 steps a second, quicker beyond three steps), and a glide across the wrap seam jumps instead.
+- The rules are unchanged: a unit is already on its new tile and is only drawn on the way there.
+- The classic square view is not animated.
+- Not hand-played.
+
 ## Owner requests 9 Nov: sieges, stacks and faith buildings (no save change; `Siege.cs`)
 
 - **Faith buildings:** Shrine, Temple, Monastery and Cathedral are paid from the civilisation's faith total, not the city's own store.

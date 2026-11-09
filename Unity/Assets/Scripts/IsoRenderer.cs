@@ -224,6 +224,7 @@ namespace ParadigmRealm
             foreach(var unit in world.units){List<Unit> stackAt;int cell=unit.y*width+unit.x;if(!viewStacks.TryGetValue(cell,out stackAt)){stackAt=new List<Unit>(2);viewStacks[cell]=stackAt;}stackAt.Add(unit);}
             viewCities.Clear();foreach(var city in world.cities)viewCities[city.y*width+city.x]=city;
             viewAnimals.Clear();if(world.animals!=null)foreach(var a in world.animals)viewAnimals[a.y*width+a.x]=a;
+            if(Event.current.type==EventType.Repaint)UpdateGlides();
             if(Event.current.type==EventType.Repaint)BuildSuburbs();
             // Diagonal view: tiles go back to front by diagonal (i + j), so raised scenery overlaps the tiles behind it.
             // R covers every tile whose diamond can touch the view, with a margin for tall scenery below the bottom edge.
@@ -310,11 +311,11 @@ namespace ParadigmRealm
                 if(t.resource>0){isoResTiles.Add(t);isoResPos.Add(new Vector2(sx,gy));}
                 if(c!=null){DrawCityArt(c,SettlementRect(sx,gy,s));isoCityNames.Add(c.name);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(nations[c.owner]);isoCityRefs.Add(c);}
                 Unit first=null,picked=null;int count=0;List<Unit> stackAt;
-                if(viewStacks.TryGetValue(cell,out stackAt))foreach(var a in stackAt){if(!(a.owner==0||visible))continue;count++;if(first==null)first=a;if(a.id==selected)picked=a;}
+                if(viewStacks.TryGetValue(cell,out stackAt))foreach(var a in stackAt){if(!(a.owner==0||visible)||Gliding(a.id))continue;count++;if(first==null)first=a;if(a.id==selected)picked=a;}
                 // At sea the ship is drawn, not the units it carries.
                 if(picked==null&&water&&stackAt!=null){var ship=stackAt.Find(a=>World.IsNaval(a.type)&&(a.owner==0||visible));if(ship!=null)first=ship;}
                 var shown=picked??first;
-                if(visible&&world.wildlife){Animal beast;viewAnimals.TryGetValue(cell,out beast);if(beast!=null){var feet=new Rect(sx-20*s,gy-8*s,40*s,15*s);GUI.DrawTexture(feet,IsoPicture(4,8,0));// The painted animals are cropped tight, so they are drawn smaller than the old 64-pixel cells: about unit size, the
+                if(visible&&world.wildlife){Animal beast;viewAnimals.TryGetValue(cell,out beast);if(beast!=null&&!AnimalGliding(beast.id)){var feet=new Rect(sx-20*s,gy-8*s,40*s,15*s);GUI.DrawTexture(feet,IsoPicture(4,8,0));// The painted animals are cropped tight, so they are drawn smaller than the old 64-pixel cells: about unit size, the
                     // mammoth, sloth and rhinoceros a little larger.
                     {bool painted=SpriteSlot("animal-"+beast.kind)!=null;float size=painted?(AnimalCatalog.Carnivore[beast.kind]?40:48):64;
                      GUI.DrawTexture(painted?new Rect(sx-size/2*s,gy-(size-6)*s,size*s,size*s):new Rect(sx-32*s,gy-42*s,64*s,64*s),IsoPicture(12,beast.kind,0),ScaleMode.ScaleToFit,true);}
@@ -327,6 +328,7 @@ namespace ParadigmRealm
             }
             // Fog of war as dark mist (owner request): a thin drifting veil over land seen before but not watched now, and
             // thick dark banks (the cloud puffs, darkened) over unexplored land, spilling a little over the known world's edge.
+            DrawGlides(tw,s);
             DrawCloudShadows(s);
             float clock=Time.realtimeSinceStartup;var before=GUI.color;
             if(mistBank==null){mistBank=SoftPicture(PixelArt.MistBank());mistWisp=SoftPicture(PixelArt.MistWisp());}

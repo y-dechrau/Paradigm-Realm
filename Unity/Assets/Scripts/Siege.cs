@@ -40,3 +40,11 @@ public partial class World {
  }
 }
 }
+namespace ParadigmRealm {
+public partial class World {
+ // Every step a unit takes, for the map to animate (owner request, 9 Nov 2026): unit id, from x, y, to x, y. Not saved; the
+ // interface empties it each frame, and it never holds more than a few thousand steps.
+ [NonSerialized] public List<int[]> moveLog;
+ void LogStep(Unit u,int x,int y){if(moveLog==null)moveLog=new List<int[]>();if(moveLog.Count<4000)moveLog.Add(new[]{u.id,u.x,u.y,x,y});}
+}
+}
