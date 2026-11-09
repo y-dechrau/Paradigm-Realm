@@ -12,6 +12,8 @@ namespace ParadigmRealm
         public int id,owner,x,y,pop=1,food,production,build=2,focus,occupation,age;
         // The city runs itself (owner request, 8 Nov 2026; CityCare.cs). Older saves load with it off.
         public bool autoManage;
+        // Shields complete but the building's gold not yet paid (not saved; only stops the message repeating).
+        [NonSerialized] public bool waitingGold;
         // Faith gathered in this city towards its religious buildings (save version 35).
         public int faith;
         // Faith, Belief and Religious Power (save version 36): turn the majority faith took hold, unrest and calm from persecution
@@ -196,7 +198,7 @@ namespace ParadigmRealm
         // Every map size has a fifth more tiles than the older square tables (owner request, 6 Nov 2026).
         public static int HexTiles(int squareTiles){return squareTiles*6/5;}
         public static int HexColumns(int count){return (int)Math.Round(Math.Sqrt(count*15.0/16));}
-        public const int MaxNations=66; // up to 16 home civilisations and the ten peoples of each of the five sealed worlds
+        public const int MaxNations=71; // up to 16 home civilisations and the ten peoples of each of the five sealed worlds
         public static readonly int[] MaxCivsBySize={4,6,8,12,14,16,16};
         public string NationName(int owner){if(owner==0)return civilisationName;if(owner>0&&owner<civCount&&nations!=null&&owner<nations.Length&&nations[owner]!=null&&!string.IsNullOrEmpty(nations[owner].name))return nations[owner].name;return owner>0&&owner<=RivalNames.Length?RivalNames[owner-1]:"Rival "+owner;}
         // Resize every per-civilisation array. Existing entries are kept; new ones start unmet and at peace.
@@ -697,7 +699,8 @@ namespace ParadigmRealm
             bool unitLine=c.build>=0&&BuildReason(c,c.build)=="",buildingLine=c.buildingProject>=0&&BuildReason(c,c.buildingProject)=="";
             int toBuilding=output;if(modernRules&&unitLine&&buildingLine){toBuilding=output/2;output-=toBuilding;}
             if(unitLine){c.production+=output+ArmyShields(c,c.build);if(c.production>=CostFor(c,c.build))Complete(c);}
-            if(buildingLine){c.buildingProduction+=toBuilding;if(c.buildingProduction>=CostFor(c,c.buildingProject))CompleteBuilding(c);}
+            // Buildings also cost gold (owner request, 9 Nov 2026), paid when the shields are complete; without the gold the work waits.
+            if(buildingLine){c.buildingProduction+=toBuilding;if(c.buildingProduction>=CostFor(c,c.buildingProject)){int price=BuildingGold(c.buildingProject);if(nations[c.owner].gold>=price){nations[c.owner].gold-=price;if(c.owner==0)gold=nations[0].gold;CompleteBuilding(c);}else{c.buildingProduction=CostFor(c,c.buildingProject);if(c.owner==0&&!c.waitingGold)Note(c.name+" has finished the work on "+BuildName(c.buildingProject)+" but needs "+price+" gold to complete it.");c.waitingGold=true;}}else c.waitingGold=false;}
         }
         void ProcessNation(int owner){UpdatePortLinks();if(owner==0)AutoManageCities();var n=nations[owner];var budget=Budget(owner);int balance=n.gold+budget[2]-DiplomaticNet(owner);n.gold=Math.Max(0,balance);n.arrears=balance<0?n.arrears+1:0;DebtConsequences(owner);if(owner==0&&balance<0)Note("Treasury empty: unpaid upkeep reduces combat strength. Reduce expenses or raise taxes.");int sciencePool=0;var feeding=cities.Where(a=>a.owner==owner).ToList();var fed=new int[feeding.Count][];for(int k=0;k<feeding.Count;k++){NormaliseSpecialists(feeding[k]);AutoEntertainers(feeding[k]);fed[k]=Yield(feeding[k]);}FeedUnits(owner,feeding,fed);for(int k=0;k<feeding.Count;k++){var c=feeding[k];var v=fed[k];c.age++;ProcessCityFood(c,v[0]-c.ration);if(c.occupation>0)c.occupation--;Produce(c,v[1]);sciencePool+=v[2];}if(n.research>=0&&sciencePool>0&&ResearchOpen(owner,n.research))n.progress[n.research]+=Math.Min(sciencePool,ResearchCap(n.research,owner));KeepPace(owner);
             if(n.research>=0&&AvailableTech(owner).Contains(n.research)&&n.progress[n.research]>=ResearchCost(n.research,owner)){int eraBefore=Era(owner),found=n.research;if(owner==0)BeginDiscovery();int spare=n.progress[n.research]-ResearchCost(n.research,owner);n.progress[n.research]=0;n.tech[n.research]=true;MakeArtifact(owner,n.research);if(owner==0)Note(TechNames[n.research]+" discovered.");AnnounceEra(owner,eraBefore);TechEraScore(owner,n.research,eraBefore);n.research=owner==0?AvailableTech(owner).OrderBy(t=>ResearchCost(t,owner)).DefaultIfEmpty(-1).First():PreferredResearch(owner);if(n.research>=0)n.progress[n.research]+=spare;if(owner==0)EndDiscovery(found,spare);}

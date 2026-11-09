@@ -447,3 +447,33 @@ namespace ParadigmRealm
         }
     }
 }
+namespace ParadigmRealm {
+public partial class World {
+ // Natural rivers on the home world (owner request, 9 Nov 2026): a river tile is drawn joined only to the tile it flows into and
+ // to the streams that feed it, never to every river tile beside it, so channels branch like a real drainage tree and never form
+ // loops or a mesh. Each river system is traced back from its mouth (a river tile beside the sea or a lake). Parallel worlds keep
+ // the old look (every neighbouring river joined). Bits follow HexDi/HexDj on hex maps, else north, east, south, west.
+ [NonSerialized] Dictionary<int,int> riverLinks;[NonSerialized] int riverLinksCount=-1,riverLinksTurn=-1;
+ public int RiverLinks(Tile t){
+  if(t==null||t.terrain!=7||t.realm!=0)return -1;
+  if(riverLinks!=null&&riverLinksTurn==turn){int hit;return riverLinks.TryGetValue(t.y*Width+t.x,out hit)?hit:0;}
+  int count=0;foreach(var x in tiles)if(x.terrain==7&&x.realm==0)count++;riverLinksTurn=turn;
+  if(riverLinks==null||riverLinksCount!=count){BuildRiverLinks();riverLinksCount=count;}
+  int m;return riverLinks.TryGetValue(t.y*Width+t.x,out m)?m:0;
+ }
+ int[] RiverDi(){return hexGrid?HexDi:new[]{0,1,0,-1};}int[] RiverDj(){return hexGrid?HexDj:new[]{-1,0,1,0};}
+ int Opposite(int k){return hexGrid?(k+3)%6:(k+2)%4;}
+ void BuildRiverLinks(){
+  riverLinks=new Dictionary<int,int>();var di=RiverDi();var dj=RiverDj();int dirs=di.Length;var visited=new HashSet<int>();
+  var rivers=new List<Tile>();foreach(var x in tiles)if(x.terrain==7&&x.realm==0)rivers.Add(x);
+  // Mouths first: each joins one neighbouring sea or lake tile.
+  var queue=new Queue<Tile>();
+  foreach(var r in rivers){for(int k=0;k<dirs;k++){var n=Step(r.x,r.y,di[k],dj[k]);if(n!=null&&IsWater(n.terrain)&&n.terrain!=7){int cell=r.y*Width+r.x;riverLinks[cell]=1<<k;visited.Add(cell);queue.Enqueue(r);break;}}}
+  System.Action<Queue<Tile>> spread=q=>{while(q.Count>0){var c=q.Dequeue();for(int k=0;k<dirs;k++){var n=Step(c.x,c.y,di[k],dj[k]);if(n==null||n.terrain!=7||n.realm!=0)continue;int nc=n.y*Width+n.x;if(visited.Contains(nc))continue;visited.Add(nc);
+   int cc=c.y*Width+c.x,m;riverLinks.TryGetValue(cc,out m);riverLinks[cc]=m|(1<<k);riverLinks.TryGetValue(nc,out m);riverLinks[nc]=m|(1<<Opposite(k));q.Enqueue(n);}}};
+  spread(queue);
+  // Any river system with no mouth (it ends inland) is traced from one end.
+  foreach(var r in rivers){int cell=r.y*Width+r.x;if(visited.Contains(cell))continue;visited.Add(cell);riverLinks[cell]=0;var q=new Queue<Tile>();q.Enqueue(r);spread(q);}
+ }
+}
+}

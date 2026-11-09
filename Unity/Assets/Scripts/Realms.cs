@@ -9,21 +9,24 @@ namespace ParadigmRealm {
 // twin in the other world are linked: a land unit that steps onto a gateway comes out at its twin. Each world has its own
 // danger (attrition, plague) and its own riches (relic sites with richer rewards, rare resources).
 public partial class World {
- public const int RealmCount=5,RealmGap=2;
+ // Six worlds since 9 Nov 2026 (the Hive Expanse); a game made before then has five, and RealmsHere says how many this one has.
+ public const int RealmCount=6,RealmGap=2;
+ public int RealmsHere{get{return realmRows<=0?0:Math.Min(RealmCount,realmRows/(RealmHeight+RealmGap));}}
  // The gates are locked (owner request, 5 Nov 2026): the arches stand on both sides, but nothing crosses. Saved, so a later
  // key or event can open them; the crossing code below stays for that day.
  public bool gatesLocked=true;
  // Each parallel world is as tall as the home world (owner request); saved, so older games keep their own size.
  public int realmHeight;
  public int RealmHeight{get{return realmHeight>0?realmHeight:20;}}
- public static readonly string[] RealmNames={"Home world","Fae Wilds","Ashen Waste","Infernal Depths","Plague Marshes","Drowned Deep"};
+ public static readonly string[] RealmNames={"Home world","Fae Wilds","Ashen Waste","Infernal Depths","Plague Marshes","Drowned Deep","Hive Expanse"};
  public static readonly string[] RealmTexts={
   "The world your people were born in.",
   "An enchanted land of glowing groves and silver lakes. Wounds heal faster here, and the fae leave gifts at their stone circles.",
   "A dead world of ash and bone where a great civilisation burned. Nothing grows; units lose 1 health a turn outside cities, but its ruins hold great treasures.",
   "A burning underworld of lava and black glass. Units lose 2 health a turn outside cities; its rocks are rich in iron and gold, and its relics in gold.",
   "Fetid bogs and dead forests. Units lose 1 health a turn and carry plague home for 5 turns: a city they enter loses 2 food a turn while the plague lasts.",
-  "An endless ocean dotted with small islands and coral. Arrivals land on an island; found a city and build boats to explore its sunken treasures."};
+  "An endless ocean dotted with small islands and coral. Arrivals land on an island; found a city and build boats to explore its sunken treasures.",
+  "A warm golden world of towering grass, great earth mounds and giant flowers, home to five insect peoples: ants, bees, beetles, mantises and moths. Rich in food and spices."};
  // Extra rows after the home world (mapHeight) that hold the parallel worlds; 0 for saves made before they existed.
  public int realmRows;
  public int MainHeight{get{return mapHeight;}}
@@ -32,7 +35,7 @@ public partial class World {
  public bool HasRealms{get{return realmRows>0;}}
  public int RealmOf(int x,int y){var t=At(x,y);return t==null?0:t.realm;}
  public static int RealmBonus(int r){return r==2||r==3?3:r>0?2:1;}
- public bool RealmDiscovered(int owner,int r){if(r==0)return true;if(!HasRealms)return false;for(int y=RealmTop(r);y<RealmBottom(r);y++)for(int x=0;x<Width;x++){var t=tiles[y*Width+x];if(owner==0?t.seen:nations[owner].known[y*Width+x])return true;}return false;}
+ public bool RealmDiscovered(int owner,int r){if(r==0)return true;if(!HasRealms||r>RealmsHere)return false;for(int y=RealmTop(r);y<RealmBottom(r);y++)for(int x=0;x<Width;x++){var t=tiles[y*Width+x];if(owner==0?t.seen:nations[owner].known[y*Width+x])return true;}return false;}
  public Tile GateTwin(Tile t){return t==null||t.gateLink<=0||t.gateLink>tiles.Length?null:tiles[t.gateLink-1];}
  int GateRealm(Tile t){var twin=GateTwin(t);return twin==null?0:t.realm==0?twin.realm:t.realm;}
  // Gate designs (owner pictures, 8 Nov 2026): nine looks. A gateway in a parallel world wears its world's design (Fae Wilds forest,
@@ -40,7 +43,7 @@ public partial class World {
  // home designs (arcane castle, steam works, sky scaffold, void spires) chosen by the world it leads to. Every gateway starts sealed
  // and opens on its own (OpenGate), showing its open picture once it does.
  public static readonly string[] GateStyleNames={"Frost gate","Grove gate","Obsidian gate","Void gate","Sun gate","Arcane gate","Sky gate","Steam gate","Rift gate"};
- public static readonly int[] RealmGateStyle={5,1,4,2,8,0},HomeGateStyle={5,5,7,6,3,5};
+ public static readonly int[] RealmGateStyle={5,1,4,2,8,0,1},HomeGateStyle={5,5,7,6,3,5,3};
  public int GateStyle(Tile t){if(t==null)return 5;if(t.realm>0)return RealmGateStyle[Math.Max(0,Math.Min(RealmGateStyle.Length-1,t.realm))];var twin=GateTwin(t);int r=twin!=null?twin.realm:1;return HomeGateStyle[Math.Max(0,Math.Min(HomeGateStyle.Length-1,r))];}
  int GatePair(Tile t){var twin=GateTwin(t);int a=t.y*Width+t.x;return twin==null?a:Math.Min(a,twin.y*Width+twin.x);}
  // Save version 37: gateway pairs opened one by one while the rest stay sealed.
@@ -51,7 +54,7 @@ public partial class World {
  //  - Knowledge: the first home civilisation to learn a world's key technology breaks the seals of every gateway to that world.
  //  - A wonder: the Gatekeeper's Key (Mysticism), built in a city within 10 tiles of a sealed gateway, opens the nearest one.
  //  - A quest: a Priest standing on a sealed gateway performs the rite of unsealing for 100 faith (Mysticism); the priest is spent.
- public static readonly string[] RealmKeyTech={"","philosophy","industrialisation","fission","medicine","printing"};
+ public static readonly string[] RealmKeyTech={"","philosophy","industrialisation","fission","medicine","printing","chemistry"};
  public const int GateKeyWonder=64,GateKeyRange=10,RiteFaith=100;
  public string RealmKeyName(int r){if(r<=0||r>=RealmKeyTech.Length)return "";int t=TechnologyCatalog.Index(RealmKeyTech[r]);return t>=0?TechNames[t]:"";}
  internal void OpenGatesByKnowledge(){
@@ -75,12 +78,12 @@ public partial class World {
   for(int r=1;r<=RealmCount;r++){
    for(int y=RealmTop(r);y<RealmBottom(r);y++)for(int x=0;x<W;x++){var t=tiles[y*W+x];t.realm=r;t.terrain=RealmTerrain(r,x,y-RealmTop(r));t.resource=0;}
    foreach(var t in RealmTiles(r).Where(t=>!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&!Barren(t.terrain)))
-   {double roll=rnd.NextDouble();if(roll<.035)t.ruin=true;else if(roll<.08)t.resource=r==3?(rnd.Next(2)==0?2:3):r==1?(rnd.Next(2)==0?5:1):r==2?3:r==4?5:1;}
+   {double roll=rnd.NextDouble();if(roll<.035)t.ruin=true;else if(roll<.08)t.resource=r==3?(rnd.Next(2)==0?2:3):r==1||r==6?(rnd.Next(2)==0?5:1):r==2?3:r==4?5:1;}
    if(r==5)foreach(var t in RealmTiles(r).Where(t=>t.terrain==4&&rnd.NextDouble()<.03))t.resource=6+rnd.Next(10);
   }
   PlaceGateways(rnd);
  }
- IEnumerable<Tile> RealmTiles(int r){for(int y=RealmTop(r);y<RealmBottom(r);y++)for(int x=0;x<Width;x++)yield return tiles[y*Width+x];}
+ IEnumerable<Tile> RealmTiles(int r){if(r>RealmsHere)yield break;for(int y=RealmTop(r);y<RealmBottom(r);y++)for(int x=0;x<Width;x++)yield return tiles[y*Width+x];}
  // Terrain of each world from smooth noise; the top and bottom rows of each world fade to its edge terrain.
  int RealmTerrain(int r,int x,int y){
   double n=Fbm(seed+r*977,x/7.0,y/5.0,.5,3),m=Fbm(seed+r*577,x/4.0,y/3.0,.5,2);bool edge=y==0||y==RealmHeight-1;
@@ -89,6 +92,7 @@ public partial class World {
    case 2:if(edge)return 18;return n<.25?18:n<.55?10:n<.7?3:n<.82?20:m>.55?5:10;
    case 3:if(edge)return 5;return n<.22?5:n<.62?17:m>.5?10:17;
    case 4:if(edge)return 19;return n<.3?6:n<.6?9:n<.75?10:m>.5?19:9;
+   case 6:if(edge)return 20;return n<.2?11:n<.45?16:n<.62?0:n<.74?20:m>.62?2:16;// Hive Expanse: tall grass, savanna, jungle groves, mounds (hills)
    default:if(edge)return 4;return n<.5?4:n<.55?12:m>.55?11:n<.68?19:0;// islands large enough for its peoples to grow as fast as the home world
   }
  }
@@ -107,10 +111,13 @@ public partial class World {
  // added after the home civilisations while the total stays within 16. Each starts with a city, a warrior and a worker
  // on open land in its own world, away from the gateway and from the other people there.
  public void AddNatives(int perWorld=2){
-  if(!HasRealms)return;int home=civCount,k=Math.Min(Math.Max(0,Math.Min(10,perWorld))*RealmCount,MaxNations-home);if(k<=0)return;
+  // Up to perWorld peoples from each world this game has (the Hive Expanse has five), in the catalogue's placing order.
+  if(!HasRealms)return;int home=civCount;var chosen=new List<int>();var taken=new int[RealmCount+1];
+  foreach(int c in CivilisationCatalog.NativeOrder){int rr=CivilisationCatalog.NativeRealm(c);if(rr<1||rr>RealmsHere||taken[rr]>=Math.Max(0,Math.Min(10,perWorld)))continue;taken[rr]++;chosen.Add(c);}
+  int k=Math.Min(chosen.Count,MaxNations-home);if(k<=0)return;
   SetCivCount(home+k);var placed=new List<Tile>();
   for(int i=0;i<k;i++){
-   int o=home+i,civ=CivilisationCatalog.NativeOrder[i],r=CivilisationCatalog.NativeRealm(civ);var n=nations[o];
+   int o=home+i,civ=chosen[i],r=CivilisationCatalog.NativeRealm(civ);var n=nations[o];
    n.civ=civ;n.name=CivilisationCatalog.Names[civ];n.leader=CivilisationCatalog.Leaders[civ];n.portrait=CivilisationCatalog.Portraits[civ];n.traits=(int[])CivilisationCatalog.Traits[civ].Clone();n.known=new bool[tiles.Length];
    var gate=RealmTiles(r).FirstOrDefault(t=>t.gateLink>0);
    Func<Tile,int> room=t=>{int land=0;for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){var q=StepIn(t.x,t.y,dx,dy,2);if(q!=null&&q.realm==r&&!IsWater(q.terrain)&&!IsImpassable(q.terrain))land++;}return land;};
@@ -119,7 +126,7 @@ public partial class World {
      &&(gate==null||Distance(t.x,t.y,gate.x,gate.y)>=Math.Min(6,apart))&&placed.All(p=>Distance(p.x,p.y,t.x,t.y)>=apart)).OrderByDescending(room).ThenBy(t=>Lattice(seed+civ,t.x,t.y,5)).FirstOrDefault();
    if(start==null)continue;placed.Add(start);start.ruin=false;start.village=false;
    // A little open ground round the capital, as the home starts get.
-   for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var q=Step(start.x,start.y,dx,dy);if(q!=null&&q.realm==r&&(IsWater(q.terrain)||IsImpassable(q.terrain)||Barren(q.terrain))&&q.gateLink==0)q.terrain=r==5?11:r==3?17:r==2?10:r==4?9:0;}
+   for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var q=Step(start.x,start.y,dx,dy);if(q!=null&&q.realm==r&&(IsWater(q.terrain)||IsImpassable(q.terrain)||Barren(q.terrain))&&q.gateLink==0)q.terrain=r==5?11:r==3?17:r==2?10:r==4?9:r==6?16:0;}
    var settler=Add(o,0,start.x,start.y);var east=Step(start.x,start.y,1,0);var south=Step(start.x,start.y,0,1);Add(o,2,east.x,east.y);Add(o,1,south.x,south.y);
    Found(settler);
   }
@@ -189,6 +196,6 @@ public partial class World {
   }
   foreach(var c in cities.Where(a=>a.owner==owner))if(c.plague>0)c.plague--;
  }
- bool RealmsValid(){if(realmRows<0||(realmRows>0&&realmRows!=RealmCount*(RealmHeight+RealmGap)))return false;return tiles.All(t=>t.realm>=-1&&t.realm<=RealmCount&&t.gateLink>=0&&t.gateLink<=tiles.Length)&&units.All(u=>u.plague>=0&&u.plague<=5)&&cities.All(c=>c.plague>=0&&c.plague<=5);}
+ bool RealmsValid(){if(realmRows<0||(realmRows>0&&(realmRows%(RealmHeight+RealmGap)!=0||RealmsHere<5)))return false;return tiles.All(t=>t.realm>=-1&&t.realm<=RealmCount&&t.gateLink>=0&&t.gateLink<=tiles.Length)&&units.All(u=>u.plague>=0&&u.plague<=5)&&cities.All(c=>c.plague>=0&&c.plague<=5);}
 }
 }

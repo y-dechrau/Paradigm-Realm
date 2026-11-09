@@ -8,7 +8,7 @@ namespace ParadigmRealm {
 // civilisation along the bottom, and on the right their name and mood, greeting, active treaties, a two-sided offer and
 // Propose / Discuss / Leave / Declare War. Discuss opens the full detail panel (DrawAdvancedDiplomacy) with every action.
 public partial class RealmGame {
- bool diplomacyDiscuss,diplomacyChooser,diplomacyDirect;string dipReply="";int dipReplyPartner=-1;
+ bool diplomacyDiscuss,diplomacyChooser,diplomacyDirect,customDeal;string dipReply="";int dipReplyPartner=-1;
  // The Diplomacy button first asks which leader to contact; the talk that follows is with that leader alone.
  void DrawLeaderChooser(int[] known){
   DipPanel(new Rect(400,84,480,44),.9f);GUI.Label(new Rect(400,88,480,34),"Choose a leader to contact",dipBig);
@@ -155,14 +155,31 @@ public partial class RealmGame {
   // Pending proposals from this partner.
   var pending=world.offers.Where(o=>o.to==0&&o.status==0&&o.expires>world.turn).ToList();
   if(pending.Count>0){var strip=new Rect(side.x+14,y,side.width-28,30);Fill(strip,new Color(.5f,.38f,.12f,.9f));GUI.Label(new Rect(strip.x+10,strip.y,strip.width-110,30),pending.Count+" proposal"+(pending.Count==1?"":"s")+" awaiting your answer",dipRow);if(GUI.Button(new Rect(strip.xMax-96,strip.y+3,90,24),"Review")){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}y+=38;}
-  // Active treaties.
-  DipHeading(new Rect(side.x+16,y,side.width-32,22),"Active treaties");y+=26;
-  var treaties=ActiveTreaties(partner);
-  if(treaties.Count==0){GUI.Label(new Rect(side.x+22,y,side.width-40,26),world.AtWar(0,partner)?"None — your nations are at war.":"None yet.",dipRow);y+=30;}
-  foreach(var tr in treaties.Take(4)){var row=new Rect(side.x+16,y,side.width-32,30);DipPanel(row,.85f);GUI.Label(new Rect(row.x+12,row.y+2,row.width-120,26),tr.Key,dipRow);GUI.Label(new Rect(row.xMax-110,row.y+2,98,26),tr.Value+" turns",new GUIStyle(dipRow){alignment=TextAnchor.MiddleRight});y+=34;}
-  if(treaties.Count>4){GUI.Label(new Rect(side.x+22,y,side.width-40,20),"+"+(treaties.Count-4)+" more under Discuss",hudSmall);y+=22;}
-  y+=6;
-  // Negotiate: agreement, length, and the two sides of the offer.
+  // Streamlined (owner request, 9 Nov 2026; after Crusader Kings III, Bannerlord, Civilization VI and Galactic Civilizations IV):
+  // treaties on one line, the three reasons that weigh most in their mood, and one-click proposals each showing whether this leader
+  // would accept. The full offer editor is folded under "Custom deal"; every other action stays under More.
+  {var treaties=ActiveTreaties(partner);string line=world.AtWar(0,partner)?"At war":treaties.Count==0?"At peace, no treaties":string.Join("  •  ",treaties.Select(tr=>tr.Key+" ("+tr.Value+")").ToArray());
+   GUI.Label(new Rect(side.x+16,y,side.width-32,22),line,new GUIStyle(dipRow){fontSize=13});y+=26;}
+  {var reasons=world.OpinionLines(partner,0).Where(r=>r.Value!=0).OrderByDescending(r=>Math.Abs(r.Value)).Take(3).ToList();
+   if(reasons.Count>0){DipHeading(new Rect(side.x+16,y,side.width-32,22),"Why they feel this way");y+=24;
+    foreach(var r in reasons){var keep=GUI.color;GUI.color=r.Value>0?new Color(.6f,.92f,.62f):new Color(1f,.6f,.5f);GUI.Label(new Rect(side.x+22,y,46,20),(r.Value>0?"+":"")+r.Value,new GUIStyle(dipRow){fontSize=13});GUI.color=keep;GUI.Label(new Rect(side.x+68,y,side.width-84,20),r.Key,new GUIStyle(dipRow){fontSize=13});y+=21;}y+=4;}}
+  int target=Enumerable.Range(1,world.civCount-1).FirstOrDefault(i=>i!=partner&&world.met[i]);
+  bool enabled=GUI.enabled;
+  if(!customDeal){
+   DipHeading(new Rect(side.x+16,y,side.width-32,22),"Propose");y+=26;
+   var quick=new List<int>();if(world.AtWar(0,partner))quick.Add(5);else{quick.AddRange(new[]{0,1,4,3,2});}
+   foreach(int kind in quick){
+    var o=new DiplomaticOffer{from=0,to=partner,kind=(TreatyKind)kind,duration=15,target=target==0?-1:target};string problem=world.OfferProblem(o);int will=problem==""?world.OfferWillingness(o):-99;
+    var row=new Rect(side.x+16,y,side.width-32,30);GUI.enabled=enabled&&problem=="";
+    if(DipButton(new Rect(row.x,row.y,190,row.height),DealKinds[kind],new Color(.08f,.2f,.3f))){var sent=world.Propose(o);status=sent.answer;dipReply=world.LeaderReply(partner,sent,sent.status==1);dipReplyPartner=partner;}
+    GUI.enabled=enabled;var keep=GUI.color;GUI.color=problem!=""?new Color(.7f,.7f,.72f):will>=0?new Color(.6f,.92f,.62f):new Color(1f,.6f,.5f);
+    GUI.Label(new Rect(row.x+198,row.y+4,row.width-198,row.height),problem!=""?problem:will>=10?"Would gladly accept":will>=0?"Would accept":will>=-10?"Not quite: sweeten it with gold":"Would refuse",new GUIStyle(dipRow){fontSize=12,wordWrap=true});GUI.color=keep;y+=34;}
+   {var row=new Rect(side.x+16,y,side.width-32,30);bool canGift=!world.AtWar(0,partner)&&world.gold>=25;GUI.enabled=enabled&&canGift;
+    if(DipButton(new Rect(row.x,row.y,190,row.height),"Gift 25 gold",new Color(.08f,.2f,.3f))){status=world.GiftGold(partner)?"Gift sent to "+world.NationName(partner)+".":"Gift not possible.";}
+    GUI.enabled=enabled;GUI.Label(new Rect(row.x+198,row.y+4,row.width-198,row.height),canGift?"Warms their opinion of you":"Needs 25 gold and peace",new GUIStyle(dipRow){fontSize=12});y+=36;}
+   if(DipButton(new Rect(side.x+16,y,side.width-32,28),"Custom deal ▸ (gold, resources, terms)",new Color(.1f,.16f,.3f)))customDeal=true;y+=34;
+  }else{
+  if(DipButton(new Rect(side.x+16,y,side.width-32,26),"◂ Back to simple proposals",new Color(.1f,.16f,.3f)))customDeal=false;y+=32;
   DipHeading(new Rect(side.x+16,y,side.width-32,22),"Negotiate");y+=28;
   diplomacyKind=Dropdown(new Rect(side.x+16,y,side.width/2-22,26),"kind",diplomacyKind,DealKinds);
   diplomacyDuration=Dropdown(new Rect(side.x+side.width/2+6,y,side.width/2-22,26),"length",diplomacyDuration,new[]{"10 turns","15 turns","30 turns"});y+=32;
@@ -178,16 +195,16 @@ public partial class RealmGame {
    else GUI.Label(new Rect(col.x+10,col.y+60,col.width-20,24),s==0?"plus the agreement":"in return",hudSmall);
   }
   y+=(recurring?150:92)+8;
-  int target=Enumerable.Range(1,world.civCount-1).FirstOrDefault(i=>i!=partner&&world.met[i]);
   var offer=new DiplomaticOffer{from=0,to=partner,kind=(TreatyKind)diplomacyKind,duration=new[]{10,15,30}[diplomacyDuration],giveGold=DealNumber(giveGold,10000),askGold=DealNumber(askGold,10000),givePerTurn=recurring?DealNumber(givePerTurn,20):0,askPerTurn=recurring?DealNumber(askPerTurn,20):0,giveResource=recurring?giveResource:0,askResource=recurring?askResource:0,target=target==0?-1:target};
   string problem=world.OfferProblem(offer);
   GUI.Label(new Rect(side.x+18,y,side.width-36,38),problem!=""?problem:world.OfferAssessment(offer),hudSmall);
   // Buttons.
-  bool enabled=GUI.enabled;GUI.enabled=enabled&&problem=="";
+  GUI.enabled=enabled&&problem=="";
   if(DipButton(new Rect(side.x+16,side.yMax-108,side.width-32,46),"PROPOSE AGREEMENT",new Color(.07f,.38f,.4f))){confirmingOffer=offer;confirmingInbox=-1;diplomacyConfirmation="Send this proposal?";detailsScroll=Vector2.zero;}
   GUI.enabled=enabled;
+  }
   float bw=(side.width-48)/3;
-  if(DipButton(new Rect(side.x+16,side.yMax-54,bw,42),"Discuss",new Color(.1f,.16f,.3f))){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}
+  if(DipButton(new Rect(side.x+16,side.yMax-54,bw,42),"More",new Color(.1f,.16f,.3f))){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}
   if(DipButton(new Rect(side.x+24+bw,side.yMax-54,bw,42),"Leave",new Color(.1f,.16f,.3f))){detailsScreen="";diplomacyDiscuss=false;GUIUtility.ExitGUI();}
   string warReason=world.WarReason(0,partner);GUI.enabled=enabled&&warReason=="";
   if(DipButton(new Rect(side.x+32+2*bw,side.yMax-54,bw,42),"Declare War",new Color(.45f,.08f,.07f))){pendingUnit=-2;pendingWars=new[]{partner};detailsScreen="";cityScreen=false;GUIUtility.ExitGUI();}

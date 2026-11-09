@@ -290,7 +290,7 @@ public partial class World {
  [NonSerialized] bool[] worldsKnown;[NonSerialized] int worldsKnownTurn=-1;
  // A world is known once a home civilisation has found a gateway to it or set eyes on any part of it.
  public bool WorldKnownAtHome(int r){
-  if(r<=0||r>RealmCount||!HasRealms)return r==0;
+  if(r<=0||r>RealmsHere||!HasRealms)return r==0;
   if(worldsKnown==null||worldsKnownTurn!=turn){worldsKnown=new bool[RealmCount+1];worldsKnownTurn=turn;var home=Enumerable.Range(0,civCount).Where(o=>!IsNativeNation(o)).ToList();
    for(int i=0;i<tiles.Length;i++){var t=tiles[i];int world=t.realm>0?t.realm:0;if(t.realm==0&&t.gateLink>0){var twin=GateTwin(t);if(twin!=null)world=twin.realm;}if(world<=0||worldsKnown[world])continue;foreach(int o in home)if(o==0?t.seen:nations[o].known[i]){worldsKnown[world]=true;break;}}}
   return worldsKnown[r];

@@ -2,6 +2,50 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 9 Nov (no save version change; new games get a sixth world)
+
+**How this was checked:**
+- .NET engine checks pass, including new `ContentChecks.NinthNovemberChecks`:
+  - Home rivers have no loops.
+  - New games have the Hive Expanse and its insect peoples.
+  - A Granary waits without gold and completes with it.
+  - An animal does not attack a unit inside borders.
+  - Sloths outnumber mammoths and rhinoceroses.
+- Older checks were updated for six worlds: 84 civilisations, 12 native peoples by default, 55 in a full game, and one gateway per world.
+- The art processing was compared side by side, before and after, on the supplied pictures.
+- Unity checks, build and screenshots are reported in the session.
+- **Not hand-played.**
+
+**What changed:**
+- **No straight edges in nature:**
+  - Open scenery (groves, savanna, bog) is cut out of its ground. Forests, jungle, rocks, mountains, cities and farmsteads keep their ground, faded at the edge with an irregular border (`SceneryArt`).
+  - Thin leftover rim lines are removed, and dry steppe shows no picture.
+  - Grove trees are drawn as a cluster of three.
+  - The apples are really gone now: dark reds and highlights are caught too.
+- **Rivers on the home world** join only along their flow, forming branching trees with no mesh or loops (`RiverLinks`). Parallel worlds keep the old look.
+- **New art (SpriteCook):**
+  - Ruins in five architectural styles, chosen by land: classical columns, Egyptian sandstone, a Mesoamerican pyramid, a stone circle and an eastern temple (`Sprites/ruin-0..4`, `RuinStyle`).
+  - Farm fields at the map's angle (`field-0..2`), and a mine and a fort (`improve-mine`, `improve-fort`).
+  - Fifteen resource miniatures placed on the tile with no badge (`res-01..15`).
+- **Fitting tiles:** cities are drawn 54 px with their lower tip on their tile's, so they no longer spill onto the next tile. Farmsteads and ports are drawn at 82%, and gateways at tile width.
+- **Rules:**
+  - Workers on a city tile may auto develop.
+  - Clear woodland appears only where there are trees.
+  - Mammoths and woolly rhinoceroses are each one in six grazers.
+  - Buildings cost gold: a quarter of their shield cost, paid on completion. Without it the finished work waits (`BuildingGold`).
+  - Wonders were already unique in the world: the first civilisation to finish one gets it, and the others get half their production back as gold.
+  - Animals already could not attack inside any civilisation's borders; a check now covers it.
+- **The Hive Expanse:** a sixth world in new games (`RealmsHere`; older saves keep five). It has tall grass, savanna, jungle and mounds, a key technology (Chemistry), its own gateway, and five insect peoples with full lore and painted leaders (`SealedPeoplesHiveExpanse.cs`, catalogue 79-83, `leader-79..83`):
+  - the Formic Concord (ants)
+  - the Apiary of the Golden Comb (bees)
+  - the Scarab Wardens (beetles)
+  - the Thorn Mantids (mantises)
+  - the Lantern Moths (moths)
+- **Diplomacy streamlined** (after Crusader Kings III, Bannerlord, Civilization VI and Galactic Civilizations IV):
+  - Treaties on one line, and the three reasons that weigh most in the leader's mood.
+  - One-click proposals that show whether the leader would accept, plus a gift.
+  - The full offer editor folded under "Custom deal", and every other action under More.
+
 ## Owner choice 8 Nov: governors with a purpose (save version 38; `Governors.cs`, `GovernorsUI.cs`)
 
 The owner picked ideas 1, 2 and 4 from research on other games: Old World, Civilization VI and Imperator: Rome.

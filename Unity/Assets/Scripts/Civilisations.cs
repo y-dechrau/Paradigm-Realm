@@ -10,7 +10,7 @@ public static class CivilisationCatalog {
  // 17 civilisations: Sylvan Court and Crystal Dominion are hidden for now (owner request), and the last two wait for their
  // portrait art (leader-15.png, leader-16.png); RealmGame enables them once the picture is found. Hidden or waiting
  // civilisations are never offered or used as rivals, and their indices stay fixed so saves keep working.
- public const int Count=79,TraitCount=12,PortraitCount=79;
+ public const int Count=84,TraitCount=12,PortraitCount=84;
  // The forty later peoples of the sealed worlds (SealedPeoples) follow the first thirty-nine in every table.
  static CivilisationCatalog(){
   var more=SealedPeoples.People;
@@ -18,7 +18,7 @@ public static class CivilisationCatalog {
   Portraits=Portraits.Concat(Enumerable.Range(SealedPeoples.First,more.Count)).ToArray();Traits=Traits.Concat(more.Select(p=>p.Traits)).ToArray();
   Enabled=Enabled.Concat(more.Select(p=>false)).ToArray();AwaitingArt=AwaitingArt.Concat(more.Select(p=>false)).ToArray();
   PortraitTitles=PortraitTitles.Concat(more.Select(p=>p.LeaderTitle)).ToArray();Greetings=Greetings.Concat(more.Select(p=>p.Greeting)).ToArray();
-  var order=new List<int>(NativeOrder);for(int j=0;j<SealedPeoples.PerWorld;j++)foreach(int r in new[]{1,3,2,4,5})order.Add(SealedPeoples.First+(r-1)*SealedPeoples.PerWorld+j);NativeOrder=order.ToArray();
+  var order=new List<int>(NativeOrder);for(int j=0;j<SealedPeoples.PerWorld;j++)foreach(int r in new[]{1,3,2,4,5,6}){int civ=SealedPeoples.First+(r-1)*SealedPeoples.PerWorld+j;if(civ<SealedPeoples.First+more.Count&&(r<6||j<SealedPeoples.HivePeoples))order.Add(civ);}NativeOrder=order.ToArray();
  }
  public static readonly string[] TraitNames={"Seafaring","Mercantile","Agrarian","Spiritual","Monumental","Diplomatic","Scholarly","Stalwart","Industrious","Militaristic","Horse Lords","Expansionist"};
  public static readonly string[] TraitTexts={

@@ -274,7 +274,7 @@ namespace ParadigmRealm
             if(u.type==0)actions.Add(new KeyValuePair<int,string>(PixelArt.IconFound,"Found"));
             // Workers always show Road, Farm, Mine and Clear (woodland); a job the civilisation lacks the technology for is greyed
             // out (owner request). Fort and the rest are in More.
-            if(u.type==1){actions.Add(new KeyValuePair<int,string>(PixelArt.IconRoad,"Road"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconFood,"Farm"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconShields,"Mine"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconAxe,"Clear"));}
+            if(u.type==1){actions.Add(new KeyValuePair<int,string>(PixelArt.IconRoad,"Road"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconFood,"Farm"));actions.Add(new KeyValuePair<int,string>(PixelArt.IconShields,"Mine"));if(World.Wooded(world.At(u.x,u.y)))actions.Add(new KeyValuePair<int,string>(PixelArt.IconAxe,"Clear"));}
             if(u.type==World.PriestUnit)actions.Add(new KeyValuePair<int,string>(PixelArt.IconFaith,"Preach"));
             if(u.type==World.PriestUnit&&world.At(u.x,u.y)!=null&&world.At(u.x,u.y).gateLink>0&&!world.GateOpen(world.At(u.x,u.y)))actions.Add(new KeyValuePair<int,string>(PixelArt.IconRealms,"Unseal"));
             if(World.CanExplore(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconExplore,"Explore"));
@@ -324,11 +324,11 @@ namespace ParadigmRealm
                 GUILayout.Label("All orders",heading);
                 bool enabled=GUI.enabled;GUI.enabled=enabled&&world.result=="";
                 // Auto develop: the worker picks its own jobs each turn (roads, farms, mines, clearing) until told otherwise.
-                if(world.WorkerInCity(u))GUI.enabled=false;
                 if(u.type==1&&Button(u.autoWork?"Stop auto develop":"Auto develop")){bool on=!u.autoWork;world.SetAutoWork(u,on);status=on?"Worker set to auto develop.":"Auto develop stopped.";}
+                if(world.WorkerInCity(u))GUI.enabled=false;
                 if(u.type==1&&Button("Road to a destination [R, then right-drag]"))RoadKey(u);
                 // Every worker activity stays listed; those needing an unknown technology are greyed out and say which (owner request).
-                if(u.type==1){GUILayout.Label("Worker activities",body);int team=world.WorkerTeam(u).Count;foreach(int job in new[]{1,2,3,5,4}){string missing=world.JobTechMissing(u.owner,job);bool was=GUI.enabled;GUI.enabled=was&&missing=="";string label=World.JobNames[job]+(missing!=""?" — "+missing:" ("+((world.JobWork(u,job)+team-1)/team)+" turns)");if(Button(label)){string reason=world.WorkerTeam(u).Select(a=>world.JobReason(a,job)).FirstOrDefault(r=>r!="")??"";if(!world.StartJob(u,job))status=reason;}GUI.enabled=was;}}
+                if(u.type==1){GUILayout.Label("Worker activities",body);int team=world.WorkerTeam(u).Count;foreach(int job in new[]{1,2,3,5,4}){if(job==5&&!World.Wooded(world.At(u.x,u.y)))continue;string missing=world.JobTechMissing(u.owner,job);bool was=GUI.enabled;GUI.enabled=was&&missing=="";string label=World.JobNames[job]+(missing!=""?" — "+missing:" ("+((world.JobWork(u,job)+team-1)/team)+" turns)");if(Button(label)){string reason=world.WorkerTeam(u).Select(a=>world.JobReason(a,job)).FirstOrDefault(r=>r!="")??"";if(!world.StartJob(u,job))status=reason;}GUI.enabled=was;}}
                 GUI.enabled=enabled&&world.result=="";
                 if(u.hasOrder){GUILayout.Label("Destination: "+u.destinationX+", "+u.destinationY,body);if(Button("Cancel movement order [X]"))world.CancelActivity(u);}
                 GUI.enabled=enabled;

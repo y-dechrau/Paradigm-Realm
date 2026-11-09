@@ -12,7 +12,10 @@ public static class SceneryArt
     static int Bright(uint p){return R(p)+G(p)+B(p);}
     static int Diff(uint a,uint b){return Math.Abs(R(a)-R(b))+Math.Abs(G(a)-G(b))+Math.Abs(B(a)-B(b));}
     // Red or orange fruit: strongly red and clearly redder than it is green.
-    public static bool IsFruit(uint p){return A(p)>=128&&R(p)>=140&&R(p)>G(p)+60&&R(p)>B(p)+50;}
+    // Red fruit, dark or bright: clearly red rather than the brown of bark (red well above both green and blue).
+    public static bool IsFruit(uint p){return A(p)>=128&&R(p)>=90&&R(p)*10>G(p)*18&&R(p)*10>B(p)*15;}
+    // The pale highlight on a fruit: bright, warm, next to fruit.
+    static bool FruitShine(uint p){return A(p)>=128&&R(p)>=200&&R(p)>G(p)+40&&R(p)>B(p)+60;}
 
     // Finds the ground diamond under the picture: as wide as the picture, half as tall, its lower tip on the lowest opaque
     // row. Returns false when the picture has no such base (nothing is removed then).
@@ -29,6 +32,8 @@ public static class SceneryArt
     }
     static float DiamondDist(int x,int y,float cx,float cy,float hw,float hh){return Math.Abs(x-cx)/hw+Math.Abs(y-cy)/hh;}
 
+    // Along the back edges only ground-coloured or pale rim pixels go, so trees standing at the back keep their trunks.
+    static bool RimLike(uint p,List<uint> palette){if(A(p)<40)return false;if(Bright(p)>=540)return true;uint rgb=p&0xFFFFFFu;foreach(var c in palette)if(Diff(c,rgb)<=60)return true;return false;}
     public static uint[] StripGround(uint[] src,int w,int h,bool dropFruit)
     {
         var px=(uint[])src.Clone();
@@ -76,6 +81,9 @@ public static class SceneryArt
             }
             if(clear.Count==0)break;foreach(int k in clear)px[k]=0;
         }
+        // No straight edge may survive (owner request, 9 Nov 2026): a thin band along the diamond's outline is cleared outright.
+        for(int y=0;y<h;y++)for(int x=0;x<w;x++){float d=DiamondDist(x,y,cx,cy,hw,hh);if(d<=1.2f&&(y>=cy&&d>=.97f||d>=.93f&&RimLike(px[y*w+x],palette)))px[y*w+x]=0;}
+        ThinLines(px,w,h);
         DropSpecks(px,w,h,cx,cy,hw,hh,Math.Max(10,w*w/320));
         return px;
     }
@@ -84,20 +92,32 @@ public static class SceneryArt
     public static uint[] FeatherRim(uint[] src,int w,int h)
     {
         var px=(uint[])src.Clone();float cx,cy,hw,hh;if(!FindBase(px,w,h,out cx,out cy,out hw,out hh))return px;
-        float band=Math.Max(2.5f,w/16f);
+        float band=Math.Max(3f,w/10f);
         for(int y=0;y<h;y++)for(int x=0;x<w;x++)
         {
             int k=y*w+x;uint p=px[k];if(A(p)==0)continue;
             // Distance inside the diamond in pixels, measured vertically (the diamond is half as tall as it is wide).
-            float inside=(1-DiamondDist(x,y,cx,cy,hw,hh))*hh;if(y<cy-hh*.2f||inside>=band)continue;
+            float jitter=(((x*73856093)^(y*19349663))&7)/7f*2f-1f;float inside=(1-DiamondDist(x,y,cx,cy,hw,hh))*hh+jitter*1.5f;if(y<cy-hh*.2f||inside>=band)continue;
             float f=Math.Max(0,inside)/band;f=f*f*(3-2*f);px[k]=((uint)(A(p)*f)<<24)|(p&0xFFFFFFu);
         }
         return px;
     }
     // Which treatment a supplied picture gets, by its slot name; null leaves it as it is.
-    public static bool IsLandform(string slot){return slot.StartsWith("hills")||slot.StartsWith("terrain-05")||slot.StartsWith("terrain-15")||slot.StartsWith("terrain-17");}
-    public static bool IsScenery(string slot){return slot.StartsWith("terrain-")||slot.StartsWith("hills")||slot.StartsWith("hamlet-")||slot.StartsWith("city-");}
+    // Cities and farmsteads keep their ground (their walls stand on its edge) and only lose the hard rim, like landforms.
+    // Only open scenery (grassland groves, savanna, bog) is cut out of its ground; dense forest, jungle, rocks, mountains, cities and
+    // farmsteads keep their ground, faded softly at the edge, because their trees and walls share colours with it (9 Nov 2026).
+    public static bool IsLandform(string slot){return !(slot.StartsWith("terrain-00")||slot.StartsWith("terrain-16")||slot.StartsWith("terrain-09"));}
+    public static bool IsScenery(string slot){return slot.StartsWith("field-")||slot.StartsWith("improve-")||slot.StartsWith("terrain-")||slot.StartsWith("hills")||slot.StartsWith("hamlet-")||slot.StartsWith("city-");}
     public static uint[] Prepare(string slot,uint[] px,int w,int h){return IsLandform(slot)?FeatherRim(px,w,h):StripGround(px,w,h,slot.StartsWith("terrain-00"));}
+    // Thin dark lines left from the old base (1-2 pixels wide) go; outlines of solid shapes stay, having more of themselves around.
+    static void ThinLines(uint[] px,int w,int h)
+    {
+        for(int pass=0;pass<3;pass++){var clear=new List<int>();
+            for(int y=0;y<h;y++)for(int x=0;x<w;x++){int k=y*w+x;uint p=px[k];if(A(p)<40||Bright(p)>=300)continue;int n=0;
+                for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){int nx=x+dx,ny=y+dy;if(nx>=0&&ny>=0&&nx<w&&ny<h&&A(px[ny*w+nx])>=40)n++;}
+                if(n<=9)clear.Add(k);}
+            if(clear.Count==0)break;foreach(int k in clear)px[k]=0;}
+    }
     static void DropSpecks(uint[] px,int w,int h,float cx,float cy,float hw,float hh,int minSize)
     {
         var seen=new bool[w*h];var part=new List<int>();var stack=new Stack<int>();
@@ -118,18 +138,16 @@ public static class SceneryArt
         var fruit=new bool[w*h];bool any=false;
         for(int k=0;k<px.Length;k++)if(IsFruit(px[k])){fruit[k]=true;any=true;}
         if(!any)return;
-        for(int pass=0;pass<6;pass++)
-        {
-            bool left=false;var next=(uint[])px.Clone();
-            for(int y=0;y<h;y++)for(int x=0;x<w;x++)
-            {
-                int k=y*w+x;if(!fruit[k])continue;int r=0,g=0,b=0,n=0;
-                for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){int nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h||dx==0&&dy==0)continue;int q=ny*w+nx;if(fruit[q]||A(px[q])<128||Bright(px[q])<70)continue;r+=R(px[q]);g+=G(px[q]);b+=B(px[q]);n++;}
-                if(n==0){left=true;continue;}
-                next[k]=(px[k]&0xFF000000u)|((uint)(r/n)<<16)|((uint)(g/n)<<8)|(uint)(b/n);fruit[k]=false;
-            }
-            Array.Copy(next,px,px.Length);if(!left)break;
-        }
-        for(int k=0;k<px.Length;k++)if(fruit[k])px[k]=(px[k]&0xFF000000u)|0x3E7A44u;
+        // Grow the fruit twice over its dark rim and pale shine, so no red edge is left behind.
+        for(int pass=0;pass<2;pass++){var add=new List<int>();
+            for(int y=0;y<h;y++)for(int x=0;x<w;x++){int k=y*w+x;uint p=px[k];if(fruit[k]||A(p)<128)continue;bool warm=R(p)>G(p)+20&&R(p)>B(p)+10||FruitShine(p);if(!warm)continue;
+                for(int d=0;d<4;d++){int nx=x+(d==0?1:d==1?-1:0),ny=y+(d==2?1:d==3?-1:0);if(nx>=0&&ny>=0&&nx<w&&ny<h&&fruit[ny*w+nx]){add.Add(k);break;}}}
+            foreach(int k in add)fruit[k]=true;}
+        // Each fruit pixel takes the colour of the nearest leaf.
+        var result=(uint[])px.Clone();
+        for(int y=0;y<h;y++)for(int x=0;x<w;x++){int k=y*w+x;if(!fruit[k])continue;uint best=0xFF3E7A44u;int least=99;
+            for(int dy=-5;dy<=5;dy++)for(int dx=-5;dx<=5;dx++){int nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;int q=ny*w+nx;uint c=px[q];if(fruit[q]||A(c)<128||G(c)<=R(c)+10||Bright(c)<90)continue;int d=dx*dx+dy*dy;if(d<least){least=d;best=c;}}
+            result[k]=(px[k]&0xFF000000u)|(best&0xFFFFFFu);}
+        Array.Copy(result,px,px.Length);
     }
 }

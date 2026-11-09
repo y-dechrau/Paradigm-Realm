@@ -8,7 +8,7 @@ public static partial class PixelArt {
  static uint Lit(uint[] ramp,double dx,double dy){return RampPick(ramp,.78-.3*dx-.25*dy);}
  public static PixelCanvas NativePortrait(int k){return Bust(k,k,k,k,0);}
  // A people's portrait from its bust shape, the sky of its world and the robes its hue picks; the later shapes share these parts.
- public static PixelCanvas PeoplePortrait(SealedPerson p){int sky=new[]{0,0,2,4,6,8}[p.World];return Bust(p.Bust<10?p.Bust:new[]{0,2,3,5,0}[p.Bust-10],p.Bust,sky,p.Bust<10?p.Bust:new[]{0,2,6,5,1}[p.Bust-10],p.Hue);}
+ public static PixelCanvas PeoplePortrait(SealedPerson p){int sky=new[]{0,0,2,4,6,8,1}[Math.Min(6,p.World)];return Bust(p.Bust<10?p.Bust:new[]{0,2,3,5,0}[p.Bust-10],p.Bust,sky,p.Bust<10?p.Bust:new[]{0,2,6,5,1}[p.Bust-10],p.Hue);}
  static PixelCanvas Bust(int k,int shape,int skyAt,int skinAt,int hue)
  {
   int W=150,H=200;var cv=new PixelCanvas(W,H);

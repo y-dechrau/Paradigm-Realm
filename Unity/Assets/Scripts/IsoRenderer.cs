@@ -162,7 +162,7 @@ namespace ParadigmRealm
             int mask=0;bool anyWater=false;
             // Neighbours by grid step from the tile itself, so the same picture serves diagonal and staggered maps.
             for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){int n=IsoKnownTerrain(world.Step(t.x,t.y,dx,dy));if(dx==0&&dy==0)n=t.terrain;isoN9[(dy+1)*3+dx+1]=n;if(n>=0&&PixelArt.IsWater(n))anyWater=true;}
-            if(t.terrain==7){int[] offI=world.Hex?World.HexDi:new[]{0,1,0,-1},offJ=world.Hex?World.HexDj:new[]{-1,0,1,0};for(int k=0;k<offI.Length;k++){int n=IsoKnownTerrain(world.Step(t.x,t.y,offI[k],offJ[k]));if(n>=0&&(n==7||PixelArt.IsWater(n)))mask|=1<<k;}}
+            if(t.terrain==7){int[] offI=world.Hex?World.HexDi:new[]{0,1,0,-1},offJ=world.Hex?World.HexDj:new[]{-1,0,1,0};int flow=world.RiverLinks(world.At(t.x,t.y));for(int k=0;k<offI.Length;k++){int n=IsoKnownTerrain(world.Step(t.x,t.y,offI[k],offJ[k]));if(n>=0&&(n==7||PixelArt.IsWater(n))&&(flow<0||(flow&(1<<k))!=0))mask|=1<<k;}}
             int fr=anyWater?frame:0;int sig=world.Hex?19:17;unchecked{foreach(int n in isoN9)sig=sig*31+n+1;sig=sig*31+mask;}
             // Zoomed in, the ground is drawn at twice the detail; zoomed out the plain picture looks better and costs less.
             bool sharp=cityScreen||isoWidth>=64;int index=t.y*world.Width+t.x;long key=((long)(uint)sig<<32)|(uint)(index*8+fr+(sharp?4:0));
@@ -194,7 +194,14 @@ namespace ParadigmRealm
         readonly Dictionary<int,Animal> viewAnimals=new Dictionary<int,Animal>();readonly List<Vector2> isoGates=new List<Vector2>();readonly List<int> isoGateStyles=new List<int>();
         // Painted gateways (owner pictures, 8 Nov 2026): Sprites/gate-open-N or gate-sealed-N by the gateway's design, standing on the
         // tile with their ground patch on the tile's lower tip. False when the art is missing, so the drawn gateway is used instead.
-        bool DrawGateArt(int style,bool open,float sx,float gy,float s){var art=SpriteSlot((open?"gate-open-":"gate-sealed-")+style);if(art==null)return false;float w=84*s,h=w*art.height/Mathf.Max(1,art.width);GUI.DrawTexture(new Rect(sx-w/2,gy+18*s-h,w,h),art,ScaleMode.ScaleToFit,true);return true;}
+        // Gateways are drawn tile-sized, their ground patch ending at the tile's lower tip (owner request, 9 Nov 2026).
+        bool DrawGateArt(int style,bool open,float sx,float gy,float s){var art=SpriteSlot((open?"gate-open-":"gate-sealed-")+style);if(art==null)return false;float w=58*s,h=w*art.height/Mathf.Max(1,art.width);GUI.DrawTexture(new Rect(sx-w/2,gy+TileHalf()*s-h,w,h),art,ScaleMode.ScaleToFit,true);return true;}
+        float TileHalf(){return (world.Hex?PixelArt.HH:PixelArt.DH)/2f;}
+        // Ruins in five architectural styles (owner request, 9 Nov 2026), suited to the land: sandstone in desert and steppe, a stepped
+        // pyramid in jungle and mangrove, otherwise classical columns, a stone circle or an eastern temple chosen by place.
+        static int RuinStyle(Tile t){if(t.terrain==3||t.terrain==10||t.terrain==20)return 1;if(t.terrain==11||t.terrain==19)return 2;int[] rest={0,3,4};return rest[((t.x*37+t.y*11)&0x7fffffff)%3];}
+        // A settlement fits inside its own tile (owner request, 9 Nov 2026: no overlap onto the next tile): 54 pixels, its lower tip on the tile's.
+        Rect SettlementRect(float sx,float gy,float s){float size=54*s;return new Rect(sx-size/2,gy+TileHalf()*s-size,size,size);}
         Texture2D ruinTexture;
         readonly Dictionary<int,Texture2D> gateTextures=new Dictionary<int,Texture2D>();
         readonly List<KeyValuePair<Unit,Rect>> isoUnitDraws=new List<KeyValuePair<Unit,Rect>>();readonly List<int> isoUnitCounts=new List<int>();
@@ -250,7 +257,7 @@ namespace ParadigmRealm
                 var old=GUI.color;if(!visible)GUI.color=Remembered;
                 var ground=TileRect(sx,sy,s);
                 GUI.DrawTexture(ground,IsoGround(t,i,j,frame));
-                if(!water&&t.farm){var farm=IsoPicture(2,IsoVariant(t.x,t.y),0);if(farm!=null)GUI.DrawTexture(ground,farm);}
+                if(!water&&t.farm){var field=SpriteSlot("field-"+(IsoVariant(t.x,t.y)%3));if(field!=null){float fw=ground.width*.86f,fh=fw*field.height/Mathf.Max(1,field.width);GUI.DrawTexture(new Rect(ground.center.x-fw/2,ground.center.y-fh/2,fw,fh),field,ScaleMode.StretchToFill,true);}else{var farm=IsoPicture(2,IsoVariant(t.x,t.y),0);if(farm!=null)GUI.DrawTexture(ground,farm);}}
                 if(t.road)
                 {
                     var road=RoadPicture(t);if(road!=null)GUI.DrawTexture(ground,road);
@@ -271,29 +278,37 @@ namespace ParadigmRealm
                 // Grassland groves use eight variants so lone trees do not repeat in a pattern; none on farms, roads or cities.
                 // A farm replaces whatever stood on the tile (owner request), and cleared savanna or grassland has no trees left.
                 bool meadow=t.terrain==0;bool built=t.farm||t.road||viewCities.ContainsKey(t.y*width+t.x);bool bare=t.farm||t.cleared&&(meadow||t.terrain==16);
-                var sprite=water||bare||meadow&&built?null:IsoPicture(1,t.terrain,meadow?GroveVariant(t.x,t.y):IsoVariant(t.x,t.y));
+                // Dry steppe shows its own ground and no picture (its supplied picture left straight lines; owner request, 9 Nov 2026).
+                var sprite=water||bare||meadow&&built||t.terrain==20?null:IsoPicture(1,t.terrain,meadow?GroveVariant(t.x,t.y):IsoVariant(t.x,t.y));
                 City suburbOf;bool hamlet=false;if(!water&&suburbCells.TryGetValue(t.y*width+t.x,out suburbOf)&&(visible||suburbOf.owner==0)){sprite=HamletTexture(suburbOf,t.x,t.y);hamlet=true;}
                 City portOf=null;if(!water&&portCells.TryGetValue(t.y*width+t.x,out portOf)&&(visible||portOf.owner==0))sprite=IsoPicture(7,0,0);else portOf=null;
                 // Savanna acacias are drawn at 60% so they read as scattered trees on grassland, not woodland (owner request).
                 // Grassland grove pictures hold two or three large trees; at 55% they match the trees in the forest pictures
                 // (owner request, 8 Nov 2026). Only the supplied variants 0-3; meadows (4-7) are drawn tufts.
                 float treeScale=t.terrain==16&&!hamlet&&portOf==null?.6f:meadow&&!hamlet&&portOf==null&&GroveVariant(t.x,t.y)<4?.55f:1f;
-                if(sprite!=null)GUI.DrawTexture(new Rect(sx-PixelArt.AX*s*treeScale,gy-PixelArt.AY*s*treeScale,64*s*treeScale,64*s*treeScale),sprite);
+                // Groves are drawn as a small cluster of three (owner request, 9 Nov 2026: denser), the back two first; farmsteads and ports
+                // are drawn a little smaller so they stay on their own tile.
+                if(sprite!=null&&meadow&&!hamlet&&portOf==null&&GroveVariant(t.x,t.y)<4){int v=GroveVariant(t.x,t.y);var back1=IsoPicture(1,0,(v+1)&3);var back2=IsoPicture(1,0,(v+2)&3);float bs=.42f;
+                    if(back1!=null)GUI.DrawTexture(new Rect(sx-13*s-PixelArt.AX*s*bs,gy-6*s-PixelArt.AY*s*bs,64*s*bs,64*s*bs),back1);if(back2!=null)GUI.DrawTexture(new Rect(sx+13*s-PixelArt.AX*s*bs,gy-5*s-PixelArt.AY*s*bs,64*s*bs,64*s*bs),back2);
+                    GUI.DrawTexture(new Rect(sx-PixelArt.AX*s*treeScale,gy+4*s-PixelArt.AY*s*treeScale,64*s*treeScale,64*s*treeScale),sprite);}
+                else if(sprite!=null){if(hamlet||portOf!=null)treeScale=.82f;GUI.DrawTexture(new Rect(sx-PixelArt.AX*s*treeScale,gy-PixelArt.AY*s*treeScale,64*s*treeScale,64*s*treeScale),sprite);}
                 if(portOf!=null&&!portOf.portLinked&&portOf.owner==0){var warn=new Rect(sx+8*s,gy-22*s,9*s,9*s);Fill(warn,new Color(.85f,.2f,.15f,.92f));GUI.Label(warn,"!",small);}
                 var improvement=new Rect(sx-18*s,gy-22*s,36*s,36*s);
-                if(t.mine)DrawArt("mine",improvement);if(t.fort)DrawArt("fort",improvement);
-                if(source.ruin){if(ruinTexture==null)ruinTexture=PixelTexture(PixelArt.Ruins());GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),ruinTexture);}
+                // Mines and forts are drawn at the map's angle and sized to their tile (owner request, 9 Nov 2026); the old upright pictures are the fallback.
+                if(t.mine){var art=SpriteSlot("improve-mine");if(art!=null)GUI.DrawTexture(new Rect(sx-21*s,gy+TileHalf()*s-44*s,42*s,42*s),art,ScaleMode.ScaleToFit,true);else DrawArt("mine",improvement);}
+                if(t.fort){var art=SpriteSlot("improve-fort");if(art!=null)GUI.DrawTexture(new Rect(sx-23*s,gy+TileHalf()*s-48*s,46*s,46*s),art,ScaleMode.ScaleToFit,true);else DrawArt("fort",improvement);}
+                if(source.ruin){var ruinArt=SpriteSlot("ruin-"+RuinStyle(t));if(ruinArt!=null)GUI.DrawTexture(new Rect(sx-24*s,gy+TileHalf()*s-50*s,48*s,48*s),ruinArt,ScaleMode.ScaleToFit,true);else{if(ruinTexture==null)ruinTexture=PixelTexture(PixelArt.Ruins());GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),ruinTexture);}}
                 // A sealed gateway the player has found keeps its name on the map (owner request).
                 {var story=world.livingWorld?world.StoryAt(source.x,source.y):null;if(story!=null&&story.deaths>=LivingCatalog.GraveyardAt){isoCityNames.Add("Graveyard");isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(.7f,.7f,.75f));isoCityRefs.Add(null);}}
                 if(source.gateLink>0&&source.realm==0&&world.gatesLocked&&!world.GateOpen(source)&&world.gatesFound!=null&&world.gatesFound.Contains(source.y*width+source.x)){isoGates.Add(new Vector2(sx,gy));isoGateStyles.Add(world.GateStyle(source));isoCityNames.Add("Sealed gateway");isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(1f,.82f,.25f));isoCityRefs.Add(null);}
                 if(source.gateLink>0&&DrawGateArt(world.GateStyle(source),world.GateOpen(source),sx,gy,s)){}
                 else if(source.gateLink>0){var twin=world.GateTwin(source);int kind=world.gatesLocked?PixelArt.SealedGate:source.realm>0?0:twin!=null&&world.RealmDiscovered(0,twin.realm)?twin.realm:0;Texture2D gateTex;if(!gateTextures.TryGetValue(kind,out gateTex)){gateTex=PixelTexture(PixelArt.GatewaySprite(kind));gateTextures[kind]=gateTex;}GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),gateTex);}
                 if(t.village&&visible){DrawArt("village",improvement);if(t.villageOwner>=0){var pole=new Rect(sx+10*s,gy-26*s,Mathf.Max(1,1.5f*s),12*s);Fill(pole,new Color(.3f,.22f,.14f));Fill(new Rect(pole.xMax,pole.y,7*s,5*s),nations[t.villageOwner]);}}
-                if(!visible&&!string.IsNullOrEmpty(t.rememberedCity)){GUI.DrawTexture(new Rect(sx-32*s,gy-44*s,64*s,64*s),SettlementTexture(CityVisualEra(0),3,0,t.x+t.y),ScaleMode.ScaleToFit,true);isoCityNames.Add(t.rememberedCity);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(.6f,.62f,.66f));isoCityRefs.Add(null);}
+                if(!visible&&!string.IsNullOrEmpty(t.rememberedCity)){GUI.DrawTexture(SettlementRect(sx,gy,s),SettlementTexture(CityVisualEra(0),3,0,t.x+t.y),ScaleMode.ScaleToFit,true);isoCityNames.Add(t.rememberedCity);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(.6f,.62f,.66f));isoCityRefs.Add(null);}
                 GUI.color=old;
                 int cell=t.y*width+t.x;City c;viewCities.TryGetValue(cell,out c);if(c!=null&&!(c.owner==0||visible))c=null;
                 if(t.resource>0){isoResTiles.Add(t);isoResPos.Add(new Vector2(sx,gy));}
-                if(c!=null){DrawCityArt(c,new Rect(sx-32*s,gy-44*s,64*s,64*s));isoCityNames.Add(c.name);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(nations[c.owner]);isoCityRefs.Add(c);}
+                if(c!=null){DrawCityArt(c,SettlementRect(sx,gy,s));isoCityNames.Add(c.name);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(nations[c.owner]);isoCityRefs.Add(c);}
                 Unit first=null,picked=null;int count=0;List<Unit> stackAt;
                 if(viewStacks.TryGetValue(cell,out stackAt))foreach(var a in stackAt){if(!(a.owner==0||visible))continue;count++;if(first==null)first=a;if(a.id==selected)picked=a;}
                 // At sea the ship is drawn, not the units it carries.

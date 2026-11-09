@@ -291,7 +291,7 @@ namespace ParadigmRealm
                 if(ordered&&e.type==EventType.MouseDown&&e.button==1&&!e.control&&r.Contains(e.mousePosition)&&world.result==""){world.CancelProject(c,project);status="Cancelled "+world.BuildNameFor(c.owner,project)+".";e.Use();GUIUtility.ExitGUI();}
                 GUI.enabled=enabled&&reason==""&&world.result==""&&!ordered;
                 bool append=e.control;if(GUI.Button(r,world.BuildNameFor(c.owner,project),button)){bool ok=world.ChooseProject(c,project,append);status=ok?(append?"Added to queue.":"Selected one "+world.BuildNameFor(c.owner,project)+"."):"Already built/queued or queue full.";GUIUtility.ExitGUI();}
-                GUI.enabled=enabled;GUI.Label(new Rect(37,y+34,area.width-78,31),reason!=""?reason:world.CostFor(c,project)+" production"+(building?" | "+World.BuildingEffect(project):"")+(ordered?" | Ordered: right-click to cancel":""),small);
+                GUI.enabled=enabled;GUI.Label(new Rect(37,y+34,area.width-78,31),reason!=""?reason:world.CostFor(c,project)+" production"+(building&&world.BuildingGold(project)>0?" + "+world.BuildingGold(project)+" gold":"")+(building?" | "+World.BuildingEffect(project):"")+(ordered?" | Ordered: right-click to cancel":""),small);
             }
             if(holy.Length>0){float hy=options.Length*67+4;GUI.Label(new Rect(4,hy,area.width-40,24),"Religious buildings — "+c.faith+" faith here (+"+world.FaithYield(c)+")",heading);hy+=30;
                 for(int i=0;i<holy.Length;i++){int b=holy[i];float y=hy+i*67;DrawIcon(PixelArt.IconFaith,new Rect(4,y+5,26,26));var r=new Rect(37,y,area.width-78,32);string reason=world.FaithBuildReason(c,b);bool enabled=GUI.enabled;

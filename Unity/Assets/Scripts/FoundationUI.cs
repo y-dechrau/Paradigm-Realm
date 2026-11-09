@@ -118,7 +118,7 @@ namespace ParadigmRealm
             GUILayout.BeginArea(new Rect(850,128,342,496));
             GUILayout.Label("Who shares it",heading);
             int maxCivs=World.MaxCivsBySize[setupSize];if(setupCivs>maxCivs)setupCivs=maxCivs;if(setupCivs<2)setupCivs=2;
-            GUILayout.Space(6);GUILayout.Label("Civilisations: "+setupCivs+" (you and "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+"; up to "+maxCivs+" on this size), plus "+setupPeoples*World.RealmCount+" peoples in the sealed worlds",body);
+            GUILayout.Space(6);GUILayout.Label("Civilisations: "+setupCivs+" (you and "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+"; up to "+maxCivs+" on this size), plus "+(setupPeoples*(World.RealmCount-1)+Math.Min(setupPeoples,SealedPeoples.HivePeoples))+" peoples in the sealed worlds",body);
             setupCivs=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupCivs,2,maxCivs));
             GUILayout.Space(6);GUILayout.Label("Peoples in each sealed world: "+setupPeoples+(setupPeoples>4?" (slower turns on large maps)":""),body);setupPeoples=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupPeoples,1,10));
             GUILayout.Space(10);GUILayout.Label("Wild animals: "+World.AnimalChoices[setupAnimals],body);setupAnimals=GUILayout.SelectionGrid(setupAnimals,World.AnimalChoices,5);GUILayout.Label(setupAnimals==0?"No wild animals at all.":"Three times as many until a civilisation passes the Medieval Age.",small);
@@ -130,7 +130,7 @@ namespace ParadigmRealm
             if(u!=null){
                 DrawEmpireUnit(u);
                 GUILayout.Label((World.Power[u.type]>0?"Support "+World.SupportCost(u.type)+" gold a turn":"Support 1 gold beyond the free allowance")+" | Eats "+(World.UnitRation(u.type)==2?"1 food":"half a food")+" a turn | "+World.RankText(u),small);
-                bool cityWorker=world.WorkerInCity(u),wasOn=GUI.enabled;if(cityWorker){GUILayout.Label("In a city a worker can only cancel its activity, fortify or heal, keep sentry, move out or be disbanded.",small);GUI.enabled=false;}
+                bool cityWorker=world.WorkerInCity(u),wasOn=GUI.enabled;if(cityWorker){GUILayout.Label("In a city a worker cannot develop the tile itself: it can auto develop the land around, cancel, fortify or heal, keep sentry, move out or be disbanded.",small);GUI.enabled=false;}
                 if(world.SameTypeHere(u)>=2&&world.UnitsToStack(u).Count>world.SameTypeHere(u)&&Button("Take all"+world.SameTypeHere(u)+" "+World.UnitNames[u.type]+" units here as one stack")){world.JoinType(u);status="All the "+World.UnitNames[u.type]+" units here now move together.";}
                 if(!World.IsNaval(u.type)&&world.UnitsToStack(u).Count>1){if(u.stack==0&&Button("Stack the units on this tile [G]"))world.JoinStack(u);else if(u.stack!=0&&Button("Break up this stack [G]"))world.LeaveStack(u);}
                 GUILayout.Label("Activity: "+world.Activity(u)+" | "+world.Remaining(u),body);

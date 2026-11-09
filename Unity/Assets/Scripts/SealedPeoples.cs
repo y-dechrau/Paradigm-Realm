@@ -31,13 +31,15 @@ public sealed class SealedPerson {
  public string Name,Leader,LeaderTitle,Greeting;public int World,Bust,Hue;public int[] Traits;public string[] Cities;public CivEntry Lore;
 }
 public static partial class SealedPeoples {
- public const int First=39,PerWorld=8,Count=40;
+ public const int First=39,PerWorld=8,Count=45;
+ // The Hive Expanse (world 6, 9 Nov 2026) has five peoples, catalogue 79-83, after the forty of the first five worlds.
+ public const int HivePeoples=5;
  // Each world's own history, shown with its peoples.
- public static readonly string[] WorldHistories=new string[6];
+ public static readonly string[] WorldHistories=new string[7];
  public static readonly List<SealedPerson> People=new List<SealedPerson>();
  static int adding;
  static SealedPeoples(){
-  adding=1;AddFaeWilds();adding=2;AddAshenWaste();adding=3;AddInfernalDepths();adding=4;AddPlagueMarshes();adding=5;AddDrownedDeep();
+  adding=1;AddFaeWilds();adding=2;AddAshenWaste();adding=3;AddInfernalDepths();adding=4;AddPlagueMarshes();adding=5;AddDrownedDeep();adding=6;AddHiveExpanse();
  }
  public static SealedPerson Of(int civ){int i=civ-First;return i>=0&&i<People.Count?People[i]:null;}
  // bust: the portrait's shape. 0 elf, 1 avian, 2 machine, 3 dwarf, 4 demon, 5 orc, 6 ratkin, 7 mushroom folk, 8 merfolk, 9 lizardfolk,

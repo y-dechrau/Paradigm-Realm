@@ -25,6 +25,14 @@ Canonical repository: https://github.com/y-dechrau/Paradigm-Realm (the lower-cas
   - **Cities:** "Why?" mood panel (`MoodReasons`, `MoodRemedies`), previous/next arrows (Back returns to the first city), Auto-manage (`CityCare.cs`, `UnitAffordable`), growth limit hides unknown buildings (`GrowthLimitReason`).
   - **Religion:** faiths unlock in historical order (two at Mysticism); four tabs (Overview with `FaithNextStep`, Faith Tree, Beliefs, More).
   - **Checks:** `ContentChecks.EveningRequestChecks`. Not hand-played.
+- Owner requests 9 Nov (no save change):
+  - **Look:** `SceneryArt` cuts out only groves, savanna and bog; everything else is faded at the edge. Groves are drawn as clusters; dry steppe has no picture.
+  - **Rivers:** home rivers drawn as trees (`World.RiverLinks`).
+  - **Art:** `Sprites/ruin-0..4` (`RuinStyle`), `field-0..2`, `improve-mine/fort`, `res-01..15` (resource miniatures).
+  - **Tiles:** settlements fit their tile (`SettlementRect`); gates at tile width.
+  - **Rules:** workers may auto develop from a city tile; Clear only on wooded tiles; mammoth and rhino one in six grazers each; buildings cost gold on completion (`BuildingGold`, `City.waitingGold`).
+  - **Hive Expanse:** world 6 (`RealmCount` 6; `RealmsHere` for older saves), peoples 79-83 (`SealedPeoplesHiveExpanse.cs`, `HivePeoples`), `MaxNations` 71.
+  - **Diplomacy:** streamlined main panel (`customDeal`). Checks: `ContentChecks.NinthNovemberChecks`. Not hand-played.
 - Owner choice 8 Nov, governors (save version 38; `Governors.cs`, `GovernorsUI.cs`): traits change yields 5-15% (`GovernorCatalog.TraitPercent`); 5 turns to settle in (3 if Loyal; `Character.settle`), restarted by a swap (`SwapGovernors`); six policies (`Character.policy`, `SetPolicy`): Steady, Tax hard, Pacify, Grow, Fortify, Assimilate. Below 35 loyalty a governor refuses a change; at 30% corruption or more they skim that share of gains (`GovernorPercent`). Rivals and auto-managed cities choose by need (`ChoosePolicy`); replace for 25 gold (`ReplaceGovernor`). Governor panel from the city screen header. Checks: `ContentChecks.GovernorChecks`. Not hand-played; percentages untuned.
 - Owner reports 8 Nov, after the mockup interface (no save change):
   - **Seam line:** a vertical line ran down every left-menu bar. The bars were three stretched pieces; they are now one ready-made picture (`Resources/UI/button-menu`, 468 x 123), and the panel frame has no mipmaps. Checked in 1920 x 1080 screenshots.

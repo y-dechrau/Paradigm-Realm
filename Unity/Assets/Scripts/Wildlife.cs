@@ -42,7 +42,8 @@ public partial class World {
  }
  // Grazers outnumber hunters three to one (owner request, 7 Nov 2026), as large plant-eaters always outnumber the beasts that hunt them.
  public const int GrazersPerHunter=3;
- static readonly int[] HunterKinds={0,1,2,3},GrazerKinds={4,5,6};
+ // Mammoths and woolly rhinoceroses are rarer than ground sloths (owner request, 9 Nov 2026): one in six grazers each.
+ static readonly int[] HunterKinds={0,1,2,3},GrazerKinds={4,4,4,4,5,6};
  void SpawnAnimal(Random r){
   int hunters=animals.Count(a=>AnimalCatalog.Carnivore[a.kind]),grazers=animals.Count-hunters;
   var pool=grazers<hunters*GrazersPerHunter+GrazersPerHunter?GrazerKinds:HunterKinds;int kind=pool[r.Next(pool.Length)];var homes=AnimalCatalog.Homes[kind];

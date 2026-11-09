@@ -26,7 +26,7 @@ public partial class RealmGame {
   var knownWorlds=Enumerable.Range(1,World.RealmCount).Where(world.WorldKnownAtHome).ToList();
   if(knownWorlds.Count==0){GUI.Label(new Rect(84,170,1100,120),"Nothing is known of any other world. No civilisation of your world has yet found an ancient gateway. Explore: the first gateway found, by you or any civilisation of your world, will begin this book.",body);return;}
   if(!knownWorlds.Contains(legendsWorld))legendsWorld=knownWorlds[0];
-  for(int r=1;r<=World.RealmCount;r++){var tab=new Rect(84+(r-1)*226,118,218,32);bool known=knownWorlds.Contains(r);if(r==legendsWorld)Fill(new Rect(tab.x-2,tab.y-2,tab.width+4,tab.height+4),UiAccent);bool was=GUI.enabled;GUI.enabled=was&&known;if(GUI.Button(tab,known?World.RealmNames[r]:"Unknown world",button)){legendsWorld=r;legendsScroll=Vector2.zero;GUI.enabled=was;GUIUtility.ExitGUI();}GUI.enabled=was;}
+  for(int r=1;r<=World.RealmCount;r++){var tab=new Rect(84+(r-1)*188,118,182,32);bool known=knownWorlds.Contains(r);if(r==legendsWorld)Fill(new Rect(tab.x-2,tab.y-2,tab.width+4,tab.height+4),UiAccent);bool was=GUI.enabled;GUI.enabled=was&&known;if(GUI.Button(tab,known?World.RealmNames[r]:"Unknown world",button)){legendsWorld=r;legendsScroll=Vector2.zero;GUI.enabled=was;GUIUtility.ExitGUI();}GUI.enabled=was;}
   var peoples=CivilisationCatalog.PeoplesOf(legendsWorld).Where(c=>world.NationOfPeople(c)>=0).ToList();bool told=peoples.Any(c=>world.PeopleDetail(world.NationOfPeople(c))>=2);
   GUILayout.BeginArea(new Rect(84,162,560,570));legendsScroll=GUILayout.BeginScrollView(legendsScroll);
   GUILayout.Label(World.RealmTexts[legendsWorld],body);GUILayout.Space(8);GUILayout.Label("History",heading);GUILayout.Label(told?SealedPeoples.WorldHistories[legendsWorld]:"Its history is unknown. Learn the customs of one of its peoples, and the story of the world comes with it.",body);
@@ -51,7 +51,7 @@ public partial class RealmGame {
   }
   // What the world on the map is like.
   y+=4;GUI.Label(new Rect(panel.x+14,y,panel.width-28,22),World.RealmNames[viewRealm],hudTitle);y+=24;GUI.Label(new Rect(panel.x+14,y,panel.width-28,70),World.RealmTexts[viewRealm],new GUIStyle(small){wordWrap=true});y+=74;
-  int hidden=Enumerable.Range(1,World.RealmCount).Count(r=>!world.RealmDiscovered(0,r));
+  int hidden=Enumerable.Range(1,world.RealmsHere).Count(r=>!world.RealmDiscovered(0,r));
   if(hidden>0){GUI.Label(new Rect(panel.x+14,y,panel.width-28,54),hidden+" parallel world"+(hidden==1?" is":"s are")+(world.gatesLocked?" sealed behind the ancient gateways.":" still unknown. Find an ancient gateway and move a land unit onto it to cross over."),new GUIStyle(small){wordWrap=true});y+=58;}
   int gates=world.tiles.Count(t=>t.realm==0&&t.gateLink>0&&t.seen);GUI.Label(new Rect(panel.x+14,y,panel.width-28,22),"Ancient gateways found: "+gates,small);y+=28;
   if(GUI.Button(new Rect(panel.x+12,y,panel.width-24,34),"Legends of the sealed worlds",button)){legendsOpen=true;legendsScroll=Vector2.zero;GUIUtility.ExitGUI();}

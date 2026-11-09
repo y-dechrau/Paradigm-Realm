@@ -222,6 +222,10 @@ namespace ParadigmRealm
         void DrawResource(Tile t,Rect rect)
         {
             if(t.resource<=0||!world.ResourceKnown(0,t.resource))return;
+            // Miniature sprites (owner request, 9 Nov 2026): no badge; each sits at its own spot on the tile, front half, so it reads
+            // as part of the land. The old icons are the fallback.
+            {var mini=SpriteSlot("res-"+t.resource.ToString("00"));if(mini!=null){float k=rect.width/61f,ms=22*k;int h=(t.x*73+t.y*151)&0x7fffffff;float ox=((h%3)-1)*9*k,oy=((h/3%2))*4*k;
+             GUI.DrawTexture(new Rect(rect.x+36*k-ms/2+ox,rect.y+61*k-15*k-ms+6*k+oy,ms,ms),mini,ScaleMode.ScaleToFit,true);return;}}
             float size=rect.width*.36f;var badge=new Rect(rect.xMax-size,rect.yMax-size,size,size);
             Fill(badge,new Color(1,1,1,.5f));
             if(World.IsSeaResource(t.resource)){var icon=IsoPicture(5,t.resource,0);if(icon!=null)GUI.DrawTexture(badge,icon);}
