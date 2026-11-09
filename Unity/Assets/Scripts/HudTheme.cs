@@ -103,10 +103,10 @@ namespace ParadigmRealm
 
             GUI.enabled=idle&&world.result=="";
 
-            if(turnRunning){GUI.enabled=true;GUI.Box(EndTurnRect,"");GUI.Label(new Rect(EndTurnRect.x,EndTurnRect.y+6,EndTurnRect.width,20),"The world moves...",hudCentre);EraBar(new Rect(EndTurnRect.x+12,EndTurnRect.y+32,EndTurnRect.width-24,10),Mathf.Min(turnStep,world.civCount)/(float)Math.Max(1,world.civCount));GUI.enabled=false;}
+            if(turnRunning){GUI.enabled=true;GUI.Box(EndTurnRect,"");GUI.Label(new Rect(EndTurnRect.x,EndTurnRect.y+6,EndTurnRect.width,20),"A new month: the world moves...",hudCentre);EraBar(new Rect(EndTurnRect.x+12,EndTurnRect.y+32,EndTurnRect.width-24,10),Mathf.Min(turnStep,world.civCount)/(float)Math.Max(1,world.civCount));GUI.enabled=false;}
             else{
-            if(GUI.Button(EndTurnRect,"END TURN",endTurnStyle))EndTurn();
-            var cap=new Rect(EndTurnRect.xMax-50,EndTurnRect.yMax-21,42,16);Fill(cap,new Color(.12f,.08f,.03f,.75f));GUI.Label(cap,"Enter",keyCapStyle);}
+            DrawClockControls(EndTurnRect);
+            }
             GUI.enabled=true;
             DrawTopBar();
             // Full tile details (movement, settlement advice, units present) while Alt is held.
@@ -140,7 +140,7 @@ namespace ParadigmRealm
                 x+=18;Fill(new Rect(x-10,9,1,20),new Color(UiGold.r,UiGold.g,UiGold.b,.45f));
             }
             if(hoverTip!=null){var size=hudSmall.CalcSize(new GUIContent(hoverTip));var tr=new Rect(Mathf.Min(mouse.x,1270-size.x-12),40,size.x+12,size.y+6);Fill(tr,new Color(.05f,.08f,.16f,.95f));Fill(new Rect(tr.x,tr.yMax-1,tr.width,1),UiGold);GUI.Label(new Rect(tr.x+6,tr.y+3,size.x+2,size.y),hoverTip,hudSmall);}
-            {float tx=Math.Max(x,1036);DrawIcon(PixelArt.IconTurn,new Rect(tx,8,22,22));GUI.Label(new Rect(tx+26,9,1192-tx-26,22),"Turn "+world.turn+"  •  "+world.Calendar(),hudLabel);}
+            {float tx=Math.Max(x,1036);DrawIcon(PixelArt.IconTurn,new Rect(tx,8,22,22));GUI.Label(new Rect(tx+26,9,1192-tx-26,22),world.ShortDate(),hudLabel);}
             bool enabled=GUI.enabled;GUI.enabled=!confirmNew&&pendingUnit==-1&&!turnRunning;
             if(GUI.Button(new Rect(1196,5,34,28),""))guide=true;DrawIcon(PixelArt.IconHelp,new Rect(1201,7,24,24));
             if(GUI.Button(new Rect(1236,5,38,28),"")){pauseMenu=true;GUIUtility.ExitGUI();}DrawIcon(PixelArt.IconMenu,new Rect(1243,7,24,24));

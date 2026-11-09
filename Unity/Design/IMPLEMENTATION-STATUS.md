@@ -1,5 +1,36 @@
 # Current release: Advanced diplomacy — Stage 3
 
+## Paradigm Realms Live, Stage 1: simulation clock (save version 40)
+
+Built from `Design/LIVE-ARCHITECTURE-SPEC.md` §4. The files are `SimulationClock.cs` and `ClockUI.cs`.
+
+**How this was checked:**
+- `ContentChecks.ClockChecks` pass in .NET:
+  - 30 days make one month and four weeks, and the monthly work advances the old turn counter once.
+  - An order given on day 1 waits; the unit is part of the way after half a month, and at the month's end it stands exactly where an all-at-once turn took it.
+  - Two worlds from one seed stay identical over 90 days.
+  - A version 39 save starts on day 1 of its month.
+  - A 300-month run keeps its rivals growing. Measured about 1.3 ms a simulated day on average, monthly work included. That run ended at about month 237, when a civilisation won.
+- Unity checks, build and screenshots are reported in the session.
+- **Not hand-played.**
+
+**What it does:**
+- **The world runs on a clock:**
+  - 30 days a month. Each month is one of the old turns, so every rule and balance figure keeps its meaning, and the monthly work is the old turn pipeline.
+  - The date is shown as season, day, month and year.
+- **Controls:** the End Turn button is replaced by a date plate with a month progress bar.
+  - Pause, Slow (0.6 s a day), Normal (0.25 s) and Fast (0.08 s).
+  - "Month" runs to the next month and pauses.
+  - Keys: Space pauses or resumes, 1-3 set the speed, Enter runs to the next month. Space no longer skips a unit; use its Skip button.
+  - The game starts paused.
+  - It pauses itself when a leader calls or makes first contact, and the clock waits while a prompt, decision or modal screen is open.
+- **Your units walk across the days:**
+  - Each unit earns its month's movement day by day and spends it as it goes: orders, exploring, road routes and auto develop.
+  - An order given mid-month walks as far as the movement earned so far.
+  - The movement animation shows each step.
+- **Rivals** still plan and move at the month (daily armies come in Stage 6). Production, growth, research and diplomacy still happen monthly.
+- **Not yet:** the event panel with date stamps (the existing notices remain), the weekly economy and yearly reports.
+
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
 ## Owner request 9 Nov: animated movement (no save change; `MotionUI.cs`)

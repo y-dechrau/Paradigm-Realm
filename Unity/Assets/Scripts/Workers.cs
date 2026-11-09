@@ -28,7 +28,7 @@ public partial class World {
   if(u.moves<StepCost(u,u.x,u.y,next)||!Move(u,next.x,next.y))return;
   if(!At(u.x,u.y).road&&u.moves>0&&JobReason(u,1)=="")StartJob(u,1);
  }
- public void SetAutoWork(Unit u,bool on){if(u==null||u.type!=1)return;foreach(var a in WorkerTeam(u)){CancelOrder(a);a.roadOrder=false;a.autoWork=on;}if(on&&u.moves>0)ImproveAI(u);}
+ public void SetAutoWork(Unit u,bool on){if(u==null||u.type!=1)return;foreach(var a in WorkerTeam(u)){CancelOrder(a);a.roadOrder=false;a.autoWork=on;}if(on&&u.moves>0){if(liveClock)WithAllowance(u,day%DaysPerMonth,()=>ImproveAI(u));else ImproveAI(u);}}
 }
 }
 namespace ParadigmRealm {

@@ -20,7 +20,7 @@ public partial class RealmGame {
   }
   steps.Dispose();turnStep=world.civCount;
   if(AutoSaveDue()){string path=System.IO.Path.Combine(autoSaveFolder??Application.persistentDataPath,"earth-auto-"+(world.turn%3)+".json");var job=System.Threading.Tasks.Task.Run(()=>AtomicSave(path));while(!job.IsCompleted)yield return null;if(job.Exception!=null)world.Note("Autosave failed: "+job.Exception.GetBaseException().Message);}
-  status=world.result!=""?world.result:"Turn "+world.turn+". Choose your orders.";turnRunning=false;
+  status=world.result!=""?world.result:"A new month: "+world.DateText()+".";turnRunning=false;
  }
  Rect GuidePanel(string line,float height,out float y,float textHeight=62){
   var box=new Rect(370,Mathf.Max(60,170-Mathf.Max(0,height-430)/2),540,height);Fill(new Rect(0,0,1280,800),new Color(0,0,0,.35f));DrawGuideFrame(box);

@@ -72,7 +72,7 @@ public int GrowthLimit(City c){return HasBuilding(c,41)?20+(HasTech(c.owner,"ele
     public int VillageTribute(int owner){int sum=0;foreach(var t in tiles)if(t.village&&t.villageOwner==owner&&VillageInReach(owner,t))sum+=VillageTax;return sum;}
     // Scouts and every combat unit can explore on their own (owner request); exploring stops when an enemy comes near.
     public static bool CanExplore(int type){return type==3||Power[type]>0||IsNaval(type);}
-    public bool AutoExplore(Unit u){if(u==null||u.owner!=0||!units.Contains(u)||!CanExplore(u.type)||result!="")return false;CancelActivity(u);u.exploring=true;ExploreStep(u);return true;}
+    public bool AutoExplore(Unit u){if(u==null||u.owner!=0||!units.Contains(u)||!CanExplore(u.type)||result!="")return false;CancelActivity(u);u.exploring=true;if(liveClock)WithAllowance(u,day%DaysPerMonth,()=>ExploreStep(u));else ExploreStep(u);return true;}
     // Auto-explore: a breadth-first search over known, enterable land finds the nearest tile beside unexplored ground, and the
     // unit follows a proper route there, so it no longer gets stuck in dead ends (owner request).
     void ExploreStep(Unit u){
@@ -141,7 +141,7 @@ public int GrowthLimit(City c){return HasBuilding(c,41)?20+(HasTech(c.owner,"ele
         }
         return best;
     }    bool VisibleThreat(Unit u){return units.Any(e=>AtWar(u.owner,e.owner)&&VisibleTo(u.owner,e.x,e.y)&&Distance(u.x,u.y,e.x,e.y)<=4);}
-    void ProcessEmpireOrders(int owner){WorkersFlee(owner);foreach(var u in units.Where(a=>a.owner==owner).ToList()){if(u.flee!=0)continue;if(u.roadOrder)RoadStep(u);else if(u.autoWork&&u.job==0&&!u.hasOrder&&u.moves>0)ImproveAI(u);if(u.sentry&&VisibleThreat(u)){u.sentry=false;if(owner==0)Note(UnitNames[u.type]+" sentry spotted an enemy.");}if(u.exploring)ExploreStep(u);}}
+    void ProcessEmpireOrders(int owner){WorkersFlee(owner);foreach(var u in units.Where(a=>a.owner==owner).ToList()){if(u.flee!=0)continue;bool daily=liveClock&&owner==0;if(daily){}else if(u.roadOrder)RoadStep(u);else if(u.autoWork&&u.job==0&&!u.hasOrder&&u.moves>0)ImproveAI(u);if(u.sentry&&VisibleThreat(u)){u.sentry=false;if(owner==0)Note(UnitNames[u.type]+" sentry spotted an enemy.");}if(u.exploring&&!daily)ExploreStep(u);}}
     void EmpireAI(int owner){var n=nations[owner];AIChooseEdicts(owner);if(n.government==0&&HasTech(owner,"laws"))ChangeGovernment(owner,1);n.luxury=cities.Any(c=>c.owner==owner&&Happiness(c)<0)&&n.gold>20?1:0;foreach(var c in cities.Where(c=>c.owner==owner)){if(c.build<0&&HasTech(owner,"currency")&&cities.Count(a=>a.owner==owner)>1&&units.Count(u=>u.owner==owner&&u.type==11)==0&&tradeRoutes.Count(r=>r.originOwner==owner)<2)ChooseProject(c,UnitBuild(11),false);}}
     void UpgradeEmpireSave(){if(tradeRoutes==null)tradeRoutes=new List<TradeRoute>();if(cities!=null)foreach(var c in cities)if(c!=null)NormaliseSpecialists(c);}
     bool EmpireValid(){if(tradeRoutes==null||nations==null||cities==null)return false;if(nations.Any(n=>n!=null&&(n.government<0||n.government>=Governments.Length||n.revolution<0||n.revolution>2||n.luxury<0||n.luxury>2)))return false;if(cities.Any(c=>c!=null&&(c.scientists<0||c.merchants<0||c.entertainers<0||c.scientists+c.merchants+c.entertainers>c.pop)))return false;return tradeRoutes.All(r=>r!=null&&r.origin!=r.destination&&r.originOwner>=0&&r.originOwner<civCount&&r.destinationOwner>=0&&r.destinationOwner<civCount&&cities.Any(c=>c.id==r.origin)&&cities.Any(c=>c.id==r.destination));}

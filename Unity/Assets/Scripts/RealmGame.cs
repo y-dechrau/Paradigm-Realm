@@ -64,12 +64,14 @@ namespace ParadigmRealm
         // inside OnGUI, so the screen never changes between Unity's layout and repaint passes.
         void Update()
         {
+            ClockUpdate();
             if(turnRunning||world==null||mainMenu||nameSetup||pauseMenu||guide||confirmNew||pendingUnit!=-1||cityScreen||researchScreen||detailsScreen!=""||world.result!="")return;
             if(gateScene==null&&world.gatesLocked){var found=world.NextNewGate();if(found!=null)StartGateScene(found);}
             if(world.newContacts!=null&&world.newContacts.Count>0){int met=world.newContacts[0];world.newContacts.RemoveAt(0);if(met>0&&met<world.civCount){diplomacyPartner=met;diplomacyChooser=false;diplomacyDiscuss=false;detailsScreen="Diplomacy";researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();status="First contact: "+world.NationName(met)+".";}}
         }
         void MapKeyboardInput(){
             if(turnRunning||cityScreen||researchScreen||detailsScreen!=""||pauseMenu||mainMenu||loadScreen)return;
+            {var cev=Event.current;if(!PromptOpen()&&GUI.GetNameOfFocusedControl()!="rename"&&GUI.GetNameOfFocusedControl()!="cityrename"&&!cev.control&&!cev.alt&&!cev.command)ClockKeys(cev);}
             var ev=Event.current;if(!PromptOpen()&&GUI.GetNameOfFocusedControl()!="rename"&&GUI.GetNameOfFocusedControl()!="cityrename"&&ev.type==EventType.KeyDown&&!ev.control&&!ev.alt&&!ev.command&&world.result==""&&!guide&&!confirmNew&&pendingUnit==-1){var u=Selected();if(ev.keyCode==KeyCode.X&&u!=null){world.CancelActivity(u);ResetMapGesture();status="Activity and route cancelled.";ev.Use();}else if(ev.keyCode==KeyCode.Tab){NextUnit();ev.Use();}else if(ev.keyCode==KeyCode.Space){if(u!=null){world.SkipTurn(u);status=world.UnitName(u)+" skips this turn.";}ev.Use();}else if(ev.keyCode==KeyCode.Return||ev.keyCode==KeyCode.KeypadEnter){EndTurn();ev.Use();}else if(ev.keyCode==KeyCode.B){Found();ev.Use();}else if(ev.keyCode==KeyCode.R){RoadKey(u);ev.Use();}else if(ev.keyCode==KeyCode.G&&u!=null){if(u.stack!=0){world.LeaveStack(u);status="Stack broken up.";}else status=world.JoinStack(u)?"These units now move together. Soldiers protect any civilians with them.":"There is nothing here to stack with.";ev.Use();}else if(u!=null){int dx=ev.keyCode==KeyCode.LeftArrow?-1:ev.keyCode==KeyCode.RightArrow?1:0,dy=ev.keyCode==KeyCode.UpArrow?-1:ev.keyCode==KeyCode.DownArrow?1:0;if(dx!=0||dy!=0){var to=ArrowTarget(u,dx,dy);if(to!=null)IssueOrder(u,to.x,to.y);ev.Use();}}}
         }
 
