@@ -4,7 +4,7 @@
 
 - Product name `Paradigm Realms Live` (separate saves and settings from the original), executable `ParadigmRealmsLive.exe`, installed to `C:\Users\Matth\Games\Paradigm Realms Live` with the desktop icon "Paradigm Realms Live" and the zip `Desktop\Paradigm Realms Live.zip`.
 - GitHub backup: branch `paradigm-realms-live` of https://github.com/y-dechrau/Paradigm-Realm (the original stays on `main`).
-- Live design notes: `Unity/Design/LIVE-DESIGN.md`.
+- Live design notes: `Unity/Design/LIVE-DESIGN.md`; **official direction (owner, 9 Nov 2026): hybrid real-time grand strategy, specified in `Unity/Design/LIVE-ARCHITECTURE-SPEC.md`; Stage 1 (simulation clock) is next.**
 
 Everything below was inherited from the original and still describes the shared code base.
 

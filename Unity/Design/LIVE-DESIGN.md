@@ -80,3 +80,17 @@ In Paradigm Realm you manage cities and tiles. In Live you manage **people**: ev
 3. War exhaustion that forces peace: yes or no?
 4. Do you want the autoplay turn timer to give the game a "live" feel?
 5. Which crisis first: the hum of the Hive Expanse, the plague of the Marshes, or the fire of the Infernal Depths?
+
+## Owner decisions, 9 Nov 2026
+
+- **Population replaces city size completely.**
+- **Captured peoples keep their traits and beliefs.**
+- **No war exhaustion.**
+- **Time:**
+  - The optional turn timer is superseded by the owner's direction paper "Paradigm Realm – Grand Strategy Architecture".
+  - Live becomes a **hybrid real-time simulation**: a central clock with pause, slow, normal and fast speeds, and a "next month" command.
+  - It uses moderate simulation: population groups rather than individuals, dynamic trade and shortages, factions and unrest, and independent AI.
+  - The seven stages run from the simulation clock to integration.
+- **Earth only:** the first Live games are Earth only, and the parallel worlds wait for an expansion.
+
+The technical plan is in `LIVE-ARCHITECTURE-SPEC.md`. Stage 1, the simulation clock, is the first target. The phase table above is replaced by the spec's seven stages.
