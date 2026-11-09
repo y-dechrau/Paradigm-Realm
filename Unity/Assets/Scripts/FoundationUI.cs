@@ -118,9 +118,9 @@ namespace ParadigmRealm
             GUILayout.BeginArea(new Rect(850,128,342,496));
             GUILayout.Label("Who shares it",heading);
             int maxCivs=World.MaxCivsBySize[setupSize];if(setupCivs>maxCivs)setupCivs=maxCivs;if(setupCivs<2)setupCivs=2;
-            GUILayout.Space(6);GUILayout.Label("Civilisations: "+setupCivs+" (you and "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+"; up to "+maxCivs+" on this size), plus "+(setupPeoples*(World.RealmCount-1)+Math.Min(setupPeoples,SealedPeoples.HivePeoples))+" peoples in the sealed worlds",body);
+            GUILayout.Space(6);GUILayout.Label("Civilisations: "+setupCivs+" (you and "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+"; up to "+maxCivs+" on this size)"+(setupRealms?", plus "+(setupPeoples*(World.RealmCount-1)+Math.Min(setupPeoples,SealedPeoples.HivePeoples))+" peoples in the sealed worlds":"; Earth only"),body);
             setupCivs=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupCivs,2,maxCivs));
-            GUILayout.Space(6);GUILayout.Label("Peoples in each sealed world: "+setupPeoples+(setupPeoples>4?" (slower turns on large maps)":""),body);setupPeoples=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupPeoples,1,10));
+            GUILayout.Space(6);setupRealms=GUILayout.Toggle(setupRealms,"  Sealed worlds and gateways (expansion content; off = Earth only)");if(setupRealms){GUILayout.Label("Peoples in each sealed world: "+setupPeoples+(setupPeoples>4?" (slower turns on large maps)":""),body);setupPeoples=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupPeoples,1,10));}
             GUILayout.Space(10);GUILayout.Label("Wild animals: "+World.AnimalChoices[setupAnimals],body);setupAnimals=GUILayout.SelectionGrid(setupAnimals,World.AnimalChoices,5);GUILayout.Label(setupAnimals==0?"No wild animals at all.":"Three times as many until a civilisation passes the Medieval Age.",small);
             GUILayout.Space(10);tutorialOn=GUILayout.Toggle(tutorialOn," Play with the tutorial");GUILayout.Label(GuideName+" talks you through the first turns.",small);
             GUILayout.EndArea();

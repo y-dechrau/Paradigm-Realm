@@ -21,7 +21,7 @@ namespace ParadigmRealm
         static readonly string[] RailLabels={"Empire","Civics","Research","Diplomacy","Religion","Cities","Units","Realms","Victory","Chronicle"};
         static readonly int[] RailIcons={PixelArt.IconEmpire,PixelArt.IconCivics,PixelArt.IconResearch,PixelArt.IconDiplomacy,PixelArt.IconFaith,PixelArt.IconCities,PixelArt.IconMilitary,PixelArt.IconRealms,PixelArt.IconVictory,PixelArt.IconChronicle,PixelArt.IconIdentity};
         const float RailItem=44;
-        static Rect RailRect{get{return new Rect(0,44,166,RailScreens.Length*RailItem+8);}}
+        static Rect RailRect{get{return CategoryRect;}}
         readonly List<Rect> hudRects=new List<Rect>();
         bool moreActions,moveMode,roadMode;
         // A label whose font shrinks (down to minimum) until the whole text fits the box (owner request: nothing cut off).
@@ -37,7 +37,7 @@ namespace ParadigmRealm
         void RefreshHudNumbers(){
             if(hudWorld==world&&hudTurn==world.turn&&Time.realtimeSinceStartup-hudAt<.3f)return;hudWorld=world;hudTurn=world.turn;hudAt=Time.realtimeSinceStartup;
             hudBudget=world.Budget(0)[2];hudOwnCities=0;hudCalm=0;hudScience=0;foreach(var c in world.cities)if(c.owner==0){hudOwnCities++;if(!world.Disorder(c))hudCalm++;hudScience+=world.Yield(c)[2];}
-            int need;hudFood=world.FoodBalance(0,out need);hudFaith=world.FaithPerTurn(0);hudResearchTurns=world.research>=0?world.ResearchTurns(world.research,0):-1;hudEra=world.Era(0);
+            int need;hudFood=world.FoodBalance(0,out need);hudFaith=world.FaithPerTurn(0);hudResearchTurns=world.research>=0?world.ResearchTurns(world.research,0):-1;hudEra=world.Era(0);hudIron=IronSources();
         }
         Rect LeaderRect(int i){return new Rect(1274-(i+1)*80,46,74,96);}
         // The current message (what just happened or why an order failed) leads, then the newest log entries of this turn and last.
@@ -52,7 +52,7 @@ namespace ParadigmRealm
             hudRects.Add(TopBar);hudRects.Add(RailRect);hudRects.Add(ResearchCard);hudRects.Add(MiniMap);hudRects.Add(MiniButtons);hudRects.Add(EndTurnRect);hudRects.Add(TileCard);hudRects.Add(MedalBar);
             if(CardShown())hudRects.Add(UnitCard);if(moreActions&&CardShown())hudRects.Add(MorePanel);
             for(int i=0;i<MetRivals().Count;i++)hudRects.Add(LeaderRect(i));
-            for(int i=0;i<RecentNotes().Count;i++)hudRects.Add(NoteRect(i));
+            hudRects.Add(EventsRect);
             // The tutorial panel takes its own clicks (its Next, Hide and End buttons), not the map underneath.
             if(TutorialShown())hudRects.Add(TutorialRect());
             if(NoticeShown())hudRects.Add(NoticeRect);if(CallShown())hudRects.Add(CallRect);
@@ -97,7 +97,7 @@ namespace ParadigmRealm
         void DrawHud()
         {
             bool idle=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen()&&!turnRunning;GUI.enabled=idle;
-            DrawRail();DrawResearchCard();DrawLeaders();DrawNotices();DrawMiniMap();
+            DrawRail();DrawResearchCard();DrawLeaders();DrawEventsPanel();DrawMiniMap();
             if(CardShown()){if(moreActions)DrawMoreActions();DrawUnitCard();}else moreActions=false;
             DrawTileCard();DrawMedalBar();DrawBuildNotice();DrawRivalCall();
 
@@ -108,7 +108,7 @@ namespace ParadigmRealm
             DrawClockControls(EndTurnRect);
             }
             GUI.enabled=true;
-            DrawTopBar();
+            DrawTopBar();DrawEventTip();
             // Full tile details (movement, settlement advice, units present) while Alt is held.
             if(tooltips&&Event.current.alt&&idle)DrawTileTooltip();
         }
@@ -117,23 +117,24 @@ namespace ParadigmRealm
             HudStyles();RefreshHudNumbers();
             Fill(TopBar,new Color(.035f,.055f,.095f,.96f));Fill(new Rect(0,TopBar.yMax-2,1280,1),UiGold);Fill(new Rect(0,TopBar.yMax-1,1280,1),new Color(0,0,0,.6f));
             // The compass-rose emblem and name on a gold-framed plate, as in the mockup.
-            {var plate=new Rect(2,1,228,36);GUI.Box(plate,"");var logo=UiTex("logo");if(logo!=null)GUI.DrawTexture(new Rect(6,0,38,38),logo,ScaleMode.ScaleToFit,true);else DrawIcon(PixelArt.IconRealms,new Rect(12,7,24,24));FitLabel(new Rect(50,8,172,26),"REALMS  LIVE",hudTitle,11);}
+            {var plate=new Rect(2,1,228,36);GUI.Box(plate,"");var logo=UiTex("logo");if(logo!=null)GUI.DrawTexture(new Rect(6,0,38,38),logo,ScaleMode.ScaleToFit,true);else DrawIcon(PixelArt.IconRealms,new Rect(12,7,24,24));FitLabel(new Rect(50,1,172,20),"PARADIGM REALMS LIVE",hudTitle,10);var yr=new GUIStyle(hudSmall){fontSize=11,wordWrap=false};yr.normal.textColor=UiText;FitLabel(new Rect(50,19,172,16),YearAndSeason(),yr,9);}
             int budget=hudBudget,ownCities=hudOwnCities,calm=hudCalm;
             // Resources as in the mockup: a large painted icon, the amount, and the change per turn in green (red when falling).
             // Hovering an item names it.
             var items=new[]{
                 new KeyValuePair<int,string[]>(PixelArt.IconGold,new[]{world.gold.ToString(),(budget>=0?"+":"")+budget+(world.nations[0].arrears>0?"  IN DEBT":""),"Gold in the treasury and the change per turn"+GoldTooltipDetail()}),
-                new KeyValuePair<int,string[]>(PixelArt.IconScience,new[]{"","+"+SciencePerTurn(),"Science per turn"}),
                 new KeyValuePair<int,string[]>(PixelArt.IconFood,new[]{world.FoodStateName(0),(hudFood>=0?"+":"")+hudFood,"Food for the army: "+world.FoodStateName(0)}),
+                new KeyValuePair<int,string[]>(-1,new[]{hudIron.ToString(),"","Iron: improved iron sources in your lands (mines on iron)"}),
                 new KeyValuePair<int,string[]>(PixelArt.IconFaith,new[]{world.nations[0].faith.ToString(),"+"+hudFaith,"Faith and faith per turn"}),
-                new KeyValuePair<int,string[]>(PixelArt.IconAge,new[]{TechnologyCatalog.EraNames[hudEra]+(world.AgeOf(0)!=World.AgeNormal?" · "+World.AgeNames[world.AgeOf(0)].Replace(" Age",""):""),"","Your age"}),
-                new KeyValuePair<int,string[]>(PixelArt.IconOrder,new[]{ownCities==0?"—":(calm*100/ownCities)+"%","","Cities in order"})};
+                new KeyValuePair<int,string[]>(-2,new[]{Stability()+"%","","Stability: the share of your cities in order"}),
+                new KeyValuePair<int,string[]>(PixelArt.IconScience,new[]{"","+"+SciencePerTurn(),"Science per turn"}),
+                new KeyValuePair<int,string[]>(PixelArt.IconAge,new[]{TechnologyCatalog.EraNames[hudEra]+(world.AgeOf(0)!=World.AgeNormal?" · "+World.AgeNames[world.AgeOf(0)].Replace(" Age",""):""),"","Your age"})};
             float x=244;string hoverTip=null;var mouse=Event.current.mousePosition;
             var deltaUp=new GUIStyle(hudLabel){fontSize=12};deltaUp.normal.textColor=new Color(.45f,.85f,.4f);var deltaDown=new GUIStyle(deltaUp);deltaDown.normal.textColor=new Color(.95f,.4f,.3f);
             var amount=new GUIStyle(hudLabel){fontSize=15};if(displayFont!=null)amount.font=displayFont;
             foreach(var item in items)
             {
-                float start=x;DrawIcon(item.Key,new Rect(x,4,30,30));x+=34;
+                float start=x;if(item.Key<0){var art=UiTex(item.Key==-1?"icon-iron":"icon-stability");if(art!=null)GUI.DrawTexture(new Rect(x,4,30,30),art,ScaleMode.ScaleToFit,true);else DrawIcon(item.Key==-1?PixelArt.IconShields:PixelArt.IconOrder,new Rect(x,4,30,30));}else DrawIcon(item.Key,new Rect(x,4,30,30));x+=34;
                 if(item.Value[0]!=""){float w=amount.CalcSize(new GUIContent(item.Value[0])).x;GUI.Label(new Rect(x,8,w+4,24),item.Value[0],amount);x+=w+6;}
                 if(item.Value[1]!=""){var st=item.Value[1].StartsWith("-")?deltaDown:deltaUp;float w=st.CalcSize(new GUIContent(item.Value[1])).x;GUI.Label(new Rect(x,11,w+4,20),item.Value[1],st);x+=w+4;}
                 if(new Rect(start,2,x-start,34).Contains(mouse))hoverTip=item.Value[2];
@@ -146,7 +147,8 @@ namespace ParadigmRealm
             if(GUI.Button(new Rect(1236,5,38,28),"")){pauseMenu=true;GUIUtility.ExitGUI();}DrawIcon(PixelArt.IconMenu,new Rect(1243,7,24,24));
             GUI.enabled=enabled;
         }
-        void DrawRail()
+        void DrawRail(){DrawCategories();}
+        void DrawOldRail()
         {
             // The left menu after the mockup: a gold-framed column of gold-trimmed bars, each a painted icon and its name.
             var rail=RailRect;GUI.Box(rail,"");

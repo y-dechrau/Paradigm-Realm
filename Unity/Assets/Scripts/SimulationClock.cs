@@ -52,3 +52,23 @@ public partial class World {
  public void AdvanceMonth(){if(liveClock){int guard=0;while(guard++<DaysPerMonth&&!TickDay()){}}foreach(int step in TurnSteps()){}}
 }
 }
+namespace ParadigmRealm {
+// World events (LIVE-ARCHITECTURE-SPEC.md §4.5): every message is also a dated event, sorted into a kind for its colour in the
+// events panel. Kept to the last 200; older saves start with none.
+[Serializable] public class WorldEvent {public int day,kind;public string text="";}
+public partial class World {
+ public System.Collections.Generic.List<WorldEvent> events=new System.Collections.Generic.List<WorldEvent>();
+ public static readonly string[] EventKinds={"News","War","Hardship","Faith","Knowledge","Growth"};
+ public static int EventKind(string s){
+  string t=s.ToLowerInvariant();
+  if(t.Contains("war")||t.Contains("attack")||t.Contains("battle")||t.Contains("killed")||t.Contains("captur")||t.Contains("occupied")||t.Contains("siege"))return 1;
+  if(t.Contains("famine")||t.Contains("starv")||t.Contains("short")||t.Contains("hungry")||t.Contains("sick")||t.Contains("plague")||t.Contains("debt")||t.Contains("empty")||t.Contains("rebel")||t.Contains("disorder"))return 2;
+  if(t.Contains("faith")||t.Contains("religio")||t.Contains("priest")||t.Contains("pantheon")||t.Contains("temple")||t.Contains("shrine"))return 3;
+  if(t.Contains("discover")||t.Contains("research")||t.Contains(" age")||t.Contains("learn"))return 4;
+  if(t.Contains("grew")||t.Contains("founded")||t.Contains("built")||t.Contains("completed")||t.Contains("trained")||t.Contains("consecrated"))return 5;
+  return 0;
+ }
+ void PostEvent(string s){if(events==null)events=new System.Collections.Generic.List<WorldEvent>();events.Insert(0,new WorldEvent{day=day,kind=EventKind(s),text=s});if(events.Count>200)events.RemoveAt(events.Count-1);}
+ public string ShortDay(int d){return (d%DaysPerMonth+1)+" "+MonthNames[(d/DaysPerMonth)%12].Substring(0,3);}
+}
+}

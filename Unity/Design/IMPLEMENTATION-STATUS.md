@@ -1,5 +1,26 @@
 # Current release: Advanced diplomacy — Stage 3
 
+## Paradigm Realms Live: interface after the direction paper (no save change)
+
+The owner asked for the interface and art shown in the direction paper's "Proposed main interface". Only its layout and wording were used. None of the pictures on that page were copied, and some of them are from other commercial games. The code is in `LiveHud.cs`.
+
+- **Three levels of view:**
+  1. The map.
+  2. Eight management categories in the left menu: Realm, Population, Economy, Politics, Diplomacy, Military, Research, Religion.
+  3. Each category opens its detailed screen: Realm opens Empire, Population opens Cities, Economy opens Citizens, Politics opens Civics. Diplomacy, Military, Research and Religion open their own screens.
+  - Realms, Victory and Chronicle stay on the medallion bar.
+- **World events panel:** replaces the message cards on the right.
+  - Each entry is dated and has a colour by kind: News, War, Hardship, Faith, Knowledge, Growth (`World.EventKind`).
+  - A red "N new" badge counts entries not yet seen. Clicking the panel opens the Chronicle and clears the badge.
+  - Hovering an entry shows its full text.
+- **Top bar:**
+  - The plate reads "PARADIGM REALMS LIVE" with the year and season under it.
+  - Then Gold, Food, Iron, Faith, Stability, Science and Age.
+  - Iron is the number of mined iron sources in your lands.
+  - Stability is the share of your cities in order.
+- **New SpriteCook icons** (48 credits): `Resources/UI/icon-iron`, `icon-stability`, `icon-population`, `icon-politics`. They were made with the earlier interface sheets as the style reference.
+- **Checked:** Unity checks, a build and screenshots. **Not hand-played.**
+
 ## Paradigm Realms Live, Stage 1: simulation clock (save version 40)
 
 Built from `Design/LIVE-ARCHITECTURE-SPEC.md` §4. The files are `SimulationClock.cs` and `ClockUI.cs`.
