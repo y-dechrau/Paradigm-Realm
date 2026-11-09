@@ -87,7 +87,7 @@ public partial class RealmGame {
   for(int p=0;p<FaithCatalog.Policies.Length;p++){GUILayout.BeginHorizontal();if(GUILayout.Button((me.religionPolicy==p?"▸ ":"")+FaithCatalog.Policies[p],button,GUILayout.Width(240)))world.SetPolicy(0,p);GUILayout.Label(FaithCatalog.PolicyTexts[p],small);GUILayout.EndHorizontal();}
   GUILayout.Space(6);GUILayout.Label("Religious buildings in your cities",heading);
   foreach(int b in World.FaithBuildingIds)GUILayout.Label(World.FaithBuildingName(b)+": "+world.cities.Count(c=>c.owner==0&&world.HasBuilding(c,b))+"  ("+World.FaithBuildingTexts[Array.IndexOf(World.FaithBuildingIds,b)]+")",small);
-  GUILayout.Label("They are bought with each city's own faith from the city screen's Buildings tab.",small);
+  GUILayout.Label("They are bought with your civilisation's faith from the city screen's Buildings tab.",small);
   {var temples=world.cities.Where(c=>c.owner==0&&c.religion>=0&&world.HasBuilding(c,36)).OrderBy(c=>c.name).ToList();GUILayout.Space(6);GUILayout.Label("Priests ("+World.PriestFaithCost+" faith)",heading);
    if(temples.Count==0)GUILayout.Label("None of your cities both follows a faith and has a Temple yet.",small);
    foreach(var c in temples.Take(10)){GUILayout.BeginHorizontal();GUILayout.Label(c.name+" — "+world.FaithName(c.religion),body,GUILayout.Width(560));string why=world.BuyPriestReason(0,c);bool was=GUI.enabled;GUI.enabled=was&&why=="";if(GUILayout.Button("Buy a Priest",button,GUILayout.Width(200)))world.BuyPriest(0,c);GUI.enabled=was;GUILayout.EndHorizontal();}}

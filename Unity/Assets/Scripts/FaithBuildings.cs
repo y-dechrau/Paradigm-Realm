@@ -27,11 +27,12 @@ public partial class World {
   if(FaithBuildingTech[i]!=""&&!HasTech(c.owner,FaithBuildingTech[i]))return "Requires "+TechNames[TechnologyCatalog.Index(FaithBuildingTech[i])];
   if(FaithBuildingNeeds[i]>=0&&!HasBuilding(c,FaithBuildingNeeds[i]))return "Needs a "+FaithBuildingName(FaithBuildingNeeds[i])+" first";
   if(Disorder(c))return "The city is in disorder";
-  int cost=FaithBuildingCost(b);if(c.faith<cost)return "Needs "+cost+" faith in this city ("+c.faith+" so far, +"+FaithYield(c)+" a turn)";
+  // Paid from the civilisation's faith total (owner request, 9 Nov 2026), not from the city's own store.
+  int cost=FaithBuildingCost(b),have=nations[c.owner].faith;if(have<cost)return "Needs "+cost+" faith ("+have+" in your treasury of faith, +"+FaithPerTurn(c.owner)+" a turn)";
   return "";
  }
- public bool BuildWithFaith(City c,int b){if(FaithBuildReason(c,b)!="")return false;c.faith-=FaithBuildingCost(b);c.buildings.Add(b);if(c.owner==0)Note(FaithBuildingName(b)+" consecrated in "+c.name+".");return true;}
- public int FaithTurns(City c,int b){int left=FaithBuildingCost(b)-c.faith;if(left<=0)return 0;int per=FaithYield(c);return per<=0?-1:(left+per-1)/per;}
+ public bool BuildWithFaith(City c,int b){if(FaithBuildReason(c,b)!="")return false;nations[c.owner].faith-=FaithBuildingCost(b);c.buildings.Add(b);if(c.owner==0)Note(FaithBuildingName(b)+" consecrated in "+c.name+".");return true;}
+ public int FaithTurns(City c,int b){int left=FaithBuildingCost(b)-nations[c.owner].faith;if(left<=0)return 0;int per=FaithPerTurn(c.owner);return per<=0?-1:(left+per-1)/per;}
  internal void GatherCityFaith(){if(!modernRules)return;foreach(var c in cities)c.faith=Math.Min(CityFaithCap,Math.Max(0,c.faith)+FaithYield(c));}
  // Rivals raise the cheapest religious building their city can afford.
  void FaithBuildingAI(int owner){if(!modernRules)return;foreach(var c in cities){if(c.owner!=owner)continue;foreach(int b in FaithBuildingIds)if(FaithBuildReason(c,b)==""){BuildWithFaith(c,b);break;}}}

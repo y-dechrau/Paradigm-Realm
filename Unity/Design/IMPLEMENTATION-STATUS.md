@@ -2,6 +2,19 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 9 Nov: sieges, stacks and faith buildings (no save change; `Siege.cs`)
+
+- **Faith buildings:** Shrine, Temple, Monastery and Cathedral are paid from the civilisation's faith total, not the city's own store.
+- **Sieges:** a defender in its own city counts three times its strength (3:1). An attacker on a hill faces 2:1, unless the city is also on a hill, when it stays 3:1 (`CityRatio`). This is applied in `Exchange`, so the preview, the rivals' judgement and the battle all agree.
+- **Stacks attack together:**
+  - A stack fights at its soldiers' combined strength, up to 6, and the damage it takes is shared evenly (`AttackGroup`, `GroupAttack`, `ShareDamage`).
+  - Every member spends its move.
+  - Your stacks are the units you joined. Rivals' soldiers on one tile attack together, because rivals do not form stacks yet.
+  - Ranged units fire alone.
+- **Attacking alone (Skirmish):** the unit keeps half its remaining movement after the attack, so it can pull back or press on, and the rest of its stack can still act. A flat +1 attack was tried first, but it upset designed matchups such as Spearman against Horseman.
+- **Preview:** the battle preview names the stack, the shared damage and the city's multiplier (`SiegeNote`).
+- **Checks:** `ContentChecks.SiegeChecks`. Not hand-played: the 3:1 rule makes walled cities very hard to take, so balance needs playing.
+
 ## Owner requests 9 Nov: flag designer and auto develop (save version 39)
 
 - **Flag designer** is now a "Flag and identity" sub-tab of the Empire screen; the separate Identity entry is gone from the left menu.

@@ -45,15 +45,15 @@ public int GrowthLimit(City c){return HasBuilding(c,41)?20+(HasTech(c.owner,"ele
     public string CombatPreview(Unit attacker,int x,int y){
         if(attacker==null||Power[attacker.type]==0||!VisibleTo(attacker.owner,x,y)||Distance(attacker.x,attacker.y,x,y)!=1)return "";
         var enemy=BestDefender(attacker,x,y);if(enemy==null)return "";
-        return ExchangeText(attacker,enemy,"Attack")+DefenceNote(x,y)+(AtWar(attacker.owner,enemy.owner)?"":" Declares war.");
+        return ExchangeText(attacker,enemy,"Attack")+DefenceNote(x,y)+SiegeNote(attacker,x,y)+(AtWar(attacker.owner,enemy.owner)?"":" Declares war.");
     }
     // Hills, forest, rivers and mountains add to the defender's strength (owner request, 8 Nov 2026: shown wherever a battle is judged).
     public string DefenceNote(int x,int y){var t=At(x,y);if(t==null)return "";int d=TerrainDefence(t.terrain);return d>0?" Defender's "+TerrainNames[t.terrain].ToLower()+": +"+d+" defence (included).":"";
     }
     // Exact outcome of one exchange, as the real attack will resolve it (combat is deterministic).
     public string ExchangeText(Unit attacker,Unit enemy,string kind){
-        int dealt,taken;Exchange(attacker,enemy,out dealt,out taken);int a=Strength(attacker,enemy,false),d=Strength(enemy,attacker,true);
-        return kind+" preview: "+UnitNames[attacker.type]+" "+a+" vs "+UnitNames[enemy.type]+" "+d+". You deal "+dealt+" (enemy health "+enemy.hp+" to "+Math.Max(0,enemy.hp-dealt)+(enemy.hp<=dealt?", destroyed":"")+"), you take "+taken+(taken==0?" (no retaliation against ranged attacks)":" (your health "+attacker.hp+" to "+Math.Max(0,attacker.hp-taken)+(attacker.hp<=taken?", destroyed":"")+")")+".";
+        int dealt,taken;Exchange(attacker,enemy,out dealt,out taken);var group=IsRanged(attacker.type)?new List<Unit>{attacker}:AttackGroup(attacker);int a=GroupAttack(group,enemy),d=Strength(enemy,attacker,true)*CityRatio(attacker,enemy);int share=group.Count>1?(taken+group.Count-1)/group.Count:taken;
+        return kind+" preview: "+(group.Count>1?"Stack of "+group.Count:UnitNames[attacker.type])+" "+a+" vs "+UnitNames[enemy.type]+" "+d+". You deal "+dealt+" (enemy health "+enemy.hp+" to "+Math.Max(0,enemy.hp-dealt)+(enemy.hp<=dealt?", destroyed":"")+"), you take "+taken+(taken==0?" (no retaliation against ranged attacks)":group.Count>1?" shared across the stack, about "+share+" each":" (your health "+attacker.hp+" to "+Math.Max(0,attacker.hp-taken)+(attacker.hp<=taken?", destroyed":"")+")")+".";
     }
     public string RangedPreview(Unit attacker,Unit target){var e=target==null?null:BestDefender(attacker,target.x,target.y);return e==null?"":ExchangeText(attacker,e,"Ranged");}
     void SeedVillages(){var r=new Random(seed^317);foreach(var t in tiles)if(!Barren(t.terrain)&&cities.All(c=>Distance(c.x,c.y,t.x,t.y)>4)&&units.All(u=>Distance(u.x,u.y,t.x,t.y)>4)&&r.Next(60)==0)t.village=true;}

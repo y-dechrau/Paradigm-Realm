@@ -25,6 +25,7 @@ public static void Run(){
     EveningRequestChecks();
     GovernorChecks();
     NinthNovemberChecks();
+    SiegeChecks();
     var cold=World.New(3);var settler=cold.units.First(u=>u.owner==0&&u.type==0);cold.At(settler.x,settler.y).terrain=8;cold.tech[K("fire")]=false;Check(cold.Found(settler)==null,"cold settlement needs Fire");cold.tech[K("fire")]=true;Check(cold.Found(settler)!=null,"Fire (Stone Tools) permits cold settlement");
     var terrainTypes=new HashSet<int>();for(int seed=0;seed<6;seed++){var map=World.New(seed);Check(map.Valid(),"biome map validates");foreach(var tile in map.tiles){terrainTypes.Add(tile.terrain);Check(map.TileYield(tile).Length==3,"all terrain has yields");}}
     Check(terrainTypes.Count==21,"all texture terrain types generated");
@@ -360,6 +361,24 @@ static void NinthNovemberChecks(){
     {var g=World.New(512,"Wild",0,1,1,0,1,2,3,hex:true,rations:true);g.wildlife=true;g.animals.Clear();for(int k=0;k<12;k++)g.SpawnAnimalsForChecks();
      int sloths=g.animals.Count(a=>a.kind==4),big=g.animals.Count(a=>a.kind==5||a.kind==6);Check(g.animals.Count==0||sloths>=big,"sloths outnumber mammoths and rhinoceroses ("+sloths+" against "+big+")");}
 }
+// Sieges and stacks (owner request, 9 Nov 2026): 3:1 for a city's defenders, 2:1 from a hill unless the city is on one, a stack's
+// combined strength with shared damage, Skirmish for a lone attacker; faith buildings paid from the civilisation's faith.
+static void SiegeChecks(){
+    var w=World.New(613,"Siege",0,1,1,0,1,2,3,hex:true,natives:false,rations:true);var home=w.Found(w.units.First(u=>u.owner==0&&u.type==0));
+    var guard=w.Add(0,2,home.x,home.y);var ground=w.tiles.First(t=>t.realm==0&&w.Distance(t.x,t.y,home.x,home.y)==1&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain));
+    var a1=w.Add(1,2,ground.x,ground.y);int keep=ground.terrain;
+    ground.terrain=0;w.At(home.x,home.y).terrain=0;Check(w.CityRatio(a1,guard)==3,"a city's defender counts three times over");
+    ground.terrain=2;Check(w.CityRatio(a1,guard)==2,"from a hill the attacker faces 2:1");
+    w.At(home.x,home.y).terrain=2;Check(w.CityRatio(a1,guard)==3,"a city on a hill keeps 3:1");
+    var field=w.tiles.First(t=>t.realm==0&&w.cities.All(c=>c.x!=t.x||c.y!=t.y)&&!PixelArt.IsWater(t.terrain)&&w.Distance(t.x,t.y,home.x,home.y)>3);var loner=w.Add(0,2,field.x,field.y);
+    Check(w.CityRatio(a1,loner)==1,"outside a city there is no siege ratio");
+    {var g=w.AttackGroup(a1);Check(g.Count==1&&w.GroupAttack(g,guard)==w.Strength(a1,guard,false)&&World.SkirmishMoves(4)==2,"a lone attacker fights at its own strength and keeps half its movement (Skirmish)");
+     var a2=w.Add(1,2,ground.x,ground.y);var a3=w.Add(1,2,ground.x,ground.y);g=w.AttackGroup(a1);Check(g.Count==3&&w.GroupAttack(g,guard)==g.Sum(m=>w.Strength(m,guard,false)),"rival soldiers on one tile attack together at their combined strength");
+     int before=g.Sum(m=>m.hp);w.ShareDamage(g,7);Check(before-g.Sum(m=>m.hp)==7&&g.All(m=>10-m.hp>=2&&10-m.hp<=3),"a stack shares the damage it takes");}
+    ground.terrain=keep;
+    // Religious buildings are paid from the civilisation's faith.
+    if(w.modernRules){w.nations[0].faith=500;home.faith=0;int cost=w.FaithBuildingCost(World.ShrineBuilding);Check(w.FaithBuildReason(home,World.ShrineBuilding)==""&&w.BuildWithFaith(home,World.ShrineBuilding)&&w.nations[0].faith==500-cost,"a Shrine is paid from the civilisation's faith");}
+}
 // Governors (owner choice, 8 Nov 2026): traits change yields, a new or moved governor settles in first, and a policy that a
 // disloyal governor will not change and a corrupt one skims.
 static void GovernorChecks(){
@@ -430,9 +449,9 @@ static void EighthNovemberChecks(){
     {var hill=s.tiles.First(t=>t.terrain==2);Check(World.TerrainDefence(2)==2&&s.DefenceNote(hill.x,hill.y).Contains("+2"),"hills give +2 defence and the battle preview says so");}
     // Faith and religious buildings.
     {Check(!s.TechAllows(city,36)&&s.BuildReason(city,36).Contains("faith"),"Temples are not built with production");Check(s.FaithAllows(city,World.ShrineBuilding)&&!s.FaithAllows(city,World.MonasteryBuilding),"a Shrine is open at once, a Monastery needs Philosophy");
-     city.faith=0;s.GatherCityFaith();Check(city.faith==s.FaithYield(city)&&city.faith>=1,"a city gathers its own faith each turn");Check(s.FaithBuildReason(city,World.ShrineBuilding).Contains("faith"),"not enough faith yet");
-     city.faith=s.FaithBuildingCost(World.ShrineBuilding);int before=s.FaithYield(city);Check(s.BuildWithFaith(city,World.ShrineBuilding)&&city.faith==0&&s.HasBuilding(city,World.ShrineBuilding)&&s.FaithYield(city)==before+1,"a Shrine is bought with the city faith and adds 1 faith");
-     s.nations[0].tech[K("mysticism")]=true;city.faith=1000;Check(s.FaithBuildReason(city,36)==""&&s.BuildWithFaith(city,36)&&s.HasBuilding(city,36)&&city.faith==1000-s.FaithBuildingCost(36),"a Temple follows the Shrine, paid in faith");
+     city.faith=0;s.GatherCityFaith();Check(city.faith==s.FaithYield(city)&&city.faith>=1,"a city gathers its own faith each turn");s.nations[0].faith=0;Check(s.FaithBuildReason(city,World.ShrineBuilding).Contains("faith"),"not enough faith yet");
+     s.nations[0].faith=s.FaithBuildingCost(World.ShrineBuilding);int before=s.FaithYield(city);Check(s.BuildWithFaith(city,World.ShrineBuilding)&&s.nations[0].faith==0&&s.HasBuilding(city,World.ShrineBuilding)&&s.FaithYield(city)==before+1,"a Shrine is bought with the civilisation's faith and adds 1 faith");
+     s.nations[0].tech[K("mysticism")]=true;s.nations[0].faith=1000;Check(s.FaithBuildReason(city,36)==""&&s.BuildWithFaith(city,36)&&s.HasBuilding(city,36)&&s.nations[0].faith==1000-s.FaithBuildingCost(36),"a Temple follows the Shrine, paid in faith");
      Check(s.FaithBuildReason(city,World.CathedralBuilding).StartsWith("Requires"),"a Cathedral needs its technology");Check(World.BuildName(World.MonasteryBuilding)=="Monastery","religious buildings have names");}
     // Workers: never run from animals on their own land; run from enemy soldiers anywhere; run for own or friendly land, not a city.
     {var g=World.New(303,"Flee",0,1,1,0,1,2,4,hex:true,natives:false,wild:true,rations:true);var c=g.Found(g.units.First(u=>u.owner==0&&u.type==0));g.Reveal();foreach(var u in g.units.Where(u=>u.owner==0).ToList())g.units.Remove(u);g.animals.Clear();
