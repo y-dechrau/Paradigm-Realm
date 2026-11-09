@@ -1,4 +1,13 @@
-# Paradigm Realm — instructions for Claude
+# Paradigm Realms Live — instructions for Claude
+
+**This is Paradigm Realms Live, a separate edition** (owner decision, 9 Nov 2026). It began as a copy of Paradigm Realm 0.27 and is where Stellaris-style systems are explored. The original game stays untouched at `Desktop/Paradigm Realm Work File/.Versions/Version 0.20 - 0.40/Paradigm-Realm-main-0.27`; never change that copy from here.
+
+- Product name `Paradigm Realms Live` (separate saves and settings from the original), executable `ParadigmRealmsLive.exe`, installed to `C:\Users\Matth\Games\Paradigm Realms Live` with the desktop icon "Paradigm Realms Live" and the zip `Desktop\Paradigm Realms Live.zip`.
+- GitHub backup: branch `paradigm-realms-live` of https://github.com/y-dechrau/Paradigm-Realm (the original stays on `main`).
+- Live design notes: `Unity/Design/LIVE-DESIGN.md`.
+
+Everything below was inherited from the original and still describes the shared code base.
+
 
 Read `AGENTS.md` first. Its workflow rules apply to Claude exactly as written (GitHub backup after every authorised change, no force-pushes, verify the remote commit, report failed pushes, keep implemented and planned features separate).
 

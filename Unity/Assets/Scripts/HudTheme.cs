@@ -117,7 +117,7 @@ namespace ParadigmRealm
             HudStyles();RefreshHudNumbers();
             Fill(TopBar,new Color(.035f,.055f,.095f,.96f));Fill(new Rect(0,TopBar.yMax-2,1280,1),UiGold);Fill(new Rect(0,TopBar.yMax-1,1280,1),new Color(0,0,0,.6f));
             // The compass-rose emblem and name on a gold-framed plate, as in the mockup.
-            {var plate=new Rect(2,1,228,36);GUI.Box(plate,"");var logo=UiTex("logo");if(logo!=null)GUI.DrawTexture(new Rect(6,0,38,38),logo,ScaleMode.ScaleToFit,true);else DrawIcon(PixelArt.IconRealms,new Rect(12,7,24,24));FitLabel(new Rect(50,8,172,26),"PARADIGM  REALM",hudTitle,11);}
+            {var plate=new Rect(2,1,228,36);GUI.Box(plate,"");var logo=UiTex("logo");if(logo!=null)GUI.DrawTexture(new Rect(6,0,38,38),logo,ScaleMode.ScaleToFit,true);else DrawIcon(PixelArt.IconRealms,new Rect(12,7,24,24));FitLabel(new Rect(50,8,172,26),"REALMS  LIVE",hudTitle,11);}
             int budget=hudBudget,ownCities=hudOwnCities,calm=hudCalm;
             // Resources as in the mockup: a large painted icon, the amount, and the change per turn in green (red when falling).
             // Hovering an item names it.

@@ -113,7 +113,7 @@ public partial class RealmGame {
   {var full=new Rect(0,0,1280,800);var painting=Art("title-world");Fill(full,new Color(.03f,.05f,.1f,1f));if(painting!=null)GUI.DrawTexture(full,painting,ScaleMode.ScaleAndCrop);
    Fill(full,new Color(.03f,.05f,.11f,diplomacyChooser?.5f:.62f));for(int band=0;band<8;band++){float a=.09f*(8-band)/8f;Fill(new Rect(0,band*14,1280,14),new Color(.02f,.03f,.07f,a));Fill(new Rect(0,800-(band+1)*14,1280,14),new Color(.02f,.03f,.07f,a));}}
   // Title plaque.
-  DipPanel(new Rect(450,6,380,60));GUI.Label(new Rect(450,8,380,34),"PARADIGM REALM",dipTitle);GUI.Label(new Rect(450,40,380,22),"—  D I P L O M A C Y  —",dipCaps);
+  DipPanel(new Rect(450,6,380,60));GUI.Label(new Rect(450,8,380,34),"PARADIGM REALMS LIVE",dipTitle);GUI.Label(new Rect(450,40,380,22),"—  D I P L O M A C Y  —",dipCaps);
   var known=Enumerable.Range(1,world.civCount-1).Where(i=>world.met[i]).ToArray();
   if(known.Length==0){DipPanel(new Rect(340,300,600,120));GUI.Label(new Rect(340,320,600,40),"No civilisations met yet",dipBig);GUI.Label(new Rect(340,360,600,30),"Explore to meet other civilisations.",new GUIStyle(dipRow){alignment=TextAnchor.MiddleCenter});
    if(DipButton(new Rect(560,440,160,44),"Leave",new Color(.1f,.16f,.3f))){detailsScreen="";GUIUtility.ExitGUI();}return;}

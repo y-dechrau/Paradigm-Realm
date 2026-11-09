@@ -105,8 +105,8 @@ namespace ParadigmRealm
             Fill(new Rect(390,85,500,3),new Color(.68f,.57f,.35f));
             Fill(new Rect(390,719,500,3),new Color(.68f,.57f,.35f));
             GUI.Label(new Rect(390,110,500,78),"PARADIGM",menuTitle);
-            GUI.Label(new Rect(390,181,500,78),"REALM",menuTitle);
-            GUI.Label(new Rect(420,264,440,30),"EARTH  /  THE FIRST AGE",menuSubtitle);
+            GUI.Label(new Rect(390,181,500,78),"REALMS",menuTitle);
+            GUI.Label(new Rect(420,264,440,30),"LIVE  EDITION",menuSubtitle);
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1&&!confirmQuit;
             if(GUI.Button(new Rect(465,317,350,48),"NEW GAME",menuButton)){
                 if(hasSession)confirmNew=true;else nameSetup=true;GUIUtility.ExitGUI();
@@ -130,7 +130,7 @@ namespace ParadigmRealm
             if(confirmNew||confirmQuit){
                 Fill(new Rect(0,0,1280,800),UiDim);
                 GUI.Box(new Rect(390,275,500,230),"");
-                GUI.Label(new Rect(420,295,440,35),confirmQuit?"Quit Paradigm Realm?":"Start a new civilisation?",heading);
+                GUI.Label(new Rect(420,295,440,35),confirmQuit?"Quit Paradigm Realms Live?":"Start a new civilisation?",heading);
                 GUI.Label(new Rect(420,340,440,55),"Unsaved progress will be lost. Cancel and use Save in the game to keep your progress.",body);
                 if(GUI.Button(new Rect(420,422,210,44),confirmQuit?"Quit without saving":"Start new game",button)){
                     if(confirmQuit)QuitGame();else {confirmNew=false;nameSetup=true;}GUIUtility.ExitGUI();
@@ -388,7 +388,7 @@ namespace ParadigmRealm
         }
         void DrawGuide()
         {
-            Fill(new Rect(0,0,1280,800),UiDim);GUI.Box(new Rect(330,150,620,485),"");GUILayout.BeginArea(new Rect(358,175,564,435));GUILayout.Label("Welcome to Paradigm Realm",title);
+            Fill(new Rect(0,0,1280,800),UiDim);GUI.Box(new Rect(330,150,620,485),"");GUILayout.BeginArea(new Rect(358,175,564,435));GUILayout.Label("Welcome to Paradigm Realms Live",title);
             logScroll=GUILayout.BeginScrollView(logScroll);GUILayout.Label("1. Found a city with your Settler. Double-click your city to open its screen. Units and buildings have separate simultaneous production lines. Click once for a single project; Ctrl+left-click appends, Ctrl+right-click removes the last item from that line. Each building type may exist once per city.\n\n2. Drag units to destinations. Orders continue each turn. Peaceful borders and attacks require permission or a war confirmation. Six troops plus two civilians fit per tile, with any number of workers; your own cities shelter any number of civilians. Stack units with G to move them as one: a soldier stacked with a worker or settler is its escort.\n\n3. Workers build roads in 2 turns at home, 3 outside your borders (4 on hills). Farms, mines and forts take 3 worker-turns. Group workers on one tile to share construction; each contributes one work per turn. Research Agriculture for farms, Mining for mines, and The Wheel for roads. Connect improved resources to your capital by owned roads.\n\n4. Open Economy to set taxes and inspect upkeep. A city in disorder (more unhappy than content citizens) makes no production or gold and cannot grow. New projects have costs and locked-requirement explanations.\n\n5. Archers and catapults can fire at visible enemies using their panel. Infantry capture cities. Promotions and upgrades are available when eligible.\n\nWASD / middle drag pan. Mouse wheel zooms at the pointer. Zoom buttons also change scale. X cancels the selected unit or worker team activity / route. Escape opens the game menu; Ctrl+S quick saves. Research opens the technology tree from the top bar. Upgrades require an owned city. Arrows move the selected unit; Tab selects an idle unit. B founds a city. Enter (including keypad Enter) ends a turn. Space skips only the selected unit. F1 opens help. Manual saves keep a backup; three autosaves rotate.\n\nFoundation alpha: Earth, 3 civilisations, 124 technologies across 14 eras. The research screen distinguishes active effects from planned content. Naval units, aircraft and realms remain planned. See Design/MASTER-DESIGN.md for the full specification.",body);
             GUILayout.EndScrollView();GUILayout.FlexibleSpace();if(Button(mainMenu?"Back to menu":"Begin your story")){guide=false;GUIUtility.ExitGUI();}GUILayout.EndArea();
         }

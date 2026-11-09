@@ -220,7 +220,7 @@ namespace ParadigmRealm {
    foreach(float x in new[]{r.x,r.xMax-2})foreach(float y in new[]{r.y,r.yMax-l})Fill(new Rect(x,y,2,l),c);
   }
   void DrawGallery(){
-   Fill(new Rect(0,0,1280,800),UiBackground);GUI.Label(new Rect(35,20,900,35),"THE ART OF PARADIGM REALM",title);
+   Fill(new Rect(0,0,1280,800),UiBackground);GUI.Label(new Rect(35,20,900,35),"THE ART OF PARADIGM REALMS LIVE",title);
    if(galleryNames.Length==0){artGallery=false;return;}
    galleryIndex=(galleryIndex+galleryNames.Length)%galleryNames.Length;
    if(loadedGallery!=galleryIndex){if(galleryImage!=null)Resources.UnloadAsset(galleryImage);galleryImage=Resources.Load<Texture2D>("Visuals/Gallery/"+galleryIndex.ToString("000"));loadedGallery=galleryIndex;}

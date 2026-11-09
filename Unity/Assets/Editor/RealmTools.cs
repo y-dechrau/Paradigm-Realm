@@ -14,16 +14,16 @@ public static class RealmTools
     public static void BuildWindows()
     {
         string folder=EditorUtility.OpenFolderPanel("Choose build folder", "", "");if(string.IsNullOrEmpty(folder))return;
-        var report=BuildPipeline.BuildPlayer(new[]{ScenePath},System.IO.Path.Combine(folder,"ParadigmRealm.exe"),BuildTarget.StandaloneWindows64,BuildOptions.None);
+        var report=BuildPipeline.BuildPlayer(new[]{ScenePath},System.IO.Path.Combine(folder,"ParadigmRealmsLive.exe"),BuildTarget.StandaloneWindows64,BuildOptions.None);
         if(report.summary.result!=UnityEditor.Build.Reporting.BuildResult.Succeeded)throw new Exception("Build failed. Check Console and install Windows Build Support in Unity Hub.");
-        EditorUtility.RevealInFinder(System.IO.Path.Combine(folder,"ParadigmRealm.exe"));
+        EditorUtility.RevealInFinder(System.IO.Path.Combine(folder,"ParadigmRealmsLive.exe"));
     }
     static void Require(bool condition,string name){if(!condition)throw new Exception("FAIL: "+name);}
     // Batch-mode build for testing without the folder picker: Unity -batchmode -executeMethod RealmTools.BuildWindowsBatch -buildPath <exe>
     public static void BuildWindowsBatch()
     {
         var args=Environment.GetCommandLineArgs();int i=Array.IndexOf(args,"-buildPath");
-        string path=i>=0&&i+1<args.Length?args[i+1]:System.IO.Path.Combine("Builds","ParadigmRealm.exe");
+        string path=i>=0&&i+1<args.Length?args[i+1]:System.IO.Path.Combine("Builds","ParadigmRealmsLive.exe");
         var report=BuildPipeline.BuildPlayer(new[]{ScenePath},path,BuildTarget.StandaloneWindows64,BuildOptions.None);
         if(report.summary.result!=UnityEditor.Build.Reporting.BuildResult.Succeeded)throw new Exception("Build failed: "+report.summary.result);
     }
