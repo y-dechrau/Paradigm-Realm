@@ -15,10 +15,10 @@ namespace ParadigmRealm
         public const float MapX=0,MapY=0,MapW=1280,MapH=800;
         static readonly Rect MapView=new Rect(MapX,MapY,MapW,MapH);
         static readonly Rect TopBar=new Rect(0,0,1280,38),ResearchCard=new Rect(174,46,300,52),UnitCard=new Rect(8,592,410,200),
-            TileCard=new Rect(571,694,336,52),MiniMap=new Rect(1060,590,178,138),MiniButtons=new Rect(1242,590,32,138),
+            TileCard=new Rect(571,694,336,52),MiniMap=new Rect(1004,590,234,138),MiniButtons=new Rect(1242,590,32,138),
             EndTurnRect=new Rect(1060,738,214,54),MorePanel=new Rect(8,246,410,340);
-        static readonly string[] RailScreens={"Economy","Civics","Research","Diplomacy","Religion","Cities","Military","Atlas","Victory","Chronicle","Identity"};
-        static readonly string[] RailLabels={"Empire","Civics","Research","Diplomacy","Religion","Cities","Units","Realms","Victory","Chronicle","Identity"};
+        static readonly string[] RailScreens={"Economy","Civics","Research","Diplomacy","Religion","Cities","Military","Atlas","Victory","Chronicle"};
+        static readonly string[] RailLabels={"Empire","Civics","Research","Diplomacy","Religion","Cities","Units","Realms","Victory","Chronicle"};
         static readonly int[] RailIcons={PixelArt.IconEmpire,PixelArt.IconCivics,PixelArt.IconResearch,PixelArt.IconDiplomacy,PixelArt.IconFaith,PixelArt.IconCities,PixelArt.IconMilitary,PixelArt.IconRealms,PixelArt.IconVictory,PixelArt.IconChronicle,PixelArt.IconIdentity};
         const float RailItem=44;
         static Rect RailRect{get{return new Rect(0,44,166,RailScreens.Length*RailItem+8);}}
@@ -122,7 +122,7 @@ namespace ParadigmRealm
             // Resources as in the mockup: a large painted icon, the amount, and the change per turn in green (red when falling).
             // Hovering an item names it.
             var items=new[]{
-                new KeyValuePair<int,string[]>(PixelArt.IconGold,new[]{world.gold.ToString(),(budget>=0?"+":"")+budget+(world.nations[0].arrears>0?"  IN DEBT":""),"Gold in the treasury and the change per turn"}),
+                new KeyValuePair<int,string[]>(PixelArt.IconGold,new[]{world.gold.ToString(),(budget>=0?"+":"")+budget+(world.nations[0].arrears>0?"  IN DEBT":""),"Gold in the treasury and the change per turn"+GoldTooltipDetail()}),
                 new KeyValuePair<int,string[]>(PixelArt.IconScience,new[]{"","+"+SciencePerTurn(),"Science per turn"}),
                 new KeyValuePair<int,string[]>(PixelArt.IconFood,new[]{world.FoodStateName(0),(hudFood>=0?"+":"")+hudFood,"Food for the army: "+world.FoodStateName(0)}),
                 new KeyValuePair<int,string[]>(PixelArt.IconFaith,new[]{world.nations[0].faith.ToString(),"+"+hudFaith,"Faith and faith per turn"}),
@@ -207,7 +207,7 @@ namespace ParadigmRealm
             if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>3f)BuildAtlasTexture();
             // Staggered rows are a quarter of a tile width apart (16 of 64 pixels), so a row is a quarter as tall as a column is wide.
             float aspect=world.Width/(world.Hex?ViewRows*PixelArt.HR/(float)PixelArt.HW:world.Staggered?ViewRows*.25f:(float)ViewRows),w=inner.width,h=w/aspect;if(h>inner.height){h=inner.height;w=h*aspect;}
-            var drawn=new Rect(inner.center.x-w/2,inner.center.y-h/2,w,h);Fill(inner,UiTrough);GUI.DrawTexture(drawn,atlasTexture,ScaleMode.StretchToFill);
+            var drawn=new Rect(inner.center.x-w/2,inner.center.y-h/2,w,h);Fill(inner,UiTrough);if(miniTexture==null||miniWorld!=world||miniRealm!=viewRealm||Time.realtimeSinceStartup-miniBuilt>3f)BuildMiniTexture();GUI.DrawTexture(drawn,miniTexture??atlasTexture,ScaleMode.StretchToFill);
             float vx,vy,vw,vh;
             if(diamondView&&world.Rows){float tw=isoWidth,rowH=RowPixels(tw);vx=camI-MapW/2/tw;vw=MapW/tw;vy=camJ-MapH/2/rowH;vh=MapH/rowH;}
             else if(diamondView){// The diagonal view covers a turned square of the grid; outline the grid rectangle around it.

@@ -2,6 +2,31 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 9 Nov: flag designer and auto develop (save version 39)
+
+- **Flag designer** is now a "Flag and identity" sub-tab of the Empire screen; the separate Identity entry is gone from the left menu.
+  - Flags are drawn at 96 x 64.
+  - 25 layouts, shown as thumbnails in your own colours (11 new: Pale, Bend, Hoist triangle, Pall, Lozenge, Disc, Sun rays, Chequy, Four stripes, Per saltire, Bordered cross).
+  - A third field colour, and a palette of 32 colours.
+  - Emblems: 15 simple shapes or 32 painted heraldic charges, tinted in the emblem colour (SpriteCook, `Sprites/charge-01..32`):
+    - creatures: lion, eagle, dragon, horse, wolf, bear, stag, bull, serpent, owl, phoenix, fish
+    - things: ship, castle, crossed swords, axe, bow, hammer, book, key, scroll, skull, hand, eye
+    - plants and nature: rose, lotus, oak, wheat, grapes, lightning, flame, comet
+  - Emblem size (small, medium, large), position (centre, hoist, canton, fly) and outline.
+  - Banner and plate previews, Random and Undo.
+  - Save version 39 adds `flagC`, `flagSize`, `flagPos`, `flagCharge` and `flagOutline`. Older flags keep their look: the third field takes the first colour.
+- **Auto develop:** your workers now take any remaining job in your territory, roads included, before going idle. Before, they stopped building roads that would not pay for themselves.
+- Not hand-played.
+
+## Owner requests 9 Nov, later (no save change)
+
+- **Sharper minimap** (`MiniMapArt.cs`): 3-8 pixels per tile, with mottled terrain, shallows along coasts, the owner's tint and border edge, river threads, framed city dots and gold gateway marks. It is drawn smoothly with mipmaps, and the panel is wider (234 px).
+- **Farmsteads around growing cities** are drawn at half size (32 px), so their houses match the city's own buildings.
+- **Road upkeep:**
+  - It existed (1 gold per 3 road tiles inside your borders) but was easy to miss. It is now 1 gold per 2 road tiles (`RoadTilesPerGold`).
+  - The top bar's gold tooltip lists income, units, buildings and roads, with the number of road tiles. The road planner already showed the added upkeep.
+- **Checked:** Unity compiles and its engine checks pass. The .NET runner was blocked by Windows Smart App Control this time. **Not hand-played.**
+
 ## Owner requests 9 Nov (no save version change; new games get a sixth world)
 
 **How this was checked:**

@@ -38,6 +38,9 @@ namespace ParadigmRealm {
    bool enemies=AtWarWithAnyone(u.owner);
    bool hunger=aiHunger;
    Tile target=null;int chosenJob=0,best=int.MinValue;var portRoads=aiPortRoads;
+   // Your auto-developing workers never stand idle while anything in your territory can still be improved (owner request, 9 Nov 2026):
+   // a second pass takes any remaining job, roads included, even where a road would not pay for itself.
+   for(int pass=0;pass<(u.owner==0?2:1)&&target==null;pass++)
    foreach(var tile in aiOwnTiles){
     if(taken.Contains(tile.y*Width+tile.x))continue;
     if(enemies&&units.Any(a=>AtWar(u.owner,a.owner)&&VisibleTo(u.owner,a.x,a.y)&&Distance(tile.x,tile.y,a.x,a.y)<=2))continue;
@@ -45,7 +48,7 @@ namespace ParadigmRealm {
     foreach(int job in new[]{1,2,3,5}){
      if(JobReason(probe,job)!="")continue;
      // Roads cost upkeep, so they are built only where they pay: to a port or an improved resource, while the treasury can bear it.
-     if(job==1&&!aiRoadOk&&!portRoads.Contains(tile.y*Width+tile.x)&&!((tile.farm||tile.mine)&&tile.resource>0))continue;
+     if(pass==0&&job==1&&!aiRoadOk&&!portRoads.Contains(tile.y*Width+tile.x)&&!((tile.farm||tile.mine)&&tile.resource>0))continue;
      // Clearing woodland is worth a little less than the farm it makes room for.
      int value=job==1?4:job==5?(worked.Contains(tile)?18:6):worked.Contains(tile)?24:10;
      if(job==2&&hunger)value+=20;

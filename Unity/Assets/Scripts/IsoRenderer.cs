@@ -291,7 +291,7 @@ namespace ParadigmRealm
                 if(sprite!=null&&meadow&&!hamlet&&portOf==null&&GroveVariant(t.x,t.y)<4){int v=GroveVariant(t.x,t.y);var back1=IsoPicture(1,0,(v+1)&3);var back2=IsoPicture(1,0,(v+2)&3);float bs=.42f;
                     if(back1!=null)GUI.DrawTexture(new Rect(sx-13*s-PixelArt.AX*s*bs,gy-6*s-PixelArt.AY*s*bs,64*s*bs,64*s*bs),back1);if(back2!=null)GUI.DrawTexture(new Rect(sx+13*s-PixelArt.AX*s*bs,gy-5*s-PixelArt.AY*s*bs,64*s*bs,64*s*bs),back2);
                     GUI.DrawTexture(new Rect(sx-PixelArt.AX*s*treeScale,gy+4*s-PixelArt.AY*s*treeScale,64*s*treeScale,64*s*treeScale),sprite);}
-                else if(sprite!=null){if(hamlet||portOf!=null)treeScale=.82f;GUI.DrawTexture(new Rect(sx-PixelArt.AX*s*treeScale,gy-PixelArt.AY*s*treeScale,64*s*treeScale,64*s*treeScale),sprite);}
+                else if(sprite!=null){if(portOf!=null)treeScale=.82f;else if(hamlet)treeScale=.5f;/* farmsteads at half size: their houses match the city's buildings (owner request, 9 Nov 2026) */GUI.DrawTexture(new Rect(sx-PixelArt.AX*s*treeScale,gy-PixelArt.AY*s*treeScale,64*s*treeScale,64*s*treeScale),sprite);}
                 if(portOf!=null&&!portOf.portLinked&&portOf.owner==0){var warn=new Rect(sx+8*s,gy-22*s,9*s,9*s);Fill(warn,new Color(.85f,.2f,.15f,.92f));GUI.Label(warn,"!",small);}
                 var improvement=new Rect(sx-18*s,gy-22*s,36*s,36*s);
                 // Mines and forts are drawn at the map's angle and sized to their tile (owner request, 9 Nov 2026); the old upright pictures are the fallback.

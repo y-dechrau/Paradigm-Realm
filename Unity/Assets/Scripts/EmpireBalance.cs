@@ -170,7 +170,8 @@ public partial class World {
   return soldiers<=SoldierStack&&(civilians<=CivilianStack||cities.Any(c=>c.owner==u.owner&&c.x==x&&c.y==y));
  }
  // ---------- road upkeep (owner request, 6 Nov 2026; as in Civilization V, where roads cost gold each turn) ----------
- public const int RoadTilesPerGold=3;
+ // Raised to 1 gold per 2 road tiles (owner request, 9 Nov 2026: roads must cost money to maintain); shown in the gold tooltip.
+ public const int RoadTilesPerGold=2;
  [NonSerialized] Dictionary<int,int> roadCount;[NonSerialized] int roadCountTurn=-1;
  internal void ResetRoadCount(){roadCountTurn=-1;}
  public int RoadTiles(int owner){if(roadCount==null||roadCountTurn!=turn){roadCount=new Dictionary<int,int>();roadCountTurn=turn;var centres=CityCentres();foreach(var t in tiles){if(!t.road||t.owner<0||centres.Contains(t.y*Width+t.x))continue;int n;roadCount.TryGetValue(t.owner,out n);roadCount[t.owner]=n+1;}}int found;roadCount.TryGetValue(owner,out found);return found;}

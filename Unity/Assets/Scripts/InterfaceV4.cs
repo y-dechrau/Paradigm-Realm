@@ -56,23 +56,20 @@ namespace ParadigmRealm
             ChronicleStyles();GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(50,detailsScreen=="Chronicle"?107:115,800,detailsScreen=="Chronicle"?56:40),detailsScreen=="Atlas"?"Realms":detailsScreen=="Economy"?"Empire":detailsScreen,detailsScreen=="Chronicle"?chronicleTitle:title);
             if(GUI.Button(new Rect(1040,115,190,34),"Back",button)){detailsScreen="";GUI.FocusControl(null);GUIUtility.ExitGUI();}
             GUILayout.BeginArea(new Rect(55,175,1160,520));detailsScroll=GUILayout.BeginScrollView(detailsScroll);
+            if(detailsScreen=="Identity"){detailsScreen="Economy";empireTab=1;}
             if(detailsScreen=="Economy"){
+                GUILayout.BeginHorizontal();if(GUILayout.Button((empireTab==0?"▸ ":"")+"Overview",button,GUILayout.Width(220)))empireTab=0;if(GUILayout.Button((empireTab==1?"▸ ":"")+"Flag and identity",button,GUILayout.Width(220))){empireTab=1;flagUndo=null;}GUILayout.EndHorizontal();GUILayout.Space(6);
+                if(empireTab==1)DrawIdentityPage();else{
                 var b=world.Budget(0);GUILayout.Label("Income +"+b[0]+" | Upkeep -"+b[1]+" | Net "+b[2],heading);
                 DrawEmpireBalance();
                 for(int r=2;r<World.ResourceNames.Length;r++)GUILayout.Label(World.ResourceNames[r]+": "+(world.HasResource(0,r)?"connected":"not connected"),body);
             GUILayout.Label(world.AgeLine(0),body);
-            DrawEmpireEconomy();
+            DrawEmpireEconomy();}
             }else if(detailsScreen=="Civics"){DrawCivics();
             }else if(detailsScreen=="Settlement adviser"){DrawSettlementAdviser();
             }else if(detailsScreen=="Citizens"){DrawCitizenManagement();
             }else if(detailsScreen=="Religion"){DrawReligion();
             }else if(detailsScreen=="Victory"){DrawVictoryStatus();
-            }else if(detailsScreen=="Identity"){
-                GUI.SetNextControlName("rename");renameText=GUILayout.TextField(renameText,32);if(Button("Apply civilisation name"))world.civilisationName=World.CleanName(renameText);
-                DrawFlagDesigner();
-                {var me=world.nations[0];var face=Portrait(me.portrait);if(face!=null)DrawPortrait(GUILayoutUtility.GetRect(150,200),face);if(!string.IsNullOrEmpty(me.leader))GUILayout.Label("Led by "+me.leader,heading);GUILayout.Label(me.traits!=null&&me.traits.Any(t=>t>=0)?CivilisationCatalog.TraitLine(me.traits):"No traits.",body);}
-                GUILayout.Label("Difficulty: "+DifficultyTable.Names[Mathf.Clamp(world.difficultyLevel,0,DifficultyTable.Names.Length-1)],heading);GUILayout.Label(DifficultyTable.Describe(Mathf.Clamp(world.difficultyLevel,0,DifficultyTable.Names.Length-1)),small);
-                DrawOwnCivilisationLore();
             }else if(detailsScreen=="Diplomacy"){
                 DrawAdvancedDiplomacy();
             }else if(detailsScreen=="Atlas"){DrawAtlas();

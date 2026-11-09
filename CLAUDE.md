@@ -25,6 +25,8 @@ Canonical repository: https://github.com/y-dechrau/Paradigm-Realm (the lower-cas
   - **Cities:** "Why?" mood panel (`MoodReasons`, `MoodRemedies`), previous/next arrows (Back returns to the first city), Auto-manage (`CityCare.cs`, `UnitAffordable`), growth limit hides unknown buildings (`GrowthLimitReason`).
   - **Religion:** faiths unlock in historical order (two at Mysticism); four tabs (Overview with `FaithNextStep`, Faith Tree, Beliefs, More).
   - **Checks:** `ContentChecks.EveningRequestChecks`. Not hand-played.
+- Owner requests 9 Nov, flags and workers (save version 39): flag designer under Empire > Flag and identity (`DrawIdentityPage`, `empireTab`; Identity rail entry removed); `FlagArt` 96 x 64, 25 layouts (`Field`), 32 colours, painted charges `Sprites/charge-01..32` tinted via `ChargeMask`, size/position/outline (`EmblemBox`); auto-developing player workers fall back to any remaining job including roads (`ImproveAI` second pass). Not hand-played.
+- Owner requests 9 Nov, later (no save change): sharper minimap (`MiniMapArt.cs`, panel 234 px wide); farmsteads drawn at half size; road upkeep 1 gold per 2 tiles (`RoadTilesPerGold` 2), shown in the gold tooltip (`GoldTooltipDetail`). Not hand-played.
 - Owner requests 9 Nov (no save change):
   - **Look:** `SceneryArt` cuts out only groves, savanna and bog; everything else is faded at the edge. Groves are drawn as clusters; dry steppe has no picture.
   - **Rivers:** home rivers drawn as trees (`World.RiverLinks`).
