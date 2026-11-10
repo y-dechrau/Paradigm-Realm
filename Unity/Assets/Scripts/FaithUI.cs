@@ -126,7 +126,7 @@ public partial class RealmGame {
    GUILayout.EndHorizontal();}
   GUILayout.Space(6);GUILayout.Label("Condemn a heresy (20 faith): authority +5, reform -5; civilisations of that faith resent it for 30 turns",heading);
   GUILayout.BeginHorizontal();int shown=0;foreach(int x in Enumerable.Range(0,ReligionCatalog.Count).Where(x=>x!=state&&world.Followers(x)>0)){if(shown++>=5)break;FaithAction("Condemn "+world.FaithName(x),world.CondemnReason(0,x),()=>world.Condemn(0,x));}GUILayout.EndHorizontal();
-  GUILayout.Label("Sharing a faith counts +10 in every leader's opinion; persecuting their followers -15; protecting them +5. A defensive alliance between civilisations of one faith is easier to agree.",small);
+  GUILayout.Label("Sharing a faith counts +10 in every leader's opinion; persecuting their followers -15; protecting them +5. Agreements between civilisations of one faith are easier to reach.",small);
  }
  void FaithAction(string label,string why,Action act){bool was=GUI.enabled;GUI.enabled=was&&why=="";if(GUILayout.Button(new GUIContent(label,why),button,GUILayout.Width(240)))act();GUI.enabled=was;}
  // The More tab: the detail that used to fill four tabs, one section open at a time (owner request, 8 Nov 2026).

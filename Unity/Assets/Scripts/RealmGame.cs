@@ -21,7 +21,7 @@ namespace ParadigmRealm
         void Awake(){zoomSensitivity=PlayerPrefs.GetFloat("RealmZoomSensitivity",2f);LoadTutorialSettings();tooltips=PlayerPrefs.GetInt("RealmTooltips",1)!=0;var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=UiBackground;camera.orthographic=true;Application.targetFrameRate=60;QualitySettings.vSyncCount=1;world=World.New(Environment.TickCount&int.MaxValue,hex:true,wild:true,rations:true);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
         Unit Selected(){return world.units.Find(u=>u.owner==0&&u.id==selected);}
         void Center(){var u=Selected();if(u!=null&&diamondView){FocusTile(u.x,u.y);return;}if(u!=null)FocusTile(u.x,u.y);}
-        string SavePath {get{return Path.Combine(Application.persistentDataPath,"earth-save.json");}}
+        string SavePath {get{return Path.Combine(probeFolder??Application.persistentDataPath,"earth-save.json");}}
         void Save(){SaveTo(activeSavePath??SavePath);}
         bool HasSavedGame(){return File.Exists(SavePath)||NamedSaves().Length>0;}
         string[] NamedSaves(){try{return Directory.GetFiles(Application.persistentDataPath,"earth-named-*.json").OrderByDescending(File.GetLastWriteTimeUtc).ToArray();}catch{return new string[0];}}
@@ -367,7 +367,8 @@ namespace ParadigmRealm
             GUILayout.BeginArea(new Rect(365,220,550,345));GUILayout.Label("Declare war?",heading);
             GUILayout.Label("This attack will declare war on "+string.Join(" and ",pendingWars.Select(i=>world.NationName(i)).ToArray())+". Proceed?",body);
             string blocked=string.Join(" ",pendingWars.Where(i=>!world.AtWar(0,i)).Select(i=>world.WarReason(0,i)).Where(r=>r!="").ToArray());
-            GUILayout.Label(blocked!=""?blocked:"War ends trade and access; defensive allies may join. Surprise war causes 45 grievances, formal war 25.",body);
+            string causes=string.Join(" ",pendingWars.Where(i=>!world.AtWar(0,i)).Select(i=>world.CasusBelli(0,i)!=""?"Just cause against "+world.NationName(i)+": "+world.CasusBelli(0,i)+".":"No just cause against "+world.NationName(i)+": every civilisation that knows you will fear and dislike you for it.").ToArray());
+            GUILayout.Label(blocked!=""?blocked:"War ends every agreement and trade deal with them, and their defensive partners join. "+causes,body);
             bool prior=GUI.enabled;GUI.enabled=prior&&blocked=="";
             if(Button(pendingUnit==-2?"Yes — declare war":"Yes — declare war and attack")){
                 bool attack=pendingUnit>=0;var u=world.units.Find(a=>a.id==pendingUnit);foreach(int owner in pendingWars)if(!world.AtWar(0,owner))world.SetWar(owner,true);

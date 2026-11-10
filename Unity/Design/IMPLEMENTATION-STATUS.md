@@ -2,6 +2,26 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner request 10 Nov: diplomacy rebuilt after Stellaris (save version 40)
+
+Full design and numbers: [DIPLOMACY-STELLARIS-2026-11-10.md](DIPLOMACY-STELLARIS-2026-11-10.md). The earlier treaty system is replaced in every game, old rules included.
+
+- **Opinion:** named reasons that add up (`OpinionLines`); deeds leave marks that fade (`OpinionMods`, `AddOpinion`).
+- **Trust:** 0-100, grows while agreements stand up to the strongest one's ceiling (`Trust`, `TrustCap`); 2 trust is 1 opinion.
+- **Attitude:** one word per leader from opinion, relative strength and fear (`Attitude`, `Attitudes`, `PowerLevel`).
+- **Agreements:** five standing pacts with no end date (`Pacts`: open borders, non-aggression, commercial, research, defensive). Each needs 10 turns before it can be ended, and ending one that keeps the peace gives 10 turns' notice (`EndTreaty`, `PactEndReason`). Every answer comes with its reasons (`AcceptanceLines`).
+- **Envoys:** 1 to 3 by age, free; +1 opinion a turn up to +30, fear fades twice as fast, trust can reach 20 (`SetEnvoy`, `EnvoyLimit`).
+- **Rivals and claims:** naming a rival stops trade and gives 1 influence a turn (`DeclareRival`); claiming a city costs influence (`MakeClaim`, `ClaimCost`). Either is a just cause for war after 3 turns (`CasusBelli`).
+- **War:** allowed without a cause, but then everyone who knows the attacker fears and dislikes it. Taking a claimed city alarms the world far less than an unclaimed one (`DiplomacyOnCapture`, `Threat`).
+- **War exhaustion:** kept for each side of each war (`Exhaustion`, `WarLosses`); it replaces war weariness for city content and decides peace. Peace leaves each side with what it holds, then a 10-turn truce.
+- **Rivals:** walk to war in the open (end agreements, name the rival, claim, then declare), propose agreements they themselves want, and place envoys (`DiplomacyAI`, `EnvoyAI`).
+- **Removed:** friendship and alliance by the turn, border promises, joint wars, embassies, denouncing, embargoes, envoys and incitement bought with influence, coalitions. Leader flavours, postures and need-weighted trade stay (`DiplomacyDepth.cs`).
+- **Screen:** attitude badge, strength, trust and fear, the five agreements each with "would sign" or "would refuse" and a hover list of reasons, envoy, rival, claims, gift and trade deal on one page; a war page with both exhaustion bars; More holds the inbox and the record.
+- **Older saves:** `UpgradeDiplomacy40` carries running treaties, trust, grievances, embargoes and war weariness across.
+- **Checks:** `DiplomacyChecks` rewritten for the new rules; `ContentChecks`, `EmpireChecks` and `FoundationChecks` updated. The .NET engine harness and Unity's `RealmTools.Checks` pass. A build ran `-dipShot` with no exceptions (`Documentation/Unity-Screenshots-2026-11-10-Diplomacy`).
+- **Measured in the .NET harness** (Small hex, 6 civilisations, 300 turns, 3 seeds): 6, 6 and 16 wars, none without a cause, first war at turns 58-89, 1 to 6 cities taken. `dotnet EngineChecks.dll diplomacy 300` repeats it.
+- **Not verified:** not hand-played; numbers untuned. `Tests/DiplomacyUIChecks.cs` was updated to the new screen but that stand-in harness no longer compiles (its Unity stand-ins lack calls used by newer screens, as before this change).
+
 ## Owner request 10 Nov: walking frames from the movement pack (no save change; `MotionUI.cs`)
 
 - The owner's movement pack supplies six 256 x 256 walking frames for each of the 16 unit types, in `Resources/Visuals/Movement/unit-NN-move-00..05` (96 files). Its idle pictures, sprite sheets, GIFs and SpriteRenderer scripts are not imported: the map is drawn with IMGUI, so the frames go through the existing unit drawing instead.

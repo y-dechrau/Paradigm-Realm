@@ -62,7 +62,7 @@ public static class EmpireChecks {
   int income=w.Budget(0)[0];c.buildings.Add(31);Check(w.Budget(0)[0]==income+2,"Market adds 2 gold");
   w.SetScienceRate(0,50);int normal=w.ContentSlots(c);w.SetScienceRate(0,60);Check(w.ContentSlots(c)==normal+1,"60% science (low tax) adds a content slot");w.SetScienceRate(0,30);Check(w.ContentSlots(c)==normal-1,"30% science (high tax) removes a content slot");w.SetScienceRate(0,50);
   w.version=10;w.nations[0].tax=0;w.nations[1].tax=2;w.nations[2].tax=1;w.UpgradeSave();
-  Check(w.version==39&&w.nations[0].scienceRate==60&&w.nations[1].scienceRate==30&&w.nations[2].scienceRate==50&&w.Valid(),"version 10 tax setting migrates to a science rate");
+  Check(w.version==40&&w.nations[0].scienceRate==60&&w.nations[1].scienceRate==30&&w.nations[2].scienceRate==50&&w.Valid(),"version 10 tax setting migrates to a science rate");
   w.nations[0].scienceRate=55;Check(!w.Valid(),"off-step science rate rejected");
  }
  // Stage 3: content and unhappy citizens, disorder (CORE-DESIGN-16BIT.md).
@@ -98,7 +98,7 @@ public static class EmpireChecks {
   Check(w.Move(attacker,target.x,target.y)&&!w.units.Contains(target)&&attacker.victories==1,"killing a defender counts as a victory");
   // Version 11 saves: manual promotions cap at Elite and spare experience counts as Veteran.
   var a3=w.Add(0,2,c.x+2,c.y);a3.promotion=3;a3.victories=0;var a1=w.Add(0,2,c.x+2,c.y+1);a1.promotion=0;a1.experience=5;a1.victories=0;
-  w.version=11;w.UpgradeSave();Check(w.version==39&&a3.promotion==2&&a3.victories==5&&a1.promotion==1&&a1.victories==2&&w.Valid(),"version 11 ranks migrate");
+  w.version=11;w.UpgradeSave();Check(w.version==40&&a3.promotion==2&&a3.victories==5&&a1.promotion==1&&a1.victories==2&&w.Valid(),"version 11 ranks migrate");
   a3.promotion=3;Check(!w.Valid(),"rank above Elite rejected");
  }
  // Civilisations (owner request 29 Oct 2026): 12 premade with two traits each, custom civilisations, trait effects, save 16;
@@ -172,15 +172,15 @@ public static class EmpireChecks {
   // Peace comes from the state of the war, not the calendar.
   var r2=w.Found(w.Add(2,0,rc.x+5,rc.y+5));w.RebuildTerritory();w.Relation(1,2).contact=true;for(int i=0;i<8;i++)w.Add(1,6,r2.x-2,r2.y+(i%3)-1);w.Add(2,2,r2.x,r2.y);w.turn=100;w.Reveal();
   Check(w.DeclareWar(1,2),"rivals can go to war");Check(!w.RivalWantsPeace(1,2)&&!w.RivalWantsPeace(2,1),"nobody asks for peace at once");
-  w.turn=110;Check(w.RivalWantsPeace(2,1)&&!w.RivalWantsPeace(1,2),"the losing side asks for peace and the winner does not");
-  var ask=new DiplomaticOffer{from=2,to=1,kind=TreatyKind.Peace};Check(w.PeaceRefusal(ask)>0&&w.OfferWillingness(ask)<0,"the winner refuses an early peace");
-  w.turn=145;Check(w.RivalWantsPeace(1,2)&&w.PeaceRefusal(ask)==0,"a long war can end");
+  w.turn=110;w.AddExhaustion(2,1,40);Check(w.RivalWantsPeace(2,1)&&!w.RivalWantsPeace(1,2),"the worn, losing side asks for peace and the winner does not");
+  var ask=new DiplomaticOffer{from=2,to=1,kind=TreatyKind.Peace};Check(w.OfferWillingness(ask)<0&&w.AcceptanceLines(ask).Any(l=>l.Key=="They believe they are winning"),"the winner refuses an early peace");
+  w.turn=145;w.AddExhaustion(1,2,100);Check(w.RivalWantsPeace(1,2)&&w.OfferWillingness(ask)>=0,"an exhausting war can end");
   // Ambition: never early, never on the sealed peoples; a warning comes first; a friend is left alone.
   w.Relation(1,2).atWar=false;w.Relation(1,2).peaceUntil=0;w.Relation(1,2).warStarted=0;w.nations[2].projectStage=1;
   w.turn=30;Check(w.Ambition(1,2)==0,"no ambition before turn 40");w.turn=70;Check(w.Ambition(1,0)==0,"the player has a longer grace");
   w.turn=100;int want=w.Ambition(1,2);Check(want>=50,"a far stronger neighbour with a Transcendence project is coveted ("+want+")");
-  w.Relation(1,2).friendUntil=500;w.turn=101;w.DiplomacyAI();w.turn=106;w.DiplomacyAI();Check(!w.AtWar(1,2),"a friend is not attacked");
-  w.Relation(1,2).friendUntil=0;w.Relation(1,2).allianceUntil=0;w.turn=111;w.DiplomacyAI();Check(!w.AtWar(1,2),"a warning comes before war");w.turn=116;w.DiplomacyAI();Check(w.AtWar(1,2),"after the warning comes war");
+  w.Relation(1,2).pacts|=1<<Pacts.NonAggression;w.Relation(1,2).pactSince[Pacts.NonAggression]=96;w.turn=101;w.DiplomacyAI();Check(!w.AtWar(1,2)&&w.Friends(1,2),"a pact partner is not attacked, and a pact holds for ten turns");
+  w.turn=106;w.DiplomacyAI();Check(!w.AtWar(1,2)&&!w.Friends(1,2)&&w.WarReason(1,2).Contains("truce"),"ending the pact gives ten turns of notice");w.turn=111;w.DiplomacyAI();Check(!w.AtWar(1,2)&&w.Rival(1,2),"a warning comes before war: the rival is named first");w.turn=116;w.DiplomacyAI();Check(w.AtWar(1,2),"after the warning comes war");
   var crowd=World.New(141,"Sealed",0,1,1,0,1,2,4,hex:true);crowd.turn=200;int native=Enumerable.Range(0,crowd.civCount).First(crowd.IsNativeNation);Check(crowd.Ambition(1,native)==0&&crowd.Ambition(native,1)==0,"sealed peoples neither covet nor are coveted");
   // A whole game: wars happen, armies modernise, and everything stays valid.
   var g=World.New(142,"War",0,1,1,0,0,2,4,hex:true,natives:false);g.Found(g.units.First(u=>u.owner==0&&u.type==0));int warTurns=0;
@@ -190,15 +190,15 @@ public static class EmpireChecks {
  }
  static void StageEightChecks(){
   var w=Setup();var c=w.cities.First(a=>a.owner==0);c.pop=6;int before=w.Yield(c)[2];c.buildings.Add(38);Check(w.Yield(c)[2]==before+3,"University adds a flat +3 science");
-  var second=w.Found(w.Add(0,0,c.x+6,c.y));second.pop=4;w.met[1]=true;w.Relation(0,1).researchUntil=w.turn+10;
+  var second=w.Found(w.Add(0,0,c.x+6,c.y));second.pop=4;w.met[1]=true;w.Relation(0,1).pacts|=1<<Pacts.Research;
   int pact=w.DiplomaticScience(0);Check(pact==2,"one research pact gives 2 science");
-  int capitalScience=w.Yield(c)[2],otherScience=w.Yield(second)[2];w.Relation(0,1).researchUntil=0;
+  int capitalScience=w.Yield(c)[2],otherScience=w.Yield(second)[2];w.Relation(0,1).pacts=0;
   Check(w.Yield(c)[2]==capitalScience-2&&w.Yield(second)[2]==otherScience,"a research pact adds its science once, at the capital");
   int first=TechnologyCatalog.Index("agriculture"),late=TechnologyCatalog.Index("fusion");w.speed=1;
   Check(w.ResearchCost(first,-1)==World.TechCosts[first]*World.ResearchPace[0]/100&&w.ResearchCost(late,-1)==World.TechCosts[late]*World.ResearchPace[TechnologyCatalog.Eras[late]]/100,"research cost is the design cost times the era's pace");
   var g=World.New(701,"Pace",0,1,1,0,1,1,4);g.Found(g.units.First(u=>u.owner==0&&u.type==0));var eraOne=new int[g.civCount];
   // The idle stand-in player is kept out of war: rivals now conquer a civilisation that never defends itself, and this measures rivals.
-  for(int t=0;t<200&&g.result=="";t++){for(int o=1;o<g.civCount;o++)g.Relation(0,o).friendUntil=g.turn+10;g.EndTurn();for(int o=1;o<g.civCount;o++)if(eraOne[o]==0&&g.Era(o)>=1)eraOne[o]=g.turn;}
+  for(int t=0;t<200&&g.result=="";t++){for(int o=1;o<g.civCount;o++)g.Relation(0,o).pacts|=1<<Pacts.NonAggression;g.EndTurn();for(int o=1;o<g.civCount;o++)if(eraOne[o]==0&&g.Era(o)>=1)eraOne[o]=g.turn;}
   Check(g.result=="","no rival wins before turn 200 in a standard Small game ("+g.result+")");
   Check(Enumerable.Range(1,g.civCount-1).Where(o=>!g.IsNativeNation(o)).All(o=>eraOne[o]>=50&&eraOne[o]<=130),"home rivals complete the first era between turns 50 and 130, research costing double (all, natives included: "+string.Join(", ",Enumerable.Range(1,g.civCount-1).Select(o=>eraOne[o]))+")");
   // Behind the locked gates the native peoples keep step with the home world.
@@ -279,7 +279,7 @@ public static class EmpireChecks {
   w.nations[0].traits=new[]{World.TraitMilitaristic,-1};Grant(w,0,"toolmaking");c.buildings.Remove(32);w.ChooseProject(c,2,false);w.Produce(c,w.CostFor(c,2));var made=w.units.Last(u=>u.owner==0&&u.type==2);Check(made.promotion==1,"Militaristic: new military units start as Veterans");
   // Version 15 saves: the old trait becomes a matching new trait; rivals keep their names.
   w=World.New(92,natives:false);string rivalName=w.NationName(1);w.version=15;w.nations[0].trait=2;foreach(var nn in w.nations){nn.traits=null;nn.civ=7;}w.UpgradeSave();
-  Check(w.version==39&&w.HasTrait(0,World.TraitScholarly)&&w.nations.All(nn=>nn.civ==-1&&nn.traits!=null)&&w.NationName(1)==rivalName&&w.Valid(),"version 15 saves convert traits and keep rival names");
+  Check(w.version==40&&w.HasTrait(0,World.TraitScholarly)&&w.nations.All(nn=>nn.civ==-1&&nn.traits!=null)&&w.NationName(1)==rivalName&&w.Valid(),"version 15 saves convert traits and keep rival names");
   // Build lists show only what known technology allows; combat units can explore.
   w=Setup();c=w.cities.First(a=>a.owner==0);Check(!w.TechAllows(c,World.UnitBuild(5))&&w.TechAllows(c,World.UnitBuild(2))&&!w.TechAllows(c,8),"build list hides what technology does not yet allow");
   Grant(w,0,"writing");Check(w.TechAllows(c,8),"a newly known technology shows its building");c.library=true;Check(!w.TechAllows(c,8),"a building already built is not listed");
@@ -308,7 +308,7 @@ public static class EmpireChecks {
   Check(w.ConvertSpecialist(c,0,2)&&c.scientists==0&&c.entertainers==2,"and back again");
   c.entertainers=0;c.scientists=0;c.merchants=0;Check(!w.ConvertSpecialist(c,2,0)&&c.scientists==0,"no conversion without an entertainer");
   // Version 14 saves gain empty lock lists.
-  w=World.New(81,natives:false);w.version=14;foreach(var city in w.cities)city.locked=null;w.UpgradeSave();Check(w.version==39&&w.cities.All(a=>a.locked!=null&&a.locked.Count==0)&&w.Valid(),"version 14 saves gain empty lock lists");
+  w=World.New(81,natives:false);w.version=14;foreach(var city in w.cities)city.locked=null;w.UpgradeSave();Check(w.version==40&&w.cities.All(a=>a.locked!=null&&a.locked.Count==0)&&w.Valid(),"version 14 saves gain empty lock lists");
   w.cities[0].locked.Add(-3);Check(!w.Valid(),"invalid lock rejected");
  }
  // Stage 6: victory by capitals, Transcendence as a three-stage project, save version 14 (CORE-DESIGN-16BIT.md).
@@ -347,7 +347,7 @@ public static class EmpireChecks {
   var rn=w.nations[1];rn.projectCity=rc.id;rn.projectStage=3;rn.projectActivation=1;w.UpdateProjects();Check(w.result.Contains("has achieved Transcendence"),"a rival's third stage is a defeat");
   // Version 13 saves gain capitals and empty projects.
   w=World.New(80,natives:false);var keep=w.cities.First(a=>a.owner==1);w.version=13;foreach(var nn in w.nations){nn.capital=-5;nn.projectStage=2;nn.projectActivation=3;}w.UpgradeSave();
-  Check(w.version==39&&w.nations[1].capital==keep.id&&w.nations.All(nn=>nn.projectStage==0&&nn.projectActivation==0)&&w.nations[0].capital==-1&&w.Valid(),"version 13 saves gain capitals and empty projects");
+  Check(w.version==40&&w.nations[1].capital==keep.id&&w.nations.All(nn=>nn.projectStage==0&&nn.projectActivation==0)&&w.nations[0].capital==-1&&w.Valid(),"version 13 saves gain capitals and empty projects");
   float[] bars;var text=w.VictoryText(out bars);Check(text.Length==(w.modernRules?4:3)&&text.Length==bars.Length&&bars.All(v=>v>=0&&v<=1)&&text[1].Contains("Computing"),"three victory bars, four with modern rules (religion)");
  }
  // Stage 4: deterministic combat (CORE-DESIGN-16BIT.md).

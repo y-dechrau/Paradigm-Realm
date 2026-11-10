@@ -20,7 +20,7 @@ public partial class World {
   add("Temple",HasBuilding(c,36)?2:0);add("Cathedral",HasBuilding(c,CathedralBuilding)?3:0);add("Colosseum",HasBuilding(c,42)?3:0);add("Gardens",HasBuilding(c,33)?2:0);
   add("A wonder of yours",OwnWonder(c.owner,61)?2:0);add("Revolution under way",n.revolution>0?-2:0);
   add("Soldiers fighting abroad under this government",n.government==3&&units.Any(u=>u.owner==c.owner&&Power[u.type]>0&&At(u.x,u.y).owner>=0&&At(u.x,u.y).owner!=c.owner&&AtWar(c.owner,At(u.x,u.y).owner))?-2:0);
-  add("War weariness",-WarUnhappiness(c.owner));add(n.tax==0?"Low taxes (60% science)":n.tax==2?"High taxes (30% science or less)":"Taxes",1-n.tax);
+  add("War exhaustion",-WarUnhappiness(c.owner));add(n.tax==0?"Low taxes (60% science)":n.tax==2?"High taxes (30% science or less)":"Taxes",1-n.tax);
   add("Longevity",HasTech(c.owner,"longevity")?2:0);add("A luxury resource",HasResource(c.owner,5)?2:0);
   add("Occupied after capture",c.occupation>0?-3:0);add("Unpaid upkeep (treasury empty)",n.arrears>0?-1:0);
   return list;

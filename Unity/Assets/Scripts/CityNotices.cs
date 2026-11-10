@@ -15,7 +15,7 @@ public partial class World {
  void AddRivalCall(int from,int offer,string text){if(from<=0||from>=civCount)return;if(rivalCalls==null)rivalCalls=new List<RivalCall>();rivalCalls.Add(new RivalCall{from=from,offer=offer,text=text});}
  // A call about a proposal lapses when the proposal has been answered or has run out.
  public RivalCall NextRivalCall(){if(rivalCalls==null)return null;rivalCalls.RemoveAll(c=>c.offer>0&&!offers.Any(o=>o.id==c.offer&&o.status==0));return rivalCalls.Count>0?rivalCalls[0]:null;}
- public static string CallText(DiplomaticOffer o){return o.kind==TreatyKind.Peace?"offers peace.":o.kind==TreatyKind.Trade?"proposes a trade.":o.kind==TreatyKind.Access?"asks for open borders.":o.kind==TreatyKind.Friendship?"offers friendship.":o.kind==TreatyKind.Alliance?"proposes an alliance.":o.kind==TreatyKind.Research?"proposes a research pact.":o.kind==TreatyKind.BorderPromise?"asks for a border promise.":o.kind==TreatyKind.JointWar?"proposes a joint war.":"wants to talk.";}
+ public static string CallText(DiplomaticOffer o){return o.kind==TreatyKind.Peace?"offers peace.":o.kind==TreatyKind.Trade?"proposes a trade.":o.kind==TreatyKind.Access?"asks for open borders.":o.kind==TreatyKind.NonAggression?"offers a non-aggression pact.":o.kind==TreatyKind.Defensive?"proposes a defensive pact.":o.kind==TreatyKind.Research?"proposes a research agreement.":o.kind==TreatyKind.Commercial?"proposes a commercial pact.":"wants to talk.";}
  // What this city might make next on that line, and why; -1 if nothing is called for.
  public int SuggestNext(City c,bool building,out string why){
   why="";if(c==null)return -1;

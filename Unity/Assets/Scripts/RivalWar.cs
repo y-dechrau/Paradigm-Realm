@@ -81,8 +81,8 @@ public partial class World {
  }
  // How much a home rival wants to attack another home civilisation, from what it can see; 50 or more starts it down the road
  // to war. Agendas and traits make leaders differ, and a small roll fixed for each game means they differ between games.
- // Posture (Aggressor +15, Builder -10, Defensive -25) and coalitions (members +15 against their target) on top of the core reckoning.
- public int Ambition(int a,int b){int s=AmbitionCore(a,b);if(s==0||!modernRules)return s;return s+PostureAmbition(a)+(InCoalition(a,b)?15:0);}
+ // Posture (Aggressor +15, Builder -10, Defensive -25) and containment (+15 against a power it fears) on top of the core reckoning.
+ public int Ambition(int a,int b){int s=AmbitionCore(a,b);if(s==0||!modernRules)return s;return s+PostureAmbition(a)+(Threat(a,b)>=50?15:0);}
  int AmbitionCore(int a,int b){
   // The player gets a longer grace, to build a first army before anyone comes for them.
   if(turn<(b==0?PlayerGraceTurn:40)||!ActiveRival(a)||a==b||(gatesLocked&&IsNativeNation(b))||!HasContact(a,b))return 0;
@@ -106,8 +106,7 @@ public partial class World {
   var pair=Relation(a,b);if(pair.warStarted>0&&turn-pair.warStarted<30)score-=20;
   return score;
  }
- // Peace: a rival asks when it is losing or the war has dragged on, and a rival that is clearly winning will not stop early.
- internal bool RivalWantsPeace(int a,int b){var p=Relation(a,b);int age=turn-p.warStarted;if(age<6)return false;if(!ActiveRival(a))return true;return age>=40||KnownMilitary(a,a)*3<KnownMilitary(a,b)*2;}
- internal int PeaceRefusal(DiplomaticOffer o){if(!ActiveRival(o.to))return 0;int age=turn-Relation(o.from,o.to).warStarted;return age<40&&KnownMilitary(o.to,o.to)*2>=KnownMilitary(o.to,o.from)*3?100:0;}
+ // Peace: a rival asks when the war has worn it down or it is losing, and a rival that is clearly winning will not stop early.
+ internal bool RivalWantsPeace(int a,int b){var p=Relation(a,b);int age=turn-p.warStarted;if(age<6)return false;if(!ActiveRival(a))return true;int tired=Exhaustion(a,b);return tired>=60||tired>=30&&KnownMilitary(a,a)*3<KnownMilitary(a,b)*2;}
 }
 }

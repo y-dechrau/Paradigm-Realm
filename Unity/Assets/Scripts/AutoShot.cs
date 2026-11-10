@@ -13,7 +13,10 @@ namespace ParadigmRealm
     {
         void Start()
         {
-            var args=Environment.GetCommandLineArgs();int i=Array.IndexOf(args,"-autoShot");
+            var args=Environment.GetCommandLineArgs();int i;
+            // A test run keeps its saves and autosaves in its own output folder, never among the player's saved games.
+            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
+            i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
             i=Array.IndexOf(args,"-frameProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FrameProbe(args[i+1],i+2<args.Length?int.Parse(args[i+2]):4,i+3<args.Length?int.Parse(args[i+3]):120));
             i=Array.IndexOf(args,"-unitProbe");if(i>=0&&i+2<args.Length)StartCoroutine(UnitProbe(args[i+1],args[i+2]));
@@ -21,7 +24,35 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-inputProbe");if(i>=0&&i+1<args.Length)StartCoroutine(InputProbeRun(args[i+1]));
             i=Array.IndexOf(args,"-flickerProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FlickerProbe(args[i+1]));
             i=Array.IndexOf(args,"-walkProbe");if(i>=0&&i+1<args.Length)StartCoroutine(WalkProbe(args[i+1]));
+            i=Array.IndexOf(args,"-dipShot");if(i>=0&&i+1<args.Length)StartCoroutine(DipShot(args[i+1]));
         }
+        // Development aid: "-dipShot <folder>" starts a fixed game, meets every rival and saves the diplomacy screen in each of its
+        // states (first meeting, agreements signed, a row's reasons, claims, a trade deal, war, the More page), then quits.
+        IEnumerator DipShot(string folder)
+        {
+            Directory.CreateDirectory(folder);yield return Frames(5);
+            seedText="421";mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;
+            var founder=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);if(founder!=null)world.Found(founder);
+            for(int o=1;o<world.civCount;o++){if(world.IsNativeNation(o))continue;world.met[o]=true;var s=world.units.FirstOrDefault(u=>u.owner==o&&u.type==0);if(s!=null)world.Found(s);}
+            world.newContacts.Clear();if(world.rivalCalls!=null)world.rivalCalls.Clear();world.gold=400;world.nations[0].gold=400;world.nations[0].influence=80;world.turn=30;
+            int partner=Enumerable.Range(1,world.civCount-1).First(o=>world.met[o]);int other=Enumerable.Range(1,world.civCount-1).First(o=>world.met[o]&&o!=partner);
+            foreach(var c in world.cities.Where(c=>c.owner==partner||c.owner==other))world.At(c.x,c.y).seen=true;
+            detailsScreen="Diplomacy";diplomacyChooser=true;yield return Shot(folder,"1-chooser.bmp");
+            diplomacyChooser=false;diplomacyPartner=partner;ResetDiplomacyUI();yield return Shot(folder,"2-first-meeting.bmp");
+            // Hover the non-aggression row: the reasons for its answer.
+            hoverProbe=new Vector2(900,335);yield return Shot(folder,"3-reasons.bmp");hoverProbe=null;
+            world.AddOpinion(partner,0,OpinionMods.Dealings,45);world.Relation(0,partner).pacts=1<<Pacts.Borders|1<<Pacts.NonAggression|1<<Pacts.Commercial;world.SetTrust(partner,0,34);world.SetEnvoy(0,partner,true);world.GiftGold(partner);
+            yield return Shot(folder,"4-agreements.bmp");
+            diplomacyPartner=other;ResetDiplomacyUI();world.DeclareRival(0,other);claimsView=true;var theirs=world.cities.FirstOrDefault(c=>c.owner==other);if(theirs!=null)world.MakeClaim(0,theirs);yield return Shot(folder,"5-claims.bmp");
+            claimsView=false;yield return Shot(folder,"6-rival.bmp");
+            diplomacyPartner=partner;ResetDiplomacyUI();customDeal=true;giveGold="50";askPerTurn="3";yield return Shot(folder,"7-trade-deal.bmp");customDeal=false;
+            diplomacyPartner=other;world.turn+=4;world.DeclareWar(0,other);if(world.rivalCalls!=null)world.rivalCalls.Clear();world.turn+=12;world.AddExhaustion(0,other,22);world.AddExhaustion(other,0,47);yield return Shot(folder,"8-war.bmp");
+            diplomacyPartner=partner;diplomacyDiscuss=true;world.nations[0].tech[TechnologyCatalog.Index("writing")]=world.nations[partner].tech[TechnologyCatalog.Index("writing")]=true;world.Propose(new DiplomaticOffer{from=partner,to=0,kind=TreatyKind.Research});if(world.rivalCalls!=null)world.rivalCalls.Clear();yield return Shot(folder,"9-more.bmp");
+            Application.Quit();
+        }
+        string probeFolder;
+        // Set by the screenshot run to stand in for the pointer, so hover notes can be captured.
+        Vector2? hoverProbe;
         // Development aid: "-walkProbe <folder>" makes every unit type's walking frames, times them, then sets one unit of each
         // type walking near the capital and saves screenshots part-way through the glide (walk-0..3.bmp, walk.txt), then quits.
         IEnumerator WalkProbe(string folder)
@@ -75,7 +106,7 @@ namespace ParadigmRealm
             seedText="4242";setupSize=size;setupShape=1;setupCivs=World.MaxCivsBySize[size];setupPeoples=10;mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;
             var founder=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);var made=world.Found(founder);log.AppendLine("screen "+Screen.width+"x"+Screen.height+" tiles "+world.tiles.Length+" nations "+world.civCount+" "+System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription);
             var clock=new System.Diagnostics.Stopwatch();double sum=0,worst=0;
-            for(int t=1;t<=turns&&world.result=="";t++){if(world.research<0||!world.AvailableTech(0).Contains(world.research))world.SelectResearch(world.AvailableTech(0).DefaultIfEmpty(0).First());for(int o=1;o<world.civCount;o++)world.Relation(0,o).friendUntil=world.turn+10;clock.Restart();world.EndTurn();double ms=clock.Elapsed.TotalMilliseconds;sum+=ms;worst=Math.Max(worst,ms);if(t%20==0){var homes=Enumerable.Range(1,world.civCount-1).Where(o=>!world.IsNativeNation(o)&&world.cities.Any(c=>c.owner==o)).ToList();log.AppendLine("turn "+t+": average "+(sum/20).ToString("0")+" ms, worst "+worst.ToString("0")+" ms, cities "+world.cities.Count+", units "+world.units.Count+", animals "+world.animals.Count+", rival ages "+(homes.Count==0?"-":homes.Min(o=>world.Era(o))+"-"+homes.Max(o=>world.Era(o)))+", techs "+(homes.Count==0?"-":homes.Max(o=>world.nations[o].tech.Take(36).Count(a=>a))+"")+", science "+(homes.Count==0?"-":homes.Max(o=>world.SciencePerTurn(o))+"")+", broke "+homes.Count(o=>world.nations[o].gold==0)+", net "+(homes.Count==0?"-":homes.Sum(o=>world.Budget(o)[2])/homes.Count+"")+", people "+world.characters.Count+", grudges "+world.grudges.Count+", graveyards "+world.stories.Count(s=>s.deaths>=LivingCatalog.GraveyardAt)+", breaks "+world.characters.Count(p=>p.breakTurns>0)+", disloyal "+world.characters.Count(p=>p.city>=0&&p.loyalty<15)+", obey "+world.cities.Count(c=>c.owner!=0&&world.Obeys(c))+"/"+world.cities.Count+", rebellions "+world.log.Count(l=>l.Contains("broken away"))+", result '"+world.result+"'");File.WriteAllText(Path.Combine(folder,"frames.txt"),log.ToString());sum=0;worst=0;}if(t%5==0)yield return null;}
+            for(int t=1;t<=turns&&world.result=="";t++){if(world.research<0||!world.AvailableTech(0).Contains(world.research))world.SelectResearch(world.AvailableTech(0).DefaultIfEmpty(0).First());for(int o=1;o<world.civCount;o++)world.Relation(0,o).pacts|=1<<Pacts.NonAggression;clock.Restart();world.EndTurn();double ms=clock.Elapsed.TotalMilliseconds;sum+=ms;worst=Math.Max(worst,ms);if(t%20==0){var homes=Enumerable.Range(1,world.civCount-1).Where(o=>!world.IsNativeNation(o)&&world.cities.Any(c=>c.owner==o)).ToList();log.AppendLine("turn "+t+": average "+(sum/20).ToString("0")+" ms, worst "+worst.ToString("0")+" ms, cities "+world.cities.Count+", units "+world.units.Count+", animals "+world.animals.Count+", rival ages "+(homes.Count==0?"-":homes.Min(o=>world.Era(o))+"-"+homes.Max(o=>world.Era(o)))+", techs "+(homes.Count==0?"-":homes.Max(o=>world.nations[o].tech.Take(36).Count(a=>a))+"")+", science "+(homes.Count==0?"-":homes.Max(o=>world.SciencePerTurn(o))+"")+", broke "+homes.Count(o=>world.nations[o].gold==0)+", net "+(homes.Count==0?"-":homes.Sum(o=>world.Budget(o)[2])/homes.Count+"")+", people "+world.characters.Count+", grudges "+world.grudges.Count+", graveyards "+world.stories.Count(s=>s.deaths>=LivingCatalog.GraveyardAt)+", breaks "+world.characters.Count(p=>p.breakTurns>0)+", disloyal "+world.characters.Count(p=>p.city>=0&&p.loyalty<15)+", obey "+world.cities.Count(c=>c.owner!=0&&world.Obeys(c))+"/"+world.cities.Count+", rebellions "+world.log.Count(l=>l.Contains("broken away"))+", result '"+world.result+"'");File.WriteAllText(Path.Combine(folder,"frames.txt"),log.ToString());sum=0;worst=0;}if(t%5==0)yield return null;}
             world.researchPrompts.Clear();world.buildPrompts.Clear();world.buildNotices.Clear();world.rivalCalls.Clear();world.newContacts.Clear();for(int o=1;o<world.civCount;o++)world.met[o]=o<6;
             foreach(var t in world.tiles)if(t.realm==0&&world.Distance(t.x,t.y,made.x,made.y)<=24)t.seen=true;world.Reveal();selected=world.units.Where(u=>u.owner==0).Select(u=>u.id).DefaultIfEmpty(-1).First();
             foreach(int zoom in new[]{64,32,128})

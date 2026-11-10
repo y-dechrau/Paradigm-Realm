@@ -5,7 +5,7 @@ namespace ParadigmRealm {
 public partial class RealmGame {
     int managedCity=-1;
     void DrawEmpireEconomy(){
-        GUILayout.Label("Diplomatic payments: +"+world.DiplomaticIncome(0)+" income / -"+world.DiplomaticExpense(0)+" expense per turn (included above). War weariness: -"+world.WarUnhappiness(0)+" content/city.",body);
+        GUILayout.Label("Diplomatic payments: +"+world.DiplomaticIncome(0)+" income / -"+world.DiplomaticExpense(0)+" expense per turn (included above). War exhaustion: -"+world.WarUnhappiness(0)+" content/city.",body);
         var n=world.nations[0];GUILayout.Space(12);GUILayout.Label("Government: "+World.Governments[n.government]+(n.revolution>0?" — revolution, "+n.revolution+" turns":""),heading);
         GUILayout.Label("Each government has different support and output. Changing causes two turns of half production/science and 2 fewer content citizens per city.",small);
         for(int i=0;i<World.Governments.Length;i++){
@@ -18,7 +18,7 @@ public partial class RealmGame {
         GUILayout.Label("Trade income: "+world.TradeIncome(0)+" gold/turn",heading);
         foreach(var r in world.tradeRoutes.Where(r=>r.originOwner==0||r.destinationOwner==0)){
             var a=world.cities.Find(c=>c.id==r.origin);var b=world.cities.Find(c=>c.id==r.destination);
-            GUILayout.Label(a.name+" ↔ "+b.name+(world.RouteActive(r)?" — active":" — suspended by war, embargo or capture"),body);
+            GUILayout.Label(a.name+" ↔ "+b.name+(world.RouteActive(r)?" — active":" — suspended by war, rivalry or capture"),body);
         }
     }
     void DrawEmpireDiplomacy(int other){
@@ -26,7 +26,7 @@ public partial class RealmGame {
         if(!world.war[other]){
             if(Button("Gift 25 gold to "+world.NationName(other)))status=world.GiftGold(other)?"Gift accepted.":"You need 25 gold.";
             foreach(int id in world.AvailableTech().Where(t=>world.nations[other].tech[t]).Take(10))
-                if(Button("Buy "+World.TechNames[id]+" — "+world.TechPrice(id)+" gold"))status=world.BuyTechnology(other,id)?"Technology acquired.":"Requires enough gold, non-negative opinion and no embargo.";
+                if(Button("Buy "+World.TechNames[id]+" — "+world.TechPrice(id)+" gold"))status=world.BuyTechnology(other,id)?"Technology acquired.":"Requires enough gold, non-negative opinion and no rivalry.";
         }
         GUILayout.Label(status,small);
     }

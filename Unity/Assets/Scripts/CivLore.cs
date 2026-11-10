@@ -17,7 +17,7 @@ public static class CivLore {
  // Agendas: what a rival leader likes or holds against you (World.AgendaOpinion).
  public static readonly string[] AgendaNames={"Merchant Prince","Seeker of Wisdom","Defender of the Faith","Builder of Wonders","Hungry for Land","Keeper of the Peace","Warden of the Borders","Respects Only Strength"};
  public static readonly string[] AgendaTexts={
-  "Likes civilisations it has a friendship or alliance with; dislikes those that embargo it.",
+  "Likes civilisations it has a non-aggression or defensive pact with; dislikes its rivals.",
   "Envies civilisations that know more technologies than it does; warms to those that know fewer.",
   "Likes civilisations whose capital follows its faith; dislikes those that founded a rival faith.",
   "Dislikes civilisations with more wonders than it has.",

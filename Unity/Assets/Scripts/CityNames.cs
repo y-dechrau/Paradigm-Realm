@@ -67,8 +67,8 @@ namespace ParadigmRealm {
 public partial class World {
  // What a leader says when answering a proposal (owner request: the leader states whether they agree).
  public string LeaderReply(int leader,DiplomaticOffer o,bool accepted){
-  var n=nations[leader];string who=string.IsNullOrEmpty(n.leader)?NationName(leader):n.leader;string deal=o.kind.ToString().ToLowerInvariant();
-  string[] yes={"We agree. Let this "+deal+" bind our peoples for "+o.duration+" turns.","Accepted. "+NationName(leader)+" keeps its word.","These terms are fair. We have an agreement.","So be it. May the "+deal+" serve us both."};
+  var n=nations[leader];string who=string.IsNullOrEmpty(n.leader)?NationName(leader):n.leader;string deal=OfferName(o.kind).ToLowerInvariant();
+  string[] yes={"We agree. Let this "+deal+" bind our peoples.","Accepted. "+NationName(leader)+" keeps its word.","These terms are fair. We have an agreement.","So be it. May the "+deal+" serve us both."};
   string[] no={"No. These terms do not serve "+NationName(leader)+".","We decline. Offer more, and we may listen.","Not today. Our council will not agree to this.","You ask too much and give too little. We refuse."};
   var pick=accepted?yes:no;return who+": \""+pick[Math.Abs(o.id*7+turn+leader)%pick.Length]+"\"";
  }

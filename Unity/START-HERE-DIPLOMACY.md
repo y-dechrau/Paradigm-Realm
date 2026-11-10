@@ -1,5 +1,7 @@
 # Paradigm Realm — Diplomacy, Stage 3
 
+> **10 Nov 2026:** the diplomacy described below was replaced by a system modelled on Stellaris (opinion, trust, attitudes, five standing agreements, envoys, rivals, claims and war exhaustion). Read [Design/DIPLOMACY-STELLARIS-2026-11-10.md](Design/DIPLOMACY-STELLARIS-2026-11-10.md) for how it works now. The setup steps here still apply; the treaty details do not.
+
 ## Play this version
 
 1. Extract the ZIP into a **new folder** so your current project stays available.

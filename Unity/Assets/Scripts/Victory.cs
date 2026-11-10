@@ -7,7 +7,7 @@ namespace ParadigmRealm
     // Conquest: hold every rival capital, or eliminate every rival (rivals can win the same way).
     // Transcendence: a three-stage project (300, 400, 500 shields) built in one city of size 8 or more that knows Computing;
     // each stage then activates over 10 turns (5 with the Transcendence technology). Losing that city loses the project.
-    // Concord: friendship or alliance with every surviving rival for ConcordTarget turns in a row.
+    // Concord: a non-aggression or defensive pact with every surviving rival for ConcordTarget turns in a row.
     public partial class World
     {
         public const int ConcordTarget=20,ProjectSize=8,ProjectActivationBase=10;
@@ -102,7 +102,7 @@ if(CivilisationCatalog.IsNative(nations[o].civ)&&!CivilisationCatalog.IsNative(n
             return new[]{
                 "Conquest: "+held+" of "+rivals+" rivals conquered (their capital held by you, or eliminated). A rival holding every capital, yours included, wins instead.",
                 "Transcendence: "+ProjectStatus(0)+". Three stages of 300, 400 and 500 shields in one city of size "+ProjectSize+" or more with Computing; each activates over "+ActivationTurns(0)+" turns. Losing the city loses the project. "+rivalLine,
-                "Concord: "+concordTurns+" of "+ConcordTargetFor(0)+" turns in a row at friendship or alliance with every surviving rival. A broken treaty or a rival you have not met resets the count.","Religion: "+faithLine}.Take(progress.Length).ToArray();
+                "Concord: "+concordTurns+" of "+ConcordTargetFor(0)+" turns in a row with a non-aggression or defensive pact with every surviving rival. A broken pact or a rival you have not met resets the count.","Religion: "+faithLine}.Take(progress.Length).ToArray();
         }
     }
 }
