@@ -57,7 +57,7 @@ namespace ParadigmRealm
             FollowGateArrival();mapClock.Start();DrawMap();mapClock.Stop();hudClock.Start();DrawHud();hudClock.Stop();DrawRealmBanner();if(!guide)DrawTutorial();
             if(guide)DrawGuide();if(confirmNew){GUI.Box(new Rect(420,270,440,190),"");GUILayout.BeginArea(new Rect(445,290,390,145));GUILayout.Label("Start a new world?",heading);GUILayout.Label("Save first if you want to keep your current game.",body);if(Button("Start new game")){confirmNew=false;nameSetup=true;GUIUtility.ExitGUI();}if(Button("Cancel"))confirmNew=false;GUILayout.EndArea();}
             if(pendingUnit!=-1){DrawWarPrompt();return;}
-            if(gateScene!=null)DrawGateScene();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker)DrawTilePicker();else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();
+            if(gateScene!=null)DrawGateScene();else if(gatePanel!=null)DrawGatePanel();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker)DrawTilePicker();else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();
             DrawSaveToast();
         }
         // Meeting a civilisation opens Diplomacy with them straight away, one meeting at a time. This runs between frames, not
@@ -66,6 +66,8 @@ namespace ParadigmRealm
         {
             if(turnRunning||world==null||mainMenu||nameSetup||pauseMenu||guide||confirmNew||pendingUnit!=-1||cityScreen||researchScreen||detailsScreen!=""||world.result!="")return;
             if(gateScene==null&&world.gatesLocked){var found=world.NextNewGate();if(found!=null)StartGateScene(found);}
+            // A seal one of your investigators has just read opens the gateway panel.
+            if(gateScene==null&&gatePanel==null&&world.gateNotices!=null&&world.gateNotices.Count>0){int cell=world.gateNotices[0];world.gateNotices.RemoveAt(0);var read=world.tiles[cell];if(!world.GateOpen(read)){FocusTile(read.x,read.y);OpenGatePanel(read);}}
             if(world.newContacts!=null&&world.newContacts.Count>0){int met=world.newContacts[0];world.newContacts.RemoveAt(0);if(met>0&&met<world.civCount){diplomacyPartner=met;diplomacyChooser=false;diplomacyDiscuss=false;detailsScreen="Diplomacy";researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();status="First contact: "+world.NationName(met)+".";}}
         }
         void MapKeyboardInput(){

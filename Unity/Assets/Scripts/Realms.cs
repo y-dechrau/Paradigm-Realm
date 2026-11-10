@@ -37,7 +37,7 @@ public partial class World {
  public static int RealmBonus(int r){return r==2||r==3?3:r>0?2:1;}
  public bool RealmDiscovered(int owner,int r){if(r==0)return true;if(!HasRealms||r>RealmsHere)return false;for(int y=RealmTop(r);y<RealmBottom(r);y++)for(int x=0;x<Width;x++){var t=tiles[y*Width+x];if(owner==0?t.seen:nations[owner].known[y*Width+x])return true;}return false;}
  public Tile GateTwin(Tile t){return t==null||t.gateLink<=0||t.gateLink>tiles.Length?null:tiles[t.gateLink-1];}
- int GateRealm(Tile t){var twin=GateTwin(t);return twin==null?0:t.realm==0?twin.realm:t.realm;}
+ public int GateRealm(Tile t){var twin=GateTwin(t);return twin==null?0:t.realm==0?twin.realm:t.realm;}
  // Gate designs (owner pictures, 8 Nov 2026): nine looks. A gateway in a parallel world wears its world's design (Fae Wilds forest,
  // Ashen Waste desert, Infernal Depths obsidian, Plague Marshes rift, Drowned Deep ice); one on the home world wears one of the four
  // home designs (arcane castle, steam works, sky scaffold, void spires) chosen by the world it leads to. Every gateway starts sealed
@@ -58,6 +58,7 @@ public partial class World {
  public const int GateKeyWonder=64,GateKeyRange=10,RiteFaith=100;
  public string RealmKeyName(int r){if(r<=0||r>=RealmKeyTech.Length)return "";int t=TechnologyCatalog.Index(RealmKeyTech[r]);return t>=0?TechNames[t]:"";}
  internal void OpenGatesByKnowledge(){
+  GateExpeditionTurn();
   if(!gatesLocked)return;
   for(int r=1;r<RealmKeyTech.Length;r++){
    int learner=-1;for(int o=0;o<civCount&&learner<0;o++)if(!IsNativeNation(o)&&HasTech(o,RealmKeyTech[r]))learner=o;if(learner<0)continue;

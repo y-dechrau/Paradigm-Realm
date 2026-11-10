@@ -2,6 +2,19 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner design 10 Nov: opening a gateway as an expedition (save version 41)
+
+Full rules and numbers: [GATE-EXPEDITION-2026-11-10.md](GATE-EXPEDITION-2026-11-10.md).
+
+- **Investigate:** a Scout, Medic or Priest that ends 2 turns on a sealed gateway reads its seal (`GateExpeditionTurn`, `GateStudy`, `Investigator`). That shows where it leads, the danger beyond (`GateDanger`) and what the seal asks for.
+- **Requirement:** a main requirement from the far side's design and an activation cost from the home side's (`GateNeed`, `GateLacks`): gold, faith, influence, a technology, a number of technologies or a source of Iron.
+- **Approach** (`BeginApproach`, `ApproachReason`, `GateOutlook`): Stabilise (requirement + 30 gold, 6 turns, no danger), Force open (at once; guardians strike the soldiers on the tile, the loss worked out and shown beforehand: `GuardianPower`, `ForceLoss`, `ForceDeaths`), Negotiate access (a civilisation with opinion 10 or more pays half the gold and gains open borders; 3 turns; `GatePartners`).
+- **Opening:** the gateway opens for everyone and the opener sees 3 tiles around the far side (`FinishApproach`).
+- **Screen:** a Gateway action for any unit on a sealed gateway opens the panel (`GateUI.cs`, `DrawGatePanel`); it also opens by itself when a seal has been read.
+- **Kept:** key technology, the Gatekeeper's Key wonder and the priest's rite still open gateways. A rival that reads a seal and can pay stabilises it; rivals do not send investigators on purpose.
+- **Not built from the proposal:** guardians as map units, item quests, the Rift choice, contesting or closing a gateway, access agreements for allies.
+- **Checks:** `ContentChecks.GateExpeditionChecks`; engine harness and Unity `RealmTools.Checks` pass; a build ran `-mapShot` (panel shots 8, 8a-8c in `Documentation/Unity-Screenshots-2026-11-10-Map`) and `-autoShot`. Not hand-played; costs are first guesses.
+
 ## Owner requests 10 Nov, night: level shores, looser river mouths, patchwork farms, smaller gates, one ruin removed (no save change)
 
 - **Shores:** only the rocky coastline (terrain 18) rises from the sea as a cliff. Every other shore meets the water at its own level, with no dark rock rim or face: sand on dry and sandy coasts, shingle or mud elsewhere, ice at the poles, a low rim of loose rock under mountains and volcanoes (`PixelArt.GroundPixel`).
@@ -12,7 +25,6 @@
 - **Gateways:** drawn 30% smaller, in the middle of the tile on a soft patch of shade (`GateScale` 0.7).
 - **Ruins:** the eastern temple (`ruin-4`) is no longer used; the file is kept (`RuinStyle`).
 - **Checks:** `ContentChecks.TenthNovemberChecks` also covers fields never on water, dry spots on dry ground and cliffs only on the rocky coastline. Engine harness and Unity `RealmTools.Checks` pass; a build ran `-mapShot` and `-autoShot`. Not hand-played.
-- **Not built:** the owner's pasted proposal for opening gates as an expedition (investigate, meet a requirement, choose how to open) was not asked for in this request and is not implemented.
 
 ## Owner requests 10 Nov, evening: river mouths, farms by rivers, hills, gates, resources, city note, volcanoes (no save change)
 

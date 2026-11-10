@@ -77,6 +77,16 @@ namespace ParadigmRealm
                 foreach(var g in gates)world.OpenGate(g);gateScene=null;
                 foreach(var g in gates.Take(4)){isoWidth=128;FocusTile(g.x,g.y);gateScene=null;yield return CleanShot(folder,"5-gate-open-"+world.GateStyle(g)+".bmp");}
                 if(gates.Count>0){isoWidth=64;FocusTile(gates[0].x,gates[0].y);yield return CleanShot(folder,"5b-gate-far.bmp");}}
+            // The gateway panel: before the seal is read, once it is read, and with work under way (a second game, gates still sealed).
+            {StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;var f2=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);if(f2!=null)world.Found(f2);
+             foreach(var g in world.tiles.Where(t=>t.gateLink>0)){int cell=g.y*world.Width+g.x;if(!world.gatesFound.Contains(cell))world.gatesFound.Add(cell);}
+             for(int o=1;o<world.civCount;o++){if(world.IsNativeNation(o))continue;var s2=world.units.FirstOrDefault(u=>u.owner==o&&u.type==0);if(s2!=null)world.Found(s2);world.met[o]=true;world.AddOpinion(o,0,OpinionMods.Dealings,30);world.nations[o].gold=300;}
+             world.newContacts.Clear();var door=world.tiles.Where(t=>t.realm==0&&t.gateLink>0).OrderBy(t=>world.GateNeed(t).resource).First();foreach(var t in world.tiles)if(t.realm==0&&world.Distance(t.x,t.y,door.x,door.y)<=4)t.seen=true;
+             var reader=world.Add(0,3,door.x,door.y);world.Add(0,2,door.x,door.y);selected=reader.id;isoWidth=96;FocusTile(door.x,door.y);yield return CleanShot(folder,"8-gate-unit-actions.bmp");
+             OpenGatePanel(door);yield return Shot(folder,"8a-gate-panel-unread.bmp");
+             world.GateExpeditionTurn();world.GateExpeditionTurn();if(world.gateNotices!=null)world.gateNotices.Clear();world.gold=400;world.nations[0].gold=400;world.nations[0].faith=120;world.nations[0].influence=60;foreach(string id in new[]{"writing","bronze"})world.nations[0].tech[TechnologyCatalog.Index(id)]=true;
+             OpenGatePanel(door);yield return Shot(folder,"8b-gate-panel-read.bmp");Probe("the gateway panel offers an approach once the seal is read",world.ApproachReason(0,door,GateApproach.Force)==""||world.ApproachReason(0,door,GateApproach.Stabilise)=="");
+             bool begun=world.BeginApproach(0,door,GateApproach.Stabilise);log.AppendLine("stabilise begun: "+begun+" ("+world.ApproachReason(0,door,GateApproach.Stabilise)+")");yield return Shot(folder,"8c-gate-panel-under-way.bmp");gatePanel=null;}
             File.WriteAllText(Path.Combine(folder,"map.txt"),log.ToString());Application.Quit();
         }
         // Development aid: "-dipShot <folder>" starts a fixed game, meets every rival and saves the diplomacy screen in each of its
