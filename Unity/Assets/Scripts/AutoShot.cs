@@ -60,7 +60,7 @@ namespace ParadigmRealm
             foreach(var m in mouths){isoWidth=128;FocusTile(m.x,m.y);yield return CleanShot(folder,"1-river-mouth-"+(shot++)+".bmp");}
             // A farm and a fort on river tiles a little upstream of the first mouth.
             if(mouths.Count>0){var river=world.tiles.Where(t=>t.realm==0&&t.terrain==7&&!mouths.Contains(t)).OrderBy(t=>world.Distance(t.x,t.y,mouths[0].x,mouths[0].y)).Take(4).ToList();
-                for(int k=0;k<river.Count;k++){if(k==1)river[k].fort=true;else river[k].farm=true;river[k].owner=0;}
+                for(int k=0;k<river.Count;k++){if(k==1)river[k].fort=true;else river[k].farm=true;if(k==2)river[k].resource=1;if(k==3)river[k].village=true;river[k].owner=0;}
                 if(river.Count>0){isoWidth=128;FocusTile(river[0].x,river[0].y);yield return CleanShot(folder,"2-farm-on-river.bmp");isoWidth=64;yield return CleanShot(folder,"2b-farm-on-river-far.bmp");}}
             // Hills.
             {var hill=world.tiles.Where(t=>t.realm==0&&t.terrain==2).OrderByDescending(t=>Enumerable.Range(0,di.Length).Count(k=>{var n=world.Step(t.x,t.y,di[k],dj[k]);return n!=null&&n.terrain==2;})).ThenBy(t=>t.y*world.Width+t.x).FirstOrDefault();

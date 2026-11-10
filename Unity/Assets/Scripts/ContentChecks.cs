@@ -362,6 +362,15 @@ static void TenthNovemberChecks(){
      var land=new[]{0,0,0,0,7,4,0,0,0};var shut=PixelArt.ComposeHex(land,10,10,0,0);var open=PixelArt.ComposeHex(land,10,10,0,1);int wider=0;
      for(int y=0;y<PixelArt.HH;y++)for(int x=PixelArt.HW/2;x<PixelArt.HW;x++)if(shut.Get(x,y)!=open.Get(x,y))wider++;Check(wider>80,"a river arm that reaches the sea widens into a funnel ("+wider+")");
      var sq=PixelArt.Compose(new[]{0,0,0,0,7,4,0,0,0},10,10,0,1<<1);Check(sq!=null&&PixelArt.RiverShape(false,1<<1,0).w==PixelArt.DW&&PixelArt.RiverShape(true,1,0).w==PixelArt.HW,"both map layouts draw mouths and give the river's shape");}
+    // Building beside a river: the quilt of fields never covers the water, and the dry spot is on dry ground inside the tile.
+    foreach(bool hex in new[]{true,false})for(int mask=1;mask<(hex?64:16);mask+=hex?7:3){var river=PixelArt.RiverShape(hex,mask,1);var quilt=PixelArt.FarmQuilt(hex,mask,1,2);int plots=0,wet=0;
+        for(int y=0;y<river.h;y++)for(int x=0;x<river.w;x++){bool field=(quilt.Get(x,y)>>24)!=0;if(field)plots++;if(field&&(river.Get(x,y)>>24)!=0)wet++;}
+        Check(plots>150&&wet==0,"fields on a river tile leave the water clear (river "+mask+", "+plots+" field pixels, "+wet+" on water)");
+        double fx,fy,room;PixelArt.DrySpot(hex,mask,1,out fx,out fy,out room);int sx=(int)(fx*river.w),sy=(int)(fy*river.h);
+        Check(room>=3&&(river.Get(sx,sy)>>24)==0&&fx>.1&&fx<.9&&fy>.1&&fy<.9,"a building on a river tile stands on dry ground (river "+mask+", room "+room.ToString("0.0")+")");}
+    // Shores: grassland meets the sea with no dark rock face; only the rocky coastline has one.
+    {Func<int,int> darkRock=land=>{var cv=PixelArt.ComposeHex(new[]{land,land,land,land,land,land,4,4,4},12,12,0,0);int n=0;for(int y=0;y<PixelArt.HH;y++)for(int x=0;x<PixelArt.HW;x++){uint c=cv.Get(x,y);if((c>>24)==0)continue;int r=(int)(c>>16&255),g=(int)(c>>8&255),b=(int)(c&255);if(Math.Abs(r-g)<14&&Math.Abs(g-b)<18&&r<120&&r>30)n++;}return n;};
+     int grass=darkRock(0),rocky=darkRock(18);Check(grass<rocky/3&&rocky>20,"only the rocky coastline rises from the sea as a cliff (grey rock pixels: grassland "+grass+", rocky coast "+rocky+")");}
 }
 static void NinthNovemberChecks(){
     var w=World.New(511,"Ninth",0,1,1,0,1,2,3,hex:true,rations:true);

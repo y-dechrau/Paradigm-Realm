@@ -2,6 +2,18 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 10 Nov, night: level shores, looser river mouths, patchwork farms, smaller gates, one ruin removed (no save change)
+
+- **Shores:** only the rocky coastline (terrain 18) rises from the sea as a cliff. Every other shore meets the water at its own level, with no dark rock rim or face: sand on dry and sandy coasts, shingle or mud elsewhere, ice at the poles, a low rim of loose rock under mountains and volcanoes (`PixelArt.GroundPixel`).
+- **River mouths:** the funnel now flares like a trumpet with uneven banks, and the single sand bar is replaced by a loose arc of small shoals (`PixelArt.RiverMouth`).
+- **Building beside a river** (replaces the cut-out field picture of the evening change):
+  - A farm on a river tile is a patchwork of small plots on both banks, each with its own crop and furrow direction, parted by hedges, stopping at the bank, with a small barn on the driest ground (`PixelArt.FarmQuilt`, `IsoRenderer.RiverQuilt`).
+  - Farmsteads, mines, forts, villages, ruins and resource markers on a river tile stand on the driest part of the tile and are drawn smaller where room is tight (`PixelArt.DrySpot`). A large fort on a tile the river crosses through the middle can still touch the bank.
+- **Gateways:** drawn 30% smaller, in the middle of the tile on a soft patch of shade (`GateScale` 0.7).
+- **Ruins:** the eastern temple (`ruin-4`) is no longer used; the file is kept (`RuinStyle`).
+- **Checks:** `ContentChecks.TenthNovemberChecks` also covers fields never on water, dry spots on dry ground and cliffs only on the rocky coastline. Engine harness and Unity `RealmTools.Checks` pass; a build ran `-mapShot` and `-autoShot`. Not hand-played.
+- **Not built:** the owner's pasted proposal for opening gates as an expedition (investigate, meet a requirement, choose how to open) was not asked for in this request and is not implemented.
+
 ## Owner requests 10 Nov, evening: river mouths, farms by rivers, hills, gates, resources, city note, volcanoes (no save change)
 
 - **River mouths** (`PixelArt.RiverMouth`, `IsoRenderer.RiverMaskOf`): a river used to stop at the tile edge behind an unbroken shore. Drawn now after how real mouths form (mouth-bar and river-jet studies; sources in the code comment): the channel widens into a funnel and cuts through the shore, low sand and mud flats replace the rock rim beside it, a crescent sand bar lies a little way out, and a fan of silty water spreads and thins into the sea or lake. The mouth is set where the land really ends along the river's line, and the river tile and the water tile both paint it, so there is no seam. Both map layouts.

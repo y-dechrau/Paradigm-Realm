@@ -1129,8 +1129,19 @@ namespace ParadigmRealm
                     // rocky rim elsewhere), sandy beaches in places and along deserts and savanna, ice at the poles.
                     if(shore<=6.2)
                     {
-                        bool ice=t==14||t==15,beach=!ice&&(t==3||t==16||(t!=18&&t!=5&&t!=17&&VNoise(gx/22.0,gy/16.0,511)>.6));
-                        if(ice||beach){if(shore<=3.2)c=MixC(c,ice?Ice[4]:Sand[3],shore<=1.5?.7:shore<=2.3?.42:.18);}
+                        // Only the rocky coastline stands above the water as a cliff (owner request, 10 Nov 2026: "other than the rocky
+                        // cliff tiles there should absolutely not be a step up from the sea to land"). Every other shore meets the sea
+                        // at its own level: sand on dry and sandy coasts, shingle or mud elsewhere, ice at the poles, and a low rim of
+                        // loose rock under mountains and volcanoes, each fading into the land with no dark line or face.
+                        bool ice=t==14||t==15,cliff=t==18;
+                        if(ice){if(shore<=3.2)c=MixC(c,Ice[4],shore<=1.5?.7:shore<=2.3?.42:.18);}
+                        else if(t==5||t==17){if(shore<=2.6)c=MixC(c,RampPick(Rock,.62+(Hsh(gx,gy,515)-.5)*.3),shore<=1.5?.6:.3);}
+                        else if(!cliff)
+                        {
+                            double kind=VNoise(gx/22.0,gy/16.0,511);uint lip=t==3||t==16||t==20||kind>.5?Sand[3]:kind>.3?MixC(Sand[2],Rgb(148,150,136),.6):MixC(Sand[1],Rgb(96,104,70),.55);
+                            double reach=3.4+1.6*VNoise(gx/9.0,gy/9.0,517);
+                            if(shore<=reach)c=MixC(c,lip,shore<=1.5?.72:shore<=2.4?.48:.24*(1-(shore-2.4)/(reach-2.3)));
+                        }
                         else
                         {
                             int below=0;for(int k=1;k<=6&&below==0;k++)if(IsWater(field[(fy+k)*W+fx]))below=k;
@@ -1201,7 +1212,7 @@ namespace ParadigmRealm
         static void RiverMouth(PixelCanvas cv,int[] field,int W,int cw,int ch,double mx,double my,double dx,double dy,int ox,int oy)
         {
             double len=Math.Sqrt(dx*dx+dy*dy);if(len<=0)return;dx/=len;dy/=len;double px=-dy,py=dx;
-            const double Up=12,Out=9,Plume=24;int seed=(int)Math.Round(ox+mx)*31+(int)Math.Round(oy+my)*17;double barSide=(Hsh(seed,7,521)-.5)*4,lean=(Hsh(seed,9,529)-.5)*.5;
+            const double Up=17,Out=9,Plume=26;int seed=(int)Math.Round(ox+mx)*31+(int)Math.Round(oy+my)*17;double barSide=(Hsh(seed,7,521)-.5)*4,lean=(Hsh(seed,9,529)-.5)*.5;
             // The coast wanders, so the shore is rarely on the tile edge itself. The mouth is set where the land really ends along the
             // river's line, looked for within eight pixels either side of the edge: the strip both tiles can see, so both agree.
             double shore=-8;for(int a=8;a>=-8;a--){int sx=(int)Math.Floor(mx+dx*a),sy=(int)Math.Floor(my+dy*a);if(sx<-Margin||sy<-Margin||sx>=cw+Margin||sy>=ch+Margin)continue;int f=field[(sy+Margin)*W+sx+Margin];if(!IsWater(f)||f==7){shore=a;break;}}
@@ -1214,7 +1225,7 @@ namespace ParadigmRealm
                 // The outflow drifts a little to one side as it leaves the shore, as a current along the coast would carry it.
                 across-=Math.Max(0,along)*lean;double side=Math.Abs(across);
                 // The funnel: as wide as the river upstream, about twice that at the shore, its banks uneven.
-                double half=2.4+(along+Up)*.36+(VNoise(gx/4.0,gy/4.0,523)-.5)*2.6;
+                double flare=Math.Max(0,Math.Min(1.25,(along+Up)/(Up+Out)));double half=2.3+7.5*Math.Pow(flare,1.9)+(VNoise(gx/5.0,gy/5.0,523)-.5)*(1.2+3.2*flare)+Math.Sin(along*.45+seed%7)*.9*flare;
                 if(!sea)
                 {
                     if(along<=Out&&side<=half)
@@ -1229,14 +1240,89 @@ namespace ParadigmRealm
                 }
                 if(along<-2)continue;
                 // The mouth bar: a low crescent of sand where the jet drops its load, its horns pointing back to the shore, awash at its edge.
-                {double bx=along-(Out+1)+across*across*.045,by=across-barSide,d=bx*bx/4.6+by*by/38.0;
-                 if(d<=1&&Hsh(gx,gy,525)>.18){cv.Set(x,y,d>.55?MixC(was,Rgb(214,232,226),.6):MixC(Sand[3],Sand[2],Hsh(gx,gy,533)));continue;}}
+                // Shoals: the coarsest sediment drops where the jet slows, in a loose arc of small sandbanks just off the mouth,
+                // awash at their edges and split by the channels between them, never one neat bar.
+                {double bx=along-(Out-1)+across*across*.035,by=across-barSide,d=bx*bx/22.0+by*by/70.0;
+                 if(d<=1){double bank=VNoise(gx/3.4,gy/2.6,525)-.52-d*.16;if(bank>.1){cv.Set(x,y,MixC(Sand[3],Sand[2],Hsh(gx,gy,533)));continue;}if(bank>.03){cv.Set(x,y,MixC(was,Rgb(206,226,214),.55));continue;}}}
                 // The plume: turbid water spreading in a fan, strongest in the middle near the mouth, thinning into streaks and patches.
                 double fan=6+Math.Max(0,along)*.85;if(side>=fan)continue;
                 double strength=(1-Math.Max(0,along)/Plume)*(1-side/fan);
                 strength*=.45+.9*VNoise(gx/9.0,gy/7.0,527)+.35*(VNoise(gx/3.0,gy/3.0,535)-.5);
                 if(strength>.05)cv.Set(x,y,MixC(was,Silt,Math.Min(.55,strength*.85)*(Bay(gx,gy)<strength*3?1:.6)));
             }
+        }
+        // ---------- building beside a river ----------
+        // Owner request, 10 Nov 2026: what people build on a river tile works with and around the river, like a patchwork quilt,
+        // and nothing is put on the water. Both helpers work on the finished tile picture (hexagon or diamond).
+        static bool OnTile(bool hex,int x,int y,double inset){if(hex)return InHex(x+.5-HW/2.0,y+.5-HH/2.0,HW,-inset);return Math.Abs(x+.5-DW/2.0)/(DW/2.0)+Math.Abs(y+.5-DH/2.0)/(DH/2.0)<=1-inset/(DH/2.0);}
+        // How far each pixel of the tile is from the river, in pixels (up to 9).
+        static double[] RiverDistance(PixelCanvas river)
+        {
+            int w=river.w,h=river.h;var d=new double[w*h];
+            for(int y=0;y<h;y++)for(int x=0;x<w;x++){double best=9;for(int dy=-8;dy<=8;dy++)for(int dx=-8;dx<=8;dx++){int qx=x+dx,qy=y+dy;if(qx<0||qy<0||qx>=w||qy>=h||(river.Get(qx,qy)>>24)==0)continue;double q=Math.Sqrt(dx*dx+dy*dy*1.6);if(q<best)best=q;}d[y*w+x]=best;}
+            return d;
+        }
+        static readonly Dictionary<int,double[]> drySpots=new Dictionary<int,double[]>();
+        // The driest place on a river tile: the point farthest from the water and from the tile's edge. fx, fy are its place across
+        // and down the tile picture (0..1) and room is how many pixels of dry ground lie around it.
+        public static void DrySpot(bool hex,int mask,int variant,out double fx,out double fy,out double room)
+        {
+            int key=(hex?1:0)|mask<<1|variant<<9;double[] hit;
+            if(!drySpots.TryGetValue(key,out hit))
+            {
+                var river=RiverShape(hex,mask,variant);var dist=RiverDistance(river);int w=river.w,h=river.h;double best=-1;int bx=w/2,by=h/2;
+                for(int y=0;y<h;y++)for(int x=0;x<w;x++)
+                {
+                    if(!OnTile(hex,x,y,0))continue;
+                    // Room to the edge: how far the point can be pushed inward before it leaves the tile.
+                    double edge=0;while(edge<12&&OnTile(hex,x,y,edge+1))edge++;
+                    double r=Math.Min(dist[y*w+x],edge*.8)-Math.Abs(y-h*.55)*.05;if(r>best){best=r;bx=x;by=y;}
+                }
+                hit=new[]{(bx+.5)/w,(by+.5)/h,Math.Max(0,best)};drySpots[key]=hit;
+            }
+            fx=hit[0];fy=hit[1];room=hit[2];
+        }
+        // Fields on a river tile: a quilt of small plots, each with its own crop and its furrows running its own way, parted by
+        // hedge lines, on both banks. The plots stop short of the water behind a strip of bank, thin out raggedly toward it and
+        // toward the tile's edge, and a small barn stands on the driest ground.
+        public static PixelCanvas FarmQuilt(bool hex,int mask,int variant,int seed)
+        {
+            var river=RiverShape(hex,mask,variant);var dist=RiverDistance(river);int w=river.w,h=river.h;var cv=new PixelCanvas(w,h);
+            double fx,fy,room;DrySpot(hex,mask,variant,out fx,out fy,out room);int barnX=(int)(fx*w),barnY=(int)(fy*h)+2;bool barn=room>=6.5;
+            for(int y=0;y<h;y++)for(int x=0;x<w;x++)
+            {
+                if(!OnTile(hex,x,y,2.5))continue;double near=dist[y*w+x];
+                double ragged=Hsh(x+seed*13,y,551);if(near<=3.0||near<=4.4&&ragged>.45)continue;      // the water, its bank, a ragged margin
+                if(!OnTile(hex,x,y,4.5)&&ragged>.55)continue;                                           // a ragged outer edge
+                if(barn&&Math.Abs(x-barnX)<=6&&y-barnY<=3&&barnY-y<=7)continue;                         // the yard round the barn
+                // Plots: a skewed, gently warped grid, so no two tiles share one pattern and no line runs straight for long.
+                double wx=x+(VNoise(x/9.0+seed,y/9.0,553)-.5)*5,wy=y*1.55+(VNoise(x/9.0,y/9.0+seed,555)-.5)*5;
+                double u=(wx+wy*.45)/11.0+seed*.37,v=(wy-wx*.3)/9.0+seed*.61;int cu=(int)Math.Floor(u),cvv=(int)Math.Floor(v);double pu=u-cu,pv=v-cvv;
+                if(pu<.1||pv<.13){cv.Set(x,y,Hsh(x,y,557)>.35?Rgb(58,98,44):Rgb(44,78,36));continue;}   // hedge between plots
+                int plot=(int)(Hsh(cu*7+seed,cvv*13+seed,559)*1000);int crop=plot%5;bool across=(plot/5)%2==0;int row=across?(x+y*2+plot)%3:((x*2-y+plot)%3+3)%3;uint c;
+                switch(crop)
+                {
+                    case 0:c=row==0?Rgb(196,150,52):Hsh(x,y,561)>.8?Rgb(250,220,110):Rgb(228,188,70);break;      // ripe wheat
+                    case 1:c=row==0?Rgb(56,100,40):Hsh(x,y,563)>.85?Rgb(132,180,68):Rgb(98,152,54);break;        // green crop in rows
+                    case 2:c=row==0?Rgb(96,66,40):Rgb(128,92,56);break;                                          // ploughed earth
+                    case 3:c=row==0?Rgb(170,150,84):Rgb(206,186,112);break;                                      // stubble and hay
+                    default:c=row==0?Rgb(72,118,58):Rgb(116,164,82);break;                                       // pasture
+                }
+                cv.Set(x,y,c);
+            }
+            if(barn)
+            {
+                // A thatched barn with a dark doorway, seven pixels wide, on the driest spot.
+                uint wall=Rgb(168,128,84),shade=Rgb(120,86,56),roof=Rgb(196,160,84),roofDark=Rgb(150,112,56),line=Rgb(40,30,24);
+                for(int dy=-6;dy<=2;dy++)for(int dx=-4;dx<=4;dx++)
+                {
+                    int x=barnX+dx,y=barnY+dy;if(x<0||y<0||x>=w||y>=h||dist[y*w+x]<=2.5)continue;uint c=0;
+                    if(dy>=-1){if(Math.Abs(dx)<=3)c=dx>=2?shade:wall;if(Math.Abs(dx)==4||dy==2&&Math.Abs(dx)<=3)c=Math.Abs(dx)==4&&dy==2?0:line;if(dy>=0&&dy<=1&&dx==0)c=line;}
+                    else{int half=4-(-1-dy)+1;if(half<0)continue;if(Math.Abs(dx)<=half)c=Math.Abs(dx)==half||dy==-6?line:(dx+dy)%2==0?roof:roofDark;}
+                    if(c!=0)cv.Set(x,y,c);
+                }
+            }
+            return cv;
         }
         // The shape of a river on a finished tile picture, for things drawn over the tile that must leave the water clear.
         public static PixelCanvas RiverShape(bool hex,int mask,int variant)
