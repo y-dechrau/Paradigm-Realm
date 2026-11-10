@@ -15,7 +15,7 @@ namespace ParadigmRealm
         {
             var args=Environment.GetCommandLineArgs();int i;
             // A test run keeps its saves and autosaves in its own output folder, never among the player's saved games.
-            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
+            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
             i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
             i=Array.IndexOf(args,"-frameProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FrameProbe(args[i+1],i+2<args.Length?int.Parse(args[i+2]):4,i+3<args.Length?int.Parse(args[i+3]):120));
@@ -25,6 +25,59 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-flickerProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FlickerProbe(args[i+1]));
             i=Array.IndexOf(args,"-walkProbe");if(i>=0&&i+1<args.Length)StartCoroutine(WalkProbe(args[i+1]));
             i=Array.IndexOf(args,"-dipShot");if(i>=0&&i+1<args.Length)StartCoroutine(DipShot(args[i+1]));
+            i=Array.IndexOf(args,"-mapShot");if(i>=0&&i+1<args.Length)StartCoroutine(MapShot(args[i+1]));
+        }
+        // Development aid: "-mapShot <folder>" starts a fixed game with the whole home world found and saves close views of a river
+        // mouth, a farm and a fort on a river, hills, a volcano with a unit on it, sealed and open gateways, resources on land
+        // not in view, and a city plate with its hover note, then quits.
+        bool plateHoverProbe;
+        // A shot of the map alone: any story panel, first-contact talk or message the test game raised is closed first.
+        IEnumerator CleanShot(string folder,string name){for(int k=0;k<3;k++){gateScene=null;detailsScreen="";diplomacyChooser=false;world.newContacts.Clear();if(world.rivalCalls!=null)world.rivalCalls.Clear();world.researchPrompts.Clear();world.buildPrompts.Clear();yield return null;}yield return Shot(folder,name);}
+        IEnumerator MapShot(string folder)
+        {
+            Directory.CreateDirectory(folder);yield return Frames(5);
+            seedText="421";mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;
+            var founder=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);var home=founder!=null?world.Found(founder):null;
+            // Every gateway counts as already found, so its story panel does not open over the pictures.
+            if(world.gatesFound==null)world.gatesFound=new System.Collections.Generic.List<int>();foreach(var g in world.tiles.Where(t=>t.gateLink>0)){int cell=g.y*world.Width+g.x;if(!world.gatesFound.Contains(cell))world.gatesFound.Add(cell);}
+            foreach(var t in world.tiles)if(t.realm==0)t.seen=true;yield return Frames(3);gateScene=null;foreach(string id in new[]{"agriculture","iron","bronze","horseback","currency","sailing"})world.nations[0].tech[TechnologyCatalog.Index(id)]=true;world.tech=world.nations[0].tech;
+            if(world.rivalCalls!=null)world.rivalCalls.Clear();world.newContacts.Clear();world.researchPrompts.Clear();world.buildPrompts.Clear();
+            var log=new System.Text.StringBuilder();int[] di=world.Hex?World.HexDi:new[]{0,1,0,-1},dj=world.Hex?World.HexDj:new[]{-1,0,1,0};
+            Func<Tile,bool> sea=t=>t!=null&&PixelArt.IsWater(t.terrain);
+            // Resources on land that is known but not in view, beside resources in view around the capital.
+            if(home!=null){var far=world.tiles.Where(t=>t.realm==0&&t.resource>0&&!World.IsSeaResource(t.resource)&&!world.Visible(t.x,t.y)&&world.Distance(t.x,t.y,home.x,home.y)<=9).OrderBy(t=>world.Distance(t.x,t.y,home.x,home.y)).FirstOrDefault();
+                if(far==null){far=world.tiles.Where(t=>t.realm==0&&!World.IsImpassable(t.terrain)&&!world.Visible(t.x,t.y)).OrderBy(t=>world.Distance(t.x,t.y,home.x,home.y)).FirstOrDefault();if(far!=null){far.resource=2;foreach(int k in new[]{0,2,4}){var n=world.Step(far.x,far.y,di[k%di.Length],dj[k%dj.Length]);if(n!=null&&!World.IsImpassable(n.terrain)&&!world.Visible(n.x,n.y))n.resource=1+k;}}}
+                log.AppendLine("resource probe: "+(far==null?"no unseen land":"unseen tile "+far.x+","+far.y));
+                foreach(var n in world.tiles.Where(t=>t.realm==0&&world.Distance(t.x,t.y,home.x,home.y)<=2&&!World.IsImpassable(t.terrain)&&t.resource==0).Take(3))n.resource=1+(n.x%4);
+                if(far!=null){isoWidth=96;FocusTile((far.x+home.x)/2,(far.y+home.y)/2);yield return CleanShot(folder,"6-resources.bmp");log.AppendLine("nearest unseen resource "+world.Distance(far.x,far.y,home.x,home.y)+" tiles from home");}
+                // The city plate with its hover note.
+                home.buildingProject=0;isoWidth=128;FocusTile(home.x,home.y);plateHoverProbe=true;yield return CleanShot(folder,"7-city-hover.bmp");plateHoverProbe=false;}
+            // The rest is photographed in full view: with every technology the whole home world is watched.
+            for(int k=0;k<world.nations[0].tech.Length;k++)world.nations[0].tech[k]=true;world.tech=world.nations[0].tech;yield return Frames(3);
+            // River mouths: the two river tiles nearest home that touch the sea.
+            var mouths=world.tiles.Where(t=>t.realm==0&&t.terrain==7&&Enumerable.Range(0,di.Length).Any(k=>sea(world.Step(t.x,t.y,di[k],dj[k])))).OrderBy(t=>home==null?0:world.Distance(t.x,t.y,home.x,home.y)).Take(3).ToList();
+            log.AppendLine("river mouths found: "+mouths.Count);int shot=0;
+            foreach(var m in mouths){isoWidth=128;FocusTile(m.x,m.y);yield return CleanShot(folder,"1-river-mouth-"+(shot++)+".bmp");}
+            // A farm and a fort on river tiles a little upstream of the first mouth.
+            if(mouths.Count>0){var river=world.tiles.Where(t=>t.realm==0&&t.terrain==7&&!mouths.Contains(t)).OrderBy(t=>world.Distance(t.x,t.y,mouths[0].x,mouths[0].y)).Take(4).ToList();
+                for(int k=0;k<river.Count;k++){if(k==1)river[k].fort=true;else river[k].farm=true;river[k].owner=0;}
+                if(river.Count>0){isoWidth=128;FocusTile(river[0].x,river[0].y);yield return CleanShot(folder,"2-farm-on-river.bmp");isoWidth=64;yield return CleanShot(folder,"2b-farm-on-river-far.bmp");}}
+            // Hills.
+            {var hill=world.tiles.Where(t=>t.realm==0&&t.terrain==2).OrderByDescending(t=>Enumerable.Range(0,di.Length).Count(k=>{var n=world.Step(t.x,t.y,di[k],dj[k]);return n!=null&&n.terrain==2;})).ThenBy(t=>t.y*world.Width+t.x).FirstOrDefault();
+                if(hill!=null){isoWidth=128;FocusTile(hill.x,hill.y);yield return CleanShot(folder,"3-hills.bmp");isoWidth=64;yield return CleanShot(folder,"3b-hills-far.bmp");}}
+            // A volcano with a unit that has just walked onto it.
+            {var volcano=world.tiles.FirstOrDefault(t=>t.realm==0&&t.terrain==17);if(volcano==null&&home!=null){volcano=world.Step(home.x,home.y,2,0);if(volcano!=null)volcano.terrain=17;}
+                if(volcano!=null){var from=Enumerable.Range(0,di.Length).Select(k=>world.Step(volcano.x,volcano.y,di[k],dj[k])).FirstOrDefault(n=>n!=null&&!World.IsImpassable(n.terrain)&&n.terrain!=17);
+                    if(from!=null){var walker=world.Add(0,2,from.x,from.y);walker.moves=9;bool moved=world.Move(walker,volcano.x,volcano.y);log.AppendLine("unit onto volcano: moved "+moved+", health "+walker.hp+" of 10");Probe("a volcano burns a unit that walks onto it",moved&&walker.hp==10-World.VolcanoDamage);selected=walker.id;}
+                    isoWidth=128;FocusTile(volcano.x,volcano.y);yield return Frames(40);yield return CleanShot(folder,"4-volcano.bmp");selected=-1;}}
+            // Gateways: sealed, then open.
+            {var gates=world.tiles.Where(t=>t.realm==0&&t.gateLink>0).OrderBy(t=>world.GateStyle(t)).ToList();log.AppendLine("gateways: "+gates.Count+", designs "+string.Join(",",gates.Select(g=>world.GateStyle(g).ToString()).ToArray()));
+                if(world.gatesFound==null)world.gatesFound=new System.Collections.Generic.List<int>();foreach(var g in gates)if(!world.gatesFound.Contains(g.y*world.Width+g.x))world.gatesFound.Add(g.y*world.Width+g.x);gateScene=null;
+                int n=0;foreach(var g in gates.Take(4)){isoWidth=128;FocusTile(g.x,g.y);gateScene=null;yield return CleanShot(folder,"5-gate-sealed-"+world.GateStyle(g)+".bmp");n++;}
+                foreach(var g in gates)world.OpenGate(g);gateScene=null;
+                foreach(var g in gates.Take(4)){isoWidth=128;FocusTile(g.x,g.y);gateScene=null;yield return CleanShot(folder,"5-gate-open-"+world.GateStyle(g)+".bmp");}
+                if(gates.Count>0){isoWidth=64;FocusTile(gates[0].x,gates[0].y);yield return CleanShot(folder,"5b-gate-far.bmp");}}
+            File.WriteAllText(Path.Combine(folder,"map.txt"),log.ToString());Application.Quit();
         }
         // Development aid: "-dipShot <folder>" starts a fixed game, meets every rival and saves the diplomacy screen in each of its
         // states (first meeting, agreements signed, a row's reasons, claims, a trade deal, war, the More page), then quits.

@@ -48,7 +48,7 @@ public int GrowthLimit(City c){return HasBuilding(c,41)?20+(HasTech(c.owner,"ele
         return ExchangeText(attacker,enemy,"Attack")+DefenceNote(x,y)+SiegeNote(attacker,x,y)+(AtWar(attacker.owner,enemy.owner)?"":" Declares war.");
     }
     // Hills, forest, rivers and mountains add to the defender's strength (owner request, 8 Nov 2026: shown wherever a battle is judged).
-    public string DefenceNote(int x,int y){var t=At(x,y);if(t==null)return "";int d=TerrainDefence(t.terrain);return d>0?" Defender's "+TerrainNames[t.terrain].ToLower()+": +"+d+" defence (included).":"";
+    public string DefenceNote(int x,int y){var t=At(x,y);if(t==null)return "";int d=TerrainDefence(t.terrain);return (d>0?" Defender's "+TerrainNames[t.terrain].ToLower()+": +"+d+" defence (included).":"")+(t.terrain==17?" Volcano: land units lose "+VolcanoDamage+" health entering it and each turn they stay.":"");
     }
     // Exact outcome of one exchange, as the real attack will resolve it (combat is deterministic).
     public string ExchangeText(Unit attacker,Unit enemy,string kind){

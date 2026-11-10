@@ -25,6 +25,7 @@ public static void Run(){
     EveningRequestChecks();
     GovernorChecks();
     NinthNovemberChecks();
+    TenthNovemberChecks();
     SiegeChecks();
     var cold=World.New(3);var settler=cold.units.First(u=>u.owner==0&&u.type==0);cold.At(settler.x,settler.y).terrain=8;cold.tech[K("fire")]=false;Check(cold.Found(settler)==null,"cold settlement needs Fire");cold.tech[K("fire")]=true;Check(cold.Found(settler)!=null,"Fire (Stone Tools) permits cold settlement");
     var terrainTypes=new HashSet<int>();for(int seed=0;seed<6;seed++){var map=World.New(seed);Check(map.Valid(),"biome map validates");foreach(var tile in map.tiles){terrainTypes.Add(tile.terrain);Check(map.TileYield(tile).Length==3,"all terrain has yields");}}
@@ -340,6 +341,28 @@ static void EveningRequestChecks(){
      var f=SceneryArt.FeatherRim(px,n,n);Check((f[63*n+31]>>24)<60&&(f[30*n+30]>>24)==255,"landforms only lose their hard rim");}
 }
 // Owner requests, 9 Nov 2026: natural rivers, buildings cost gold, animals stay out of borders, rarer mammoths, the Hive Expanse.
+// Owner requests, 10 Nov 2026: volcanoes burn, hills lose their square base, rivers open into the sea.
+static void TenthNovemberChecks(){
+    var w=World.New(331,natives:false);var c=w.Found(w.units.First(u=>u.owner==0&&u.type==0));var lava=w.Step(c.x,c.y,1,0);lava.terrain=17;lava.resource=0;
+    var unit=w.Add(0,2,c.x,c.y);unit.moves=9;Check(w.Move(unit,lava.x,lava.y)&&unit.hp==10-World.VolcanoDamage,"stepping onto a volcano costs 2 health ("+unit.hp+")");
+    Check(w.DefenceNote(lava.x,lava.y).Contains("Volcano"),"the tile says so");
+    w.EndTurn();Check(unit.hp==10-2*World.VolcanoDamage,"a unit that stays on a volcano burns again and does not heal ("+unit.hp+")");
+    unit.hp=2;w.EndTurn();Check(unit.hp==1,"a volcano never takes the last point of health");w.EndTurn();Check(unit.hp==1&&w.units.Contains(unit),"and the unit survives there");
+    var calm=w.Add(0,2,c.x,c.y);calm.hp=6;calm.fortified=true;w.EndTurn();Check(calm.hp>6,"units elsewhere heal as before");
+    // Hills: a picture on a full diamond of ground loses its corners and keeps its middle.
+    {int n=64;var px=new uint[n*n];for(int y=0;y<n;y++)for(int x=0;x<n;x++)if(Math.Abs(x-31.5)/32+Math.Abs(y-47.5)/16<=1||(y<48&&Math.Abs(x-31.5)<14&&y>22))px[y*n+x]=0xFF5A8C3Cu;
+     var r=SceneryArt.RoundFoot(px,n,n);Check((r[47*n+2]>>24)==0&&(r[47*n+61]>>24)==0&&(r[62*n+31]>>24)==0,"the corners of a hill's base are gone");
+     Check((r[47*n+31]>>24)==255&&(r[30*n+31]>>24)==255,"the hill itself is untouched");
+     int partial=0;for(int k=0;k<r.Length;k++){uint a=r[k]>>24;if(a>20&&a<235)partial++;}Check(partial>60,"the foot fades out gradually ("+partial+" part-clear pixels)");
+     Check(SceneryArt.Prepare("hills-1",px,n,n)[47*n+2]>>24==0&&(SceneryArt.Prepare("terrain-05",px,n,n)[47*n+8]>>24)>0,"only hills get the rounded foot");}
+    // River mouths: the river tile and the sea tile both paint the mouth, and a sea tile with no river is unchanged.
+    {var sea=new[]{4,4,4,7,4,4,4,4,4};var plain=PixelArt.ComposeHex(sea,10,10,0,0);var mouth=PixelArt.ComposeHex(sea,10,10,0,1<<3);int changed=0,sand=0;
+     for(int y=0;y<PixelArt.HH;y++)for(int x=0;x<PixelArt.HW;x++){uint a=plain.Get(x,y),b=mouth.Get(x,y);if(a!=b){changed++;if(x>PixelArt.HW/2+6)sand+=1000;}}
+     Check(changed>120&&sand==0,"a river flowing in from the west spreads a plume on the west side of the sea tile only ("+changed+")");
+     var land=new[]{0,0,0,0,7,4,0,0,0};var shut=PixelArt.ComposeHex(land,10,10,0,0);var open=PixelArt.ComposeHex(land,10,10,0,1);int wider=0;
+     for(int y=0;y<PixelArt.HH;y++)for(int x=PixelArt.HW/2;x<PixelArt.HW;x++)if(shut.Get(x,y)!=open.Get(x,y))wider++;Check(wider>80,"a river arm that reaches the sea widens into a funnel ("+wider+")");
+     var sq=PixelArt.Compose(new[]{0,0,0,0,7,4,0,0,0},10,10,0,1<<1);Check(sq!=null&&PixelArt.RiverShape(false,1<<1,0).w==PixelArt.DW&&PixelArt.RiverShape(true,1,0).w==PixelArt.HW,"both map layouts draw mouths and give the river's shape");}
+}
 static void NinthNovemberChecks(){
     var w=World.New(511,"Ninth",0,1,1,0,1,2,3,hex:true,rations:true);
     // Rivers on the home world form trees: links between river tiles never close a loop (edges = tiles - systems at most).

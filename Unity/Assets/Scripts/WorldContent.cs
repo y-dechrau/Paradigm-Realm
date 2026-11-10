@@ -7,6 +7,11 @@ namespace ParadigmRealm
         public bool HasTech(int owner,string id){int i=TechnologyCatalog.Index(id);return i>=0&&nations[owner].tech.Length>i&&nations[owner].tech[i];}
         // The poles (ice sheet 14, glacier 15) can be crossed at great cost but not settled (owner request).
         public static bool IsImpassable(int t){return t==4||t==5||t==6||t==12;}
+        // Volcanoes burn (owner request, 10 Nov 2026): a land unit loses 2 health when it steps onto one and 2 more each turn it ends
+        // there, and does not heal on it. Like the polar ice it never takes the last point of health. Routes count a volcano as six
+        // extra movement, so units ordered across the map go round one unless that is far longer.
+        public const int VolcanoDamage=2,VolcanoDetour=6;
+        internal void VolcanoBurn(Unit u,bool entering){var t=At(u.x,u.y);if(t==null||t.terrain!=17||IsNaval(u.type)||u.hp<=1)return;u.hp=Math.Max(1,u.hp-VolcanoDamage);if(u.owner==0)Note((entering?"The volcano scorches your ":"Still on the volcano, your ")+UnitName(u)+(entering?": ":" burns: ")+"-"+VolcanoDamage+" health.");}
         // Not ordinary land: water, peaks or polar ice. World generation, villages and workers use this, not IsImpassable.
         public static bool Barren(int t){return IsImpassable(t)||t==14||t==15;}
         public static bool Wooded(int t){return t==1||t==11||t==13||t==19;}

@@ -1180,8 +1180,70 @@ namespace ParadigmRealm
             {
                 var ov=HexRiver(riverMask,(wx*7+wy*3)%3);
                 for(int y=0;y<HH;y++)for(int x=0;x<HW;x++){uint c=ov.Get(x,y);if((c>>24)!=0&&(cv.Get(x,y)>>24)!=0)cv.Set(x,y,c);}
+                // Where an arm reaches the sea or a lake, the river opens into it.
+                for(int k=0;k<6;k++)if((riverMask&(1<<k))!=0){int n=n9[(World.HexDj[k]+1)*3+World.HexDi[k]+1];if(n>=0&&n!=7&&IsWater(n))RiverMouth(cv,field,W,HW,HH,HW/2.0+HexEdgeX[k],HH/2.0+HexEdgeY[k],HexEdgeX[k],HexEdgeY[k],ox,oy);}
             }
+            // A sea or lake tile: riverMask marks the sides a river flows in from, and the same mouth is painted from this side.
+            else if(IsWater(n9[4])&&riverMask!=0)for(int k=0;k<6;k++)if((riverMask&(1<<k))!=0)RiverMouth(cv,field,W,HW,HH,HW/2.0+HexEdgeX[k],HH/2.0+HexEdgeY[k],-HexEdgeX[k],-HexEdgeY[k],ox,oy);
             return cv;
+        }
+        // ---------- river mouths ----------
+        // Where a river meets standing water (owner request, 10 Nov 2026). The old river stopped at the tile edge behind an unbroken
+        // rock or sand shore. Drawn after how real mouths form (mouth-bar and river-jet studies, e.g. Edmonds and Slingerland 2007;
+        // "Mouth bar", Wikipedia):
+        //  - the channel widens downstream into a funnel (an estuary) and cuts through the shore, with no bank across it;
+        //  - the river's jet spreads and slows as it leaves the land, so its silt settles in a pale fan of turbid water (the plume);
+        //  - the coarsest sediment drops first, in a crescent sand bar a little way out, with the flow splitting round it;
+        //  - quiet water beside the channel collects sand and mud, so the banks at a mouth are low flats, not cliffs.
+        // (mx,my) is the middle of the shared tile edge on this canvas and (dx,dy) points out to sea. Everything is measured from that
+        // point in world pixels, so the river tile and the water tile paint the same mouth and meet without a seam.
+        static readonly uint Silt=Rgb(118,168,160),Fresh=Rgb(52,128,176);
+        static void RiverMouth(PixelCanvas cv,int[] field,int W,int cw,int ch,double mx,double my,double dx,double dy,int ox,int oy)
+        {
+            double len=Math.Sqrt(dx*dx+dy*dy);if(len<=0)return;dx/=len;dy/=len;double px=-dy,py=dx;
+            const double Up=12,Out=9,Plume=24;int seed=(int)Math.Round(ox+mx)*31+(int)Math.Round(oy+my)*17;double barSide=(Hsh(seed,7,521)-.5)*4,lean=(Hsh(seed,9,529)-.5)*.5;
+            // The coast wanders, so the shore is rarely on the tile edge itself. The mouth is set where the land really ends along the
+            // river's line, looked for within eight pixels either side of the edge: the strip both tiles can see, so both agree.
+            double shore=-8;for(int a=8;a>=-8;a--){int sx=(int)Math.Floor(mx+dx*a),sy=(int)Math.Floor(my+dy*a);if(sx<-Margin||sy<-Margin||sx>=cw+Margin||sy>=ch+Margin)continue;int f=field[(sy+Margin)*W+sx+Margin];if(!IsWater(f)||f==7){shore=a;break;}}
+            mx+=dx*shore;my+=dy*shore;
+            for(int y=0;y<ch;y++)for(int x=0;x<cw;x++)
+            {
+                uint was=cv.Get(x,y);if((was>>24)==0)continue;
+                double rx=x+.5-mx,ry=y+.5-my,along=rx*dx+ry*dy,across=rx*px+ry*py;if(along<-Up||along>Plume)continue;
+                int gx=ox+x,gy=oy+y;int under=field[(y+Margin)*W+x+Margin];bool sea=IsWater(under)&&under!=7;
+                // The outflow drifts a little to one side as it leaves the shore, as a current along the coast would carry it.
+                across-=Math.Max(0,along)*lean;double side=Math.Abs(across);
+                // The funnel: as wide as the river upstream, about twice that at the shore, its banks uneven.
+                double half=2.4+(along+Up)*.36+(VNoise(gx/4.0,gy/4.0,523)-.5)*2.6;
+                if(!sea)
+                {
+                    if(along<=Out&&side<=half)
+                    {
+                        // Land inside the funnel becomes water: river blue upstream, taking the sea's colour toward the shore.
+                        double t=Math.Max(0,Math.Min(1,(along+Up)/(Up+Out)));uint c=MixC(Fresh,Ground(4,gx,gy,0),t*.7);
+                        if(Hsh(gx,gy,5)>.9)c=MixC(c,Rgb(150,214,232),.45);cv.Set(x,y,MixC(c,Silt,.12+t*.2));
+                    }
+                    // Low flats of sand and mud beside the channel, in place of the rock rim.
+                    else if(along>=-7&&along<=Out&&side<=half+3.4)cv.Set(x,y,MixC(was,MixC(Sand[3],Rgb(150,140,104),VNoise(gx/3.0,gy/3.0,531)),side<=half+1.7?.7:.35));
+                    continue;
+                }
+                if(along<-2)continue;
+                // The mouth bar: a low crescent of sand where the jet drops its load, its horns pointing back to the shore, awash at its edge.
+                {double bx=along-(Out+1)+across*across*.045,by=across-barSide,d=bx*bx/4.6+by*by/38.0;
+                 if(d<=1&&Hsh(gx,gy,525)>.18){cv.Set(x,y,d>.55?MixC(was,Rgb(214,232,226),.6):MixC(Sand[3],Sand[2],Hsh(gx,gy,533)));continue;}}
+                // The plume: turbid water spreading in a fan, strongest in the middle near the mouth, thinning into streaks and patches.
+                double fan=6+Math.Max(0,along)*.85;if(side>=fan)continue;
+                double strength=(1-Math.Max(0,along)/Plume)*(1-side/fan);
+                strength*=.45+.9*VNoise(gx/9.0,gy/7.0,527)+.35*(VNoise(gx/3.0,gy/3.0,535)-.5);
+                if(strength>.05)cv.Set(x,y,MixC(was,Silt,Math.Min(.55,strength*.85)*(Bay(gx,gy)<strength*3?1:.6)));
+            }
+        }
+        // The shape of a river on a finished tile picture, for things drawn over the tile that must leave the water clear.
+        public static PixelCanvas RiverShape(bool hex,int mask,int variant)
+        {
+            if(hex)return HexRiver(mask,variant);
+            var cv=new PixelCanvas(CW,CH);var ov=River(mask,variant);for(int y=0;y<TH;y++)for(int x=0;x<TW;x++){uint c=ov.Get(x,y);if((c>>24)!=0)cv.Set(x,y,c);}
+            return ToDiamond(cv);
         }
         static readonly Dictionary<int,PixelCanvas> hexRivers=new Dictionary<int,PixelCanvas>();
         // A river's arms run from the centre to the edges in the mask, bending gently and fixed at both ends so that they join.
@@ -1222,9 +1284,12 @@ namespace ParadigmRealm
             {
                 var ov=River(riverMask,(wx*7+wy*3)%3);
                 for(int y=0;y<TH;y++)for(int x=0;x<TW;x++){uint c=ov.Get(x,y);if((c>>24)!=0)cv.Set(x,y,c);}
+                for(int k=0;k<4;k++)if((riverMask&(1<<k))!=0){int n=n9[(SquareDj[k]+1)*3+SquareDi[k]+1];if(n>=0&&n!=7&&IsWater(n))RiverMouth(cv,field,W,TW,TH,EdgeMidX[k],EdgeMidY[k],SquareDi[k],SquareDj[k],wx*TW,wy*TH);}
             }
+            else if(IsWater(n9[4])&&riverMask!=0)for(int k=0;k<4;k++)if((riverMask&(1<<k))!=0)RiverMouth(cv,field,W,TW,TH,EdgeMidX[k],EdgeMidY[k],-SquareDi[k],-SquareDj[k],wx*TW,wy*TH);
             return cv;
         }
+        static readonly int[] SquareDi={0,1,0,-1},SquareDj={-1,0,1,0},EdgeMidX={TW/2,TW,TW/2,0},EdgeMidY={0,TH/2,TH,TH/2};
         // A tileable 128 x 128 sheet of soft cloud shadow (black, alpha only) that the renderer drifts slowly across the map.
         static PixelCanvas clouds;
         public static PixelCanvas CloudShadows()

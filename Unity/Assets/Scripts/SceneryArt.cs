@@ -102,13 +102,45 @@ public static class SceneryArt
         }
         return px;
     }
+    // Hills (owner report, 10 Nov 2026: "the squaring of the hills at the base ... is not realistic"). The supplied pictures stand on
+    // a diamond of ground, so every hill ended in four straight edges and corners. A real hill has no edge: below the convex crest
+    // and the steeper backslope comes a concave footslope, where soil washed and crept from above (colluvium) thins out onto the
+    // plain in a rounded, uneven skirt (the summit, shoulder, backslope, footslope and toeslope of the standard hillslope model).
+    // Here the diamond is cut to a rounded footprint with a few shallow lobes, and the foot fades out over a wide band, slowly at
+    // first and then quickly, so the ground of the tile shows through more and more toward the edge and no corner is left.
+    public static uint[] RoundFoot(uint[] src,int w,int h)
+    {
+        var px=(uint[])src.Clone();float cx,cy,hw,hh;if(!FindBase(px,w,h,out cx,out cy,out hw,out hh))return px;
+        // Each picture gets its own lobes, from its own pixels, so the three hill pictures do not share one outline.
+        int seed=0;for(int k=0;k<px.Length;k+=97)seed=seed*31+(int)(px[k]&0xFFFFu);double p1=(seed&255)/255.0*6.283,p2=(seed>>8&255)/255.0*6.283,p3=(seed>>16&255)/255.0*6.283;
+        float band=Math.Max(5f,w/8f),reach=hh*1.4f;
+        for(int y=0;y<h;y++)for(int x=0;x<w;x++)
+        {
+            int k=y*w+x;uint p=px[k];if(A(p)==0)continue;
+            double u=(x-cx)/hw,v=(y-cy)/hh;
+            // The back edges of the old diamond, where no hill stands in front of them: a strip along the edge with open air a few
+            // rows above it is bare ground, and goes. Where the hill rises through the edge it is left alone.
+            if(v<-.05){float d=DiamondDist(x,y,cx,cy,hw,hh);if(d>=.8f&&d<=1.08f){bool body=false;for(int up=3;up<=5&&!body;up++)if(y-up>=0&&A(src[(y-up)*w+x])>=128&&DiamondDist(x,y-up,cx,cy,hw,hh)>1.08f)body=true;if(!body){float e=(d-.8f)/.16f;if(e>1)e=1;px[k]=((uint)(A(p)*(1-e)*(1-e))<<24)|(p&0xFFFFFFu);}}}
+            if(v<-.4)continue;   // the body of the hill, above its base
+            p=px[k];if(A(p)==0)continue;
+            double angle=Math.Atan2(v,u),edge=.69+.07*Math.Sin(3*angle+p1)+.045*Math.Sin(5*angle+p2)+.03*Math.Sin(9*angle+p3);
+            float jitter=(((x*73856093)^(y*19349663))&7)/7f*2f-1f;
+            double inside=(edge-Math.Sqrt(u*u+v*v))*reach+jitter*1.2;if(inside>=band)continue;
+            // The back of the base is hidden by the hill itself: the cut eases in over the rows just above the centre line.
+            double keep=v<-.1?(-.1-v)/.3:0;
+            // The dark line the artist drew round the base goes first, so no outline of the old diamond is left in the fade.
+            bool rim=Bright(p)<150&&DiamondDist(x,y,cx,cy,hw,hh)>=.86f&&v>-.1;
+            double f=Math.Max(0,inside)/band;f=f*f*(3-2*f);f*=f;if(rim)f*=.25;f=f+(1-f)*keep;px[k]=((uint)(A(p)*Math.Min(1,f))<<24)|(p&0xFFFFFFu);
+        }
+        return px;
+    }
     // Which treatment a supplied picture gets, by its slot name; null leaves it as it is.
     // Cities and farmsteads keep their ground (their walls stand on its edge) and only lose the hard rim, like landforms.
     // Only open scenery (grassland groves, savanna, bog) is cut out of its ground; dense forest, jungle, rocks, mountains, cities and
     // farmsteads keep their ground, faded softly at the edge, because their trees and walls share colours with it (9 Nov 2026).
     public static bool IsLandform(string slot){return !(slot.StartsWith("terrain-00")||slot.StartsWith("terrain-16")||slot.StartsWith("terrain-09"));}
     public static bool IsScenery(string slot){return slot.StartsWith("field-")||slot.StartsWith("improve-")||slot.StartsWith("terrain-")||slot.StartsWith("hills")||slot.StartsWith("hamlet-")||slot.StartsWith("city-");}
-    public static uint[] Prepare(string slot,uint[] px,int w,int h){return IsLandform(slot)?FeatherRim(px,w,h):StripGround(px,w,h,slot.StartsWith("terrain-00"));}
+    public static uint[] Prepare(string slot,uint[] px,int w,int h){return slot.StartsWith("hills")?RoundFoot(px,w,h):IsLandform(slot)?FeatherRim(px,w,h):StripGround(px,w,h,slot.StartsWith("terrain-00"));}
     // Thin dark lines left from the old base (1-2 pixels wide) go; outlines of solid shapes stay, having more of themselves around.
     static void ThinLines(uint[] px,int w,int h)
     {

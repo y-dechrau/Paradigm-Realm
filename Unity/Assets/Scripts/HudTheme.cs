@@ -397,7 +397,9 @@ namespace ParadigmRealm
                 FitLabel(new Rect(r.x+6,r.y+18,w-10,14),making,plateMaking,7);
                 int b=c.buildingProject>=0?c.buildingProject:c.build;int progress=c.buildingProject>=0?c.buildingProduction:c.production;
                 if(b>=0)Bar(new Rect(r.x+4,r.yMax-3,w-8,2),progress/(float)Math.Max(1,world.CostFor(c,b)),UiAccent);
-                if(r.Contains(Event.current.mousePosition)){int perTurn=b>=0?world.LineOutput(c,b):1;string line=b<0?"Nothing in production":world.BuildNameFor(c.owner,b)+" ("+Math.Max(1,(world.CostFor(c,b)-progress+perTurn-1)/perTurn)+" turns)";var tip=new Rect(r.x,r.yMax+2,Mathf.Max(w,hudSmall.CalcSize(new GUIContent(line)).x+12),18);Fill(tip,new Color(.04f,.06f,.12f,.92f));GUI.Label(new Rect(tip.x+6,tip.y+1,tip.width-8,16),line,new GUIStyle(hudSmall){wordWrap=false});}
+                if(plateHoverProbe||r.Contains(Event.current.mousePosition)){int perTurn=b>=0?world.LineOutput(c,b):1;string line=b<0?"Nothing in production":world.BuildNameFor(c.owner,b)+" ("+Math.Max(1,(world.CostFor(c,b)-progress+perTurn-1)/perTurn)+" turns)";// The note is as tall as its own text needs, so nothing is cut off at the bottom (owner report, 10 Nov 2026).
+                    var tipStyle=new GUIStyle(hudSmall){wordWrap=false,clipping=TextClipping.Overflow,alignment=TextAnchor.MiddleLeft,padding=new RectOffset(0,0,0,0)};var need=tipStyle.CalcSize(new GUIContent(line));float tipH=Mathf.Max(22,Mathf.Ceil(need.y)+8);
+                    var tip=new Rect(r.x,r.yMax+2,Mathf.Max(w,need.x+14),tipH);Fill(tip,new Color(.04f,.06f,.12f,.94f));GUI.Label(new Rect(tip.x+7,tip.y,tip.width-10,tip.height),line,tipStyle);}
             }
         }
     }
