@@ -20,6 +20,36 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-routeProbe");if(i>=0&&i+1<args.Length)StartCoroutine(RouteProbe(args[i+1]));
             i=Array.IndexOf(args,"-inputProbe");if(i>=0&&i+1<args.Length)StartCoroutine(InputProbeRun(args[i+1]));
             i=Array.IndexOf(args,"-flickerProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FlickerProbe(args[i+1]));
+            i=Array.IndexOf(args,"-walkProbe");if(i>=0&&i+1<args.Length)StartCoroutine(WalkProbe(args[i+1]));
+        }
+        // Development aid: "-walkProbe <folder>" makes every unit type's walking frames, times them, then sets one unit of each
+        // type walking near the capital and saves screenshots part-way through the glide (walk-0..3.bmp, walk.txt), then quits.
+        IEnumerator WalkProbe(string folder)
+        {
+            Directory.CreateDirectory(folder);yield return Frames(5);
+            seedText="421";mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;
+            var founder=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);if(founder!=null)world.Found(founder);
+            int cx=founder.x,cy=founder.y;
+            foreach(var t in world.tiles)if(t.realm==0&&world.Distance(t.x,t.y,cx,cy)<=9)t.seen=true;
+            var log=new System.Text.StringBuilder();int types=Math.Min(16,people.Length);bool all=true;
+            for(int type=0;type<types;type++){var sw=System.Diagnostics.Stopwatch.StartNew();var made=new Texture2D[WalkFrameCount];for(int f=0;f<WalkFrameCount;f++)made[f]=WalkFrame(type,(f+.5f)/WalkFramesPerTile);
+                bool ok=made.All(t=>t!=null)&&made.Distinct().Count()==WalkFrameCount;all&=ok;Probe("walking frames for "+World.UnitNames[type],ok);log.AppendLine(World.UnitNames[type]+": "+(ok?"6 frames":"MISSING")+" made in "+sw.ElapsedMilliseconds+" ms, "+(made[0]!=null?made[0].width+"x"+made[0].height:"-"));}
+            // One unit of each type on a free tile within 5 of the capital (vessels on water), stepping in from the tile to its west.
+            // The map is drawn first: UpdateGlides empties the move log the first time it sees a new world.
+            FocusTile(cx,cy);yield return Frames(3);
+            var used=new System.Collections.Generic.HashSet<int>();int placed=0;
+            for(int type=0;type<types;type++){bool naval=World.IsNaval(type);
+                var spot=world.tiles.Where(t=>t.realm==0&&t.x>0&&!used.Contains(t.y*world.Width+t.x)&&TerrainPainter.Water(t.terrain)==naval&&!(t.x==cx&&t.y==cy)&&world.Distance(t.x,t.y,cx,cy)<=5).OrderBy(t=>world.Distance(t.x,t.y,cx,cy)).ThenBy(t=>t.y*world.Width+t.x).FirstOrDefault();
+                if(spot==null){log.AppendLine(World.UnitNames[type]+": no tile to stand on");continue;}
+                used.Add(spot.y*world.Width+spot.x);var u=world.Add(0,type,spot.x,spot.y);placed++;
+                if(world.moveLog==null)world.moveLog=new System.Collections.Generic.List<int[]>();world.moveLog.Add(new[]{u.id,spot.x-1,spot.y,spot.x,spot.y});}
+            log.AppendLine("placed "+placed+" walking units");
+            FocusTile(cx,cy);yield return null;
+            int w=Screen.width,h=Screen.height;var frame=new Texture2D(w,h,TextureFormat.RGBA32,false);int gliding=0;
+            for(int shot=0;shot<4;shot++){yield return new WaitForEndOfFrame();if(shot==0)gliding=unitGlides.Count;frame.ReadPixels(new Rect(0,0,w,h),0,0);WriteBmp(Path.Combine(folder,"walk-"+shot+".bmp"),frame.GetPixels32(),w,h);yield return Frames(3);}
+            Destroy(frame);log.AppendLine("gliding at first shot: "+gliding);Probe("units glide with walking frames",gliding>=placed&&placed>0);Probe("all walking frames made",all);
+            yield return Frames(90);Probe("glides finish and units stand",unitGlides.Count==0);log.AppendLine("gliding after 1.5 s: "+unitGlides.Count);
+            File.WriteAllText(Path.Combine(folder,"walk.txt"),log.ToString());Application.Quit();
         }
         IEnumerator Frames(int n){for(int k=0;k<n;k++)yield return null;}
         // Real input for the autoShot run: the next OnGUI handles this event as if the player had done it.

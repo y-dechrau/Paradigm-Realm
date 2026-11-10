@@ -6,12 +6,43 @@ namespace ParadigmRealm {
 // with a small hop for each step; animals glide to where they moved. Only what you can see is animated, long walks play faster,
 // and nothing about the rules changes: the unit is already on its new tile, it is only drawn on the way there.
 public partial class RealmGame {
- sealed class Glide{public readonly List<Vector2Int> path=new List<Vector2Int>();public float t;}
+ sealed class Glide{public readonly List<Vector2Int> path=new List<Vector2Int>();public float t,walk;}
+ // Walking frames (owner's movement pack, 10 Nov 2026): Visuals/Movement/unit-NN-move-00..05, six 256 x 256 frames per unit type,
+ // stepped by distance (4 frames per tile, about 16 a second) only while a unit glides between tiles, so feet keep pace with the
+ // ground on long, faster walks; standing units keep their usual picture. Each frame goes
+ // through the same UnitSprite processing as the standing art (128 x 128, rim light, outline, feet on row 62), and a unit type's
+ // frames are made the first time one of its units moves. A type with a missing frame keeps sliding its standing picture.
+ public const int WalkFrameCount=6;public const float WalkFramesPerTile=4f;
+ Texture2D[][] walkFrames;bool[] walkTried;
+ Texture2D WalkFrame(int type,float walk){
+  if(type<0||people==null||type>=people.Length)return null;
+  if(walkFrames==null||walkFrames.Length!=people.Length){walkFrames=new Texture2D[people.Length][];walkTried=new bool[people.Length];}
+  var set=walkFrames[type];
+  if(set!=null){for(int i=0;i<set.Length;i++)if(set[i]==null){set=null;break;}}// released with the other visuals: make them again
+  if(set==null){
+   if(walkTried[type]&&walkFrames[type]==null)return null;
+   walkTried[type]=true;set=LoadWalkFrames(type);walkFrames[type]=set;if(set==null)return null;}
+  return set[(int)(walk*WalkFramesPerTile)%set.Length];
+ }
+ Texture2D[] LoadWalkFrames(int type){
+  var set=new Texture2D[WalkFrameCount];
+  for(int f=0;f<WalkFrameCount;f++){
+   var raw=Resources.Load<Texture2D>("Visuals/Movement/unit-"+type.ToString("00")+"-move-"+f.ToString("00"));
+   if(raw==null){Release(set);return null;}
+   try{set[f]=SoftTexture(PixelArt.UnitSprite(ReadArtPixels(raw),raw.width,raw.height,raw.width>=96?128:64));themeTextures.Add(set[f]);}
+   catch(Exception){set[f]=null;}
+   Resources.UnloadAsset(raw);
+   if(set[f]==null){Release(set);return null;}
+  }
+  return set;
+ }
+ void Release(Texture2D[] set){foreach(var t in set)if(t!=null){themeTextures.Remove(t);Destroy(t);}}
  readonly Dictionary<int,Glide> unitGlides=new Dictionary<int,Glide>(),animalGlides=new Dictionary<int,Glide>();
  readonly Dictionary<int,Vector2Int> animalLast=new Dictionary<int,Vector2Int>();
  readonly Dictionary<int,Unit> glideUnits=new Dictionary<int,Unit>();
  float glideClock=-1;World glideWorld;
- const float StepsPerSecond=6f;
+ // 4 tiles a second (6 before the walking frames), at most twice that on long walks, so the legs can be seen moving.
+ const float StepsPerSecond=4f,MaxGlideSpeedUp=2f;
  bool Gliding(int unitId){return unitGlides.ContainsKey(unitId);}
  bool AnimalGliding(int animalId){return animalGlides.ContainsKey(animalId);}
  // Called once per repaint before the map is drawn: takes in new steps and moves every glide on.
@@ -41,7 +72,7 @@ public partial class RealmGame {
  static void Advance(Dictionary<int,Glide> glides,float dt){
   List<int> done=null;
   foreach(var kv in glides){var g=kv.Value;int steps=g.path.Count-1;if(steps<=0){(done=done??new List<int>()).Add(kv.Key);continue;}
-   g.t+=dt*StepsPerSecond*Mathf.Max(1f,steps/3f);
+   float advance=dt*StepsPerSecond*Mathf.Clamp(steps/3f,1f,MaxGlideSpeedUp);g.t+=advance;g.walk+=advance;
    while(g.t>=1f&&g.path.Count>1){g.t-=1f;g.path.RemoveAt(0);}
    if(g.path.Count<=1)(done=done??new List<int>()).Add(kv.Key);}
   if(done!=null)foreach(int k in done)glides.Remove(k);
@@ -63,7 +94,7 @@ public partial class RealmGame {
   if(unitGlides.Count==0&&animalGlides.Count==0)return;
   glideUnits.Clear();foreach(var u in world.units)if(unitGlides.ContainsKey(u.id))glideUnits[u.id]=u;
   foreach(var kv in unitGlides){Unit u;if(!glideUnits.TryGetValue(kv.Key,out u))continue;Vector2 at;if(!GlidePoint(kv.Value,tw,s,out at))continue;
-   DrawUnitArt(u,new Rect(at.x-20*s,at.y-36*s,40*s,40*s),1);}
+   DrawUnitArt(u,new Rect(at.x-20*s,at.y-36*s,40*s,40*s),1,WalkFrame(u.type,kv.Value.walk));}
   if(world.animals!=null)foreach(var a in world.animals){Glide g;if(!animalGlides.TryGetValue(a.id,out g))continue;Vector2 at;if(!GlidePoint(g,tw,s,out at))continue;
    bool painted=SpriteSlot("animal-"+a.kind)!=null;float size=painted?(AnimalCatalog.Carnivore[a.kind]?40:48):64;
    GUI.DrawTexture(painted?new Rect(at.x-size/2*s,at.y-(size-6)*s,size*s,size*s):new Rect(at.x-32*s,at.y-42*s,64*s,64*s),IsoPicture(12,a.kind,0),ScaleMode.ScaleToFit,true);}

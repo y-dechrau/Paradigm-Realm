@@ -2,6 +2,15 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner request 10 Nov: walking frames from the movement pack (no save change; `MotionUI.cs`)
+
+- The owner's movement pack supplies six 256 x 256 walking frames for each of the 16 unit types, in `Resources/Visuals/Movement/unit-NN-move-00..05` (96 files). Its idle pictures, sprite sheets, GIFs and SpriteRenderer scripts are not imported: the map is drawn with IMGUI, so the frames go through the existing unit drawing instead.
+- While a unit glides between tiles, `DrawGlides` draws a walking frame in place of its standing picture (`WalkFrame`, `DrawUnitArt(..., pose)`). Standing, fortified and stacked units keep their usual pictures.
+- Each frame gets the same processing as the standing art (`PixelArt.UnitSprite` at 128 x 128: rim light, outline, feet on row 62). A unit type's frames are made the first time one of its units moves, which takes about 40 ms in the build. A type with a missing frame keeps sliding its standing picture.
+- Frames follow distance, at 4 frames per tile. Glides are now 4 tiles a second instead of 6, and at most twice that on long walks, so the legs can be seen moving.
+- The art is the pack's generated prototype, with one facing direction. Poses and equipment drift between frames and from the standing pictures, so a unit can change slightly as it starts or stops.
+- Checks: `GraphicsChecks` loads all 96 frames (210 assets pass), and `-walkProbe <folder>` makes every type's frames, walks one unit of each type and saves screenshots (all probes pass; `Documentation/Unity-Screenshots-2026-11-10-Walking`). Not hand-played.
+
 ## Owner request 9 Nov: animated movement (no save change; `MotionUI.cs`)
 
 - On the diagonal and staggered map, units glide from tile to tile along the steps they really took, with a small hop for each step. The steps come from `World.moveLog`, which is filled by `Move` and not saved.

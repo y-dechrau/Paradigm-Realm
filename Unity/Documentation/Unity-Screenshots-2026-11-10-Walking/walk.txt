@@ -1,0 +1,19 @@
+Settler: 6 frames made in 43 ms, 128x128
+Worker: 6 frames made in 40 ms, 128x128
+Warrior: 6 frames made in 43 ms, 128x128
+Scout: 6 frames made in 45 ms, 128x128
+Archer: 6 frames made in 43 ms, 128x128
+Knight: 6 frames made in 44 ms, 128x128
+Rifleman: 6 frames made in 39 ms, 128x128
+Spearman: 6 frames made in 49 ms, 128x128
+Horseman: 6 frames made in 50 ms, 128x128
+Catapult: 6 frames made in 43 ms, 128x128
+Medic: 6 frames made in 43 ms, 128x128
+Caravan: 6 frames made in 51 ms, 128x128
+Boat: 6 frames made in 44 ms, 128x128
+Galley: 6 frames made in 43 ms, 128x128
+War Galley: 6 frames made in 43 ms, 128x128
+Priest: 6 frames made in 46 ms, 128x128
+placed 16 walking units
+gliding at first shot: 16
+gliding after 1.5 s: 0

@@ -190,11 +190,11 @@ namespace ParadigmRealm {
   }
   // r is the unit's box on the tile. The figure is drawn 1.6 times its width (64 px at the default zoom, so pixels stay
   // whole), standing on a soft ground shadow inside a ring in its owner's colour.
-  void DrawUnitArt(Unit u,Rect r,int count){
+  void DrawUnitArt(Unit u,Rect r,int count,Texture2D pose=null){
    float size=r.width*1.6f;var feet=new Vector2(r.center.x,r.yMax);
    var baseRect=new Rect(feet.x-size*.3f,feet.y-size*.09f,size*.6f,size*.225f);
    GUI.DrawTexture(baseRect,IsoPicture(4,8,0));var old=GUI.color;GUI.color=nations[u.owner];GUI.DrawTexture(baseRect,IsoPicture(4,7,0));GUI.color=old;
-   var art=UnitPicture(u);
+   var art=pose!=null?pose:UnitPicture(u);// pose: a walking frame while the unit glides (MotionUI)
    // Armies carry a banner in their owner's colour behind them, as in the owner's mockup.
    if(World.Power[u.type]>0&&!World.IsNaval(u.type)){float px=feet.x+size*.26f,top=feet.y-size*1.02f,pole=Mathf.Max(1,size*.025f);
     Fill(new Rect(px,top,pole,size*.9f),new Color(.32f,.22f,.12f));var ink=nations[u.owner];var flag=new Rect(px+pole,top+size*.02f,size*.2f,size*.24f);

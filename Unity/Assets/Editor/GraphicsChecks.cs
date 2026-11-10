@@ -7,6 +7,8 @@ public static class GraphicsChecks {
  public static void Run(){
   int count=0;
   for(int i=0;i<12;i++)Check("Visuals/unit-"+i.ToString("00"),true,ref count);
+  // Walking frames from the owner's movement pack (10 Nov 2026): six per unit type, all 256 x 256.
+  for(int i=0;i<16;i++)for(int f=0;f<6;f++){string p="Visuals/Movement/unit-"+i.ToString("00")+"-move-"+f.ToString("00");Check(p,true,ref count);var t=Resources.Load<Texture2D>(p);if(t.width!=256||t.height!=256)throw new Exception("Walking frame is not 256 x 256: "+p);}
   for(int era=0;era<4;era++)for(int style=0;style<5;style++)Check("Visuals/city-"+era+"-"+style,true,ref count);
   for(int i=1;i<=5;i++)Check("Visuals/resource-"+i.ToString("00"),true,ref count);
   foreach(var name in new[]{"trees","pines","mountain","farm","mine","fort","village","palms"})Check("Visuals/"+name,true,ref count);
