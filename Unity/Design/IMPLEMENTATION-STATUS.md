@@ -2,6 +2,23 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 11 Nov, evening: toast without a ghost, running rivers, the rest of the gateway design (no save version change)
+
+Built in source, checked in the engine harness and in Unity, photographed. Not hand-played.
+
+- **The guide's toast** remade: the whole forearm swings from the elbow and the wrist tips the cup a beat later, with a nod at the top. The space the arm leaves is painted over with cloud, so no second hand or bracer stays behind. Where the arm swings in from beyond the picture's edge its last column of pixels is continued. 24 frames; private, not in the public backup.
+- **Running rivers.** A river whose outflow is known has short bright dashes along its middle and fainter ones beside them that move two pixels downstream on each of the three water frames (about 2.5 frames a second, the same clock as the sea). Tributaries run toward the junction. Rivers in parallel worlds and tiles with no known outflow stay still.
+- **Gateways, the parts of the owner's design left out on 10 Nov:**
+  - The first gateway to open in a game asks half of its gold, faith and influence and stabilises in 3 turns instead of 6, for whoever opens it.
+  - Danger is shown as two neighbouring levels, one of which is true ("low to moderate"). Forcing shows the guardians' strength and the loss per soldier as a range; the real result is never worse than the worst shown.
+  - Sun seal: instead of 80 gold, explore the ruin within 6 tiles of the gate with any unit to recover a sunstone (for that civilisation only).
+  - Grove seal: a Shrine in one of your cities within 10 tiles stands in for the 40 faith.
+  - Rift seal: the opener chooses a side. The living side turns the land within 2 tiles of the far gate to grassland; the burning side dries it to waste and shows 5 tiles round instead of 3.
+  - Closing: a unit of yours on an open gateway (either side) can close it. It takes a full turn, the tile must still be held, and it is refused while a unit you are at war with stands beside either side. A closed gateway is sealed for everyone; the closer keeps its reading of the seal and can open it again by meeting the seal again. The unit action "Gateway" now also appears on open gateways.
+  - Control: nobody can enter a tile another civilisation's units stand on without fighting, so holding the gate tile is holding the crossing. No separate access agreement was added.
+- **Not built:** guardians as units on the map and a temporary breach; custodians with a stronghold to capture; a formal access treaty; rivals closing gateways or seeking sunstones on purpose. Closing a gateway re-locks `gatesLocked`, which also stops native peoples building Transcendence again; untested in long games.
+- Checks: `EleventhNovemberChecks` (running rivers), `GateExpeditionChecks` (first gateway, danger range, closing, sunstone, shrine, rift sides).
+
 ## Owner report 11 Nov: roads no longer painted along rivers (no save change)
 
 A road on a river tile used to be drawn through the middle of the tile, where the river also runs, so a road following a river lay on the water. Now (`PixelArt.RiverRoad`) the road is the cheapest path between its ends over ground that is dear near the bank and dearest on the water: it keeps to dry ground beside the river and, where its ends are on opposite banks, crosses once by the shortest way, square to the flow, and only that crossing is a bridge. Where two river tiles are joined by both river and road, the road crosses their shared edge 9 pixels to one side of the river. Source: highway location guidance (Texas DOT Hydraulic Design Manual: align a crossing normal to the stream where possible). This changes the picture only: a road may still be built on any river tile once Engineering is known, and a road tile on a river still counts as a bridge for upkeep even when the picture shows it on the bank. Checks in `EleventhNovemberChecks`; photographed with `-lookShot`. Not hand-played.

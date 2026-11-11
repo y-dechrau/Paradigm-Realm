@@ -8,17 +8,16 @@ namespace ParadigmRealm {
 // absent (the public backup leaves it out), in which case the panel simply has no face.
 public partial class RealmGame {
  Texture2D GuideFace(){if(guideFace==null)guideFace=Resources.Load<Texture2D>("Tutor/guide-face");return guideFace;}
- // Divus Maximus raises his cup beside every guide prompt (owner request, 11 Nov 2026): 18 frames in Resources/Tutor/Cheers, made
+ // Divus Maximus raises his cup beside every guide prompt (owner request, 11 Nov 2026): 24 frames in Resources/Tutor/Cheers, made
  // from his picture. Like the picture they are private and absent from the public backup, and then nothing is drawn.
- const int CheersFrames=18;const float CheersFrameTime=.07f,CheersHold=.45f,CheersRest=2.2f;Texture2D[] cheers;bool cheersLooked;float cheersStart=-1,cheersSeen=-1;
+ const int CheersFrames=24;const float CheersFrameTime=.05f,CheersRest=2.4f;Texture2D[] cheers;bool cheersLooked;float cheersStart=-1,cheersSeen=-1;
  Texture2D CheersFrame(){
   if(!cheersLooked){cheersLooked=true;var found=new Texture2D[CheersFrames];for(int i=0;i<CheersFrames;i++){found[i]=Resources.Load<Texture2D>("Tutor/Cheers/guide-cheers-"+i.ToString("00"));if(found[i]==null){found=null;break;}}cheers=found;}
   if(cheers==null)return null;float now=Time.realtimeSinceStartup;
   // A prompt that was not on screen a moment ago starts the toast from the beginning.
   if(cheersStart<0||now-cheersSeen>.5f)cheersStart=now;cheersSeen=now;
-  int top=CheersFrames/3+2;float up=top*CheersFrameTime,t=(now-cheersStart)%(CheersFrames*CheersFrameTime+CheersHold+CheersRest);
-  int frame=t<up?(int)(t/CheersFrameTime):t<up+CheersHold?top:Mathf.Min(CheersFrames-1,top+(int)((t-up-CheersHold)/CheersFrameTime));
-  return cheers[Mathf.Clamp(frame,0,CheersFrames-1)];
+  // The frames carry the whole gesture (the forearm swings up from the elbow, the wrist tips the cup, a nod, and back); then he rests.
+  float t=(now-cheersStart)%(CheersFrames*CheersFrameTime+CheersRest);return cheers[Mathf.Clamp((int)(t/CheersFrameTime),0,CheersFrames-1)];
  }
  bool PantheonDue(){var n=world.nations[0];return n.pantheon<0&&n.faith>=World.PantheonCost&&world.PantheonReason(0)=="";}
  bool GuidePromptOpen(){return world!=null&&!turnRunning&&world.result==""&&!guide&&!confirmNew&&pendingUnit==-1&&((world.researchPrompts!=null&&world.researchPrompts.Count>0)||PantheonDue()||world.NextBuildPrompt()!=null);}

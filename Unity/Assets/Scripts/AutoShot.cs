@@ -167,7 +167,7 @@ namespace ParadigmRealm
              OpenGatePanel(door);yield return Shot(folder,"8a-gate-panel-unread.bmp");
              world.GateExpeditionTurn();world.GateExpeditionTurn();if(world.gateNotices!=null)world.gateNotices.Clear();world.gold=400;world.nations[0].gold=400;world.nations[0].faith=120;world.nations[0].influence=60;foreach(string id in new[]{"writing","bronze"})world.nations[0].tech[TechnologyCatalog.Index(id)]=true;
              OpenGatePanel(door);yield return Shot(folder,"8b-gate-panel-read.bmp");Probe("the gateway panel offers an approach once the seal is read",world.ApproachReason(0,door,GateApproach.Force)==""||world.ApproachReason(0,door,GateApproach.Stabilise)=="");
-             bool begun=world.BeginApproach(0,door,GateApproach.Stabilise);log.AppendLine("stabilise begun: "+begun+" ("+world.ApproachReason(0,door,GateApproach.Stabilise)+")");yield return Shot(folder,"8c-gate-panel-under-way.bmp");gatePanel=null;}
+             bool begun=world.BeginApproach(0,door,GateApproach.Stabilise);log.AppendLine("stabilise begun: "+begun+" ("+world.ApproachReason(0,door,GateApproach.Stabilise)+")");yield return Shot(folder,"8c-gate-panel-under-way.bmp");world.OpenGate(door);gateScene=null;OpenGatePanel(door);yield return Shot(folder,"8d-gate-panel-open.bmp");gatePanel=null;}
             File.WriteAllText(Path.Combine(folder,"map.txt"),log.ToString());Application.Quit();
         }
         // Development aid: "-dipShot <folder>" starts a fixed game, meets every rival and saves the diplomacy screen in each of its

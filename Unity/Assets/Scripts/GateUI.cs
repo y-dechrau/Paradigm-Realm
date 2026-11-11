@@ -7,11 +7,26 @@ namespace ParadigmRealm {
 // (where the gateway leads, how dangerous the far side probably is, what the seal asks for and what you still lack) and the
 // three approaches, each with its exact cost and consequence written beside its button before you commit.
 public partial class RealmGame {
- Tile gatePanel;int gatePartner;
+ Tile gatePanel;int gatePartner,gateSide;
  void OpenGatePanel(Tile gate){gatePanel=gate;gatePartner=0;ResetMapGesture();}
+ // An open gateway: who holds its tile holds the crossing, and may close it (owner design, 11 Nov 2026).
+ void DrawOpenGatePanel(Tile gate)
+ {
+  Fill(new Rect(0,0,1280,800),new Color(0,0,0,.72f));var box=new Rect(190,170,900,420);DipPanel(box,.98f);int style=world.GateStyle(gate),realm=world.GateRealm(gate);
+  var art=SpriteSlot("gate-open-"+style);var pic=new Rect(box.x+24,box.y+70,230,230);DipPanel(new Rect(pic.x-4,pic.y-4,pic.width+8,pic.height+8),1);if(art!=null)GUI.DrawTexture(pic,art,ScaleMode.ScaleToFit,true);
+  GUI.Label(new Rect(box.x,box.y+12,box.width,40),"THE "+World.GateStyleNames[style].ToUpperInvariant(),dipTitle);
+  var text=new GUIStyle(dipRow){fontSize=14,wordWrap=true};float x=box.x+280,w=box.width-304,y=box.y+66;
+  GUI.Label(new Rect(x,y,w,70),"This gateway stands open to the "+World.RealmNames[realm]+", in both directions. Whoever holds its tile holds the crossing: no one can pass a tile that another civilisation's units stand on, short of fighting for it.",text);y+=78;
+  DipHeading(new Rect(x,y,w,22),"Close the gateway");y+=28;
+  GUI.Label(new Rect(x,y,w,70),"Closing takes a full turn, and one of your units must still hold the gateway when the turn ends. It cannot be closed while an enemy stands beside it. Once closed it is sealed for everyone, and opening it again means meeting its seal again.",text);y+=78;
+  bool closing=world.ClosingGate(gate);string reason=closing?"":world.CloseReason(0,gate);
+  if(closing)GUI.Label(new Rect(x,y,w,24),"Closing: it seals at the start of next turn if you still hold it.",new GUIStyle(text){normal={textColor=DipGood}});
+  else{bool was=GUI.enabled;GUI.enabled=reason=="";if(DipButton(new Rect(x,y,200,36),"Close the gateway",new Color(.45f,.08f,.07f))){if(world.BeginClose(0,gate))status="The gateway is closing.";}GUI.enabled=was;if(reason!="")GUI.Label(new Rect(x+212,y+6,w-212,24),reason,new GUIStyle(text){normal={textColor=DipBad}});}
+  if(DipButton(new Rect(box.x+24,box.yMax-60,230,40),"Close this panel",new Color(.1f,.16f,.3f))){gatePanel=null;GUIUtility.ExitGUI();}
+ }
  void DrawGatePanel()
  {
-  GUI.enabled=true;DiplomacyStyles();HudStyles();var gate=gatePanel;if(gate==null||world.GateOpen(gate)){gatePanel=null;return;}
+  GUI.enabled=true;DiplomacyStyles();HudStyles();var gate=gatePanel;if(gate==null){gatePanel=null;return;}if(world.GateOpen(gate)){DrawOpenGatePanel(gate);return;}
   Fill(new Rect(0,0,1280,800),new Color(0,0,0,.72f));var box=new Rect(190,90,900,620);DipPanel(box,.98f);
   int style=world.GateStyle(gate),realm=world.GateRealm(gate);var study=world.StudyOf(0,gate);bool known=study!=null&&study.known;
   // The gateway's sealed picture on the left.
@@ -30,8 +45,8 @@ public partial class RealmGame {
   }
   else
   {
-   var need=world.GateNeed(gate);int danger=world.GateDanger(gate);
-   GUI.Label(new Rect(x,y,w,24),"Leads to the "+World.RealmNames[realm]+".   Danger beyond: probably "+GateApproach.Danger[danger].ToLower()+".",new GUIStyle(text){fontStyle=FontStyle.Bold});y+=26;
+   var need=world.GateNeed(gate,0);
+   GUI.Label(new Rect(x,y,w,24),"Leads to the "+World.RealmNames[realm]+".   Danger beyond: "+world.DangerText(gate)+".",new GUIStyle(text){fontStyle=FontStyle.Bold});y+=26;
    if(realm>0&&realm<World.RealmTexts.Length){var rt=new GUIContent(World.RealmTexts[realm]);float rh=Mathf.Min(74,small2.CalcHeight(rt,w));GUI.Label(new Rect(x,y,w,rh),rt,small2);y+=rh+6;}
    DipHeading(new Rect(x,y,w,22),"What the seal asks");y+=26;
    {var mc=new GUIContent(need.main);float mh=text.CalcHeight(mc,w);GUI.Label(new Rect(x,y,w,mh),mc,text);y+=mh+2;}
@@ -44,7 +59,7 @@ public partial class RealmGame {
    }
    else
    {
-    DipHeading(new Rect(x,y,w,22),"Choose how to open it");y+=28;
+    DipHeading(new Rect(x,y,w,22),"Choose how to open it");if(world.FarStyle(gate)==8){GUI.Label(new Rect(x+w-300,y-2,70,24),"Empower",small2);gateSide=Cycle(new Rect(x+w-230,y-2,230,24),gateSide,GateApproach.RiftSides);}y+=28;
     var partners=world.GatePartners(0,gate);if(gatePartner>=partners.Count)gatePartner=0;int partner=partners.Count>0?partners[gatePartner]:-1;
     for(int approach=1;approach<=3;approach++)
     {
@@ -52,7 +67,7 @@ public partial class RealmGame {
      bool enabled=GUI.enabled;GUI.enabled=reason=="";
      if(DipButton(new Rect(row.x,row.y,170,36),GateApproach.Names[approach],approach==GateApproach.Force?red:approach==GateApproach.Stabilise?teal:blue))
      {
-      if(world.BeginApproach(0,gate,approach,partner)){status=approach==GateApproach.Force?"The seal is forced.":GateApproach.Names[approach]+" has begun.";if(world.GateOpen(gate)){gatePanel=null;StartGateScene(gate);GUI.enabled=enabled;return;}}
+      if(world.BeginApproach(0,gate,approach,partner,gateSide)){status=approach==GateApproach.Force?"The seal is forced.":GateApproach.Names[approach]+" has begun.";if(world.GateOpen(gate)){gatePanel=null;StartGateScene(gate);GUI.enabled=enabled;return;}}
      }
      GUI.enabled=enabled;
      GUI.Label(new Rect(row.x+180,row.y-2,row.width-180,approach==GateApproach.Negotiate?52:54),outlook,small2);

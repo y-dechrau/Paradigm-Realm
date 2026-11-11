@@ -60,7 +60,7 @@ public partial class World {
   }
  }
  void ExploreRuin(Unit u){
-  var t=At(u.x,u.y);if(t==null||!t.ruin||IsNaval(u.type))return;t.ruin=false;var n=nations[u.owner];int roll=Math.Abs(seed*31+t.x*17+t.y*13+turn)%4;string what;int k=RealmBonus(t.realm);// relics in the parallel worlds are richer (x2, or x3 in the Ashen Waste and Infernal Depths)
+  var t=At(u.x,u.y);if(t==null||!t.ruin||IsNaval(u.type))return;t.ruin=false;GateRuinFound(u.owner,t);var n=nations[u.owner];int roll=Math.Abs(seed*31+t.x*17+t.y*13+turn)%4;string what;int k=RealmBonus(t.realm);// relics in the parallel worlds are richer (x2, or x3 in the Ashen Waste and Infernal Depths)
   if(roll==0){int g=(25+Math.Abs(t.x*7+t.y)%4*10)*k;n.gold+=g;if(u.owner==0)gold=n.gold;what="a buried treasury: "+g+" gold";}
   else if(roll==1&&n.research>=0){int gain=Math.Max(10,ResearchCost(n.research,u.owner)/2)*k;n.progress[n.research]+=gain;what="old scrolls: +"+gain+" towards "+TechNames[n.research];}
   else if(roll==2){for(int dj=-6;dj<=6;dj++)for(int di=-6;di<=6;di++){var s=StepIn(u.x,u.y,di,dj,6);if(s!=null)LearnTile(u.owner,s);}what="an ancient map of the land around";}

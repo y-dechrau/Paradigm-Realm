@@ -1255,12 +1255,13 @@ namespace ParadigmRealm
             switch(dir){case 0:return -v;case 1:return u;case 2:return v;default:return -u;}
         }
         static readonly int[] MidX={TW/2,TW-1,TW/2,0},MidY={0,TH/2,TH-1,TH/2};
-        static PixelCanvas RiverOverlay(int mask,int variant)
+        static PixelCanvas RiverOverlay(int mask,int variant,int frame=0)
         {
             var cv=new PixelCanvas(TW,TH);uint wet=Rgb(40,110,160);
             var ends=new List<int>();for(int k=0;k<4;k++)if((mask&(1<<k))!=0)ends.Add(k);
             if(ends.Count==0)ends.Add(-1);
             bool tree=RiverTree(mask,4);
+            flowAlong=null;if(tree)FlowStart(TW,TH);
             if(tree){var ex=new double[4];var ey=new double[4];for(int k=0;k<4;k++){ex[k]=MidX[k]+.5;ey[k]=MidY[k]+.5;}RiverChannel(cv,TW/2.0,TH/2.0,ex,ey,mask,variant,1,wet);ends.Clear();ends.Add(0);ends.Add(1);}
             else foreach(int k in ends)
             {
@@ -1281,7 +1282,7 @@ namespace ParadigmRealm
                 if((cv.Get(x,y)>>24)==0)continue;
                 int nb=0;if((cv.Get(x+1,y)>>24)==0&&x<TW-1)nb++;if((cv.Get(x-1,y)>>24)==0&&x>0)nb++;if((cv.Get(x,y+1)>>24)==0&&y<TH-1)nb++;if((cv.Get(x,y-1)>>24)==0&&y>0)nb++;
                 if(nb>0)o.Set(x,y,Rgb(24,70,110));
-                else o.Set(x,y,Hsh(x,y,5)>.9?Rgb(86,164,200):((x+y)%7!=0?Rgb(52,128,176):Rgb(64,140,184)));
+                else o.Set(x,y,FlowTint(Hsh(x,y,5)>.9?Rgb(86,164,200):((x+y)%7!=0?Rgb(52,128,176):Rgb(64,140,184)),y*TW+x,frame));
             }
             return o;
         }
@@ -1306,7 +1307,8 @@ namespace ParadigmRealm
             for(int k=0;k<dirs;k++)if(k!=down&&(mask&(1<<k))!=0)ups.Add(k);
             Func<int,double> rad=k=>RiverRadius[(mask>>(RiverWidthShift+2*k))&3];
             ups.Sort((a,b)=>{int c=rad(b).CompareTo(rad(a));return c!=0?c:a.CompareTo(b);});
-            Action<double,double,double> dot=(x,y,r)=>{int reach=(int)Math.Ceiling(r)+1;for(int dy=-reach;dy<=reach;dy++)for(int dx=-reach;dx<=reach;dx++)if(dx*dx+dy*dy*squash*squash<=r*r)cv.Set((int)Math.Round(x)+dx,(int)Math.Round(y)+dy,wet);};
+            Action<double,double,double,double> dot=(x,y,r,a)=>{int reach=(int)Math.Ceiling(r)+1;for(int dy=-reach;dy<=reach;dy++)for(int dx=-reach;dx<=reach;dx++){double dd=dx*dx+dy*dy*squash*squash;if(dd>r*r)continue;int qx=(int)Math.Round(x)+dx,qy=(int)Math.Round(y)+dy;cv.Set(qx,qy,wet);
+                if(flowAlong!=null&&qx>=0&&qy>=0&&qx<cv.w&&qy<cv.h&&dd<flowCore[qy*cv.w+qx]){flowCore[qy*cv.w+qx]=dd;flowAlong[qy*cv.w+qx]=a;}}};
             // The trunk: from the largest inflow (or a spring just short of the centre) to the outflow, leaving both edges square on.
             double ox=ex[down],oy=ey[down],odx=cx-ox,ody=cy-oy,ol=Math.Sqrt(odx*odx+ody*ody);odx/=ol;ody/=ol;
             double sx0,sy0,c1x,c1y,r0,r3=rad(down);
@@ -1319,18 +1321,31 @@ namespace ParadigmRealm
             double bump=(1.6+variant*.9)*(((down+variant)&1)==0?1:-1);
             for(int i=0;i<=N;i++){double t=i/(double)N,gx=bx[Math.Min(N,i+1)]-bx[Math.Max(0,i-1)],gy=by[Math.Min(N,i+1)]-by[Math.Max(0,i-1)],gl=Math.Sqrt(gx*gx+gy*gy),w=Math.Sin(t*Math.PI);w=w*w*Math.Sin(t*Math.PI*2)*bump;
                 tx[i]=bx[i]+(gl>0?-gy/gl*w:0);ty[i]=by[i]+(gl>0?gx/gl*w/squash:0);}
-            for(int i=0;i<=N;i++){double t=i/(double)N,f=Math.Max(0,Math.Min(1,(t-.25)/.5));dot(tx[i],ty[i],r0+(r3-r0)*Smooth(f));}
+            for(int i=0;i<=N;i++){double t=i/(double)N,f=Math.Max(0,Math.Min(1,(t-.25)/.5));dot(tx[i],ty[i],r0+(r3-r0)*Smooth(f),i*.8);}
             // Tributaries join the trunk past its middle, bending round to meet it at an acute angle, pointing downstream.
             for(int n=1;n<ups.Count;n++)
             {
                 int k=ups[n],ji=(int)(N*Math.Min(.8,.5+.13*n));double jx=tx[ji],jy=ty[ji],ux=tx[ji-3]-tx[ji+3],uy=ty[ji-3]-ty[ji+3],ul=Math.Sqrt(ux*ux+uy*uy);if(ul<=0)continue;ux/=ul;uy/=ul;
                 double qx=ex[k],qy=ey[k],vx=qx-jx,vy=qy-jy,dist=Math.Sqrt(vx*vx+vy*vy),ang=(ux*vy-uy*vx>=0?1:-1)*.7,rx=ux*Math.Cos(ang)-uy*Math.Sin(ang),ry=ux*Math.Sin(ang)+uy*Math.Cos(ang);
                 double ix=cx-qx,iy=cy-qy,il=Math.Sqrt(ix*ix+iy*iy),a1x=qx+ix/il*dist*.4,a1y=qy+iy/il*dist*.4,a2x=jx+rx*dist*.42,a2y=jy+ry*dist*.42,r=rad(k);
-                for(int i=0;i<=N;i++){double t=i/(double)N,a=(1-t)*(1-t)*(1-t),b=3*t*(1-t)*(1-t),c=3*t*t*(1-t),d=t*t*t;dot(a*qx+b*a1x+c*a2x+d*jx,a*qy+b*a1y+c*a2y+d*jy,r);}
+                for(int i=0;i<=N;i++){double t=i/(double)N,a=(1-t)*(1-t)*(1-t),b=3*t*(1-t)*(1-t),c=3*t*t*(1-t),d=t*t*t;dot(a*qx+b*a1x+c*a2x+d*jx,a*qy+b*a1y+c*a2y+d*jy,r,i*.6+200*n);}
             }
         }
+        // Running water (owner request, 11 Nov 2026: "animate the rivers in their direction of flow"). While a channel is drawn
+        // each pixel notes how far down the channel it lies and how near its middle; the colouring then lays short bright
+        // dashes along the middle and fainter ones to the side, two pixels further downstream each frame. Six pixels apart
+        // and three frames, so the movement repeats without a jump. Only rivers whose outflow is known move.
+        static double[] flowAlong,flowCore;
+        static void FlowStart(int w,int h){flowAlong=new double[w*h];flowCore=new double[w*h];for(int i=0;i<flowAlong.Length;i++){flowAlong[i]=-1;flowCore[i]=1e9;}}
+        static uint FlowTint(uint c,int idx,int frame)
+        {
+            if(flowAlong==null||flowAlong[idx]<0)return c;double at=flowAlong[idx]-frame*2.0,ph=((at%6)+6)%6,core=Math.Sqrt(flowCore[idx]);
+            if(core<.85&&ph<2.2)return ph<1.1?Rgb(178,226,246):Rgb(122,192,228);
+            if(core>=1.25&&core<2.2&&ph>=3&&ph<4.7&&((int)Math.Floor(at/6)&1)==0)return Rgb(100,176,214);
+            return c;
+        }
         static readonly Dictionary<int,PixelCanvas> riverCache=new Dictionary<int,PixelCanvas>();
-        static PixelCanvas River(int mask,int variant){int key=mask*10+variant;PixelCanvas cv;if(!riverCache.TryGetValue(key,out cv)){cv=RiverOverlay(mask,variant);riverCache[key]=cv;}return cv;}
+        static PixelCanvas River(int mask,int variant,int frame=0){if(!RiverTree(mask,4))frame=0;int key=(mask*10+variant)*4+frame;PixelCanvas cv;if(!riverCache.TryGetValue(key,out cv)){cv=RiverOverlay(mask,variant,frame);flowAlong=null;riverCache[key]=cv;}return cv;}
 
         // One pixel of ground at field position (fx,fy), world pixel (gx,gy): the shared work of both layouts.
         static uint GroundPixel(int[] field,int W,int fx,int fy,int gx,int gy,int frame,int[] n9,int wx,int wy)
@@ -1426,7 +1441,7 @@ namespace ParadigmRealm
             finally{hexCompose=false;}
             if(n9[4]==7)
             {
-                var ov=HexRiver(riverMask,(wx*7+wy*3)%3);
+                var ov=HexRiver(riverMask,(wx*7+wy*3)%3,frame);
                 for(int y=0;y<HH;y++)for(int x=0;x<HW;x++){uint c=ov.Get(x,y);if((c>>24)!=0&&(cv.Get(x,y)>>24)!=0)cv.Set(x,y,c);}
                 // Where an arm reaches the sea or a lake, the river opens into it.
                 for(int k=0;k<6;k++)if((riverMask&(1<<k))!=0){int n=n9[(World.HexDj[k]+1)*3+World.HexDi[k]+1];if(n>=0&&n!=7&&IsWater(n))RiverMouth(cv,field,W,HW,HH,HW/2.0+HexEdgeX[k],HH/2.0+HexEdgeY[k],HexEdgeX[k],HexEdgeY[k],ox,oy);}
@@ -1588,9 +1603,9 @@ namespace ParadigmRealm
         }
         static readonly Dictionary<int,PixelCanvas> hexRivers=new Dictionary<int,PixelCanvas>();
         // A river's arms run from the centre to the edges in the mask, bending gently and fixed at both ends so that they join.
-        static PixelCanvas HexRiver(int mask,int variant)
+        static PixelCanvas HexRiver(int mask,int variant,int frame=0)
         {
-            int key=mask*10+variant;PixelCanvas o;if(hexRivers.TryGetValue(key,out o))return o;
+            if(!RiverTree(mask,6))frame=0;int key=(mask*10+variant)*4+frame;PixelCanvas o;if(hexRivers.TryGetValue(key,out o))return o;flowAlong=null;if(RiverTree(mask,6))FlowStart(HW,HH);
             var cv=new PixelCanvas(HW,HH);uint wet=Rgb(40,110,160);bool any=false;
             if(RiverTree(mask,6))
             {
@@ -1612,9 +1627,9 @@ namespace ParadigmRealm
             {
                 if((cv.Get(x,y)>>24)==0)continue;
                 bool rim=(cv.Get(x+1,y)>>24)==0||(cv.Get(x-1,y)>>24)==0||(cv.Get(x,y+1)>>24)==0||(cv.Get(x,y-1)>>24)==0;
-                o.Set(x,y,rim?Rgb(24,70,110):Hsh(x,y,5)>.9?Rgb(86,164,200):((x+y)%7!=0?Rgb(52,128,176):Rgb(64,140,184)));
+                o.Set(x,y,rim?Rgb(24,70,110):FlowTint(Hsh(x,y,5)>.9?Rgb(86,164,200):((x+y)%7!=0?Rgb(52,128,176):Rgb(64,140,184)),y*HW+x,frame));
             }
-            hexRivers[key]=o;return o;
+            flowAlong=null;hexRivers[key]=o;return o;
         }
         // n9: the known terrain of the 3 x 3 block centred on this tile (row by row, -1 = unknown); (wx,wy) the tile's map position.
         public static PixelCanvas Compose(int[] n9,int wx,int wy,int frame,int riverMask)
@@ -1628,7 +1643,7 @@ namespace ParadigmRealm
             }
             if(n9[4]==7)
             {
-                var ov=River(riverMask,(wx*7+wy*3)%3);
+                var ov=River(riverMask,(wx*7+wy*3)%3,frame);
                 for(int y=0;y<TH;y++)for(int x=0;x<TW;x++){uint c=ov.Get(x,y);if((c>>24)!=0)cv.Set(x,y,c);}
                 for(int k=0;k<4;k++)if((riverMask&(1<<k))!=0){int n=n9[(SquareDj[k]+1)*3+SquareDi[k]+1];if(n>=0&&n!=7&&IsWater(n))RiverMouth(cv,field,W,TW,TH,EdgeMidX[k],EdgeMidY[k],SquareDi[k],SquareDj[k],wx*TW,wy*TH);}
             }

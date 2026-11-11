@@ -44,6 +44,16 @@ Activation, from the design on the home side:
 - **Guardians:** strength 4 + 4 for each level of danger (1 to 3) + 2 for each age of whoever wakes them. Each soldier on the gateway loses the same health, 1 to 9, fewer the stronger the garrison; a soldier with no more health than that falls. The panel states the loss and how many would fall before you choose. Forcing needs at least one soldier on the gateway.
 - **Partners:** a civilisation you know, at peace with you and not a rival, whose opinion of you is 10 or more, that has a city and can pay its half.
 
+## Added 11 Nov 2026
+
+- **First gateway.** While no gateway has opened in the game, a gateway asks half of its gold, faith and influence and stabilises in 3 turns.
+- **Rough danger.** The danger beyond is shown as two neighbouring levels, one of them true. Forcing shows guardian strength and the loss per soldier as a range; the result is never worse than the worst shown.
+- **Sunstone.** A Sun seal's 80 gold is waived for a civilisation one of whose units explores a ruin within 6 tiles of the gate.
+- **Shrine.** A Grove seal's 40 faith is waived for a civilisation with a Shrine in a city within 10 tiles of the gate.
+- **Rift.** The opener empowers the living side (grassland within 2 tiles of the far gate) or the burning side (waste there, and the opener sees 5 tiles round instead of 3).
+- **Closing.** A unit on an open gateway can close it: a full turn, the tile still held, and not while a unit of a civilisation at war with the closer stands beside either side. The gateway is then sealed for everyone; the closer still knows the seal.
+- **Control.** Holding the gate's tile is holding the crossing, because no one can enter a tile another civilisation's units stand on without fighting.
+
 ## What stays from before
 
 A world's key technology, the Gatekeeper's Key wonder and the priest's rite of unsealing still open gateways. Rivals mostly rely on those: a rival that happens to read a seal and can pay will stabilise it, but rivals do not send investigators on purpose and never force.

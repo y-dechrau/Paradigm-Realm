@@ -278,7 +278,7 @@ namespace ParadigmRealm
             if(u.type==World.PriestUnit)actions.Add(new KeyValuePair<int,string>(PixelArt.IconFaith,"Preach"));
             if(u.type==World.PriestUnit&&world.At(u.x,u.y)!=null&&world.At(u.x,u.y).gateLink>0&&!world.GateOpen(world.At(u.x,u.y)))actions.Add(new KeyValuePair<int,string>(PixelArt.IconRealms,"Unseal"));
             // Any unit standing on a sealed gateway can open the gateway panel (investigate, then choose how to open it).
-            if(world.gatesLocked&&world.At(u.x,u.y)!=null&&world.At(u.x,u.y).gateLink>0&&!world.GateOpen(world.At(u.x,u.y)))actions.Insert(Math.Min(1,actions.Count),new KeyValuePair<int,string>(PixelArt.IconRealms,"Gateway"));
+            if(world.At(u.x,u.y)!=null&&world.At(u.x,u.y).gateLink>0)actions.Insert(Math.Min(1,actions.Count),new KeyValuePair<int,string>(PixelArt.IconRealms,"Gateway"));
             if(World.CanExplore(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconExplore,"Explore"));
             actions.Add(new KeyValuePair<int,string>(PixelArt.IconSkip,"Skip"));
             if(World.Power[u.type]>0&&!World.IsNaval(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconFortify,u.fortified?"Wake":"Fortify"));

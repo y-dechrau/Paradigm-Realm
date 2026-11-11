@@ -189,7 +189,7 @@ namespace ParadigmRealm
             // Neighbours by grid step from the tile itself, so the same picture serves diagonal and staggered maps.
             for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){int n=IsoKnownTerrain(world.Step(t.x,t.y,dx,dy));if(dx==0&&dy==0)n=t.terrain;isoN9[(dy+1)*3+dx+1]=n;if(n>=0&&PixelArt.IsWater(n))anyWater=true;}
             mask=RiverMaskOf(t);
-            int fr=anyWater?frame:0;int sig=world.Hex?19:17;unchecked{foreach(int n in isoN9)sig=sig*31+n+1;sig=sig*31+mask;}
+            int fr=anyWater||t.terrain==7&&((mask>>PixelArt.RiverDownShift)&7)!=0?frame:0;/* a river with a known outflow runs (PixelArt.FlowTint) */int sig=world.Hex?19:17;unchecked{foreach(int n in isoN9)sig=sig*31+n+1;sig=sig*31+mask;}
             // Zoomed in, the ground is drawn at twice the detail; zoomed out the plain picture looks better and costs less.
             bool sharp=cityScreen||isoWidth>=64;int index=t.y*world.Width+t.x;long key=((long)(uint)sig<<32)|(uint)(index*8+fr+(sharp?4:0));
             Texture2D tex;

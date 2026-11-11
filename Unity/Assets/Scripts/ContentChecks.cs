@@ -357,11 +357,14 @@ static void GateExpeditionChecks(){
     // The requirement.
     g.gold=0;g.nations[0].gold=0;g.nations[0].faith=0;g.nations[0].influence=0;Check(g.ApproachReason(0,a,GateApproach.Stabilise).StartsWith("Needs"),"a gateway cannot be opened without what its seal asks for");rich();
     // Stabilise: dearer and slower, no fight.
-    int gold=g.gold,faith=g.nations[0].faith,influence=g.nations[0].influence;Check(g.ApproachReason(0,a,GateApproach.Stabilise)==""&&g.BeginApproach(0,a,GateApproach.Stabilise)&&!g.GateOpen(a),"stabilising begins and does not open at once");
+    int gold=g.gold,faith=g.nations[0].faith,influence=g.nations[0].influence,wait=g.StabiliseTurnsNow;Check(wait==GateApproach.FirstStabiliseTurns&&g.FirstGateway,"the first gateway stabilises in three turns");Check(g.ApproachReason(0,a,GateApproach.Stabilise)==""&&g.BeginApproach(0,a,GateApproach.Stabilise)&&!g.GateOpen(a),"stabilising begins and does not open at once");
     Check(g.gold==gold-need.gold-GateApproach.StabiliseGold&&g.nations[0].faith==faith-need.faith&&g.nations[0].influence==influence-need.influence&&warrior.hp==10,"it costs the requirement and 30 gold more, and no one is hurt");
     Check(g.ApproachReason(0,a,GateApproach.Force).Contains("under way"),"one approach at a time");
-    g.turn+=GateApproach.StabiliseTurns-1;g.GateExpeditionTurn();Check(!g.GateOpen(a),"not before its time");g.turn++;g.GateExpeditionTurn();var far=g.GateTwin(a);
-    Check(g.GateOpen(a)&&far.seen&&g.tiles.Where(t=>t.realm==far.realm&&g.Distance(t.x,t.y,far.x,far.y)<=GateApproach.LandingSight).All(t=>t.seen)&&g.tiles.Any(t=>t.realm==far.realm&&!t.seen),"it opens after six turns and shows the landing, not the whole world beyond");
+    g.turn+=wait-1;g.GateExpeditionTurn();Check(!g.GateOpen(a),"not before its time");g.turn++;g.GateExpeditionTurn();var far=g.GateTwin(a);
+    Check(g.GateOpen(a)&&far.seen&&g.tiles.Where(t=>t.realm==far.realm&&g.Distance(t.x,t.y,far.x,far.y)<=GateApproach.LandingSight).All(t=>t.seen)&&g.tiles.Any(t=>t.realm==far.realm&&!t.seen),"it opens when the work is done and shows the landing, not the whole world beyond");
+    // After the first, gateways ask the full price and take six turns; the first asked half.
+    {var later=g.GateNeed(gates[1]);Check(!g.FirstGateway&&g.StabiliseTurnsNow==GateApproach.StabiliseTurns,"later gateways take six turns");
+     g.openedGates.Clear();var asFirst=g.GateNeed(gates[1]);g.openedGates.Add(0);g.openedGates.Clear();g.OpenGateForCheck(a);Check(asFirst.gold*2>=later.gold&&asFirst.gold<=later.gold&&(later.gold+later.faith+later.influence==0||asFirst.gold+asFirst.faith+asFirst.influence<later.gold+later.faith+later.influence),"the first gateway asks half ("+asFirst.gold+" gold against "+later.gold+")");}
     // Force: at once, with a fight whose result is known beforehand.
     var b=gates[1];g.Add(0,World.PriestUnit,b.x,b.y);g.GateExpeditionTurn();g.GateExpeditionTurn();rich();Check(g.ApproachReason(0,b,GateApproach.Force).Contains("soldier"),"forcing needs a soldier on the gateway");
     var guard=g.Add(0,2,b.x,b.y);int loss=g.ForceLoss(0,b),deaths=g.ForceDeaths(0,b);Check(loss>=1&&loss<=9&&deaths==0,"the guardians' blow is worked out before the choice ("+loss+")");
@@ -372,6 +375,30 @@ static void GateExpeditionChecks(){
     if(g.cities.Any(x=>x.owner==1)){Check(g.GatePartners(0,c).Contains(1)&&g.ApproachReason(0,c,GateApproach.Negotiate,1)=="","a friendly civilisation with the gold will share the cost");
      var cn=g.GateNeed(c);gold=g.gold;int theirs=g.nations[1].gold;Check(g.BeginApproach(0,c,GateApproach.Negotiate,1)&&g.gold==gold-(cn.gold+1)/2&&g.nations[1].gold==theirs-(cn.gold+1)/2&&g.Pact(0,1,Pacts.Borders),"each pays half the gold and the partner gains open borders");
      g.turn+=GateApproach.NegotiateTurns;g.GateExpeditionTurn();Check(g.GateOpen(c),"a negotiated gateway opens after three turns");}
+    // Danger is given as two neighbouring levels, one of them the truth; the forced fight is within the range shown.
+    {var probe=g.tiles.First(t=>t.realm==0&&t.gateLink>0);int lo,hi;g.DangerRange(probe,out lo,out hi);Check(lo>=1&&hi<=3&&hi==lo+1&&g.GateDanger(probe)>=lo&&g.GateDanger(probe)<=hi&&g.DangerText(probe).Contains(" to "),"danger is known roughly: "+g.DangerText(probe));
+     Check(g.ForceLoss(0,probe,lo)<=g.ForceLoss(0,probe)&&g.ForceLoss(0,probe)<=g.ForceLoss(0,probe,hi),"and the fight is no worse than the worst shown");}
+    // Closing: a full turn, held throughout, and not with an enemy beside the gate.
+    {Check(g.CloseReason(0,g.tiles.First(t=>t.realm==0&&t.gateLink>0&&!g.GateOpen(t)))!="","a sealed gateway cannot be closed");
+     foreach(var x in g.units.Where(x=>x.owner==0&&x.x==a.x&&x.y==a.y).ToList())g.units.Remove(x);Check(g.CloseReason(0,a).Contains("stand"),"closing needs a unit on the gateway");
+     var keeper=g.Add(0,2,a.x,a.y);var foe=g.Add(1,2,a.x,a.y);var beside=g.Step(a.x,a.y,1,0)??g.Step(a.x,a.y,-1,0);foe.x=beside.x;foe.y=beside.y;g.met[1]=true;if(!g.AtWar(0,1))g.DeclareWar(0,1);
+     Check(g.CloseReason(0,a).Contains("battle"),"not during a battle at the gate ("+g.CloseReason(0,a)+")");g.units.Remove(foe);
+     Check(g.CloseReason(0,a)==""&&g.BeginClose(0,a)&&g.GateOpen(a)&&g.ClosingGate(a),"closing begins and the gateway is still open that turn");
+     g.turn++;g.GateExpeditionTurn();Check(!g.GateOpen(a)&&g.gatesLocked&&g.StudyOf(0,a)!=null&&g.StudyOf(0,a).known,"after a full turn it is sealed again and its seal is still known");
+     Check(g.ApproachReason(0,a,GateApproach.Stabilise)==""||g.ApproachReason(0,a,GateApproach.Stabilise).StartsWith("Needs"),"and it can be opened again by meeting its seal");}
+    // A sunstone from a ruin, a Shrine for a grove, a rift's two halves.
+    {var w2=World.New(306,"Keys",0,1,1,0,1,2,4,hex:true,rations:true);var city=w2.Found(w2.units.First(x=>x.owner==0&&x.type==0));w2.nations[0].faith=0;
+     var sun=w2.tiles.FirstOrDefault(t=>t.realm==0&&t.gateLink>0&&w2.FarStyle(t)==4);var grove=w2.tiles.FirstOrDefault(t=>t.realm==0&&t.gateLink>0&&w2.FarStyle(t)==1);var rift=w2.tiles.FirstOrDefault(t=>t.realm==0&&t.gateLink>0&&w2.FarStyle(t)==8);
+     Check(sun!=null&&grove!=null&&rift!=null,"this world has sun, grove and rift seals");
+     if(sun!=null){int before=w2.GateNeed(sun,0).gold;var site=w2.Step(sun.x,sun.y,1,0)??w2.Step(sun.x,sun.y,-1,0);site.terrain=0;site.ruin=true;Check(w2.RuinNear(sun)&&w2.GateNeed(sun,0).main.Contains("ruin"),"a sun seal points to the ruin nearby");
+      var finder=w2.Add(0,2,site.x,site.y);w2.ExploreRuinForCheck(finder);Check(w2.HasSunstone(0,sun)&&w2.GateNeed(sun,0).gold<before&&w2.GateNeed(sun,1).gold==before,"exploring it wins the sunstone, for the finder only ("+before+" gold to "+w2.GateNeed(sun,0).gold+")");}
+     if(grove!=null){int before=w2.GateNeed(grove,0).faith;city.x=grove.x;city.y=grove.y;Check(!w2.ShrineNear(0,grove),"no shrine yet");w2.GiveBuildingForCheck(city,World.ShrineBuilding);Check(w2.ShrineNear(0,grove)&&w2.GateNeed(grove,0).faith<before,"a Shrine near a grove seal stands in for the faith ("+before+" to "+w2.GateNeed(grove,0).faith+")");}
+     if(rift!=null){foreach(int side in new[]{0,1}){var w3=World.New(306,"Keys",0,1,1,0,1,2,4,hex:true,rations:true);var r3=w3.tiles.First(t=>t.realm==0&&t.gateLink>0&&w3.FarStyle(t)==8);var far3=w3.GateTwin(r3);
+       w3.Add(0,3,r3.x,r3.y);w3.Add(0,2,r3.x,r3.y);w3.GateExpeditionTurn();w3.GateExpeditionTurn();w3.gold=1000;w3.nations[0].gold=1000;w3.nations[0].faith=500;w3.nations[0].influence=200;for(int k=0;k<w3.nations[0].tech.Length;k++)w3.nations[0].tech[k]=true;w3.tech=w3.nations[0].tech;
+       Check(w3.BeginApproach(0,r3,GateApproach.Force,-1,side)&&w3.GateOpen(r3),"a rift seal opens with a side chosen");int want=side==1?10:0;
+       var ring=w3.tiles.Where(t=>t.realm==far3.realm&&w3.Distance(t.x,t.y,far3.x,far3.y)<=GateApproach.RiftReach&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&t.terrain!=7).ToList();
+       Check(ring.Count>0&&ring.All(t=>t.terrain==want),"the "+GateApproach.RiftSides[side].ToLower()+" reshapes the landing");
+       bool wide=w3.tiles.Where(t=>t.realm==far3.realm&&w3.Distance(t.x,t.y,far3.x,far3.y)<=GateApproach.FireSight).All(t=>t.seen);Check(wide==(side==1),"only the burning side shows the wider land");}}}
     Check(g.Valid(),"valid with gateway work recorded");
     {var old=World.New(307,natives:false);old.version=40;old.gateStudies=null;old.UpgradeSave();Check(old.version==41&&old.gateStudies!=null&&old.Valid(),"version 40 saves upgrade with no seals read");}
 }
@@ -440,6 +467,12 @@ static void EleventhNovemberChecks(){
         var across=PixelArt.RiverRoad(hex,roadAcross,2,river,1,0);int over=wet(across);Check(over>0&&over<70&&ink(across)>60,"a road across the river bridges it by a short crossing ("+over+" pixels over water)");
         Check(!PixelArt.RiverRoad(hex,roadAlong,0,river,1,aside).p.SequenceEqual(beside.p),"and follows its age");
     }
+    // Running water: a river with a known outflow has three moving pictures of the same shape; one without stays still.
+    foreach(bool hex in new[]{true,false}){int arms=hex?(1|1<<3):(1<<1|1<<3),flowing=arms|(hex?1:2)<<PixelArt.RiverDownShift;var land=new[]{0,0,0,0,7,0,0,0,0};
+        Func<int,int,PixelCanvas> tile=(m,f)=>hex?PixelArt.ComposeHex(land,10,10,f,m):PixelArt.Compose(land,10,10,f,m);
+        var f0=tile(flowing,0);var f1=tile(flowing,1);var f2=tile(flowing,2);int moved=0,shape=0;for(int i=0;i<f0.p.Length;i++){if(f0.p[i]!=f1.p[i])moved++;if((f0.p[i]>>24)!=(f1.p[i]>>24))shape++;}
+        Check(moved>6&&shape==0&&!f1.p.SequenceEqual(f2.p),"a river runs: its water moves from frame to frame and its shape does not ("+(hex?"hex":"square")+", "+moved+" pixels)");
+        Check(tile(arms,0).p.SequenceEqual(tile(arms,1).p),"a river with no known outflow stays still");}
     // Guard pictures are the original ones again: a raised shield and an upright weapon.
     {var blank=new uint[64*64];var shield=PixelArt.GuardSprite(blank,64,64,2);int n=ink(shield);Check(n>600,"the guard stands behind a full shield again ("+n+" pixels)");Check(ink(PixelArt.GuardSprite(blank,64,64,7))>600,"and so does the Spearman");}
 }
