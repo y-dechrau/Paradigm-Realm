@@ -2,6 +2,19 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 11 Nov, later: towns and gateways round rivers, original guard picture, thinner roads, bridges, dearer roads (no save change)
+
+Built in source, checked in the engine harness and in Unity, photographed with `-lookShot`. Not hand-played.
+
+- **City on a river tile.** The town is drawn on the tile's driest bank, smaller, with an outlying quarter on the other bank where there is room (`PixelArt.FarBank`); the river stays open between them. The name plate stays under the middle of the tile.
+- **Gateway on a river tile** (older saves; new games never place one there). Drawn on the bank at 55-85% of its normal size, with no clearing laid over the water.
+- **Guard picture.** Back to the original: the large raised shield and upright weapon. The smaller shield made earlier on 11 Nov is removed.
+- **Roads.** About two thirds of the width of the first 11 Nov version (`RoadWidth` 1.05). Each tile's road wanders in one of four ways chosen by its place (`RoadLook`), meeting its neighbours at the middle of the shared edge.
+- **Bridges.** A road cannot be built on a river tile until its builder knows Engineering (`World.BridgeTech`; the game has no separate bridge technology in the active tree). The worker's Road action says so, and a plotted road stops at the river with a message. Roads already on river tiles stay. The road on a river tile is drawn straight with a railed bridge over the middle: timber in the Dawn Age, stone to the Industrial Age, steel after.
+- **Upkeep.** 1 gold a turn for every road tile (it was 1 per 2), and a bridge counts as two tiles (`RoadTilesPerGold`, `BridgeTiles`). Road plotting shows the new cost.
+- **Not measured.** What the doubled upkeep does to rivals' gold, or to an existing save with many roads. Road route plotting does not yet steer round rivers before Engineering; it stops at them.
+- Checks: `ContentChecks.EleventhNovemberChecks` (bridge rule, bridge and tile upkeep, four road courses, far bank, guard picture).
+
 ## Owner requests 11 Nov: river junctions, roads by age, gateways in the land, draw order, ruins, village, shield, grass (no save change)
 
 Built in source, checked in the engine harness and in Unity, photographed with `-lookShot`. Not hand-played.

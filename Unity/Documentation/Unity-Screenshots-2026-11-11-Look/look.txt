@@ -3,3 +3,5 @@ river tiles 73, junctions 2, largest flow 6, without outflow 2
 gateways 6, on rivers 0
 spots round the capital 28
 road tiles laid 5
+mid-river tiles for the pictures: 46
+city on a river: True

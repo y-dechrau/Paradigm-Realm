@@ -80,6 +80,17 @@ namespace ParadigmRealm
                  log.AppendLine("road tiles laid "+line.Count);var mid=line.Count>2?line[2]:world.At(home.x,home.y);
                  for(int era=0;era<PixelArt.RoadEras;era++){roadEraProbe=era;isoWidth=128;FocusTile(mid.x,mid.y);yield return CleanShot(folder,"4-road-age-"+era+".bmp");}
                  roadEraProbe=2;isoWidth=64;yield return CleanShot(folder,"4b-road-far.bmp");roadEraProbe=-1;}}
+            // On river tiles: a city built on both banks, a gateway on the bank, and a road carried over by a bridge.
+            {var mid=world.tiles.Where(t=>t.realm==0&&t.terrain==7&&world.RiverDown(t)>=0&&world.RiverFlow(t)>=2&&t.gateLink==0&&bits(world.RiverLinks(t))==2&&(home==null||world.Distance(t.x,t.y,home.x,home.y)>=6)).OrderBy(t=>home==null?0:world.Distance(t.x,t.y,home.x,home.y)).ToList();
+             log.AppendLine("mid-river tiles for the pictures: "+mid.Count);
+             if(mid.Count>0){var site=mid[0];var settler=world.Add(0,0,site.x,site.y);var town=world.Found(settler);log.AppendLine("city on a river: "+(town!=null)+(town==null?" ("+world.FoundReason(settler)+")":""));if(town!=null){town.pop=6;isoWidth=128;FocusTile(site.x,site.y);yield return CleanShot(folder,"6-city-on-river.bmp");town.pop=12;town.walls=true;yield return CleanShot(folder,"6b-large-city-on-river.bmp");isoWidth=64;yield return CleanShot(folder,"6c-city-on-river-far.bmp");}}
+             var gateOld=world.tiles.Where(t=>t.realm==0&&t.gateLink>0&&!world.GateOpen(t)).FirstOrDefault();var bank=mid.Skip(1).FirstOrDefault(t=>!world.cities.Any(c=>world.Distance(c.x,c.y,t.x,t.y)<3));
+             if(gateOld!=null&&bank!=null){var twin=world.GateTwin(gateOld);bank.gateLink=gateOld.gateLink;gateOld.gateLink=0;if(twin!=null)twin.gateLink=bank.y*world.Width+bank.x+1;world.gatesFound.Add(bank.y*world.Width+bank.x);gateScene=null;
+                 isoWidth=128;FocusTile(bank.x,bank.y);yield return CleanShot(folder,"7-gate-on-river.bmp");}
+             var ford=mid.Skip(2).FirstOrDefault(t=>t.gateLink==0&&(bank==null||world.Distance(t.x,t.y,bank.x,bank.y)>=4)&&!world.cities.Any(c=>world.Distance(c.x,c.y,t.x,t.y)<2));
+             if(ford!=null){int links=world.RiverLinks(ford);for(int k=0;k<di.Length;k++){if((links&(1<<k))!=0||(links&(1<<((k+di.Length/2)%di.Length)))!=0)continue;var a=world.Step(ford.x,ford.y,di[k],dj[k]);var b=world.Step(ford.x,ford.y,di[(k+di.Length/2)%di.Length],dj[(k+di.Length/2)%di.Length]);if(a==null||b==null||PixelArt.IsWater(a.terrain)||PixelArt.IsWater(b.terrain)||a.terrain==7||b.terrain==7)continue;
+                 foreach(var q in new[]{a,b}){q.terrain=0;q.cleared=true;q.road=true;}ford.road=true;break;}
+                 for(int era=0;era<PixelArt.RoadEras;era+=2){roadEraProbe=era;isoWidth=128;FocusTile(ford.x,ford.y);yield return CleanShot(folder,"8-bridge-age-"+era+".bmp");}roadEraProbe=-1;}}
             // Grassland.
             {var meadow=world.tiles.Where(t=>t.realm==0&&t.terrain==0).OrderByDescending(t=>{int n=0;for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){var q=world.StepIn(t.x,t.y,dx,dy,2);if(q!=null&&q.terrain==0)n++;}return n;}).ThenBy(t=>t.y*world.Width+t.x).FirstOrDefault();
              if(meadow!=null){isoWidth=128;FocusTile(meadow.x,meadow.y);yield return CleanShot(folder,"5-grassland.bmp");isoWidth=64;yield return CleanShot(folder,"5b-grassland-far.bmp");}}

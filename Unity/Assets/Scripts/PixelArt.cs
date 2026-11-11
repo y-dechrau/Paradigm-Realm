@@ -86,11 +86,11 @@ namespace ParadigmRealm
         }
         static readonly Dictionary<int,PixelCanvas> hexRoads=new Dictionary<int,PixelCanvas>();
         // mask bits follow the six directions E, SE, SW, W, NW, NE.
-        public static PixelCanvas HexRoad(int mask,int era=0)
+        public static PixelCanvas HexRoad(int mask,int era=0,int look=0)
         {
-            int key=mask|era<<8;PixelCanvas cv;if(hexRoads.TryGetValue(key,out cv))return cv;
+            int key=mask|era<<8|look<<12;PixelCanvas cv;if(hexRoads.TryGetValue(key,out cv))return cv;
             var ex=new double[6];var ey=new double[6];for(int k=0;k<6;k++){ex[k]=HW/2.0+HexEdgeX[k];ey[k]=HH/2.0+HexEdgeY[k];}
-            cv=PaintRoad(HW,HH,HW/2.0,HH/2.0,ex,ey,mask,era,1.25);hexRoads[key]=cv;return cv;
+            cv=PaintRoad(HW,HH,HW/2.0,HH/2.0,ex,ey,mask,era,1.25,look);hexRoads[key]=cv;return cv;
         }
         // ---------- roads through the ages (owner request, 11 Nov 2026) ----------
         // A road is built the way its owner's age built roads, after the history of road making (History of road transport and
@@ -103,13 +103,21 @@ namespace ParadigmRealm
         //  5 Dimensional Age: a seamless pale causeway edged with strips of light.
         // The line itself is laid out as a road is: two arms join in one smooth bend through the tile, and any others branch from it.
         public const int RoadEras=6;
-        const double RoadWidth=1.6; // roads are drawn this much wider than their design, so their surface can be read on the map
-        static PixelCanvas PaintRoad(int w,int h,double cx,double cy,double[] ex,double[] ey,int mask,int era,double squash)
+        const double RoadWidth=1.05; // roads are drawn this much wider than their design, so their surface can be read on the map
+        // Thinner, and moving with the land (owner request, 11 Nov 2026, later): the line wanders from side to side as a road does
+        // that follows the lie of the ground, in one of four ways chosen by its tile (look bits 0-1), and still meets the next tile at
+        // the middle of the shared edge. On a river tile (look bit 2) the road runs straight and the stretch over the middle of the
+        // tile is a bridge with rails: timber in the Dawn Age, stone until the Industrial Age, steel after.
+        public const int RoadBridge=4;
+        static PixelCanvas PaintRoad(int w,int h,double cx,double cy,double[] ex,double[] ey,int mask,int era,double squash,int look=0)
         {
             var cv=new PixelCanvas(w,h);var arms=new List<int>();for(int k=0;k<ex.Length;k++)if((mask&(1<<k))!=0)arms.Add(k);
             var px=new List<double>();var py=new List<double>();var pa=new List<double>();var pt=new List<double>();
             Action<double,double,double,double,double,double> curve=(x0,y0,x1,y1,x2,y2)=>
-            {double along=0,lx=x0,ly=y0;for(int i=0;i<=80;i++){double t=i/80.0,a=(1-t)*(1-t),b=2*t*(1-t),c=t*t,x=a*x0+b*x1+c*x2,y=a*y0+b*y1+c*y2;along+=Math.Sqrt((x-lx)*(x-lx)+(y-ly)*(y-ly)*squash*squash);
+            {double along=0,lx=x0,ly=y0;bool bridge=(look&RoadBridge)!=0;double sway=bridge?0:((look&1)==0?1:-1)*((look&2)==0?2.3:3.3);
+             for(int i=0;i<=80;i++){double t=i/80.0,a=(1-t)*(1-t),b=2*t*(1-t),c=t*t,x=a*x0+b*x1+c*x2,y=a*y0+b*y1+c*y2;
+                {double tx=2*(1-t)*(x1-x0)+2*t*(x2-x1),ty=2*(1-t)*(y1-y0)+2*t*(y2-y1),tl=Math.Sqrt(tx*tx+ty*ty),sw=Math.Sin(t*Math.PI);sw=sw*sw*Math.Sin(t*Math.PI*2)*sway;if(tl>0){x+=-ty/tl*sw;y+=tx/tl*sw/squash;}}
+                along+=Math.Sqrt((x-lx)*(x-lx)+(y-ly)*(y-ly)*squash*squash);
                 double gx=2*(1-t)*(x1-x0)+2*t*(x2-x1),gy=(2*(1-t)*(y1-y0)+2*t*(y2-y1))*squash;lx=x;ly=y;px.Add(x);py.Add(y);pa.Add(along);pt.Add(Math.Atan2(gy,gx));}};
             if(arms.Count==0)curve(cx-3,cy,cx,cy,cx+3,cy);
             else if(arms.Count==1)curve(ex[arms[0]],ey[arms[0]],(ex[arms[0]]+cx)/2,(ey[arms[0]]+cy)/2,cx,cy);
@@ -125,7 +133,12 @@ namespace ParadigmRealm
             {
                 double best=99,along=0,side=1;
                 for(int i=0;i<px.Count;i++){double dx=x+.5-px[i],dy=(y+.5-py[i])*squash,d=dx*dx+dy*dy;if(d<best){best=d;along=pa[i];side=Math.Cos(pt[i])*dy-Math.Sin(pt[i])*dx>=0?1:-1;}}
-                if(best>30)continue;uint c=RoadPixel(era,Math.Sqrt(best)/RoadWidth,side,along/RoadWidth,x,y);if(c!=0)cv.Set(x,y,c);
+                if(best>30)continue;double dd=Math.Sqrt(best)/RoadWidth;uint c=RoadPixel(era,dd,side,along/RoadWidth,x,y);
+                if((look&RoadBridge)!=0){double bx=(x+.5-cx)/11.0,by=(y+.5-cy)*squash/9.0;if(bx*bx+by*by<=1&&dd<=3.4){
+                    if(dd>2.5)c=era==0?Rgb(86,60,36):era<3?Rgb(120,116,112):Rgb(66,72,84);
+                    else if(era==0)c=((int)Math.Floor(along/1.2)&1)==0?Rgb(152,114,72):Rgb(126,92,56);
+                    else if(c==0)c=era<3?Rgb(150,146,140):Rgb(96,100,108);}}
+                if(c!=0)cv.Set(x,y,c);
             }
             return cv;
         }
@@ -1443,6 +1456,24 @@ namespace ParadigmRealm
             }
             fx=hit[0];fy=hit[1];room=hit[2];
         }
+        // The best ground on the other side of the water from the dry spot, for a town that stands on both banks (owner request,
+        // 11 Nov 2026). room is 0 when the tile has no second bank worth building on.
+        static readonly Dictionary<long,double[]> farBanks=new Dictionary<long,double[]>();
+        public static void FarBank(bool hex,int mask,int variant,out double fx,out double fy,out double room)
+        {
+            long key=(hex?1L:0)|(long)variant<<1|(long)mask<<4;double[] hit;
+            if(!farBanks.TryGetValue(key,out hit))
+            {
+                double ax,ay,ar;DrySpot(hex,mask,variant,out ax,out ay,out ar);var river=RiverShape(hex,mask,variant);var dist=RiverDistance(river);int w=river.w,h=river.h;double best=0;int bx=w/2,by=h/2;int sx=(int)(ax*w),sy=(int)(ay*h);
+                for(int y=0;y<h;y++)for(int x=0;x<w;x++)
+                {
+                    if(!OnTile(hex,x,y,0))continue;bool crosses=false;for(int i=1;i<16&&!crosses;i++){int qx=sx+(x-sx)*i/16,qy=sy+(y-sy)*i/16;if((river.Get(qx,qy)>>24)!=0)crosses=true;}if(!crosses)continue;
+                    double edge=0;while(edge<12&&OnTile(hex,x,y,edge+1))edge++;double r=Math.Min(dist[y*w+x],edge*.8);if(r>best){best=r;bx=x;by=y;}
+                }
+                hit=new[]{(bx+.5)/w,(by+.5)/h,best};farBanks[key]=hit;
+            }
+            fx=hit[0];fy=hit[1];room=hit[2];
+        }
         // Fields on a river tile: a quilt of small plots, each with its own crop and its furrows running its own way, parted by
         // hedge lines, on both banks. The plots stop short of the water behind a strip of bank, thin out raggedly toward it and
         // toward the tile's edge, and a small barn stands on the driest ground.
@@ -1578,11 +1609,11 @@ namespace ParadigmRealm
         // mask bits: 0 NW(-1,-1) 1 N(0,-1) 2 NE(1,-1) 3 E(1,0) 4 SE(1,1) 5 S(0,1) 6 SW(-1,1) 7 W(-1,0)
         static readonly int[] RoadX={0,TW/2,TW-1,TW-1,TW-1,TW/2,0,0},RoadY={0,0,0,TH/2,TH-1,TH-1,TH-1,TH/2};
         static readonly Dictionary<int,PixelCanvas> roadCache=new Dictionary<int,PixelCanvas>();
-        public static PixelCanvas Road(int mask,int era=0)
+        public static PixelCanvas Road(int mask,int era=0,int look=0)
         {
-            int key=mask|era<<8;PixelCanvas cv;if(roadCache.TryGetValue(key,out cv))return cv;
+            int key=mask|era<<8|look<<12;PixelCanvas cv;if(roadCache.TryGetValue(key,out cv))return cv;
             var ex=new double[8];var ey=new double[8];for(int k=0;k<8;k++){ex[k]=RoadX[k]+.5;ey[k]=RoadY[k]+.5;}
-            cv=PaintRoad(TW,TH,TW/2.0,TH/2.0,ex,ey,mask,era,1);roadCache[key]=cv;return cv;
+            cv=PaintRoad(TW,TH,TW/2.0,TH/2.0,ex,ey,mask,era,1,look);roadCache[key]=cv;return cv;
         }
         static readonly Dictionary<int,PixelCanvas> misc=new Dictionary<int,PixelCanvas>();
         // kind 0..3 = border edge N,E,S,W (white, tinted at draw time); 4 = selection outline; 5 = unexplored; 6 = dim overlay;
@@ -1781,12 +1812,12 @@ namespace ParadigmRealm
                 box(4,FootRowTarget-9,59,FootRowTarget-7,dark);box(4,FootRowTarget-8,59,FootRowTarget-8,woodLit);return Finish(cv);}
             if(type==4){// Archer: a tall wooden pavise planted in front.
                 int l=30,r=50,t=FootRowTarget-38;box(l-1,t-1,r+1,FootRowTarget,dark);box(l,t,r,FootRowTarget-1,wood);for(int x=l+4;x<r;x+=5)box(x,t,x,FootRowTarget-1,dark);box(l,t,r,t+2,woodLit);box(l+7,t+12,r-7,t+25,bronze);box(l+8,t+13,r-8,t+15,bronzeLit);return Finish(cv);}
-            // A small round shield held low at the side. The unit keeps the weapon it is drawn with: no spear is added, so nobody
-            // holds an axe, a spear and a shield at once, and the shield is about half its old size (owner report, 11 Nov 2026).
-            // The Spearman's own picture already carries a spear and a shield, so it only braces.
-            if(type==7)return Finish(cv);
-            bool heavy=type==5;uint face=heavy?steel:wood,rim=heavy?steelLit:woodLit;
-            double cx=mounted?41:42,cy=mounted?FootRowTarget-24:FootRowTarget-14,rx=type==3?5.5:mounted?7:6.5,ry=type==3?6.5:mounted?8.5:8;
+            // Spear, lance, club or staff held upright, then a round shield over the body. (The smaller shield with no spear of
+            // 11 Nov 2026 was taken back out at the owner's request the same day.)
+            Action<int,int,int,uint,uint> pole=(x,top,bottom,shaft,tip)=>{box(x-1,top+6,x+1,bottom,dark);box(x,top+6,x,bottom,shaft);for(int k=0;k<6;k++){int half=k<5?k/2:1;box(x-half,top+k,x+half,top+k,tip);}};
+            bool heavy=type==5;uint face=heavy?steel:type==7?bronze:wood,rim=heavy?steelLit:type==7?bronzeLit:woodLit;
+            double cx=mounted?36:37,cy=mounted?FootRowTarget-30:FootRowTarget-22,rx=type==3?10:14,ry=type==3?11:mounted?15:18;
+            pole((int)cx+(int)rx+1,FootRowTarget-(mounted?56:50),FootRowTarget-(mounted?10:0),Rgb(116,84,50),steelLit);
             for(int y=0;y<64;y++)for(int x=0;x<64;x++){double u=(x+.5-cx)/rx,v=(y+.5-cy)/ry,d=u*u+v*v;if(d>1)continue;cv.Set(x,y,d>.84?dark:d>.62?rim:d<.07?rim:(u+v<-.35?MixC(face,Rgb(255,248,230),.28):u+v>.6?Shade(face,.72):face));}
             return Finish(cv);
         }

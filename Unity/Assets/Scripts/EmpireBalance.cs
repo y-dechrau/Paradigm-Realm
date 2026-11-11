@@ -171,15 +171,17 @@ public partial class World {
  }
  // ---------- road upkeep (owner request, 6 Nov 2026; as in Civilization V, where roads cost gold each turn) ----------
  // Raised to 1 gold per 2 road tiles (owner request, 9 Nov 2026: roads must cost money to maintain); shown in the gold tooltip.
- public const int RoadTilesPerGold=2;
+ // Dearer again (owner, 11 Nov 2026: "roads need to be costly to maintain"): 1 gold a turn for every road tile, and a bridge (a road
+ // on a river tile) counts as two. A road cannot be built on a river tile until Engineering brings bridges (JobReason).
+ public const int RoadTilesPerGold=1,BridgeTiles=2;public const string BridgeTech="engineering",BridgeNeeded="A road cannot cross a river until Engineering brings bridges.";
  [NonSerialized] Dictionary<int,int> roadCount;[NonSerialized] int roadCountTurn=-1;
  internal void ResetRoadCount(){roadCountTurn=-1;}
- public int RoadTiles(int owner){if(roadCount==null||roadCountTurn!=turn){roadCount=new Dictionary<int,int>();roadCountTurn=turn;var centres=CityCentres();foreach(var t in tiles){if(!t.road||t.owner<0||centres.Contains(t.y*Width+t.x))continue;int n;roadCount.TryGetValue(t.owner,out n);roadCount[t.owner]=n+1;}}int found;roadCount.TryGetValue(owner,out found);return found;}
+ public int RoadTiles(int owner){if(roadCount==null||roadCountTurn!=turn){roadCount=new Dictionary<int,int>();roadCountTurn=turn;var centres=CityCentres();foreach(var t in tiles){if(!t.road||t.owner<0||centres.Contains(t.y*Width+t.x))continue;int n;roadCount.TryGetValue(t.owner,out n);roadCount[t.owner]=n+(t.terrain==7?BridgeTiles:1);}}int found;roadCount.TryGetValue(owner,out found);return found;}
  public int RoadUpkeep(int owner){return (RoadTiles(owner)+RoadTilesPerGold-1)/RoadTilesPerGold;}
  // ---------- plotting a road ----------
  // The way a road would run from one tile to another, for a worker of this civilisation; existing roads are followed where they help.
  public List<Tile> RoadCourse(int owner,int fromX,int fromY,int toX,int toY){var probe=new Unit{id=-1,owner=owner,type=1,x=fromX,y=fromY,moves=4};return Route(probe,toX,toY,true);}
- public int NewRoadTiles(IEnumerable<Tile> course){int n=0;foreach(var t in course)if(!t.road&&!IsWater(t.terrain))n++;return n;}
+ public int NewRoadTiles(IEnumerable<Tile> course){int n=0;foreach(var t in course)if(!t.road&&!IsWater(t.terrain))n+=t.terrain==7?BridgeTiles:1;return n;}
  public string PlanRoad(Unit u,List<Tile> course){
   if(u==null||u.type!=1)return "Only workers build roads.";if(!HasTech(u.owner,"wheel"))return "Requires The Wheel.";if(course==null||course.Count==0)return "No land route to that destination.";
   var last=course[course.Count-1];foreach(var a in WorkerTeam(u)){CancelOrder(a);a.autoWork=false;a.roadOrder=true;a.roadX=last.x;a.roadY=last.y;if(a.roadPath==null)a.roadPath=new List<int>();a.roadPath.Clear();foreach(var t in course)a.roadPath.Add(t.y*Width+t.x);}

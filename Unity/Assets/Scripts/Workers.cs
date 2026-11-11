@@ -20,7 +20,7 @@ public partial class World {
  public void RoadStep(Unit u){
   if(!u.roadOrder||u.job>0)return;
   var here=At(u.x,u.y);
-  if(!here.road){if(JobReason(u,1)=="")StartJob(u,1);else u.roadOrder=false;return;}
+  if(!here.road){if(JobReason(u,1)=="")StartJob(u,1);else{u.roadOrder=false;if(u.owner==0&&JobReason(u,1)==BridgeNeeded)Note("The road stops at the river. "+BridgeNeeded);}return;}
   if(u.x==u.roadX&&u.y==u.roadY){u.roadOrder=false;if(u.roadPath!=null)u.roadPath.Clear();if(u.owner==0)Note("Road finished.");return;}
   // A plotted road is followed tile by tile; anything else takes the cheapest way.
   Tile next=null;if(u.roadPath!=null&&u.roadPath.Count>0){int here2=u.y*Width+u.x;int at=u.roadPath.IndexOf(here2);if(at>=0)u.roadPath.RemoveRange(0,at+1);if(u.roadPath.Count>0){var wanted=tiles[u.roadPath[0]];if(Distance(u.x,u.y,wanted.x,wanted.y)==1)next=wanted;}}

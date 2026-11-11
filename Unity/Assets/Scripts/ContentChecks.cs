@@ -416,9 +416,21 @@ static void EleventhNovemberChecks(){
     // Grass: painted in many mixed tones, not five flat ones, and the same wherever it is composed.
     {var grass=Enumerable.Repeat(0,9).ToArray();var a=PixelArt.ComposeHex(grass,14,9,0,0);var tones=new HashSet<uint>();foreach(uint p in a.p)if((p>>24)!=0)tones.Add(p);
      Check(tones.Count>120,"grassland is painted in many tones ("+tones.Count+")");Check(a.p.SequenceEqual(PixelArt.ComposeHex(grass,14,9,0,0).p),"and is the same every time");}
-    // Guard pictures: no spear is added, and the shield is small.
-    {var blank=new uint[64*64];var shield=PixelArt.GuardSprite(blank,64,64,2);int n=ink(shield);Check(n>120&&n<420,"the guard's shield is small ("+n+" pixels)");int top=64;for(int y=0;y<64;y++)for(int x=0;x<64;x++)if((shield.Get(x,y)>>24)!=0&&y<top)top=y;
-     Check(top>PixelArt.FootRowTarget-30,"and nothing stands above it: no added spear (top row "+top+")");Check(ink(PixelArt.GuardSprite(blank,64,64,7))==0,"the Spearman keeps his own shield and spear");}
+    // Bridges: no road on a river tile before Engineering; a bridge costs twice a road tile to keep; every road tile costs gold.
+    {var w=World.New(331,natives:false);var c=w.Found(w.units.First(u=>u.owner==0&&u.type==0));var t=w.Step(c.x,c.y,1,0);t.terrain=7;t.road=false;t.resource=0;w.RebuildTerritory();
+     Action<string,bool> know=(id,on)=>{w.nations[0].tech[TechnologyCatalog.Index(id)]=on;w.tech=w.nations[0].tech;};know("wheel",true);know(World.BridgeTech,false);
+     var worker=w.Add(0,1,t.x,t.y);worker.moves=2;Check(w.JobReason(worker,1)==World.BridgeNeeded,"no road across a river without bridges ("+w.JobReason(worker,1)+")");
+     know(World.BridgeTech,true);Check(w.JobReason(worker,1)=="","Engineering allows the bridge ("+w.JobReason(worker,1)+")");
+     w.ResetRoadCount();int before=w.RoadTiles(0);t.road=true;w.ResetRoadCount();Check(w.RoadTiles(0)==before+World.BridgeTiles,"a bridge counts as two road tiles ("+before+" to "+w.RoadTiles(0)+")");
+     Check(w.RoadUpkeep(0)==w.RoadTiles(0)&&World.RoadTilesPerGold==1,"each road tile costs 1 gold a turn");}
+    // Roads wander four ways and a river tile carries a bridge; a town on a river tile has a second bank to build on.
+    {var looks=new HashSet<string>();for(int look=0;look<4;look++)looks.Add(string.Join(",",PixelArt.HexRoad(1|1<<3,2,look).p.Select(p=>p.ToString("x")).ToArray()));Check(looks.Count==4,"a road lies four different ways ("+looks.Count+")");
+     Check(ink(PixelArt.HexRoad(1|1<<3,2,PixelArt.RoadBridge))>ink(PixelArt.HexRoad(1|1<<3,2,0)),"a bridge is drawn with rails");
+     Check(ink(PixelArt.HexRoad(1|1<<3,1,0))<430,"roads are thin ("+ink(PixelArt.HexRoad(1|1<<3,1,0))+" pixels of a tile)");
+     foreach(bool hex in new[]{true,false}){double fx,fy,room,ax,ay,ar;int m=hex?(1|1<<3):(1<<1|1<<3);PixelArt.FarBank(hex,m,1,out fx,out fy,out room);PixelArt.DrySpot(hex,m,1,out ax,out ay,out ar);
+      Check(room>=4&&Math.Abs(fy-ay)>.2,"a river through the middle leaves a second bank ("+(hex?"hex":"square")+", room "+room.ToString("0.0")+")");}}
+    // Guard pictures are the original ones again: a raised shield and an upright weapon.
+    {var blank=new uint[64*64];var shield=PixelArt.GuardSprite(blank,64,64,2);int n=ink(shield);Check(n>600,"the guard stands behind a full shield again ("+n+" pixels)");Check(ink(PixelArt.GuardSprite(blank,64,64,7))>600,"and so does the Spearman");}
 }
 // Owner requests, 10 Nov 2026: volcanoes burn, hills lose their square base, rivers open into the sea.
 static void TenthNovemberChecks(){
