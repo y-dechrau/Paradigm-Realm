@@ -2,6 +2,10 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner request 11 Nov: the guide's toast (no save change)
+
+Divus Maximus raises his cup in a framed picture to the left of every guide prompt (research, pantheon, city build): it plays when the prompt opens and again every few seconds. 18 frames made on the owner's PC from the guide's picture by moving the arm and goblet; only the arm moves. The frames are private (`Resources/Tutor/Cheers`) and are not in the public backup; without them the prompt looks as before. Checked in a build with `-cheerShot`. Not hand-played.
+
 ## Owner requests 11 Nov, later: towns and gateways round rivers, original guard picture, thinner roads, bridges, dearer roads (no save change)
 
 Built in source, checked in the engine harness and in Unity, photographed with `-lookShot`. Not hand-played.

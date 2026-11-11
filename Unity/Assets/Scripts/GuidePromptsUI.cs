@@ -8,6 +8,18 @@ namespace ParadigmRealm {
 // absent (the public backup leaves it out), in which case the panel simply has no face.
 public partial class RealmGame {
  Texture2D GuideFace(){if(guideFace==null)guideFace=Resources.Load<Texture2D>("Tutor/guide-face");return guideFace;}
+ // Divus Maximus raises his cup beside every guide prompt (owner request, 11 Nov 2026): 18 frames in Resources/Tutor/Cheers, made
+ // from his picture. Like the picture they are private and absent from the public backup, and then nothing is drawn.
+ const int CheersFrames=18;const float CheersFrameTime=.07f,CheersHold=.45f,CheersRest=2.2f;Texture2D[] cheers;bool cheersLooked;float cheersStart=-1,cheersSeen=-1;
+ Texture2D CheersFrame(){
+  if(!cheersLooked){cheersLooked=true;var found=new Texture2D[CheersFrames];for(int i=0;i<CheersFrames;i++){found[i]=Resources.Load<Texture2D>("Tutor/Cheers/guide-cheers-"+i.ToString("00"));if(found[i]==null){found=null;break;}}cheers=found;}
+  if(cheers==null)return null;float now=Time.realtimeSinceStartup;
+  // A prompt that was not on screen a moment ago starts the toast from the beginning.
+  if(cheersStart<0||now-cheersSeen>.5f)cheersStart=now;cheersSeen=now;
+  int top=CheersFrames/3+2;float up=top*CheersFrameTime,t=(now-cheersStart)%(CheersFrames*CheersFrameTime+CheersHold+CheersRest);
+  int frame=t<up?(int)(t/CheersFrameTime):t<up+CheersHold?top:Mathf.Min(CheersFrames-1,top+(int)((t-up-CheersHold)/CheersFrameTime));
+  return cheers[Mathf.Clamp(frame,0,CheersFrames-1)];
+ }
  bool PantheonDue(){var n=world.nations[0];return n.pantheon<0&&n.faith>=World.PantheonCost&&world.PantheonReason(0)=="";}
  bool GuidePromptOpen(){return world!=null&&!turnRunning&&world.result==""&&!guide&&!confirmNew&&pendingUnit==-1&&((world.researchPrompts!=null&&world.researchPrompts.Count>0)||PantheonDue()||world.NextBuildPrompt()!=null);}
  // The End Turn button runs the turn a little at a time, so the map keeps moving and never freezes.
@@ -25,6 +37,7 @@ public partial class RealmGame {
  Rect GuidePanel(string line,float height,out float y,float textHeight=62){
   var box=new Rect(370,Mathf.Max(60,170-Mathf.Max(0,height-430)/2),540,height);Fill(new Rect(0,0,1280,800),new Color(0,0,0,.35f));DrawGuideFrame(box);
   var face=GuideFace();if(face!=null)GUI.DrawTexture(new Rect(box.x+14,box.y+14,84,84),face,ScaleMode.ScaleAndCrop);
+  {var toast=CheersFrame();if(toast!=null){var pic=new Rect(box.x-312,box.y,300,225);DrawGuideFrame(new Rect(pic.x-6,pic.y-6,pic.width+12,pic.height+12));GUI.DrawTexture(pic,toast,ScaleMode.StretchToFill);}}
   float tx=box.x+112,tw=box.width-126;GUI.Label(new Rect(tx,box.y+10,tw,24),GuideName,hudTitle);
   GUI.Label(new Rect(tx,box.y+36,tw,textHeight),line,new GUIStyle(body){wordWrap=true});y=box.y+44+textHeight;return box;
  }

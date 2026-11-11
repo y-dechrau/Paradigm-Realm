@@ -15,7 +15,7 @@ namespace ParadigmRealm
         {
             var args=Environment.GetCommandLineArgs();int i;
             // A test run keeps its saves and autosaves in its own output folder, never among the player's saved games.
-            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
+            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot","-cheerShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
             i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
             i=Array.IndexOf(args,"-frameProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FrameProbe(args[i+1],i+2<args.Length?int.Parse(args[i+2]):4,i+3<args.Length?int.Parse(args[i+3]):120));
@@ -27,6 +27,7 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-dipShot");if(i>=0&&i+1<args.Length)StartCoroutine(DipShot(args[i+1]));
             i=Array.IndexOf(args,"-mapShot");if(i>=0&&i+1<args.Length)StartCoroutine(MapShot(args[i+1]));
             i=Array.IndexOf(args,"-lookShot");if(i>=0&&i+1<args.Length)StartCoroutine(LookShot(args[i+1]));
+            i=Array.IndexOf(args,"-cheerShot");if(i>=0&&i+1<args.Length)StartCoroutine(CheerShot(args[i+1]));
         }
         // Development aid: "-mapShot <folder>" starts a fixed game with the whole home world found and saves close views of a river
         // mouth, a farm and a fort on a river, hills, a volcano with a unit on it, sealed and open gateways, resources on land
@@ -95,6 +96,17 @@ namespace ParadigmRealm
             {var meadow=world.tiles.Where(t=>t.realm==0&&t.terrain==0).OrderByDescending(t=>{int n=0;for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){var q=world.StepIn(t.x,t.y,dx,dy,2);if(q!=null&&q.terrain==0)n++;}return n;}).ThenBy(t=>t.y*world.Width+t.x).FirstOrDefault();
              if(meadow!=null){isoWidth=128;FocusTile(meadow.x,meadow.y);yield return CleanShot(folder,"5-grassland.bmp");isoWidth=64;yield return CleanShot(folder,"5b-grassland-far.bmp");}}
             File.WriteAllText(Path.Combine(folder,"look.txt"),log.ToString());Application.Quit();
+        }
+        // Development aid: "-cheerShot <folder>" opens a guide prompt and photographs Divus Maximus's toast at three moments. The
+        // pictures show the private guide, so they stay out of the public backup.
+        IEnumerator CheerShot(string folder)
+        {
+            Directory.CreateDirectory(folder);yield return Frames(5);
+            seedText="421";mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;
+            var founder=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);if(founder!=null)world.Found(founder);world.newContacts.Clear();yield return Frames(3);
+            world.researchPrompts.Clear();world.researchPrompts.Add(TechnologyCatalog.Index("agriculture"));yield return Frames(2);
+            yield return Shot(folder,"cheers-0-start.bmp");yield return new WaitForSecondsRealtime(.45f);yield return Shot(folder,"cheers-1-raised.bmp");yield return new WaitForSecondsRealtime(1.4f);yield return Shot(folder,"cheers-2-lowered.bmp");
+            Probe("the toast frames are loaded",cheers!=null);File.WriteAllText(Path.Combine(folder,"cheers.txt"),"frames loaded: "+(cheers!=null));Application.Quit();
         }
         IEnumerator MapShot(string folder)
         {
