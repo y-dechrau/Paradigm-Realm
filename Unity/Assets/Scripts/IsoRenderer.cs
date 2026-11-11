@@ -66,12 +66,12 @@ namespace ParadigmRealm
             // Painted wild animals (SpriteCook, 8 Nov 2026: Sprites/animal-0..6 in AnimalCatalog order); the drawn ones remain the fallback.
             if(kind==12){var beastArt=SpriteSlot("animal-"+a);if(beastArt!=null){isoPictures[key]=beastArt;return beastArt;}}
             PixelCanvas cv=null;
-            if(kind==1)cv=PixelArt.Sprite(a,b);else if(kind==6)cv=PixelArt.Hamlet(a,b);else if(kind==7)cv=PixelArt.PortSprite();else if(kind==8)cv=PixelArt.HudIcon(a);else if(kind==9)cv=PixelArt.CloudPuff(a);else if(kind==2)cv=PixelArt.Farm(a);else if(kind==3)cv=PixelArt.Road(a);else if(kind==5)cv=PixelArt.ResourceIcon(a);else cv=PixelArt.Misc(a);
+            if(kind==1)cv=PixelArt.Sprite(a,b);else if(kind==6)cv=PixelArt.Hamlet(a,b);else if(kind==7)cv=PixelArt.PortSprite();else if(kind==8)cv=PixelArt.HudIcon(a);else if(kind==9)cv=PixelArt.CloudPuff(a);else if(kind==2)cv=PixelArt.Farm(a);else if(kind==3)cv=PixelArt.Road(a,b);else if(kind==5)cv=PixelArt.ResourceIcon(a);else cv=PixelArt.Misc(a);
             // Tile-shaped overlays (farms, roads, borders, selection, unexplored) are drawn as diamonds in the diagonal view.
-            if(kind==10)cv=PixelArt.HexEdge(a);else if(kind==11)cv=PixelArt.HexRoad(a);else if(kind==12)cv=PixelArt.AnimalSprite(a);
+            if(kind==10)cv=PixelArt.HexEdge(a);else if(kind==11)cv=PixelArt.HexRoad(a,b);else if(kind==12)cv=PixelArt.AnimalSprite(a);else if(kind==13)cv=PixelArt.GateClearing(a);else if(kind==14)cv=PixelArt.GateOvergrowth(a);
             else if(cv!=null&&(kind==2||kind==3||kind==4&&(a<=6||a==9)))cv=hexShape?PixelArt.ToHex(cv):PixelArt.ToDiamond(cv);
             // Icons are drawn at four times their design size and sprites at twice, so they stay sharp on large screens.
-            tex=cv==null?null:kind==8?SoftTexture(PixelArt.Scale2x(PixelArt.Scale2x(cv))):kind==1||kind==6||kind==7||kind==9||kind==12||kind==5?SoftTexture(PixelArt.Scale2x(cv)):kind==2||kind==3||kind==4||kind==10||kind==11?TileTexture(PixelArt.Scale2x(cv)):PixelTexture(cv);isoPictures[key]=tex;return tex;
+            tex=cv==null?null:kind==8?SoftTexture(PixelArt.Scale2x(PixelArt.Scale2x(cv))):kind==1||kind==6||kind==7||kind==9||kind==12||kind==13||kind==14||kind==5?SoftTexture(PixelArt.Scale2x(cv)):kind==2||kind==3||kind==4||kind==10||kind==11?TileTexture(PixelArt.Scale2x(cv)):PixelTexture(cv);isoPictures[key]=tex;return tex;
         }
         bool AnimalNearPlayer(Animal a){foreach(var u in world.units)if(u.owner==0&&world.Distance(u.x,u.y,a.x,a.y)<=2)return true;return false;}
         void ClearIso()
@@ -86,9 +86,17 @@ namespace ParadigmRealm
         Texture2D RoadPicture(Tile t)
         {
             int mask=0;
-            if(world.Hex){for(int k=0;k<6;k++)if(world.RoadConnects(t,World.HexDi[k],World.HexDj[k]))mask|=1<<k;return IsoPicture(11,mask,0);}
+            if(world.Hex){for(int k=0;k<6;k++)if(world.RoadConnects(t,World.HexDi[k],World.HexDj[k]))mask|=1<<k;return IsoPicture(11,mask,RoadEra(t));}
             for(int k=0;k<8;k++)if(world.RoadConnects(t,RoadDx[k],RoadDy[k]))mask|=1<<k;
-            return IsoPicture(3,mask,0);
+            return IsoPicture(3,mask,RoadEra(t));
+        }
+        // Roads follow the age of whoever owns the land they cross, and your own age on unclaimed land (owner request, 11 Nov 2026;
+        // PixelArt.PaintRoad). The ages are worked out once a turn.
+        int[] roadEras;int roadErasTurn=-1,roadEraProbe=-1;World roadErasWorld;
+        int RoadEra(Tile t)
+        {
+            if(roadEras==null||roadErasTurn!=world.turn||roadErasWorld!=world||roadEras.Length!=world.nations.Length){roadEras=new int[world.nations.Length];for(int o=0;o<roadEras.Length;o++)roadEras[o]=o<world.civCount?Mathf.Clamp(world.Era(o),0,5):0;roadErasTurn=world.turn;roadErasWorld=world;}
+            if(roadEraProbe>=0)return roadEraProbe;int owner=t.owner>=0&&t.owner<roadEras.Length?t.owner:0;return roadEras[owner];
         }
         // Screen pixels from one row of tiles to the next at width tw.
         float RowPixels(float tw){return world.Hex?tw*PixelArt.HR/PixelArt.HW:tw*PixelArt.DH/PixelArt.DW/2;}
@@ -184,7 +192,10 @@ namespace ParadigmRealm
         int RiverMaskOf(Tile t)
         {
             int mask=0;int[] offI=world.Hex?World.HexDi:new[]{0,1,0,-1},offJ=world.Hex?World.HexDj:new[]{-1,0,1,0};int dirs=offI.Length;
-            if(t.terrain==7){int flow=world.RiverLinks(world.At(t.x,t.y));for(int k=0;k<dirs;k++){int n=IsoKnownTerrain(world.Step(t.x,t.y,offI[k],offJ[k]));if(n>=0&&(n==7||PixelArt.IsWater(n))&&(flow<0||(flow&(1<<k))!=0))mask|=1<<k;}}
+            if(t.terrain==7){int flow=world.RiverLinks(world.At(t.x,t.y));for(int k=0;k<dirs;k++){int n=IsoKnownTerrain(world.Step(t.x,t.y,offI[k],offJ[k]));if(n>=0&&(n==7||PixelArt.IsWater(n))&&(flow<0||(flow&(1<<k))!=0))mask|=1<<k;}
+                // Which side the water leaves by and how wide each arm is, so channels join like a real river (PixelArt.RiverChannel).
+                var here=world.At(t.x,t.y);int down=flow<0?-1:world.RiverDown(here);
+                if(down>=0&&(mask&(1<<down))!=0){mask|=(down+1)<<PixelArt.RiverDownShift;for(int k=0;k<dirs;k++){if((mask&(1<<k))==0)continue;var from=k==down?here:world.Step(t.x,t.y,offI[k],offJ[k]);if(from==null||from.terrain!=7)from=here;mask|=PixelArt.RiverWidthClass(world.RiverFlow(from))<<(PixelArt.RiverWidthShift+2*k);}}}
             else if(PixelArt.IsWater(t.terrain))for(int k=0;k<dirs;k++){var n=world.Step(t.x,t.y,offI[k],offJ[k]);if(IsoKnownTerrain(n)!=7)continue;int flow=world.RiverLinks(world.At(n.x,n.y));if(flow<0||(flow&(1<<((k+dirs/2)%dirs)))!=0)mask|=1<<k;}
             return mask;
         }
@@ -193,7 +204,7 @@ namespace ParadigmRealm
         readonly Dictionary<long,Texture2D> riverFields=new Dictionary<long,Texture2D>();
         Texture2D RiverQuilt(Tile t)
         {
-            int mask=RiverMaskOf(t),variant=(t.x*7+t.y*3)%3,seed=((t.x*5+t.y*3)&0x7fffffff)%4;long key=seed|((long)mask<<4)|((long)variant<<12)|(world.Hex?1L<<16:0);
+            int mask=RiverMaskOf(t),variant=(t.x*7+t.y*3)%3,seed=((t.x*5+t.y*3)&0x7fffffff)%4;long key=seed|((long)variant<<2)|(world.Hex?1L<<4:0)|((long)mask<<5);
             Texture2D made;if(riverFields.TryGetValue(key,out made)&&made!=null)return made;
             made=TileTexture(PixelArt.Scale2x(PixelArt.FarmQuilt(world.Hex,mask,variant,seed)));riverFields[key]=made;return made;
         }
@@ -211,19 +222,25 @@ namespace ParadigmRealm
             HandleMapInput();
             if(dragging){var m=Event.current.mousePosition;var u=world.units.Find(a=>a.id==dragUnit);if(u!=null){float sx,sy;IsoScreen(u.x,u.y,out sx,out sy);DrawOrderLine(new Vector2(MapX+sx,MapY+sy-6*isoWidth/64f),m);}GUI.Label(new Rect(m.x+15,m.y+12,220,30),roadMode?"Release to build a road there":"Release to send the unit here",body);}
         }
-        readonly Dictionary<int,Animal> viewAnimals=new Dictionary<int,Animal>();readonly List<Vector2> isoGates=new List<Vector2>();readonly List<int> isoGateStyles=new List<int>();
+        readonly Dictionary<int,Animal> viewAnimals=new Dictionary<int,Animal>();readonly List<Vector2> isoGates=new List<Vector2>();readonly List<int> isoGateStyles=new List<int>(),isoGateLand=new List<int>();
         // Painted gateways (owner pictures, 8 Nov 2026): Sprites/gate-open-N or gate-sealed-N by the gateway's design, standing on the
         // tile with their ground patch on the tile's lower tip. False when the art is missing, so the drawn gateway is used instead.
         // Gateways are drawn tile-sized, their ground patch ending at the tile's lower tip (owner request, 9 Nov 2026).
-        bool DrawGateArt(int style,bool open,float sx,float gy,float s){var art=SpriteSlot((open?"gate-open-":"gate-sealed-")+style);if(art==null)return false;
+        bool DrawGateArt(int style,bool open,float sx,float gy,float s,int land=0){var art=SpriteSlot((open?"gate-open-":"gate-sealed-")+style);if(art==null)return false;
             // Map-aligned gate pictures (owner's pack, 10 Nov 2026): 256 x 256 with the ground line 16 pixels above the bottom edge and the
             // platform about 87% of the width. Drawn one tile wide, so the platform fits inside the tile, its front corner just above
             // the tile's lower tip; open and sealed pictures of a gate share this placement.
             // 30% smaller than a full tile (owner request, 10 Nov 2026: "they must blend more into the landscape"), standing in the
             // middle of its tile on a soft patch of shade so it sits in the ground, not on top of it.
             float w=64*s*GateScale,h=w*art.height/Mathf.Max(1,art.width),foot=gy+TileHalf()*s*.5f;
-            var keep=GUI.color;GUI.color=new Color(keep.r,keep.g,keep.b,keep.a*.55f);GUI.DrawTexture(new Rect(sx-w*.46f,foot-w*.2f,w*.92f,w*.3f),IsoPicture(4,8,0));GUI.color=keep;
-            GUI.DrawTexture(new Rect(sx-w/2,foot+h*GateBaseline-h,w,h),art,ScaleMode.ScaleToFit,true);return true;}
+            // Set into the land (owner report, 11 Nov 2026: "crudely placed on a jungle tile"): the tile's own trees are left out so the
+            // gateway stands in a clearing, a patch of trodden ground in the land's own colours lies under it, and the land's own growth
+            // (ferns and bushes, drifts of sand or snow, loose rock) laps over the foot of its platform, so no hard edge meets the ground.
+            if(land<0||land>20||PixelArt.IsWater(land))land=0;
+            GUI.DrawTexture(new Rect(sx-w*.78f,foot-w*.5f,w*1.56f,w*.78f),IsoPicture(13,land,0));
+            var keep=GUI.color;GUI.color=new Color(keep.r,keep.g,keep.b,keep.a*.5f);GUI.DrawTexture(new Rect(sx-w*.46f,foot-w*.2f,w*.92f,w*.3f),IsoPicture(4,8,0));GUI.color=keep;
+            GUI.DrawTexture(new Rect(sx-w/2,foot+h*GateBaseline-h,w,h),art,ScaleMode.ScaleToFit,true);
+            GUI.DrawTexture(new Rect(sx-w*.62f,foot-w*.4f,w*1.24f,w*.62f),IsoPicture(14,land,0));return true;}
         const float GateScale=.7f;
         const float GateBaseline=16f/256f;
         float TileHalf(){return (world.Hex?PixelArt.HH:PixelArt.DH)/2f;}
@@ -232,6 +249,8 @@ namespace ParadigmRealm
         static int RuinStyle(Tile t){if(t.terrain==3||t.terrain==10||t.terrain==20)return 1;if(t.terrain==11||t.terrain==19)return 2;int[] rest={0,3};return rest[((t.x*37+t.y*11)&0x7fffffff)%2];}// the eastern temple (ruin-4) was removed at the owner's request, 10 Nov 2026; the file is kept
         // A settlement fits inside its own tile (owner request, 9 Nov 2026: no overlap onto the next tile): 54 pixels, its lower tip on the tile's.
         Rect SettlementRect(float sx,float gy,float s){float size=54*s;return new Rect(sx-size/2,gy+TileHalf()*s-size,size,size);}
+        // Ruins are 40% smaller than they were (owner request, 11 Nov 2026: too large for their tile): 29 pixels, not 48.
+        const float RuinSize=48*.6f;
         Texture2D ruinTexture;
         readonly Dictionary<int,Texture2D> gateTextures=new Dictionary<int,Texture2D>();
         readonly List<KeyValuePair<Unit,Rect>> isoUnitDraws=new List<KeyValuePair<Unit,Rect>>();readonly List<int> isoUnitCounts=new List<int>();
@@ -315,7 +334,7 @@ namespace ParadigmRealm
                 // A farm replaces whatever stood on the tile (owner request), and cleared savanna or grassland has no trees left.
                 bool meadow=t.terrain==0;bool built=t.farm||t.road||viewCities.ContainsKey(t.y*width+t.x);bool bare=t.farm||t.cleared&&(meadow||t.terrain==16);
                 // Dry steppe shows its own ground and no picture (its supplied picture left straight lines; owner request, 9 Nov 2026).
-                var sprite=water||bare||meadow&&built||t.terrain==20?null:IsoPicture(1,t.terrain,meadow?GroveVariant(t.x,t.y):IsoVariant(t.x,t.y));
+                var sprite=water||bare||meadow&&built||t.terrain==20||source.gateLink>0?null:IsoPicture(1,t.terrain,meadow?GroveVariant(t.x,t.y):IsoVariant(t.x,t.y));
                 City suburbOf;bool hamlet=false;if(!water&&suburbCells.TryGetValue(t.y*width+t.x,out suburbOf)&&(visible||suburbOf.owner==0)){sprite=HamletTexture(suburbOf,t.x,t.y);hamlet=true;}
                 City portOf=null;if(!water&&portCells.TryGetValue(t.y*width+t.x,out portOf)&&(visible||portOf.owner==0))sprite=IsoPicture(7,0,0);else portOf=null;
                 // Savanna acacias are drawn at 60% so they read as scattered trees on grassland, not woodland (owner request).
@@ -340,17 +359,19 @@ namespace ParadigmRealm
                 bool riverTile=t.terrain==7;if(riverTile)improvement=new Rect(improvement.x+dry.x,improvement.y+dry.y+8*s,improvement.width,improvement.height);
                 if(t.mine){var art=SpriteSlot("improve-mine");float size=42*s*dryScale;if(art!=null)GUI.DrawTexture(riverTile?new Rect(sx+dry.x-size/2,gy+dry.y-size*.7f,size,size):new Rect(sx-21*s,gy+TileHalf()*s-44*s,42*s,42*s),art,ScaleMode.ScaleToFit,true);else DrawArt("mine",improvement);}
                 if(t.fort){var art=SpriteSlot("improve-fort");float size=46*s*dryScale;if(art!=null)GUI.DrawTexture(riverTile?new Rect(sx+dry.x-size/2,gy+dry.y-size*.7f,size,size):new Rect(sx-23*s,gy+TileHalf()*s-48*s,46*s,46*s),art,ScaleMode.ScaleToFit,true);else DrawArt("fort",improvement);}
-                if(source.ruin){var ruinArt=SpriteSlot("ruin-"+RuinStyle(t));float size=48*s*dryScale;if(ruinArt!=null)GUI.DrawTexture(riverTile?new Rect(sx+dry.x-size/2,gy+dry.y-size*.7f,size,size):new Rect(sx-24*s,gy+TileHalf()*s-50*s,48*s,48*s),ruinArt,ScaleMode.ScaleToFit,true);else{if(ruinTexture==null)ruinTexture=PixelTexture(PixelArt.Ruins());GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),ruinTexture);}}
+                if(source.ruin){var ruinArt=SpriteSlot("ruin-"+RuinStyle(t));float size=RuinSize*s*Mathf.Max(.7f,dryScale);if(ruinArt!=null)GUI.DrawTexture(riverTile?new Rect(sx+dry.x-size/2,gy+dry.y-size*.7f,size,size):new Rect(sx-size/2,gy+TileHalf()*s*.55f-size*.86f,size,size),ruinArt,ScaleMode.ScaleToFit,true);else{if(ruinTexture==null)ruinTexture=PixelTexture(PixelArt.Ruins());GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),ruinTexture);}}
                 // A sealed gateway the player has found keeps its name on the map (owner request).
                 {var story=world.livingWorld?world.StoryAt(source.x,source.y):null;if(story!=null&&story.deaths>=LivingCatalog.GraveyardAt){isoCityNames.Add("Graveyard");isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(.7f,.7f,.75f));isoCityRefs.Add(null);}}
-                if(source.gateLink>0&&source.realm==0&&world.gatesLocked&&!world.GateOpen(source)&&world.gatesFound!=null&&world.gatesFound.Contains(source.y*width+source.x)){isoGates.Add(new Vector2(sx,gy));isoGateStyles.Add(world.GateStyle(source));isoCityNames.Add("Sealed gateway");isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(1f,.82f,.25f));isoCityRefs.Add(null);}
-                if(source.gateLink>0&&DrawGateArt(world.GateStyle(source),world.GateOpen(source),sx,gy,s)){}
+                if(source.gateLink>0&&source.realm==0&&world.gatesLocked&&!world.GateOpen(source)&&world.gatesFound!=null&&world.gatesFound.Contains(source.y*width+source.x)){isoGates.Add(new Vector2(sx+dry.x,gy+dry.y));isoGateStyles.Add(world.GateStyle(source));isoGateLand.Add(t.terrain);isoCityNames.Add("Sealed gateway");isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(1f,.82f,.25f));isoCityRefs.Add(null);}
+                if(source.gateLink>0&&DrawGateArt(world.GateStyle(source),world.GateOpen(source),sx+dry.x,gy+dry.y,s,t.terrain)){}
                 else if(source.gateLink>0){var twin=world.GateTwin(source);int kind=world.gatesLocked?PixelArt.SealedGate:source.realm>0?0:twin!=null&&world.RealmDiscovered(0,twin.realm)?twin.realm:0;Texture2D gateTex;if(!gateTextures.TryGetValue(kind,out gateTex)){gateTex=PixelTexture(PixelArt.GatewaySprite(kind));gateTextures[kind]=gateTex;}GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),gateTex);}
-                if(t.village&&visible){DrawArt("village",improvement);if(t.villageOwner>=0){var pole=new Rect(sx+10*s,gy-26*s,Mathf.Max(1,1.5f*s),12*s);Fill(pole,new Color(.3f,.22f,.14f));Fill(new Rect(pole.xMax,pole.y,7*s,5*s),nations[t.villageOwner]);}}
+                if(t.village&&visible){DrawArt(Art("village-camp")!=null?"village-camp":"village",improvement);if(t.villageOwner>=0){var pole=new Rect(sx+10*s,gy-26*s,Mathf.Max(1,1.5f*s),12*s);Fill(pole,new Color(.3f,.22f,.14f));Fill(new Rect(pole.xMax,pole.y,7*s,5*s),nations[t.villageOwner]);}}
                 if(!visible&&!string.IsNullOrEmpty(t.rememberedCity)){GUI.DrawTexture(SettlementRect(sx,gy,s),SettlementTexture(CityVisualEra(0),3,0,t.x+t.y),ScaleMode.ScaleToFit,true);isoCityNames.Add(t.rememberedCity);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(.6f,.62f,.66f));isoCityRefs.Add(null);}
                 GUI.color=old;
                 int cell=t.y*width+t.x;City c;viewCities.TryGetValue(cell,out c);if(c!=null&&!(c.owner==0||visible))c=null;
-                if(t.resource>0){isoResTiles.Add(t);isoResPos.Add(new Vector2(sx+dry.x,gy+dry.y-(t.terrain==7?10*s:0)));isoResSeen.Add(visible);}
+                // A resource is drawn with its own tile (owner report, 11 Nov 2026): the trees of the tiles in front of it cover it, and the
+                // animals and units on its tile stand in front of it. It used to go on after every tile, over trees and animals alike.
+                if(t.resource>0){var resInk=GUI.color;if(!visible)GUI.color=Remembered;float rx=sx+dry.x,ry=gy+dry.y-(t.terrain==7?10*s:0);DrawResource(t,new Rect(rx-36*s,ry+15*s-61*s,61*s,61*s));GUI.color=resInk;}
                 if(c!=null){DrawCityArt(c,SettlementRect(sx,gy,s));isoCityNames.Add(c.name);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(nations[c.owner]);isoCityRefs.Add(c);}
                 Unit first=null,picked=null;int count=0;List<Unit> stackAt;
                 if(viewStacks.TryGetValue(cell,out stackAt))foreach(var a in stackAt){if(!(a.owner==0||visible)||Gliding(a.id))continue;count++;if(first==null)first=a;if(a.id==selected)picked=a;}
@@ -379,12 +400,12 @@ namespace ParadigmRealm
             GUI.color=MistWisp;foreach(var f in isoFog){if(f.z!=0)continue;float drift=clock*2.2f%64f,sway=Mathf.Sin(clock*.2f+f.x*.02f)*6*s;GUI.DrawTexture(new Rect(f.x-64*s+drift*s-32*s,f.y-30*s+sway,128*s,60*s),mistWisp);}
             GUI.color=before;
             // A found gateway stands clear of the mist, so it stays on the map however far the fog closes in.
-            for(int gi=0;gi<isoGates.Count;gi++){var g=isoGates[gi];if(gi<isoGateStyles.Count&&DrawGateArt(isoGateStyles[gi],false,g.x,g.y,s))continue;Texture2D gateTex;if(!gateTextures.TryGetValue(PixelArt.SealedGate,out gateTex)){gateTex=PixelTexture(PixelArt.GatewaySprite(PixelArt.SealedGate));gateTextures[PixelArt.SealedGate]=gateTex;}GUI.DrawTexture(new Rect(g.x-PixelArt.AX*s,g.y-PixelArt.AY*s,64*s,64*s),gateTex);}isoGates.Clear();isoGateStyles.Clear();
+            for(int gi=0;gi<isoGates.Count;gi++){var g=isoGates[gi];if(gi<isoGateStyles.Count&&DrawGateArt(isoGateStyles[gi],false,g.x,g.y,s,gi<isoGateLand.Count?isoGateLand[gi]:0))continue;Texture2D gateTex;if(!gateTextures.TryGetValue(PixelArt.SealedGate,out gateTex)){gateTex=PixelTexture(PixelArt.GatewaySprite(PixelArt.SealedGate));gateTextures[PixelArt.SealedGate]=gateTex;}GUI.DrawTexture(new Rect(g.x-PixelArt.AX*s,g.y-PixelArt.AY*s,64*s,64*s),gateTex);}isoGates.Clear();isoGateStyles.Clear();isoGateLand.Clear();
             // Units stand in front of the cloud banks of unexplored land next to them (owner request): drawn again over the mist.
             for(int n=0;n<isoUnitDraws.Count;n++)DrawUnitArt(isoUnitDraws[n].Key,isoUnitDraws[n].Value,isoUnitCounts[n]);
             // Resource badges go on after every tile so the tiles in front can never cover them.
             // A resource on land that is remembered but not watched now is shadowed like the land under it (owner request, 10 Nov 2026).
-            {var resInk=GUI.color;for(int n=0;n<isoResTiles.Count;n++){var p=isoResPos[n];GUI.color=isoResSeen[n]?resInk:ResourceRemembered;DrawResource(isoResTiles[n],new Rect(p.x-36*s,p.y+15*s-61*s,61*s,61*s));}GUI.color=resInk;}
+            // (Resources are drawn with their tiles now, so trees in front cover them and animals stand before them.)
             // City plates go on after the tiles (so no ground covers them), then any unit standing over a plate is drawn again on
             // top, so plates never hide units (owner request).
             var plates=new List<Rect>();

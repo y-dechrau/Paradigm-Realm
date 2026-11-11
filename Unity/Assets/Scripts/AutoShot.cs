@@ -15,7 +15,7 @@ namespace ParadigmRealm
         {
             var args=Environment.GetCommandLineArgs();int i;
             // A test run keeps its saves and autosaves in its own output folder, never among the player's saved games.
-            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
+            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
             i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
             i=Array.IndexOf(args,"-frameProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FrameProbe(args[i+1],i+2<args.Length?int.Parse(args[i+2]):4,i+3<args.Length?int.Parse(args[i+3]):120));
@@ -26,6 +26,7 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-walkProbe");if(i>=0&&i+1<args.Length)StartCoroutine(WalkProbe(args[i+1]));
             i=Array.IndexOf(args,"-dipShot");if(i>=0&&i+1<args.Length)StartCoroutine(DipShot(args[i+1]));
             i=Array.IndexOf(args,"-mapShot");if(i>=0&&i+1<args.Length)StartCoroutine(MapShot(args[i+1]));
+            i=Array.IndexOf(args,"-lookShot");if(i>=0&&i+1<args.Length)StartCoroutine(LookShot(args[i+1]));
         }
         // Development aid: "-mapShot <folder>" starts a fixed game with the whole home world found and saves close views of a river
         // mouth, a farm and a fort on a river, hills, a volcano with a unit on it, sealed and open gateways, resources on land
@@ -33,6 +34,57 @@ namespace ParadigmRealm
         bool plateHoverProbe;
         // A shot of the map alone: any story panel, first-contact talk or message the test game raised is closed first.
         IEnumerator CleanShot(string folder,string name){for(int k=0;k<3;k++){gateScene=null;detailsScreen="";diplomacyChooser=false;world.newContacts.Clear();if(world.rivalCalls!=null)world.rivalCalls.Clear();world.researchPrompts.Clear();world.buildPrompts.Clear();yield return null;}yield return Shot(folder,name);}
+        // Development aid: "-lookShot <folder>" photographs the owner's requests of 11 Nov 2026: river junctions, gateways in jungle,
+        // forest, desert and snow, smaller ruins, the village camp, resources behind trees and under units, guard pictures, roads of
+        // all six ages and painted grassland. Then quits.
+        IEnumerator LookShot(string folder)
+        {
+            Directory.CreateDirectory(folder);yield return Frames(5);
+            seedText="421";mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;
+            var founder=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);var home=founder!=null?world.Found(founder):null;
+            if(world.gatesFound==null)world.gatesFound=new System.Collections.Generic.List<int>();foreach(var g in world.tiles.Where(t=>t.gateLink>0)){int cell=g.y*world.Width+g.x;if(!world.gatesFound.Contains(cell))world.gatesFound.Add(cell);}
+            foreach(var t in world.tiles)if(t.realm==0)t.seen=true;for(int k=0;k<world.nations[0].tech.Length;k++)world.nations[0].tech[k]=true;world.tech=world.nations[0].tech;yield return Frames(3);
+            var log=new System.Text.StringBuilder();int[] di=world.Hex?World.HexDi:new[]{0,1,0,-1},dj=world.Hex?World.HexDj:new[]{-1,0,1,0};
+            Func<int,int> bits=m=>{int n=0;for(int k=0;k<6;k++)if(m>0&&(m&(1<<k))!=0)n++;return n;};
+            // River junctions: the largest rivers where two streams meet, and a river beside a lake.
+            // This map's rivers are short, so two tributaries are dug into the longest ones for the pictures.
+            {Func<Tile,Tile,bool> clear=(q,but)=>q!=null&&q.realm==0&&!PixelArt.IsWater(q.terrain)&&q.terrain!=7&&q.gateLink==0&&!world.cities.Any(c=>c.x==q.x&&c.y==q.y)&&Enumerable.Range(0,di.Length).All(k=>{var z=world.Step(q.x,q.y,di[k],dj[k]);return z==null||z==but||z.terrain!=7&&!PixelArt.IsWater(z.terrain);});int dug=0;
+             foreach(var trunk in world.tiles.Where(t=>t.realm==0&&t.terrain==7&&world.RiverDown(t)>=0).OrderByDescending(t=>world.RiverFlow(t)).ToList()){if(dug>=2)break;
+                 for(int k=0;k<di.Length;k++){var a=world.Step(trunk.x,trunk.y,di[k],dj[k]);if(!clear(a,trunk))continue;Tile b=null;for(int k2=0;k2<di.Length&&b==null;k2++){var z=world.Step(a.x,a.y,di[k2],dj[k2]);if(z!=trunk&&clear(z,a))b=z;}if(b==null)continue;a.terrain=7;b.terrain=7;dug++;break;}}
+             world.ResetRiverLinks();log.AppendLine("tributaries dug for the pictures: "+dug);}
+            {var rivers=world.tiles.Where(t=>t.realm==0&&t.terrain==7).ToList();var joins=rivers.Where(t=>bits(world.RiverLinks(t))>=3).OrderByDescending(t=>world.RiverFlow(t)).Take(3).ToList();
+             log.AppendLine("river tiles "+rivers.Count+", junctions "+rivers.Count(t=>bits(world.RiverLinks(t))>=3)+", largest flow "+(rivers.Count>0?rivers.Max(t=>world.RiverFlow(t)):0)+", without outflow "+rivers.Count(t=>world.RiverDown(t)<0));
+             int n=0;foreach(var j in joins){isoWidth=128;FocusTile(j.x,j.y);yield return CleanShot(folder,"1-river-junction-"+(n++)+".bmp");}
+             if(joins.Count>0){isoWidth=64;FocusTile(joins[0].x,joins[0].y);yield return CleanShot(folder,"1b-river-junction-far.bmp");}
+             var outlet=rivers.FirstOrDefault(t=>Enumerable.Range(0,di.Length).Any(k=>{var q=world.Step(t.x,t.y,di[k],dj[k]);return q!=null&&q.terrain==6;}));
+             if(outlet!=null){isoWidth=128;FocusTile(outlet.x,outlet.y);yield return CleanShot(folder,"1c-river-and-lake.bmp");}}
+            // Gateways standing in jungle, forest, desert and snow forest.
+            {var gates=world.tiles.Where(t=>t.realm==0&&t.gateLink>0).OrderBy(t=>world.GateStyle(t)).ToList();int[] lands={11,1,3,13};log.AppendLine("gateways "+gates.Count+", on rivers "+gates.Count(g=>g.terrain==7));
+             for(int i=0;i<Math.Min(4,gates.Count);i++){var g=gates[i];g.terrain=lands[i];g.farm=false;g.road=false;
+                 for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){var q=world.StepIn(g.x,g.y,dx,dy,2);if(q!=null&&!PixelArt.IsWater(q.terrain)&&q.terrain!=7&&!world.cities.Any(c=>c.x==q.x&&c.y==q.y))q.terrain=lands[i];}
+                 isoWidth=128;FocusTile(g.x,g.y);yield return CleanShot(folder,"2-gate-land-"+lands[i]+".bmp");if(i==0){isoWidth=64;yield return CleanShot(folder,"2b-gate-jungle-far.bmp");}}
+             if(gates.Count>0){world.OpenGate(gates[0]);gateScene=null;isoWidth=128;FocusTile(gates[0].x,gates[0].y);yield return CleanShot(folder,"2c-gate-open-jungle.bmp");}}
+            // Ruins, the village camp, resources and guards, set out round the capital.
+            if(home!=null){var spots=world.tiles.Where(t=>t.realm==0&&world.Distance(t.x,t.y,home.x,home.y)>=2&&world.Distance(t.x,t.y,home.x,home.y)<=3&&!World.IsImpassable(t.terrain)&&!PixelArt.IsWater(t.terrain)&&t.terrain!=7&&t.gateLink==0).OrderBy(t=>t.y*world.Width+t.x).ToList();
+                log.AppendLine("spots round the capital "+spots.Count);
+                if(spots.Count>=9){foreach(var q in spots){q.resource=0;q.village=false;q.ruin=false;}
+                    spots[0].terrain=0;spots[0].ruin=true;spots[1].terrain=16;spots[1].ruin=true;spots[2].terrain=11;spots[2].ruin=true;spots[3].terrain=0;spots[3].village=true;
+                    spots[4].terrain=0;spots[4].resource=3;world.Add(0,2,spots[4].x,spots[4].y);spots[5].terrain=1;spots[5].resource=2;
+                    int[] types={2,7,5};for(int k=0;k<3;k++){spots[6+k].terrain=0;var guard=world.Add(0,types[k],spots[6+k].x,spots[6+k].y);guard.fortified=true;}
+                    isoWidth=128;FocusTile(home.x,home.y);yield return CleanShot(folder,"3-ruins-village-resources-guards.bmp");isoWidth=64;yield return CleanShot(folder,"3b-round-the-capital-far.bmp");
+                    foreach(int k in new[]{0,3,5,6}){isoWidth=128;FocusTile(spots[k].x,spots[k].y);yield return CleanShot(folder,"3c-close-"+k+".bmp");}}
+                // Roads of every age: a road out of the capital with a bend and a branch.
+                {var at=world.At(home.x,home.y);var line=new System.Collections.Generic.List<Tile>();int[] turns={0,0,1,0,0,5,0};Tile fork=null;
+                 foreach(int d in turns){var q=world.Step(at.x,at.y,di[d%di.Length],dj[d%dj.Length]);if(q==null||PixelArt.IsWater(q.terrain)||World.IsImpassable(q.terrain))break;q.road=true;q.terrain=0;q.cleared=true;q.resource=0;line.Add(q);at=q;if(line.Count==3)fork=q;}
+                 if(fork!=null){at=fork;for(int k=0;k<3;k++){var q=world.Step(at.x,at.y,di[2%di.Length],dj[2%dj.Length]);if(q==null||PixelArt.IsWater(q.terrain)||World.IsImpassable(q.terrain))break;q.road=true;q.terrain=0;q.cleared=true;q.resource=0;at=q;}}
+                 log.AppendLine("road tiles laid "+line.Count);var mid=line.Count>2?line[2]:world.At(home.x,home.y);
+                 for(int era=0;era<PixelArt.RoadEras;era++){roadEraProbe=era;isoWidth=128;FocusTile(mid.x,mid.y);yield return CleanShot(folder,"4-road-age-"+era+".bmp");}
+                 roadEraProbe=2;isoWidth=64;yield return CleanShot(folder,"4b-road-far.bmp");roadEraProbe=-1;}}
+            // Grassland.
+            {var meadow=world.tiles.Where(t=>t.realm==0&&t.terrain==0).OrderByDescending(t=>{int n=0;for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){var q=world.StepIn(t.x,t.y,dx,dy,2);if(q!=null&&q.terrain==0)n++;}return n;}).ThenBy(t=>t.y*world.Width+t.x).FirstOrDefault();
+             if(meadow!=null){isoWidth=128;FocusTile(meadow.x,meadow.y);yield return CleanShot(folder,"5-grassland.bmp");isoWidth=64;yield return CleanShot(folder,"5b-grassland-far.bmp");}}
+            File.WriteAllText(Path.Combine(folder,"look.txt"),log.ToString());Application.Quit();
+        }
         IEnumerator MapShot(string folder)
         {
             Directory.CreateDirectory(folder);yield return Frames(5);

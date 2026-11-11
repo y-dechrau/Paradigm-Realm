@@ -86,20 +86,116 @@ namespace ParadigmRealm
         }
         static readonly Dictionary<int,PixelCanvas> hexRoads=new Dictionary<int,PixelCanvas>();
         // mask bits follow the six directions E, SE, SW, W, NW, NE.
-        public static PixelCanvas HexRoad(int mask)
+        public static PixelCanvas HexRoad(int mask,int era=0)
         {
-            PixelCanvas cv;if(hexRoads.TryGetValue(mask,out cv))return cv;cv=new PixelCanvas(HW,HH);
-            for(int layer=0;layer<2;layer++)
+            int key=mask|era<<8;PixelCanvas cv;if(hexRoads.TryGetValue(key,out cv))return cv;
+            var ex=new double[6];var ey=new double[6];for(int k=0;k<6;k++){ex[k]=HW/2.0+HexEdgeX[k];ey[k]=HH/2.0+HexEdgeY[k];}
+            cv=PaintRoad(HW,HH,HW/2.0,HH/2.0,ex,ey,mask,era,1.25);hexRoads[key]=cv;return cv;
+        }
+        // ---------- roads through the ages (owner request, 11 Nov 2026) ----------
+        // A road is built the way its owner's age built roads, after the history of road making (History of road transport and
+        // Roman roads, Wikipedia; Pavement Interactive, "Pavement history"):
+        //  0 Dawn Age: a beaten earth track worn by feet, hooves and sledges; nothing is built, the edges are ragged.
+        //  1 Classical Age: the Roman paved road: fitted stone slabs on a deep bed, cambered, between raised kerb stones.
+        //  2 Medieval Age: the paving is no longer kept up: a rutted cart road of mud with stretches of cobble.
+        //  3 Industrial Age: macadam (McAdam, about 1820): graded crushed stone, cambered, a drainage ditch on each side.
+        //  4 Modern Age: asphalt with painted edge lines and centre dashes, on gravel shoulders.
+        //  5 Dimensional Age: a seamless pale causeway edged with strips of light.
+        // The line itself is laid out as a road is: two arms join in one smooth bend through the tile, and any others branch from it.
+        public const int RoadEras=6;
+        const double RoadWidth=1.6; // roads are drawn this much wider than their design, so their surface can be read on the map
+        static PixelCanvas PaintRoad(int w,int h,double cx,double cy,double[] ex,double[] ey,int mask,int era,double squash)
+        {
+            var cv=new PixelCanvas(w,h);var arms=new List<int>();for(int k=0;k<ex.Length;k++)if((mask&(1<<k))!=0)arms.Add(k);
+            var px=new List<double>();var py=new List<double>();var pa=new List<double>();var pt=new List<double>();
+            Action<double,double,double,double,double,double> curve=(x0,y0,x1,y1,x2,y2)=>
+            {double along=0,lx=x0,ly=y0;for(int i=0;i<=80;i++){double t=i/80.0,a=(1-t)*(1-t),b=2*t*(1-t),c=t*t,x=a*x0+b*x1+c*x2,y=a*y0+b*y1+c*y2;along+=Math.Sqrt((x-lx)*(x-lx)+(y-ly)*(y-ly)*squash*squash);
+                double gx=2*(1-t)*(x1-x0)+2*t*(x2-x1),gy=(2*(1-t)*(y1-y0)+2*t*(y2-y1))*squash;lx=x;ly=y;px.Add(x);py.Add(y);pa.Add(along);pt.Add(Math.Atan2(gy,gx));}};
+            if(arms.Count==0)curve(cx-3,cy,cx,cy,cx+3,cy);
+            else if(arms.Count==1)curve(ex[arms[0]],ey[arms[0]],(ex[arms[0]]+cx)/2,(ey[arms[0]]+cy)/2,cx,cy);
+            else
             {
-                uint col=layer==0?Rgb(70,52,32):Rgb(214,184,126);int rad=layer==0?2:1;
-                for(int k=0;k<6;k++)
-                {
-                    if((mask&(1<<k))==0)continue;
-                    for(int s=0;s<=24;s++){double t=s/24.0;int x=(int)(HW/2+HexEdgeX[k]*t),y=(int)(HH/2+HexEdgeY[k]*t);for(int dy=-rad;dy<=rad;dy++)for(int dx=-rad;dx<=rad;dx++)cv.Set(x+dx,y+dy,col);}
-                }
-                for(int dy=-rad;dy<=rad;dy++)for(int dx=-rad;dx<=rad;dx++)cv.Set(HW/2+dx,HH/2+dy,col);
+                // The through road is the pair of arms most nearly opposite each other; the others branch from its middle.
+                int a0=arms[0],a1=arms[1];double best=9;
+                foreach(int i in arms)foreach(int j in arms){if(j<=i)continue;double ix=ex[i]-cx,iy=ey[i]-cy,jx=ex[j]-cx,jy=ey[j]-cy,dot=(ix*jx+iy*jy)/Math.Sqrt((ix*ix+iy*iy)*(jx*jx+jy*jy));if(dot<best){best=dot;a0=i;a1=j;}}
+                curve(ex[a0],ey[a0],cx,cy,ex[a1],ey[a1]);double mx=.25*ex[a0]+.5*cx+.25*ex[a1],my=.25*ey[a0]+.5*cy+.25*ey[a1];
+                foreach(int k in arms)if(k!=a0&&k!=a1)curve(ex[k],ey[k],(ex[k]+cx)/2,(ey[k]+cy)/2,mx,my);
             }
-            hexRoads[mask]=cv;return cv;
+            for(int y=0;y<h;y++)for(int x=0;x<w;x++)
+            {
+                double best=99,along=0,side=1;
+                for(int i=0;i<px.Count;i++){double dx=x+.5-px[i],dy=(y+.5-py[i])*squash,d=dx*dx+dy*dy;if(d<best){best=d;along=pa[i];side=Math.Cos(pt[i])*dy-Math.Sin(pt[i])*dx>=0?1:-1;}}
+                if(best>30)continue;uint c=RoadPixel(era,Math.Sqrt(best)/RoadWidth,side,along/RoadWidth,x,y);if(c!=0)cv.Set(x,y,c);
+            }
+            return cv;
+        }
+        // One pixel of road: d is the distance from the road's centre line, side which side of it, along the distance travelled.
+        static uint RoadPixel(int era,double d,double side,double along,int x,int y)
+        {
+            double n=Hsh(x,y,811);
+            switch(era)
+            {
+                case 0:{double half=1.6+.6*VNoise(along/5.0,side,813);if(d>half)return 0;if(d>half-.55)return n>.5?0:Rgb(108,82,52);
+                    return d<.6?Rgb(178,142,94):n>.8?Rgb(122,94,60):Rgb(152,118,76);}
+                case 1:{if(d>2.7)return 0;if(d>1.9)return ((int)Math.Floor(along/2.0)&1)==0?Rgb(208,204,190):Rgb(176,172,160);
+                    double slab=along/2.6+(side>0?.5:0);int id=(int)Math.Floor(slab);if(slab-id<.2||d<.4&&(id&1)==0)return Rgb(86,84,86);
+                    double tone=Hsh(id,side>0?1:0,815);return tone>.66?Rgb(162,160,154):tone>.33?Rgb(142,140,136):Rgb(126,124,122);}
+                case 2:{double half=2.2+.4*VNoise(along/6.0,1,817);if(d>half)return 0;if(d>half-.6)return n>.5?Rgb(92,74,52):Rgb(110,90,62);
+                    if(Math.Abs(d-.95)<.38)return Rgb(84,66,46);
+                    if(VNoise(along/9.0,3,819)>.42)return n>.66?Rgb(166,154,134):n>.33?Rgb(140,128,110):Rgb(114,104,90);
+                    return n>.7?Rgb(152,124,86):Rgb(134,108,74);}
+                case 3:{if(d>2.9)return 0;if(d>2.3)return Rgb(74,66,54);
+                    uint c=d<.8?Rgb(180,172,156):Rgb(160,152,138);return n>.85?Shade(c,1.1):n<.12?Shade(c,.88):c;}
+                case 4:{if(d>3.0)return 0;if(d>2.6)return n>.5?Rgb(152,148,136):Rgb(132,128,118);
+                    if(Math.Abs(d-2.05)<.3)return Rgb(228,228,220);
+                    if(d<.5&&((int)Math.Floor(along/3.0)&1)==0)return Rgb(238,208,86);
+                    return n>.9?Rgb(74,76,82):Rgb(56,58,64);}
+                default:{if(d>2.9)return 0;if(d>2.3)return Rgb(40,60,92);
+                    if(Math.Abs(d-1.6)<.35)return ((int)Math.Floor(along/2.0)&3)==0?Rgb(204,255,255):Rgb(92,222,236);
+                    return d<.5?Rgb(238,242,250):Rgb(208,214,228);}
+            }
+        }
+        // ---------- gateways set into the land (owner report, 11 Nov 2026) ----------
+        // The ground a gateway stands on: a soft-edged clearing of trodden earth in the land's own colours, with a few worn
+        // flagstones in the middle. 64 x 32, drawn under the gateway.
+        static readonly Dictionary<int,PixelCanvas> gateGround=new Dictionary<int,PixelCanvas>();
+        public static PixelCanvas GateClearing(int t)
+        {
+            PixelCanvas cv;if(gateGround.TryGetValue(t,out cv))return cv;cv=new PixelCanvas(64,32);if(t<0||t>=TerrainRamp.Length)t=0;var ramp=TerrainRamp[t];
+            bool snow=t==8||t==13||t==14||t==15,dry=t==3||t==10||t==5||t==17||t==18;
+            uint earth=snow?MixC(ramp[2],Rgb(150,152,156),.3):dry?Shade(ramp[1],.92):MixC(ramp[1],Rgb(104,84,58),.55);
+            for(int y=0;y<32;y++)for(int x=0;x<64;x++)
+            {
+                double u=(x+.5-32)/32,v=(y+.5-16)/16,d=Math.Sqrt(u*u+v*v)+(VNoise(x/6.0,y/4.0,901+t)-.5)*.34;if(d>=1)continue;
+                double a=Math.Min(1,(1-d)*2.1);a=a*a*(3-2*a)*.88;
+                uint c=MixC(earth,ramp[2],VNoise(x/4.0,y/3.0,903)*.6);if(Hsh(x,y,905)>.93)c=Shade(c,.8);
+                if(d<.5&&Hsh(x>>1,y>>1,907+t)>.74)c=MixC(c,Rgb(128,124,120),.5);
+                cv.Set(x,y,Rgb(R(c),G(c),B(c),(int)(a*255)));
+            }
+            gateGround[t]=cv;return cv;
+        }
+        // What grows or drifts against the foot of a gateway: clumps of the land's own cover (ferns and bushes, sand, snow, loose
+        // rock) along the two front edges of its platform, thickest at the corners and thinning toward the steps, which stay
+        // clear. 64 x 32, drawn over the gateway.
+        static readonly Dictionary<int,PixelCanvas> gateGrowth=new Dictionary<int,PixelCanvas>();
+        public static PixelCanvas GateOvergrowth(int t)
+        {
+            PixelCanvas cv;if(gateGrowth.TryGetValue(t,out cv))return cv;cv=new PixelCanvas(64,32);if(t<0||t>=TerrainRamp.Length)t=0;var ramp=TerrainRamp[t];
+            bool leafy=t==0||t==1||t==2||t==7||t==9||t==11||t==16||t==19||t==20;
+            double[] along={-.2,-.06,.06,.18,.3,.42,.54,.64};
+            for(int edge=0;edge<2;edge++)for(int n=0;n<along.Length;n++)
+            {
+                double f=along[n]+(Hsh(n,edge,911+t)-.5)*.07,x0=edge==0?9.5:54.5,cx=x0+(32-x0)*f+(Hsh(n,edge,913+t)-.5)*2,cy=9.5+(20.6-9.5)*f+2.2+(Hsh(n,edge,915+t)-.5)*2;
+                double r=Math.Max(1.8,4.4-3.4*Math.Max(0,f))*(.8+.4*Hsh(n,edge,917+t));if(Hsh(n,edge,919+t)>.82&&f>.2)continue;
+                for(int dy=-6;dy<=6;dy++)for(int dx=-6;dx<=6;dx++)
+                {
+                    double q=dx*dx/(r*r)+dy*dy/(r*r*.62);if(q>1)continue;int x=(int)Math.Round(cx)+dx,y=(int)Math.Round(cy)+dy;
+                    double lit=.42-(dx+dy*1.3)/(r*3.2)+(Hsh(x,y,921)-.5)*.3;uint c=RampPick(ramp,lit);if(q>.72&&dy>0)c=Shade(c,.72);
+                    cv.Set(x,y,c);
+                }
+                if(leafy)for(int b=0;b<3;b++){int bx=(int)Math.Round(cx+(b-1)*r*.6),top=(int)Math.Round(cy-r*.75)-1-(int)(Hsh(n*3+b,edge,923+t)*2.4);for(int y=top;y<=top+2;y++)cv.Set(bx,y,y==top?ramp[4]:ramp[3]);}
+            }
+            gateGrowth[t]=cv;return cv;
         }
         public static void ScreenOf(double i,double j,double camI,double camJ,double tw,out double sx,out double sy){double di=i-camI,dj=j-camJ;sx=(di-dj)*tw/2;sy=(di+dj)*tw*DH/DW/2;}
         public static void PickOf(double dx,double dy,double camI,double camJ,double tw,out int i,out int j){double a=dx/(tw/2),b=dy/(tw*DH/DW/2);i=(int)Math.Floor(camI+(a+b)/2+.5);j=(int)Math.Floor(camJ+(b-a)/2+.5);}
@@ -173,6 +269,11 @@ namespace ParadigmRealm
         public static bool IsWater(int t){return t==4||t==6||t==12;}
         public static int Group(int t){return RampGroup[t];}
 
+        // The meadow painter's colours, shadow to sunlight, and a smooth mix between them.
+        static readonly uint[] GrassPaint={Rgb(26,74,54),Rgb(42,104,50),Rgb(68,136,48),Rgb(102,164,54),Rgb(148,190,66),Rgb(198,216,104)};
+        static uint PaintMix(uint[] paints,double v){double f=Math.Max(0,Math.Min(.9999,v))*(paints.Length-1);int i=(int)f;return MixC(paints[i],paints[i+1],f-i);}
+        // Gently rolling ground under the grass: broad swells with smaller rises on them (0..1).
+        static double GrassHeight(int x,int y,int s){return .62*VNoise(x/30.0,y/19.0,s+51)+.38*VNoise(x/12.0,y/8.0,s+53);}
         // ---------- ground textures (64 x 40 rectangles; noise is only slightly squashed vertically for the 3/4 view) ----------
         static uint BasePixel(int t,int x,int y,int variant,int frame)
         {
@@ -197,13 +298,27 @@ namespace ParadigmRealm
             // per-pixel speckle.
             if(t==0||t==7||t==2)
             {
-                double broad=VNoise(x/15.0,y/9.0,s+41),stroke=VNoise((x+y*.7)/6.5,(y-x*.35)/2.6,s+43),fine=VNoise(x/2.6,y/1.7,s+45);
-                double gv=.18+.8*(.44*broad+.36*stroke+.14*fine+.06*Hsh(x,y,s+2))+(Bay(x,y)-.5)*.08;
-                uint g=RampPick(Grass,gv);
-                if(broad>.66)g=MixC(g,Rgb(176,184,82),(broad-.66)*1.3);else if(broad<.32)g=MixC(g,Rgb(36,84,52),(.32-broad)*1.1);
-                double blade=Hsh(x,y,s+47);
-                if(blade>.975)g=MixC(g,Grass[4],.45);else if(Hsh(x,y-1,s+47)>.975)g=MixC(g,Grass[0],.45);
-                if(t!=2&&Hsh(x,y,s+21)>.996)g=Flowers[(int)(Hsh(x,y,s+22)*4)%4];
+                // Painted with depth (owner request, 11 Nov 2026: "more depth with a paint art design"), the way a landscape painter
+                // builds a meadow: a smooth underpainting of rolling ground lit from the north-west, so rises catch the light and
+                // hollows fall into cool shadow; over it two layers of short brush dabs, each one flat tone with a lit upper edge;
+                // warm sunlit and cool clover-green passages; then grass tufts and drifts of wild flowers. Colours are mixed
+                // smoothly between six paints instead of being picked from five flat steps.
+                const int gs=3301;
+                double h0=GrassHeight(x,y,gs),light=1+((GrassHeight(x+2,y,gs)-h0)+(GrassHeight(x,y+2,gs)-h0)*1.25)*3.4;
+                double under=.62*VNoise(x/21.0,y/13.0,gs+41)+.38*VNoise(x/8.0,y/5.0,gs+43);
+                // Large dabs run down and to the right, the small ones across them.
+                double u=(x*.89+y*.68+5*VNoise(x/14.0,y/14.0,gs+63))/7.5,v=(-x*.45+y*1.34+4*VNoise(x/11.0,y/11.0,gs+65))/2.8;int row=(int)Math.Floor(v);u+=Hsh(row,7,gs+67);int cell=(int)Math.Floor(u);
+                double dab=(Hsh(cell,row,gs+69)-.5)*.3+(.5-(v-row))*.1;
+                double u2=(x*.6-y*1.1+3*VNoise(x/9.0,y/9.0,gs+75))/4.2,v2=(x*.75+y*.9)/1.9;int row2=(int)Math.Floor(v2);u2+=Hsh(row2,3,gs+77);int cell2=(int)Math.Floor(u2);double pick=Hsh(cell2,row2,gs+79);
+                if(pick>.62)dab+=(Hsh(cell2,row2,gs+81)-.5)*.34;
+                double tone=Math.Max(0,Math.Min(1,.12+.74*under+dab+(h0-.5)*.22));
+                uint g=PaintMix(GrassPaint,tone);
+                double warm=VNoise(x/34.0,y/22.0,gs+71);
+                if(warm>.6)g=MixC(g,Rgb(178,176,74),Math.Min(.42,(warm-.6)*1.2));else if(warm<.32)g=MixC(g,Rgb(34,104,84),Math.Min(.4,(.32-warm)*1.3));
+                g=Shade(g,Math.Max(.78,Math.Min(1.22,light)));
+                // Tufts: a lit blade over a dark root. Flowers gather in drifts.
+                if(Hsh(x,y,gs+47)>.982)g=MixC(g,Rgb(206,226,116),.5);else if(Hsh(x,y-1,gs+47)>.982)g=Shade(g,.7);
+                if(t!=2&&(Hsh(x,y,gs+21)>.997||VNoise(x/9.0,y/6.0,gs+73)>.74&&Hsh(x,y,gs+23)>.9))g=Flowers[(int)(Hsh(x,y,gs+22)*4)%4];
                 return g;
             }
             // Dry steppe: pale straw and sage grass combed by the wind into long horizontal streaks, with bare earth showing
@@ -1069,7 +1184,9 @@ namespace ParadigmRealm
             var cv=new PixelCanvas(TW,TH);uint wet=Rgb(40,110,160);
             var ends=new List<int>();for(int k=0;k<4;k++)if((mask&(1<<k))!=0)ends.Add(k);
             if(ends.Count==0)ends.Add(-1);
-            foreach(int k in ends)
+            bool tree=RiverTree(mask,4);
+            if(tree){var ex=new double[4];var ey=new double[4];for(int k=0;k<4;k++){ex[k]=MidX[k]+.5;ey[k]=MidY[k]+.5;}RiverChannel(cv,TW/2.0,TH/2.0,ex,ey,mask,variant,1,wet);ends.Clear();ends.Add(0);ends.Add(1);}
+            else foreach(int k in ends)
             {
                 int ex=k<0?TW/2:MidX[k],ey=k<0?TH/2:MidY[k];bool vertical=k==0||k==2;
                 // Each arm bends in a gentle S between the centre and the tile edge; both ends stay fixed so rivers join up.
@@ -1091,6 +1208,50 @@ namespace ParadigmRealm
                 else o.Set(x,y,Hsh(x,y,5)>.9?Rgb(86,164,200):((x+y)%7!=0?Rgb(52,128,176):Rgb(64,140,184)));
             }
             return o;
+        }
+        // ---------- river junctions (owner report, 11 Nov 2026: "how rivers merge should be more realistic") ----------
+        // Every arm of a river tile used to run to the tile's centre, so three channels met at a point at equal angles, like a road
+        // junction. Rivers do not join like that (Horton 1945 and later work on junction angles; Leopold and Maddock 1953 on
+        // channel width):
+        //  - water flows one way, so a tile has one outflow and its channels only ever join going downstream, never part;
+        //  - the larger stream carries straight on as the trunk, in one smooth bend from where it enters to where it leaves;
+        //  - a tributary swings round to enter the trunk at an acute angle, pointing downstream, part-way along it;
+        //  - a channel's width grows with the water it carries (about the square root of the flow), so headwaters are thin, the
+        //    river is wider below every junction, and a spring begins as a trickle.
+        // The mask carries what is needed beside the arms: the outflow side (bits 6-8, side + 1; 0 when not known, which keeps the
+        // old drawing) and a width class of 0 to 3 for each arm (two bits each from bit 9), the same on both tiles of a shared edge.
+        public const int RiverDownShift=6,RiverWidthShift=9;
+        static readonly double[] RiverRadius={1.45,2.0,2.6,3.2};
+        public static int RiverWidthClass(int flow){return flow<3?0:flow<7?1:flow<15?2:3;}
+        static bool RiverTree(int mask,int dirs){int down=((mask>>RiverDownShift)&7)-1;return down>=0&&down<dirs&&(mask&(1<<down))!=0;}
+        static void RiverChannel(PixelCanvas cv,double cx,double cy,double[] ex,double[] ey,int mask,int variant,double squash,uint wet)
+        {
+            int dirs=ex.Length,down=((mask>>RiverDownShift)&7)-1;var ups=new List<int>();
+            for(int k=0;k<dirs;k++)if(k!=down&&(mask&(1<<k))!=0)ups.Add(k);
+            Func<int,double> rad=k=>RiverRadius[(mask>>(RiverWidthShift+2*k))&3];
+            ups.Sort((a,b)=>{int c=rad(b).CompareTo(rad(a));return c!=0?c:a.CompareTo(b);});
+            Action<double,double,double> dot=(x,y,r)=>{int reach=(int)Math.Ceiling(r)+1;for(int dy=-reach;dy<=reach;dy++)for(int dx=-reach;dx<=reach;dx++)if(dx*dx+dy*dy*squash*squash<=r*r)cv.Set((int)Math.Round(x)+dx,(int)Math.Round(y)+dy,wet);};
+            // The trunk: from the largest inflow (or a spring just short of the centre) to the outflow, leaving both edges square on.
+            double ox=ex[down],oy=ey[down],odx=cx-ox,ody=cy-oy,ol=Math.Sqrt(odx*odx+ody*ody);odx/=ol;ody/=ol;
+            double sx0,sy0,c1x,c1y,r0,r3=rad(down);
+            if(ups.Count==0){sx0=cx+odx*5;sy0=cy+ody*5;c1x=sx0;c1y=sy0;r0=.75;}
+            else{int m=ups[0];sx0=ex[m];sy0=ey[m];c1x=sx0+(cx-sx0)*.55;c1y=sy0+(cy-sy0)*.55;r0=rad(m);}
+            double c2x=ox+odx*ol*.55,c2y=oy+ody*ol*.55;
+            const int N=64;var tx=new double[N+1];var ty=new double[N+1];var bx=new double[N+1];var by=new double[N+1];
+            for(int i=0;i<=N;i++){double t=i/(double)N,a=(1-t)*(1-t)*(1-t),b=3*t*(1-t)*(1-t),c=3*t*t*(1-t),d=t*t*t;bx[i]=a*sx0+b*c1x+c*c2x+d*ox;by[i]=a*sy0+b*c1y+c*c2y+d*oy;}
+            // A gentle S-shaped meander: sideways most in the two quarters, nothing at the ends, so tiles still join.
+            double bump=(1.6+variant*.9)*(((down+variant)&1)==0?1:-1);
+            for(int i=0;i<=N;i++){double t=i/(double)N,gx=bx[Math.Min(N,i+1)]-bx[Math.Max(0,i-1)],gy=by[Math.Min(N,i+1)]-by[Math.Max(0,i-1)],gl=Math.Sqrt(gx*gx+gy*gy),w=Math.Sin(t*Math.PI);w=w*w*Math.Sin(t*Math.PI*2)*bump;
+                tx[i]=bx[i]+(gl>0?-gy/gl*w:0);ty[i]=by[i]+(gl>0?gx/gl*w/squash:0);}
+            for(int i=0;i<=N;i++){double t=i/(double)N,f=Math.Max(0,Math.Min(1,(t-.25)/.5));dot(tx[i],ty[i],r0+(r3-r0)*Smooth(f));}
+            // Tributaries join the trunk past its middle, bending round to meet it at an acute angle, pointing downstream.
+            for(int n=1;n<ups.Count;n++)
+            {
+                int k=ups[n],ji=(int)(N*Math.Min(.8,.5+.13*n));double jx=tx[ji],jy=ty[ji],ux=tx[ji-3]-tx[ji+3],uy=ty[ji-3]-ty[ji+3],ul=Math.Sqrt(ux*ux+uy*uy);if(ul<=0)continue;ux/=ul;uy/=ul;
+                double qx=ex[k],qy=ey[k],vx=qx-jx,vy=qy-jy,dist=Math.Sqrt(vx*vx+vy*vy),ang=(ux*vy-uy*vx>=0?1:-1)*.7,rx=ux*Math.Cos(ang)-uy*Math.Sin(ang),ry=ux*Math.Sin(ang)+uy*Math.Cos(ang);
+                double ix=cx-qx,iy=cy-qy,il=Math.Sqrt(ix*ix+iy*iy),a1x=qx+ix/il*dist*.4,a1y=qy+iy/il*dist*.4,a2x=jx+rx*dist*.42,a2y=jy+ry*dist*.42,r=rad(k);
+                for(int i=0;i<=N;i++){double t=i/(double)N,a=(1-t)*(1-t)*(1-t),b=3*t*(1-t)*(1-t),c=3*t*t*(1-t),d=t*t*t;dot(a*qx+b*a1x+c*a2x+d*jx,a*qy+b*a1y+c*a2y+d*jy,r);}
+            }
         }
         static readonly Dictionary<int,PixelCanvas> riverCache=new Dictionary<int,PixelCanvas>();
         static PixelCanvas River(int mask,int variant){int key=mask*10+variant;PixelCanvas cv;if(!riverCache.TryGetValue(key,out cv)){cv=RiverOverlay(mask,variant);riverCache[key]=cv;}return cv;}
@@ -1262,12 +1423,12 @@ namespace ParadigmRealm
             for(int y=0;y<h;y++)for(int x=0;x<w;x++){double best=9;for(int dy=-8;dy<=8;dy++)for(int dx=-8;dx<=8;dx++){int qx=x+dx,qy=y+dy;if(qx<0||qy<0||qx>=w||qy>=h||(river.Get(qx,qy)>>24)==0)continue;double q=Math.Sqrt(dx*dx+dy*dy*1.6);if(q<best)best=q;}d[y*w+x]=best;}
             return d;
         }
-        static readonly Dictionary<int,double[]> drySpots=new Dictionary<int,double[]>();
+        static readonly Dictionary<long,double[]> drySpots=new Dictionary<long,double[]>();
         // The driest place on a river tile: the point farthest from the water and from the tile's edge. fx, fy are its place across
         // and down the tile picture (0..1) and room is how many pixels of dry ground lie around it.
         public static void DrySpot(bool hex,int mask,int variant,out double fx,out double fy,out double room)
         {
-            int key=(hex?1:0)|mask<<1|variant<<9;double[] hit;
+            long key=(hex?1L:0)|(long)variant<<1|(long)mask<<4;double[] hit;
             if(!drySpots.TryGetValue(key,out hit))
             {
                 var river=RiverShape(hex,mask,variant);var dist=RiverDistance(river);int w=river.w,h=river.h;double best=-1;int bx=w/2,by=h/2;
@@ -1337,7 +1498,12 @@ namespace ParadigmRealm
         {
             int key=mask*10+variant;PixelCanvas o;if(hexRivers.TryGetValue(key,out o))return o;
             var cv=new PixelCanvas(HW,HH);uint wet=Rgb(40,110,160);bool any=false;
-            for(int k=0;k<6;k++)
+            if(RiverTree(mask,6))
+            {
+                var ex=new double[6];var ey=new double[6];for(int k=0;k<6;k++){ex[k]=HW/2.0+HexEdgeX[k];ey[k]=HH/2.0+HexEdgeY[k];}
+                RiverChannel(cv,HW/2.0,HH/2.0,ex,ey,mask,variant,1.22,wet);any=true;
+            }
+            else for(int k=0;k<6;k++)
             {
                 if((mask&(1<<k))==0)continue;any=true;double bend=(3.0+variant)*(k%2==0?1:-1),len=Math.Sqrt(HexEdgeX[k]*HexEdgeX[k]+HexEdgeY[k]*HexEdgeY[k]),px=-HexEdgeY[k]/len,py=HexEdgeX[k]/len;
                 for(int s=0;s<=48;s++)
@@ -1412,21 +1578,11 @@ namespace ParadigmRealm
         // mask bits: 0 NW(-1,-1) 1 N(0,-1) 2 NE(1,-1) 3 E(1,0) 4 SE(1,1) 5 S(0,1) 6 SW(-1,1) 7 W(-1,0)
         static readonly int[] RoadX={0,TW/2,TW-1,TW-1,TW-1,TW/2,0,0},RoadY={0,0,0,TH/2,TH-1,TH-1,TH-1,TH/2};
         static readonly Dictionary<int,PixelCanvas> roadCache=new Dictionary<int,PixelCanvas>();
-        public static PixelCanvas Road(int mask)
+        public static PixelCanvas Road(int mask,int era=0)
         {
-            PixelCanvas cv;if(roadCache.TryGetValue(mask,out cv))return cv;
-            cv=new PixelCanvas(TW,TH);
-            for(int layer=0;layer<2;layer++)
-            {
-                uint col=layer==0?Rgb(70,52,32):Rgb(214,184,126);int rad=layer==0?2:1;
-                for(int k=0;k<8;k++)
-                {
-                    if((mask&(1<<k))==0)continue;
-                    for(int s=0;s<=24;s++){double t=s/24.0;int x=(int)(TW/2+(RoadX[k]-TW/2)*t),y=(int)(TH/2+(RoadY[k]-TH/2)*t);for(int dy=-rad;dy<=rad;dy++)for(int dx=-rad;dx<=rad;dx++)cv.Set(x+dx,y+dy,col);}
-                }
-                for(int dy=-rad;dy<=rad;dy++)for(int dx=-rad;dx<=rad;dx++)cv.Set(TW/2+dx,TH/2+dy,col);
-            }
-            roadCache[mask]=cv;return cv;
+            int key=mask|era<<8;PixelCanvas cv;if(roadCache.TryGetValue(key,out cv))return cv;
+            var ex=new double[8];var ey=new double[8];for(int k=0;k<8;k++){ex[k]=RoadX[k]+.5;ey[k]=RoadY[k]+.5;}
+            cv=PaintRoad(TW,TH,TW/2.0,TH/2.0,ex,ey,mask,era,1);roadCache[key]=cv;return cv;
         }
         static readonly Dictionary<int,PixelCanvas> misc=new Dictionary<int,PixelCanvas>();
         // kind 0..3 = border edge N,E,S,W (white, tinted at draw time); 4 = selection outline; 5 = unexplored; 6 = dim overlay;
@@ -1617,7 +1773,6 @@ namespace ParadigmRealm
             for(int y=0;y<64;y++){int back=foot-(int)Math.Round((FootRowTarget-y)/squash);if(back<0||back>=sh)continue;for(int x=0;x<Math.Min(64,sw);x++){var c=from.Get(x,back);if((c>>24)!=0)cv.Set(x,y,c);}}
             uint dark=Rgb(26,20,16),wood=Rgb(120,84,48),woodLit=Rgb(160,118,70),steel=Rgb(150,160,174),steelLit=Rgb(214,222,232),bronze=Rgb(176,130,58),bronzeLit=Rgb(232,196,110);
             Action<int,int,int,int,uint> box=(x0,y0,x1,y1,col)=>{for(int y=y0;y<=y1;y++)for(int x=x0;x<=x1;x++)cv.Set(x,y,col);};
-            Action<int,int,int,uint,uint> pole=(x,top,bottom,shaft,tip)=>{box(x-1,top+6,x+1,bottom,dark);box(x,top+6,x,bottom,shaft);for(int k=0;k<6;k++){int half=k<5?k/2:1;box(x-half,top+k,x+half,top+k,tip);}};
             if(type==6){// Rifleman: rows of sandbags in front, rifle resting on top.
                 for(int row=0;row<3;row++){int y0=FootRowTarget-5-row*6,shift=row%2*5;for(int x=8+shift+row*3;x<54-row*3;x+=10){box(x,y0,x+10,y0+6,dark);box(x+1,y0+1,x+9,y0+5,Rgb(170,150,108));box(x+1,y0+1,x+9,y0+2,Rgb(204,186,144));}}
                 box(14,FootRowTarget-20,52,FootRowTarget-19,dark);box(15,FootRowTarget-20,51,FootRowTarget-20,Rgb(74,56,40));return Finish(cv);}
@@ -1626,10 +1781,12 @@ namespace ParadigmRealm
                 box(4,FootRowTarget-9,59,FootRowTarget-7,dark);box(4,FootRowTarget-8,59,FootRowTarget-8,woodLit);return Finish(cv);}
             if(type==4){// Archer: a tall wooden pavise planted in front.
                 int l=30,r=50,t=FootRowTarget-38;box(l-1,t-1,r+1,FootRowTarget,dark);box(l,t,r,FootRowTarget-1,wood);for(int x=l+4;x<r;x+=5)box(x,t,x,FootRowTarget-1,dark);box(l,t,r,t+2,woodLit);box(l+7,t+12,r-7,t+25,bronze);box(l+8,t+13,r-8,t+15,bronzeLit);return Finish(cv);}
-            // Spear, lance, club or staff held upright, then a round shield over the body.
-            bool heavy=type==5;uint face=heavy?steel:type==7?bronze:wood,rim=heavy?steelLit:type==7?bronzeLit:woodLit;
-            double cx=mounted?36:37,cy=mounted?FootRowTarget-30:FootRowTarget-22,rx=type==3?10:14,ry=type==3?11:mounted?15:18;
-            pole((int)cx+(int)rx+1,FootRowTarget-(mounted?56:50),FootRowTarget-(mounted?10:0),Rgb(116,84,50),steelLit);
+            // A small round shield held low at the side. The unit keeps the weapon it is drawn with: no spear is added, so nobody
+            // holds an axe, a spear and a shield at once, and the shield is about half its old size (owner report, 11 Nov 2026).
+            // The Spearman's own picture already carries a spear and a shield, so it only braces.
+            if(type==7)return Finish(cv);
+            bool heavy=type==5;uint face=heavy?steel:wood,rim=heavy?steelLit:woodLit;
+            double cx=mounted?41:42,cy=mounted?FootRowTarget-24:FootRowTarget-14,rx=type==3?5.5:mounted?7:6.5,ry=type==3?6.5:mounted?8.5:8;
             for(int y=0;y<64;y++)for(int x=0;x<64;x++){double u=(x+.5-cx)/rx,v=(y+.5-cy)/ry,d=u*u+v*v;if(d>1)continue;cv.Set(x,y,d>.84?dark:d>.62?rim:d<.07?rim:(u+v<-.35?MixC(face,Rgb(255,248,230),.28):u+v>.6?Shade(face,.72):face));}
             return Finish(cv);
         }

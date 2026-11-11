@@ -2,6 +2,20 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 11 Nov: river junctions, roads by age, gateways in the land, draw order, ruins, village, shield, grass (no save change)
+
+Built in source, checked in the engine harness and in Unity, photographed with `-lookShot`. Not hand-played.
+
+- **River junctions.** Every river tile now has one outflow and a count of the river tiles draining through it (`World.RiverDown`, `RiverFlow`). Rivers are traced from sea mouths first, then lakes; a river that runs from a lake to the sea is one river fed by the lake (it used to be traced from both ends and could break where they met). The picture (`PixelArt.RiverChannel`) draws the larger stream as a trunk in one smooth bend from inflow to outflow, with a tributary bending round to join it at an acute angle past the middle. Width follows the water carried, in four classes (1-2, 3-6, 7-14, 15 or more tiles); a spring starts as a trickle. Sources used: Horton (1945) and later work on junction angles; Leopold and Maddock (1953) on channel width growing with about the square root of discharge. Parallel worlds and river tiles with no known outflow keep the old drawing.
+- **Roads by age.** `PixelArt.PaintRoad`: Dawn Age beaten earth track; Classical Age Roman paving with kerb stones; Medieval Age rutted mud with stretches of cobble; Industrial Age macadam with side ditches; Modern Age asphalt with edge lines and centre dashes; Dimensional Age pale causeway with strips of light. The age is that of the land's owner, and the player's on unclaimed land (`RoadEra`). Two arms join in one bend; further arms branch from it. Square maps use the same painter.
+- **Gateways.** New games never place a gateway on a river tile, on either side (`PlaceGateways`). In an older save, a gateway on a river tile is drawn on the tile's driest spot beside the water; the tile itself is not moved. On every gateway tile the terrain's trees are left out, a soft-edged clearing in the land's colours lies under the gateway (`GateClearing`) and the land's own cover laps over the platform's corners (`GateOvergrowth`).
+- **Draw order.** Resources are drawn with their own tile instead of after all tiles: trees on tiles in front cover them, and units and animals on the tile stand in front of them. A resource on a forest tile can now be partly hidden by the forest in front of it.
+- **Ruins** 40% smaller (29 pixels, `RuinSize`). **Village**: new camp of hide tipis and a yurt (`Resources/Visuals/village-camp.png`, SpriteCook, 24 credits); the old `village.png` is kept and is the fallback.
+- **Guard picture.** Small round shield at the side, about half the old size; no spear is added. The Spearman, whose picture already has a spear and shield, only braces.
+- **Grassland.** Painted: rolling relief lit from the north-west, two layers of brush dabs, warm and cool passages, colours mixed between six paints, tufts and drifts of flowers (`GrassPaint`, `GrassHeight`). River meadows and hill turf share it.
+- **Not done / limits.** Rivals' roads on unclaimed land show the player's age. Width classes are per tile, so a river widens in steps. Era roads for the classic square view use the same pictures but were not photographed.
+- Checks: `ContentChecks.EleventhNovemberChecks`.
+
 ## Owner design 10 Nov: opening a gateway as an expedition (save version 41)
 
 Full rules and numbers: [GATE-EXPEDITION-2026-11-10.md](GATE-EXPEDITION-2026-11-10.md).

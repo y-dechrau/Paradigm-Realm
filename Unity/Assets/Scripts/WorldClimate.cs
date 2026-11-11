@@ -453,7 +453,7 @@ public partial class World {
  // to the streams that feed it, never to every river tile beside it, so channels branch like a real drainage tree and never form
  // loops or a mesh. Each river system is traced back from its mouth (a river tile beside the sea or a lake). Parallel worlds keep
  // the old look (every neighbouring river joined). Bits follow HexDi/HexDj on hex maps, else north, east, south, west.
- [NonSerialized] Dictionary<int,int> riverLinks;[NonSerialized] int riverLinksCount=-1,riverLinksTurn=-1;
+ [NonSerialized] Dictionary<int,int> riverLinks,riverDown,riverFlow;[NonSerialized] int riverLinksCount=-1,riverLinksTurn=-1;
  public int RiverLinks(Tile t){
   if(t==null||t.terrain!=7||t.realm!=0)return -1;
   if(riverLinks!=null&&riverLinksTurn==turn){int hit;return riverLinks.TryGetValue(t.y*Width+t.x,out hit)?hit:0;}
@@ -461,19 +461,32 @@ public partial class World {
   if(riverLinks==null||riverLinksCount!=count){BuildRiverLinks();riverLinksCount=count;}
   int m;return riverLinks.TryGetValue(t.y*Width+t.x,out m)?m:0;
  }
+ // The side a river tile's water leaves by (-1 if it has none) and how many tiles of river drain through it (owner report,
+ // 11 Nov 2026: channels join as real rivers do; PixelArt.RiverChannel).
+ public void ResetRiverLinks(){riverLinks=null;}
+ public int RiverDown(Tile t){if(RiverLinks(t)<0||riverDown==null)return -1;int d;return riverDown.TryGetValue(t.y*Width+t.x,out d)?d:-1;}
+ public int RiverFlow(Tile t){if(RiverLinks(t)<0||riverFlow==null)return 1;int f;return riverFlow.TryGetValue(t.y*Width+t.x,out f)?f:1;}
  int[] RiverDi(){return hexGrid?HexDi:new[]{0,1,0,-1};}int[] RiverDj(){return hexGrid?HexDj:new[]{-1,0,1,0};}
  int Opposite(int k){return hexGrid?(k+3)%6:(k+2)%4;}
  void BuildRiverLinks(){
-  riverLinks=new Dictionary<int,int>();var di=RiverDi();var dj=RiverDj();int dirs=di.Length;var visited=new HashSet<int>();
+  riverLinks=new Dictionary<int,int>();riverDown=new Dictionary<int,int>();riverFlow=new Dictionary<int,int>();var order=new List<int>();var di=RiverDi();var dj=RiverDj();int dirs=di.Length;var visited=new HashSet<int>();
   var rivers=new List<Tile>();foreach(var x in tiles)if(x.terrain==7&&x.realm==0)rivers.Add(x);
-  // Mouths first: each joins one neighbouring sea or lake tile.
-  var queue=new Queue<Tile>();
-  foreach(var r in rivers){for(int k=0;k<dirs;k++){var n=Step(r.x,r.y,di[k],dj[k]);if(n!=null&&IsWater(n.terrain)&&n.terrain!=7){int cell=r.y*Width+r.x;riverLinks[cell]=1<<k;visited.Add(cell);queue.Enqueue(r);break;}}}
-  System.Action<Queue<Tile>> spread=q=>{while(q.Count>0){var c=q.Dequeue();for(int k=0;k<dirs;k++){var n=Step(c.x,c.y,di[k],dj[k]);if(n==null||n.terrain!=7||n.realm!=0)continue;int nc=n.y*Width+n.x;if(visited.Contains(nc))continue;visited.Add(nc);
-   int cc=c.y*Width+c.x,m;riverLinks.TryGetValue(cc,out m);riverLinks[cc]=m|(1<<k);riverLinks.TryGetValue(nc,out m);riverLinks[nc]=m|(1<<Opposite(k));q.Enqueue(n);}}};
+  // Mouths first: each joins one neighbouring sea tile. Lakes come second (11 Nov 2026): a river that runs from a lake to the sea is
+  // traced whole from the sea and the lake feeds its head; it used to be traced from both ends and left broken where they met.
+  var queue=new Queue<Tile>();System.Action<Queue<Tile>> spread=null;
+  for(int pass=0;pass<2;pass++){foreach(var r in rivers){if(visited.Contains(r.y*Width+r.x))continue;for(int k=0;k<dirs;k++){var n=Step(r.x,r.y,di[k],dj[k]);if(n!=null&&IsWater(n.terrain)&&n.terrain!=7&&(n.terrain==6)==(pass==1)){int cell=r.y*Width+r.x;riverLinks[cell]=1<<k;riverDown[cell]=k;order.Add(cell);visited.Add(cell);queue.Enqueue(r);break;}}}
+  spread=q=>{while(q.Count>0){var c=q.Dequeue();for(int k=0;k<dirs;k++){var n=Step(c.x,c.y,di[k],dj[k]);if(n==null||n.terrain!=7||n.realm!=0)continue;int nc=n.y*Width+n.x;if(visited.Contains(nc))continue;visited.Add(nc);
+   int cc=c.y*Width+c.x,m;riverLinks.TryGetValue(cc,out m);riverLinks[cc]=m|(1<<k);riverLinks.TryGetValue(nc,out m);riverLinks[nc]=m|(1<<Opposite(k));riverDown[nc]=Opposite(k);order.Add(nc);q.Enqueue(n);}}};
   spread(queue);
+   // A headwater tile beside a lake is fed by it.
+   if(pass==0)foreach(var r in rivers){int cell=r.y*Width+r.x,m,d;if(!riverLinks.TryGetValue(cell,out m)||!riverDown.TryGetValue(cell,out d)||m!=1<<d)continue;for(int k=0;k<dirs;k++){var n=Step(r.x,r.y,di[k],dj[k]);if(k!=d&&n!=null&&n.terrain==6){riverLinks[cell]=m|(1<<k);break;}}}
+  }
   // Any river system with no mouth (it ends inland) is traced from one end.
-  foreach(var r in rivers){int cell=r.y*Width+r.x;if(visited.Contains(cell))continue;visited.Add(cell);riverLinks[cell]=0;var q=new Queue<Tile>();q.Enqueue(r);spread(q);}
+  foreach(var r in rivers){int cell=r.y*Width+r.x;if(visited.Contains(cell))continue;visited.Add(cell);riverLinks[cell]=0;order.Add(cell);var q=new Queue<Tile>();q.Enqueue(r);spread(q);}
+  // How much water each tile carries: itself and every tile upstream of it. Tiles were reached mouth first, so going back through
+  // them adds each one's water to the tile it flows into.
+  foreach(int cell in order)riverFlow[cell]=1;
+  for(int i=order.Count-1;i>=0;i--){int cell=order[i],d;if(!riverDown.TryGetValue(cell,out d))continue;var to=Step(cell%Width,cell/Width,di[d],dj[d]);if(to==null||to.terrain!=7)continue;int tc=to.y*Width+to.x,f;if(riverFlow.TryGetValue(tc,out f))riverFlow[tc]=f+riverFlow[cell];}
  }
 }
 }

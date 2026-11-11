@@ -100,11 +100,12 @@ public partial class World {
  void PlaceGateways(Random rnd){
   var starts=units.Where(u=>u.type==0).ToList();var placed=new List<Tile>();
   for(int r=1;r<=RealmCount;r++){
-   Tile home=tiles.Where(t=>t.realm==0&&t.y>=3&&t.y<mapHeight-3&&!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&!Barren(t.terrain)&&!t.village&&!t.ruin&&t.resource==0
+   Tile home=tiles.Where(t=>t.realm==0&&t.terrain!=7&&t.y>=3&&t.y<mapHeight-3&&!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&!Barren(t.terrain)&&!t.village&&!t.ruin&&t.resource==0
      &&starts.All(u=>Distance(u.x,u.y,t.x,t.y)>=8)&&placed.All(p=>Distance(p.x,p.y,t.x,t.y)>=10)).OrderBy(t=>Lattice(seed+r*31,t.x,t.y,7)).FirstOrDefault();
    var land=RealmTiles(r).Where(t=>!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&!Barren(t.terrain)&&t.y>RealmTop(r)&&t.y<RealmBottom(r)-1).ToList();
    if(land.Count==0){int cx=Width/2,cy=RealmTop(r)+RealmHeight/2;for(int dy=-1;dy<=1;dy++)for(int dx=-2;dx<=2;dx++){var t=At(cx+dx,cy+dy);if(t!=null){t.terrain=dy==0&&dx==0?0:11;land.Add(t);}}}
-   Tile far=land.OrderBy(t=>Lattice(seed+r*53,t.x,t.y,7)).First();
+   // A gateway never stands on a river (owner request, 11 Nov 2026), on either side.
+   Tile far=land.OrderBy(t=>t.terrain==7?1:0).ThenBy(t=>Lattice(seed+r*53,t.x,t.y,7)).First();
    if(home==null)continue;home.gateLink=far.y*Width+far.x+1;far.gateLink=home.y*Width+home.x+1;far.ruin=false;placed.Add(home);
   }
  }

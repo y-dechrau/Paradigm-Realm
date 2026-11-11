@@ -26,6 +26,7 @@ public static void Run(){
     GovernorChecks();
     NinthNovemberChecks();
     TenthNovemberChecks();
+    EleventhNovemberChecks();
     GateExpeditionChecks();
     SiegeChecks();
     var cold=World.New(3);var settler=cold.units.First(u=>u.owner==0&&u.type==0);cold.At(settler.x,settler.y).terrain=8;cold.tech[K("fire")]=false;Check(cold.Found(settler)==null,"cold settlement needs Fire");cold.tech[K("fire")]=true;Check(cold.Found(settler)!=null,"Fire (Stone Tools) permits cold settlement");
@@ -373,6 +374,51 @@ static void GateExpeditionChecks(){
      g.turn+=GateApproach.NegotiateTurns;g.GateExpeditionTurn();Check(g.GateOpen(c),"a negotiated gateway opens after three turns");}
     Check(g.Valid(),"valid with gateway work recorded");
     {var old=World.New(307,natives:false);old.version=40;old.gateStudies=null;old.UpgradeSave();Check(old.version==41&&old.gateStudies!=null&&old.Valid(),"version 40 saves upgrade with no seals read");}
+}
+// Owner requests, 11 Nov 2026: rivers join like rivers, roads follow the ages, gateways stand off rivers and in a clearing, painted grass.
+static void EleventhNovemberChecks(){
+    Func<PixelCanvas,int> ink=cv=>{int n=0;foreach(uint p in cv.p)if((p>>24)!=0)n++;return n;};
+    // Rivers: water runs one way, and a river carries more the further down it goes.
+    foreach(bool hex in new[]{true,false})foreach(int seed in new[]{331,347}){
+        var w=World.New(seed,natives:false,hex:hex);int rivers=0,bad=0,noWay=0;int[] di=hex?World.HexDi:new[]{0,1,0,-1},dj=hex?World.HexDj:new[]{-1,0,1,0};
+        foreach(var t in w.tiles){if(t.terrain!=7||t.realm!=0)continue;rivers++;int d=w.RiverDown(t);if(d<0){noWay++;continue;}
+            if((w.RiverLinks(t)&(1<<d))==0)bad++;var to=w.Step(t.x,t.y,di[d],dj[d]);if(to==null)bad++;else if(to.terrain==7&&w.RiverFlow(to)<=w.RiverFlow(t))bad++;else if(to.terrain!=7&&!PixelArt.IsWater(to.terrain))bad++;}
+        Check(bad==0,"every river tile drains one way into a larger river or into water ("+(hex?"hex":"square")+" "+seed+": "+rivers+" tiles, "+bad+" wrong)");
+        Check(noWay<rivers||rivers==0,"rivers have outflows ("+noWay+" of "+rivers+" tiles are the ends of inland waters)");
+        foreach(var t in w.tiles)if(t.gateLink>0&&t.realm==0)Check(t.terrain!=7,"a gateway does not stand on a river ("+t.x+","+t.y+")");
+    }
+    // Junction pictures: a tile with its outflow known is drawn as a trunk with a tributary, wider for more water, and it still
+    // reaches every edge it should.
+    foreach(bool hex in new[]{true,false}){
+        int dirs=hex?6:4,down=hex?1:2,up=hex?4:0,side=hex?3:3,arms=1<<down|1<<up|1<<side;
+        Func<int,int,int,int> mask=(a,cls,d)=>{int m=a|(d+1)<<PixelArt.RiverDownShift;for(int k=0;k<dirs;k++)if((a&(1<<k))!=0)m|=cls<<(PixelArt.RiverWidthShift+2*k);return m;};
+        var old=PixelArt.RiverShape(hex,arms,1);var thin=PixelArt.RiverShape(hex,mask(arms,0,down),1);var wide=PixelArt.RiverShape(hex,mask(arms,3,down),1);
+        Check(!thin.p.SequenceEqual(old.p),"a junction with a known outflow is drawn as trunk and tributary ("+(hex?"hex":"square")+")");
+        Check(ink(wide)>ink(thin)*14/10,"a river carrying more water is wider ("+ink(thin)+" to "+ink(wide)+" pixels)");
+        var spring=PixelArt.RiverShape(hex,mask(1<<down,0,down),1);Check(ink(spring)>12&&ink(spring)<ink(thin),"a spring is a short thin channel ("+ink(spring)+")");
+        double fx,fy,room;PixelArt.DrySpot(hex,mask(arms,3,down),1,out fx,out fy,out room);Check(room>2&&fx>0&&fx<1,"the dry spot is still found beside a junction");
+        Check(ink(PixelArt.FarmQuilt(hex,mask(arms,2,down),1,2))>150,"fields are still laid out round a junction");
+    }
+    {var n9=new[]{0,0,0,0,7,0,0,0,0};int m=(1<<1|1<<4)|(1+1)<<PixelArt.RiverDownShift|2<<(PixelArt.RiverWidthShift+2)|1<<(PixelArt.RiverWidthShift+8);
+     var cv=PixelArt.ComposeHex(n9,10,10,0,m);var plain=PixelArt.ComposeHex(n9,10,10,0,0);Check(!cv.p.SequenceEqual(plain.p),"the ground picture carries the junction");}
+    // Roads: six ages, six looks, in both layouts; the road still reaches the middle of its tile.
+    foreach(bool hex in new[]{true,false}){
+        var seen=new HashSet<string>();for(int era=0;era<PixelArt.RoadEras;era++){var road=hex?PixelArt.HexRoad(1|1<<3,era):PixelArt.Road(1<<1|1<<5,era);Check(ink(road)>60,"an age "+era+" road is drawn");seen.Add(string.Join(",",road.p.Take(road.p.Length).Select(p=>p.ToString("x")).ToArray()));}
+        Check(seen.Count==PixelArt.RoadEras,"each age has its own road ("+seen.Count+" looks, "+(hex?"hex":"square")+")");
+        Check(ink(hex?PixelArt.HexRoad(1|1<<2|1<<4,4):PixelArt.Road(1|1<<3|1<<5,4))>ink(hex?PixelArt.HexRoad(1|1<<2,4):PixelArt.Road(1|1<<3,4)),"a third arm branches from the road");
+    }
+    Check((PixelArt.HexRoad(1,5).Get(32,20)>>24)!=0&&(PixelArt.Road(2,3).Get(PixelArt.TW/2,PixelArt.TH/2)>>24)!=0,"a road with one arm ends in the middle of its tile");
+    // Gateways: a soft-edged clearing and growth over the foot, in the colours of the land.
+    foreach(int land in new[]{0,3,11,13}){var clearing=PixelArt.GateClearing(land);var growth=PixelArt.GateOvergrowth(land);int soft=0;foreach(uint p in clearing.p){uint a=p>>24;if(a>20&&a<200)soft++;}
+        Check(soft>150&&(clearing.Get(0,0)>>24)==0&&(clearing.Get(32,16)>>24)>200,"a gateway's clearing fades into the land ("+land+")");
+        Check(ink(growth)>120&&(growth.Get(32,22)>>24)==0&&(growth.Get(32,2)>>24)==0,"growth laps the corners of the platform and leaves the steps clear ("+land+": "+ink(growth)+")");}
+    Check(!PixelArt.GateOvergrowth(11).p.SequenceEqual(PixelArt.GateOvergrowth(3).p),"jungle and desert gateways are dressed differently");
+    // Grass: painted in many mixed tones, not five flat ones, and the same wherever it is composed.
+    {var grass=Enumerable.Repeat(0,9).ToArray();var a=PixelArt.ComposeHex(grass,14,9,0,0);var tones=new HashSet<uint>();foreach(uint p in a.p)if((p>>24)!=0)tones.Add(p);
+     Check(tones.Count>120,"grassland is painted in many tones ("+tones.Count+")");Check(a.p.SequenceEqual(PixelArt.ComposeHex(grass,14,9,0,0).p),"and is the same every time");}
+    // Guard pictures: no spear is added, and the shield is small.
+    {var blank=new uint[64*64];var shield=PixelArt.GuardSprite(blank,64,64,2);int n=ink(shield);Check(n>120&&n<420,"the guard's shield is small ("+n+" pixels)");int top=64;for(int y=0;y<64;y++)for(int x=0;x<64;x++)if((shield.Get(x,y)>>24)!=0&&y<top)top=y;
+     Check(top>PixelArt.FootRowTarget-30,"and nothing stands above it: no added spear (top row "+top+")");Check(ink(PixelArt.GuardSprite(blank,64,64,7))==0,"the Spearman keeps his own shield and spear");}
 }
 // Owner requests, 10 Nov 2026: volcanoes burn, hills lose their square base, rivers open into the sea.
 static void TenthNovemberChecks(){

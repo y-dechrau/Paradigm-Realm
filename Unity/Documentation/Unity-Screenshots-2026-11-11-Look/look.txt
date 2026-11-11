@@ -1,0 +1,5 @@
+tributaries dug for the pictures: 2
+river tiles 73, junctions 2, largest flow 6, without outflow 2
+gateways 6, on rivers 0
+spots round the capital 28
+road tiles laid 5
