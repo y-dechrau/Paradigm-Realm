@@ -109,7 +109,7 @@ namespace ParadigmRealm
         // the middle of the shared edge. On a river tile (look bit 2) the road runs straight and the stretch over the middle of the
         // tile is a bridge with rails: timber in the Dawn Age, stone until the Industrial Age, steel after.
         public const int RoadBridge=4;
-        static PixelCanvas PaintRoad(int w,int h,double cx,double cy,double[] ex,double[] ey,int mask,int era,double squash,int look=0)
+        static PixelCanvas PaintRoad(int w,int h,double cx,double cy,double[] ex,double[] ey,int mask,int era,double squash,int look=0,PixelCanvas river=null,double[] riverDist=null,Func<int,int,bool> onTile=null,double dryX=0,double dryY=0)
         {
             var cv=new PixelCanvas(w,h);var arms=new List<int>();for(int k=0;k<ex.Length;k++)if((mask&(1<<k))!=0)arms.Add(k);
             var px=new List<double>();var py=new List<double>();var pa=new List<double>();var pt=new List<double>();
@@ -119,7 +119,22 @@ namespace ParadigmRealm
                 {double tx=2*(1-t)*(x1-x0)+2*t*(x2-x1),ty=2*(1-t)*(y1-y0)+2*t*(y2-y1),tl=Math.Sqrt(tx*tx+ty*ty),sw=Math.Sin(t*Math.PI);sw=sw*sw*Math.Sin(t*Math.PI*2)*sway;if(tl>0){x+=-ty/tl*sw;y+=tx/tl*sw/squash;}}
                 along+=Math.Sqrt((x-lx)*(x-lx)+(y-ly)*(y-ly)*squash*squash);
                 double gx=2*(1-t)*(x1-x0)+2*t*(x2-x1),gy=(2*(1-t)*(y1-y0)+2*t*(y2-y1))*squash;lx=x;ly=y;px.Add(x);py.Add(y);pa.Add(along);pt.Add(Math.Atan2(gy,gx));}};
-            if(arms.Count==0)curve(cx-3,cy,cx,cy,cx+3,cy);
+            // On a river tile the line is found, not drawn: the cheapest way over ground that is dear near the water and dearest on
+            // it (see RiverRoad). line() lays a found way down as the road's centre line.
+            Action<List<double[]>> line=pts=>{double along=0;for(int i=0;i<pts.Count;i++){var a=pts[Math.Max(0,i-1)];var b=pts[Math.Min(pts.Count-1,i+1)];if(i>0)along+=Math.Sqrt((pts[i][0]-pts[i-1][0])*(pts[i][0]-pts[i-1][0])+(pts[i][1]-pts[i-1][1])*(pts[i][1]-pts[i-1][1])*squash*squash);px.Add(pts[i][0]);py.Add(pts[i][1]);pa.Add(along);pt.Add(Math.Atan2((b[1]-a[1])*squash,b[0]-a[0]));}};
+            if(river!=null)
+            {
+                if(arms.Count==0)return cv;
+                if(arms.Count==1)line(BankPath(riverDist,onTile,w,h,ex[arms[0]],ey[arms[0]],dryX,dryY,squash));
+                else
+                {
+                    int a0=arms[0],a1=arms[1];double best=9;
+                    foreach(int i in arms)foreach(int j in arms){if(j<=i)continue;double ix=ex[i]-cx,iy=ey[i]-cy,jx=ex[j]-cx,jy=ey[j]-cy,dot=(ix*jx+iy*jy)/Math.Sqrt((ix*ix+iy*iy)*(jx*jx+jy*jy));if(dot<best){best=dot;a0=i;a1=j;}}
+                    var main=BankPath(riverDist,onTile,w,h,ex[a0],ey[a0],ex[a1],ey[a1],squash);line(main);var mid=main[main.Count/2];
+                    foreach(int k in arms)if(k!=a0&&k!=a1)line(BankPath(riverDist,onTile,w,h,ex[k],ey[k],mid[0],mid[1],squash));
+                }
+            }
+            else if(arms.Count==0)curve(cx-3,cy,cx,cy,cx+3,cy);
             else if(arms.Count==1)curve(ex[arms[0]],ey[arms[0]],(ex[arms[0]]+cx)/2,(ey[arms[0]]+cy)/2,cx,cy);
             else
             {
@@ -134,13 +149,61 @@ namespace ParadigmRealm
                 double best=99,along=0,side=1;
                 for(int i=0;i<px.Count;i++){double dx=x+.5-px[i],dy=(y+.5-py[i])*squash,d=dx*dx+dy*dy;if(d<best){best=d;along=pa[i];side=Math.Cos(pt[i])*dy-Math.Sin(pt[i])*dx>=0?1:-1;}}
                 if(best>30)continue;double dd=Math.Sqrt(best)/RoadWidth;uint c=RoadPixel(era,dd,side,along/RoadWidth,x,y);
-                if((look&RoadBridge)!=0){double bx=(x+.5-cx)/11.0,by=(y+.5-cy)*squash/9.0;if(bx*bx+by*by<=1&&dd<=3.4){
+                if(river!=null?riverDist[y*w+x]<=1.7:(look&RoadBridge)!=0){double bx=(x+.5-cx)/11.0,by=(y+.5-cy)*squash/9.0;if((river!=null||bx*bx+by*by<=1)&&dd<=3.4){
                     if(dd>2.5)c=era==0?Rgb(86,60,36):era<3?Rgb(120,116,112):Rgb(66,72,84);
                     else if(era==0)c=((int)Math.Floor(along/1.2)&1)==0?Rgb(152,114,72):Rgb(126,92,56);
                     else if(c==0)c=era<3?Rgb(150,146,140):Rgb(96,100,108);}}
                 if(c!=0)cv.Set(x,y,c);
             }
             return cv;
+        }
+        // ---------- roads beside rivers (owner report, 11 Nov 2026: a road was painted along the river, on the water) ----------
+        // Road builders keep a road off the water: it runs along the valley on the dry ground beside the river, clear of the bank,
+        // and where it must cross it does so by the shortest way, square to the flow, because a square crossing is the shortest
+        // and cheapest bridge and stands best against the current (highway location guidance, e.g. Texas DOT Hydraulic Design
+        // Manual, "Location selection and orientation": align the crossing normal to the stream wherever possible).
+        // So on a river tile the road is the cheapest path between its ends over a cost field: open ground is cheap, the strip
+        // by the bank dear, the water dearest. The path therefore stays on one bank where both ends allow it and otherwise
+        // crosses once, at right angles, and only that crossing is drawn as a bridge.
+        // Two river tiles joined by both river and road cannot both use the middle of their shared edge, where the river runs, so
+        // on such an edge (bit set in shifted) the road crosses the edge RoadBankShift pixels to one side: the same side seen from
+        // either tile.
+        public const double RoadBankShift=9;
+        static readonly Dictionary<string,PixelCanvas> riverRoads=new Dictionary<string,PixelCanvas>();
+        public static PixelCanvas RiverRoad(bool hex,int roadMask,int era,int riverMask,int variant,int shifted)
+        {
+            string key=(hex?"h":"s")+roadMask+"."+era+"."+riverMask+"."+variant+"."+shifted;PixelCanvas cv;if(riverRoads.TryGetValue(key,out cv))return cv;
+            int n=hex?6:8,w=hex?HW:TW,h=hex?HH:TH;double cx=w/2.0,cy=h/2.0,squash=hex?1.25:1;var ex=new double[n];var ey=new double[n];
+            // The side it steps to is the river's left bank looking downstream, so a road following a river keeps to one bank and does
+            // not cross back and forth. Bits 8 and up of shifted mark the edge the river leaves by; with none set the flow is not
+            // known and a fixed side is used.
+            bool flowKnown=(riverMask>>RiverDownShift&7)!=0;
+            for(int k=0;k<n;k++){ex[k]=hex?cx+HexEdgeX[k]:RoadX[k]+.5;ey[k]=hex?cy+HexEdgeY[k]:RoadY[k]+.5;
+                if((shifted&(1<<k))!=0){double vx=ex[k]-cx,vy=ey[k]-cy,vl=Math.Sqrt(vx*vx+vy*vy),sign=flowKnown?((shifted&(256<<k))!=0?1:-1):k<n/2?1:-1;ex[k]+=-vy/vl*RoadBankShift*sign;ey[k]+=vx/vl*RoadBankShift*sign/squash;}}
+            var river=hex?HexRiver(riverMask,variant):River(riverMask,variant);var dist=RiverDistance(river);double fx,fy,room;DrySpot(hex,riverMask,variant,out fx,out fy,out room);
+            Func<int,int,bool> on=(x,y)=>!hex||InHex(x+.5-HW/2.0,y+.5-HH/2.0,HW,-1.5);
+            cv=PaintRoad(w,h,cx,cy,ex,ey,roadMask,era,squash,RoadBridge,river,dist,on,hex?fx*w:cx,hex?fy*h:cy);riverRoads[key]=cv;return cv;
+        }
+        // The cheapest way from one point of a river tile to another, as a smoothed line of points.
+        static List<double[]> BankPath(double[] dist,Func<int,int,bool> onTile,int w,int h,double x0,double y0,double x1,double y1,double squash)
+        {
+            Func<double,int,int> clamp=(v,max)=>Math.Max(0,Math.Min(max-1,(int)Math.Floor(v)));int sx=clamp(x0,w),sy=clamp(y0,h),gx=clamp(x1,w),gy=clamp(y1,h);
+            var cost=new double[w*h];var from=new int[w*h];var done=new bool[w*h];for(int i=0;i<cost.Length;i++){cost[i]=1e18;from[i]=-1;}cost[sy*w+sx]=0;
+            while(true)
+            {
+                int at=-1;double low=1e18;for(int i=0;i<cost.Length;i++)if(!done[i]&&cost[i]<low){low=cost[i];at=i;}
+                if(at<0||at==gy*w+gx)break;done[at]=true;int ax=at%w,ay=at/w;
+                for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++)
+                {
+                    if(dx==0&&dy==0)continue;int qx=ax+dx,qy=ay+dy;if(qx<0||qy<0||qx>=w||qy>=h)continue;int q=qy*w+qx;if(done[q])continue;
+                    double near=dist[q],dear=near<=0?18:near<2.6?6:near<4.6?1.4:0;if(onTile!=null&&!onTile(qx,qy))dear+=8;
+                    double step=Math.Sqrt(dx*dx+dy*dy*squash*squash)*(1+dear),c=low+step;if(c<cost[q]){cost[q]=c;from[q]=at;}
+                }
+            }
+            var pts=new List<double[]>();for(int at=gy*w+gx;at>=0;at=from[at])pts.Add(new[]{at%w+.5,at/w+.5});pts.Reverse();
+            if(pts.Count==0)pts.Add(new[]{x0,y0});pts[0]=new[]{x0,y0};pts.Add(new[]{x1,y1});
+            for(int pass=0;pass<6;pass++){var next=new List<double[]>(pts);for(int i=1;i<pts.Count-1;i++)next[i]=new[]{(pts[i-1][0]+2*pts[i][0]+pts[i+1][0])/4,(pts[i-1][1]+2*pts[i][1]+pts[i+1][1])/4};pts=next;}
+            return pts;
         }
         // One pixel of road: d is the distance from the road's centre line, side which side of it, along the distance travelled.
         static uint RoadPixel(int era,double d,double side,double along,int x,int y)

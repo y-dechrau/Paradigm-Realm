@@ -86,12 +86,26 @@ namespace ParadigmRealm
         Texture2D RoadPicture(Tile t)
         {
             int mask=0;
-            if(world.Hex){for(int k=0;k<6;k++)if(world.RoadConnects(t,World.HexDi[k],World.HexDj[k]))mask|=1<<k;return IsoPicture(11,mask,RoadEra(t)|RoadLook(t)<<3);}
+            if(world.Hex){for(int k=0;k<6;k++)if(world.RoadConnects(t,World.HexDi[k],World.HexDj[k]))mask|=1<<k;if(t.terrain==7){var bank=RiverRoadPicture(t,mask);if(bank!=null)return bank;}return IsoPicture(11,mask,RoadEra(t)|RoadLook(t)<<3);}
             for(int k=0;k<8;k++)if(world.RoadConnects(t,RoadDx[k],RoadDy[k]))mask|=1<<k;
+            if(t.terrain==7){var bank=RiverRoadPicture(t,mask);if(bank!=null)return bank;}
             return IsoPicture(3,mask,RoadEra(t)|RoadLook(t)<<3);
         }
         // Roads follow the age of whoever owns the land they cross, and your own age on unclaimed land (owner request, 11 Nov 2026;
         // PixelArt.PaintRoad). The ages are worked out once a turn.
+        // A road on a river tile keeps to the bank and bridges the river square on (PixelArt.RiverRoad). Null when the tile's river
+        // has no arms the player knows, and the plain bridge picture is used.
+        readonly Dictionary<string,Texture2D> riverRoadPictures=new Dictionary<string,Texture2D>();
+        Texture2D RiverRoadPicture(Tile t,int roadMask)
+        {
+            int riverMask=RiverMaskOf(t),dirs=world.Hex?6:4;if((riverMask&((1<<dirs)-1))==0)return null;
+            int[] offI=world.Hex?World.HexDi:new[]{0,1,0,-1},offJ=world.Hex?World.HexDj:new[]{-1,0,1,0};int shifted=0;
+            // Where river and road leave by the same side into another river tile, the road steps aside along that edge.
+            for(int r=0;r<dirs;r++){int k=world.Hex?r:r*2+1;if((roadMask&(1<<k))==0||(riverMask&(1<<r))==0)continue;if(IsoKnownTerrain(world.Step(t.x,t.y,offI[r],offJ[r]))==7){shifted|=1<<k;if(((riverMask>>PixelArt.RiverDownShift)&7)-1==r)shifted|=256<<k;}}
+            int era=RoadEra(t),variant=(t.x*7+t.y*3)%3;string key=(world.Hex?"h":"s")+roadMask+"."+era+"."+riverMask+"."+variant+"."+shifted;Texture2D tex;
+            if(!riverRoadPictures.TryGetValue(key,out tex)){var cv=PixelArt.RiverRoad(world.Hex,roadMask,era,riverMask,variant,shifted);tex=TileTexture(PixelArt.Scale2x(world.Hex?cv:PixelArt.ToDiamond(cv)));riverRoadPictures[key]=tex;}
+            return tex;
+        }
         // How the road lies on this tile: one of four wanderings by place, or a straight bridge on a river tile.
         static int RoadLook(Tile t){return t.terrain==7?PixelArt.RoadBridge:((t.x*73856093^t.y*19349663)&0x7fffffff)%4;}
         int[] roadEras;int roadErasTurn=-1,roadEraProbe=-1;World roadErasWorld;

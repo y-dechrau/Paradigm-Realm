@@ -429,6 +429,17 @@ static void EleventhNovemberChecks(){
      Check(ink(PixelArt.HexRoad(1|1<<3,1,0))<430,"roads are thin ("+ink(PixelArt.HexRoad(1|1<<3,1,0))+" pixels of a tile)");
      foreach(bool hex in new[]{true,false}){double fx,fy,room,ax,ay,ar;int m=hex?(1|1<<3):(1<<1|1<<3);PixelArt.FarBank(hex,m,1,out fx,out fy,out room);PixelArt.DrySpot(hex,m,1,out ax,out ay,out ar);
       Check(room>=4&&Math.Abs(fy-ay)>.2,"a river through the middle leaves a second bank ("+(hex?"hex":"square")+", room "+room.ToString("0.0")+")");}}
+    // A road on a river tile keeps off the water: beside the river when it runs the same way, across it by a short bridge when it must.
+    foreach(bool hex in new[]{true,false}){
+        int dirs=hex?6:4;int rAlong=hex?(1|1<<3):(1<<1|1<<3),down=hex?0:1;int river=rAlong|(down+1)<<PixelArt.RiverDownShift;for(int k=0;k<dirs;k++)if((rAlong&(1<<k))!=0)river|=1<<(PixelArt.RiverWidthShift+2*k);
+        var water=PixelArt.RiverShape(hex,river,1);if(!hex){/* the square road is laid out before the diamond squeeze */}
+        int roadAlong=hex?(1|1<<3):(1<<3|1<<7),roadAcross=hex?(1<<1|1<<4):(1<<1|1<<5);
+        Func<PixelCanvas,int> wet=road=>{if(!hex)road=PixelArt.ToDiamond(road);int n=0;for(int y=0;y<water.h;y++)for(int x=0;x<water.w;x++)if((water.Get(x,y)>>24)!=0&&(road.Get(x,y)>>24)!=0)n++;return n;};
+        var old=hex?PixelArt.HexRoad(roadAlong,2,PixelArt.RoadBridge):PixelArt.Road(roadAlong,2,PixelArt.RoadBridge);int aside=roadAlong|256<<(hex?0:3);var beside=PixelArt.RiverRoad(hex,roadAlong,2,river,1,aside);
+        Check(wet(beside)==0&&wet(old)>40,"a road running the river's way lies beside it, not on it ("+(hex?"hex":"square")+": "+wet(old)+" wet pixels before, "+wet(beside)+" now)");
+        var across=PixelArt.RiverRoad(hex,roadAcross,2,river,1,0);int over=wet(across);Check(over>0&&over<70&&ink(across)>60,"a road across the river bridges it by a short crossing ("+over+" pixels over water)");
+        Check(!PixelArt.RiverRoad(hex,roadAlong,0,river,1,aside).p.SequenceEqual(beside.p),"and follows its age");
+    }
     // Guard pictures are the original ones again: a raised shield and an upright weapon.
     {var blank=new uint[64*64];var shield=PixelArt.GuardSprite(blank,64,64,2);int n=ink(shield);Check(n>600,"the guard stands behind a full shield again ("+n+" pixels)");Check(ink(PixelArt.GuardSprite(blank,64,64,7))>600,"and so does the Spearman");}
 }

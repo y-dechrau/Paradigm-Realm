@@ -2,6 +2,10 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner report 11 Nov: roads no longer painted along rivers (no save change)
+
+A road on a river tile used to be drawn through the middle of the tile, where the river also runs, so a road following a river lay on the water. Now (`PixelArt.RiverRoad`) the road is the cheapest path between its ends over ground that is dear near the bank and dearest on the water: it keeps to dry ground beside the river and, where its ends are on opposite banks, crosses once by the shortest way, square to the flow, and only that crossing is a bridge. Where two river tiles are joined by both river and road, the road crosses their shared edge 9 pixels to one side of the river. Source: highway location guidance (Texas DOT Hydraulic Design Manual: align a crossing normal to the stream where possible). This changes the picture only: a road may still be built on any river tile once Engineering is known, and a road tile on a river still counts as a bridge for upkeep even when the picture shows it on the bank. Checks in `EleventhNovemberChecks`; photographed with `-lookShot`. Not hand-played.
+
 ## Owner request 11 Nov: the guide's toast (no save change)
 
 Divus Maximus raises his cup in a framed picture to the left of every guide prompt (research, pantheon, city build): it plays when the prompt opens and again every few seconds. 18 frames made on the owner's PC from the guide's picture by moving the arm and goblet; only the arm moves. The frames are private (`Resources/Tutor/Cheers`) and are not in the public backup; without them the prompt looks as before. Checked in a build with `-cheerShot`. Not hand-played.
