@@ -1,0 +1,12 @@
+dimension rules on: True
+Arcane gate to Fae Wilds: Dormant; Dormant. Whole but asleep. Its own mechanism will wake it once it is understood.
+Sky gate to Infernal Depths: Dormant; Dormant. Whole but asleep. Its own mechanism will wake it once it is understood.
+Arcane gate to Drowned Deep: Damaged; Damaged. Broken. It must be repaired before it can be woken.
+Steam gate to Ashen Waste: Naturally cycling; Shut now; it opens in 6 turns, for 4 turns in every 10.
+Void gate to Plague Marshes: Sealed; Sealed. Held shut by a seal. It asks for something before it will open.
+Void gate to Hive Expanse: Sealed; Sealed. Held shut by a seal. It asks for something before it will open.
+colony sites near the far gate: 4
+Emberwatch: level 1, stock 10, sent 4 production, home Azurehold
+Kingsport: level 1, stock 9, sent 4 production, home Azurehold
+known Ember discoveries: 1
+Investigate Gateway offered in Azurehold: True (), cost 32

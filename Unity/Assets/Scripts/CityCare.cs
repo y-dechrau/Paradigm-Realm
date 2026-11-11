@@ -83,6 +83,6 @@ namespace ParadigmRealm {
 public partial class World {
  // Gold a building costs on top of its shields (owner request, 9 Nov 2026): a quarter of its shield cost, paid on completion.
  // Projects (Transcendence) and the faith buildings bought with faith cost no gold.
- public int BuildingGold(int b){if(b<0||BuildUnit(b)>=0||IsProject(b)||IsFaithBuilding(b))return 0;return Math.Max(5,Cost(b)/4);}
+ public int BuildingGold(int b){if(b<0||BuildUnit(b)>=0||IsProject(b)||IsGateProject(b)||IsFaithBuilding(b))return 0;return Math.Max(5,Cost(b)/4);}
 }
 }

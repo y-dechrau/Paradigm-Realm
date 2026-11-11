@@ -2,6 +2,15 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner brief 11 Nov: dimensions, gates and colonies (save version 42)
+
+The full plan, the shared decisions, every rule and number, the risks and what to test first are in `DIMENSIONS-PLAN-2026-11-11.md`. In short:
+
+- **Built and checked** (engine harness, Unity checks, build, `-dimShot` photographs): gateway conditions (cycling, dormant, damaged, sealed) apart from investigation; investigation and repair as city projects with methods by technology; a compatibility report that separates unknown from confirmed; Ember and Resonant physical rules by capability tag; compact colonies with specialisation, policy, buildings, stock and self-sufficiency; shared gate capacity in loads with three priorities and a preview; exports to a named home city; isolation, reconnection and capture; nine local discoveries per family and two synthesis discoveries; rivals investigating, opening, crossing and colonising by the same rules; colonial claims, joint investigation, lessons and supplies from local peoples; the Gates and colonies screen; migration of version 41 saves.
+- **Verified scenario**, at an early and an advanced stage: discover a gateway, investigate it with a city's production, cross, found a colony, make a local discovery, export to a home city, a rival founds beside it and takes the gateway, supply stops with no unit deleted and no colony changing hands, supply resumes.
+- **Not built:** constructed gateways (the condition exists in the data only); more than one gateway per world; a formal access treaty beyond open borders; colony territory and minimap marks; rivals forcing or closing gateways; units or buildings that depend on electricity, so Resonant rules affect little yet.
+- **Not verified:** nothing was played by hand. Balance values are placeholders. Rivals do little beyond the gates in the one long game measured.
+
 ## Owner requests 11 Nov, evening: toast without a ghost, running rivers, the rest of the gateway design (no save version change)
 
 Built in source, checked in the engine harness and in Unity, photographed. Not hand-played.

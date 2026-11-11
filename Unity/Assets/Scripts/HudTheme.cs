@@ -279,6 +279,7 @@ namespace ParadigmRealm
             if(u.type==World.PriestUnit&&world.At(u.x,u.y)!=null&&world.At(u.x,u.y).gateLink>0&&!world.GateOpen(world.At(u.x,u.y)))actions.Add(new KeyValuePair<int,string>(PixelArt.IconRealms,"Unseal"));
             // Any unit standing on a sealed gateway can open the gateway panel (investigate, then choose how to open it).
             if(world.At(u.x,u.y)!=null&&world.At(u.x,u.y).gateLink>0)actions.Insert(Math.Min(1,actions.Count),new KeyValuePair<int,string>(PixelArt.IconRealms,"Gateway"));
+            if(u.type==3&&world.ColonyGround(u)&&world.ColonyReason(u)=="")actions.Add(new KeyValuePair<int,string>(PixelArt.IconRealms,"Foothold"));
             if(World.CanExplore(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconExplore,"Explore"));
             actions.Add(new KeyValuePair<int,string>(PixelArt.IconSkip,"Skip"));
             if(World.Power[u.type]>0&&!World.IsNaval(u.type))actions.Add(new KeyValuePair<int,string>(PixelArt.IconFortify,u.fortified?"Wake":"Fortify"));
@@ -306,7 +307,8 @@ namespace ParadigmRealm
                         case "Farm":case "Mine":case "Clear":{int job=a.Value=="Farm"?2:a.Value=="Clear"?5:3;string reason=world.WorkerTeam(u).Select(m=>world.JobReason(m,job)).FirstOrDefault(s=>s!="")??"";if(!world.StartJob(u,job))status=reason;break;}
                         case "Preach":if(!world.Preach(u))status=world.PreachReason(u);break;
                         case "Gateway":OpenGatePanel(world.At(u.x,u.y));break;
-                        case "Unseal":{var gateTile=world.At(u.x,u.y);string why=world.RiteReason(u);if(why!=""||!world.PerformRite(u))status=why;else{status="The rite is done: the gateway opens.";StartGateScene(gateTile);}break;}
+                        case "Foothold":{var planted=world.FoundColony(u);status=planted!=null?"Foothold planted: "+planted.name+". It becomes a colony once supplies reach it.":world.ColonyReason(u);if(planted!=null)selected=-1;break;}
+                    case "Unseal":{var gateTile=world.At(u.x,u.y);string why=world.RiteReason(u);if(why!=""||!world.PerformRite(u))status=why;else{status="The rite is done: the gateway opens.";StartGateScene(gateTile);}break;}
                         case "Explore":if(u.exploring)world.CancelActivity(u);else world.AutoExplore(u);break;
                         case "Skip":world.SkipTurn(u);status=world.UnitName(u)+" skips this turn.";break;
                         case "Fortify":case "Wake":if(World.Power[u.type]>0&&!World.IsNaval(u.type)){bool fortify=!u.fortified;world.CancelActivity(u);u.fortified=fortify;}else{bool watch=!u.sentry;world.CancelActivity(u);u.sentry=watch;}break;

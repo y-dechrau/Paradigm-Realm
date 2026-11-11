@@ -238,6 +238,7 @@ namespace ParadigmRealm
             HandleMapInput();
             if(dragging){var m=Event.current.mousePosition;var u=world.units.Find(a=>a.id==dragUnit);if(u!=null){float sx,sy;IsoScreen(u.x,u.y,out sx,out sy);DrawOrderLine(new Vector2(MapX+sx,MapY+sy-6*isoWidth/64f),m);}GUI.Label(new Rect(m.x+15,m.y+12,220,30),roadMode?"Release to build a road there":"Release to send the unit here",body);}
         }
+        readonly Dictionary<int,Colony> viewColonies=new Dictionary<int,Colony>();
         readonly Dictionary<int,Animal> viewAnimals=new Dictionary<int,Animal>();readonly List<Vector2> isoGates=new List<Vector2>();readonly List<int> isoGateStyles=new List<int>(),isoGateLand=new List<int>();readonly List<float> isoGateFit=new List<float>();
         // Painted gateways (owner pictures, 8 Nov 2026): Sprites/gate-open-N or gate-sealed-N by the gateway's design, standing on the
         // tile with their ground patch on the tile's lower tip. False when the art is missing, so the drawn gateway is used instead.
@@ -290,6 +291,7 @@ namespace ParadigmRealm
             viewStacks.Clear();
             foreach(var unit in world.units){List<Unit> stackAt;int cell=unit.y*width+unit.x;if(!viewStacks.TryGetValue(cell,out stackAt)){stackAt=new List<Unit>(2);viewStacks[cell]=stackAt;}stackAt.Add(unit);}
             viewCities.Clear();foreach(var city in world.cities)viewCities[city.y*width+city.x]=city;
+            viewColonies.Clear();if(world.colonies!=null)foreach(var colony in world.colonies)viewColonies[colony.y*width+colony.x]=colony;
             viewAnimals.Clear();if(world.animals!=null)foreach(var a in world.animals)viewAnimals[a.y*width+a.x]=a;
             if(Event.current.type==EventType.Repaint)UpdateGlides();
             if(Event.current.type==EventType.Repaint)BuildSuburbs();
@@ -396,6 +398,9 @@ namespace ParadigmRealm
                     if(broom>=4){float q=64*s*Mathf.Clamp((float)broom/22f,.24f,.4f),qx=sx+(float)(bfx-.5)*ground.width,qy=gy+(float)(bfy-.5)*ground.height;GUI.DrawTexture(new Rect(qx-q/2,qy-q*.7f,q,q),HamletTexture(c,t.x,t.y),ScaleMode.ScaleToFit,true);}
                     isoCityNames.Add(c.name);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(nations[c.owner]);isoCityRefs.Add(c);}
                 else if(c!=null){DrawCityArt(c,SettlementRect(sx,gy,s));isoCityNames.Add(c.name);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(nations[c.owner]);isoCityRefs.Add(c);}
+                // A colony beyond a gateway: a few houses, larger as it grows, under its owner's flag (Colonies.cs).
+                {Colony col;if(viewColonies.TryGetValue(cell,out col)&&(col.owner==0||visible)){float cs=64*s*(col.level<=0?.34f:col.level==1?.46f:.56f);GUI.DrawTexture(new Rect(sx-cs/2,gy+TileHalf()*s*.5f-cs*.8f,cs,cs),IsoPicture(6,CityVisualEra(col.owner),col.id&7),ScaleMode.ScaleToFit,true);
+                    var pole=new Rect(sx+9*s,gy-24*s,Mathf.Max(1,1.5f*s),13*s);Fill(pole,new Color(.3f,.22f,.14f));Fill(new Rect(pole.xMax,pole.y,8*s,5*s),nations[col.owner]);isoCityNames.Add(col.name);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(nations[col.owner]);isoCityRefs.Add(null);}}
                 Unit first=null,picked=null;int count=0;List<Unit> stackAt;
                 if(viewStacks.TryGetValue(cell,out stackAt))foreach(var a in stackAt){if(!(a.owner==0||visible)||Gliding(a.id))continue;count++;if(first==null)first=a;if(a.id==selected)picked=a;}
                 // At sea the ship is drawn, not the units it carries.

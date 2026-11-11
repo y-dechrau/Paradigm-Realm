@@ -97,11 +97,13 @@ namespace ParadigmRealm {
     "\n"+r.knownTiles+" tiles assessed; "+r.unknownTiles+" unexplored. "+(r.threat?"Enemy troops nearby!":"No currently visible military threat at this site.")+"\n"+r.diplomacyWarning;
   }
   public bool ShouldTrainSettler(City c){
+   if(ColonySettlerWanted(c))return true;
    int owner=c.owner;return c.pop>=2&&Yield(c)[0]>0&&BuildReason(c,0)==""&&cities.Count(a=>a.owner==owner)<RivalTargetCities(owner)&&!units.Any(u=>u.owner==owner&&u.type==0)&&nations[owner].gold>=(cities.Count(a=>a.owner==owner)<2?5:Math.Max(15,12-Budget(owner)[2]*3));
   }
   void PlanAISettlement(Unit u){
    if(u.moves<=0)return;
    if(AtSea(u))return; // aboard a galley: the galley decides where it lands
+   if(ColonyErrand(u))return; // a colony beyond a gateway (DimensionAI.cs)
    if(u.hasOrder){
     var r=AssessSettlement(u.owner,u.destinationX,u.destinationY,u.x,u.y);
     if(r.Suitable&&!r.threat&&r.diplomacyWarning==""&&SafeSettlerPath(u,Route(u,u.destinationX,u.destinationY))){ContinueOrder(u);if(u.x==r.x&&u.y==r.y)Found(u);if(u.hasOrder||!units.Contains(u))return;}

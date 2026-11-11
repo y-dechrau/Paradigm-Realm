@@ -26,7 +26,7 @@ public partial class RealmGame {
  }
  void DrawGatePanel()
  {
-  GUI.enabled=true;DiplomacyStyles();HudStyles();var gate=gatePanel;if(gate==null){gatePanel=null;return;}if(world.GateOpen(gate)){DrawOpenGatePanel(gate);return;}
+  GUI.enabled=true;DiplomacyStyles();HudStyles();var gate=gatePanel;if(gate==null){gatePanel=null;return;}if(world.GateSteady(gate)){DrawOpenGatePanel(gate);return;}
   Fill(new Rect(0,0,1280,800),new Color(0,0,0,.72f));var box=new Rect(190,90,900,620);DipPanel(box,.98f);
   int style=world.GateStyle(gate),realm=world.GateRealm(gate);var study=world.StudyOf(0,gate);bool known=study!=null&&study.known;
   // The gateway's sealed picture on the left.
@@ -37,17 +37,19 @@ public partial class RealmGame {
   if(!known)
   {
    int done=study==null?0:study.turns;bool here=world.units.Any(u=>u.owner==0&&u.x==gate.x&&u.y==gate.y&&World.Investigator(u.type));
-   GUI.Label(new Rect(x,y,w,60),"The gateway is sealed, and nobody living knows how. Its seal can be read.",text);y+=56;
+   GUI.Label(new Rect(x,y,w,60),(world.ConditionOf(gate)==GateCondition.Cycling?"This gateway opens and shuts by itself, and can be used whenever it is open. Reading its seal shows how to steady it so that it stays open.":world.ConditionOf(gate)==GateCondition.Sealed?"The gateway is sealed, and nobody living knows how. Its seal can be read.":"The gateway is shut. Reading its seal shows what it needs."),text);y+=56;
    DipHeading(new Rect(x,y,w,22),"Investigate");y+=28;
    GUI.Label(new Rect(x,y,w,90),"Keep a Scout, Medic or Priest on the gateway for "+GateApproach.StudyTurns+" turns. They will learn where it leads, what lies there, what the seal asks for and roughly how dangerous the far side is.",text);y+=92;
    GUI.Label(new Rect(x,y,w,24),"Read so far: "+done+" of "+GateApproach.StudyTurns+" turns."+(here?"  An investigator is at work.":"  No investigator is on the gateway."),new GUIStyle(text){normal={textColor=here?DipGood:DipPlain}});y+=40;
+   {var unknown=new GUIContent(string.Join(" ",world.CompatibilityReport(0,gate).ToArray())+"  A city within "+DimensionSettings.InvestigateRange+" tiles can also investigate it with its production (Investigate Gateway).");GUI.Label(new Rect(x,y,w,48),unknown,small2);y+=52;}
    GUI.Label(new Rect(x,y,w,60),"It can still open in the older ways: the first civilisation to learn its world's key technology, the Gatekeeper's Key wonder, or a priest's rite of unsealing.",small2);
   }
   else
   {
    var need=world.GateNeed(gate,0);
-   GUI.Label(new Rect(x,y,w,24),"Leads to the "+World.RealmNames[realm]+".   Danger beyond: "+world.DangerText(gate)+".",new GUIStyle(text){fontStyle=FontStyle.Bold});y+=26;
-   if(realm>0&&realm<World.RealmTexts.Length){var rt=new GUIContent(World.RealmTexts[realm]);float rh=Mathf.Min(74,small2.CalcHeight(rt,w));GUI.Label(new Rect(x,y,w,rh),rt,small2);y+=rh+6;}
+   GUI.Label(new Rect(x,y,w,24),"Leads to the "+World.RealmNames[realm]+".   Danger beyond: "+world.DangerText(gate,0)+".",new GUIStyle(text){fontStyle=FontStyle.Bold});y+=26;
+   // What the investigation confirmed about the far side: its physical rules, hazards and what fails there (CompatibilityReport).
+   if(realm>0&&realm<World.RealmTexts.Length){var rt=new GUIContent(string.Join(" ",world.CompatibilityReport(0,gate).ToArray()));var tiny=new GUIStyle(small2){fontSize=11};float rh=Mathf.Min(86,tiny.CalcHeight(rt,w));GUI.Label(new Rect(x,y,w,rh),rt,tiny);y+=rh+4;}
    DipHeading(new Rect(x,y,w,22),"What the seal asks");y+=26;
    {var mc=new GUIContent(need.main);float mh=text.CalcHeight(mc,w);GUI.Label(new Rect(x,y,w,mh),mc,text);y+=mh+2;}
    if(need.activation!=""){var ac=new GUIContent(need.activation);float ah=text.CalcHeight(ac,w);GUI.Label(new Rect(x,y,w,ah),ac,text);y+=ah+2;}
@@ -78,7 +80,7 @@ public partial class RealmGame {
    }
   }
   if(DipButton(new Rect(box.x+24,box.yMax-60,230,40),"Close",navy)){gatePanel=null;GUIUtility.ExitGUI();}
-  GUI.Label(new Rect(box.x+24,box.y+312,230,120),"Gold "+world.gold+"\nFaith "+world.nations[0].faith+"\nInfluence "+world.nations[0].influence+"\n\nOne of your units must be on the gateway to begin, and again when it opens.",small2);
+  GUI.Label(new Rect(box.x+24,box.y+312,230,230),(world.ConditionOf(gate)==GateCondition.Cycling?GateCondition.Names[GateCondition.Cycling]+". ":"")+world.GateSchedule(gate)+"\n\nGold "+world.gold+"\nFaith "+world.nations[0].faith+"\nInfluence "+world.nations[0].influence+"\n\nOne of your units must be on the gateway to begin, and again when it opens.",small2);
  }
 }
 }

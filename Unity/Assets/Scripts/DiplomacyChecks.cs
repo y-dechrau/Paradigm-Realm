@@ -16,10 +16,10 @@ public static class DiplomacyChecks {
  public static void Run(){
   // Older saves.
   var w=Setup();Check(!w.AtWar(1,2),"new rivals begin at peace");w.version=6;w.war[1]=true;w.openBorders[2]=true;w.nations[2].relations=17;w.UpgradeSave();
-  Check(w.version==41&&w.AtWar(1,2)&&w.AtWar(0,1)&&w.HasAccess(0,2)&&w.Pact(0,2,Pacts.Borders)&&w.OpinionMod(2,0,OpinionMods.Dealings)==17&&w.Valid(),"v6 migration preserves old wars, borders and goodwill");int kept=w.Opinion(2,0);w.UpgradeSave();Check(w.Opinion(2,0)==kept,"migration is idempotent");
+  Check(w.version==World.SaveVersion&&w.AtWar(1,2)&&w.AtWar(0,1)&&w.HasAccess(0,2)&&w.Pact(0,2,Pacts.Borders)&&w.OpinionMod(2,0,OpinionMods.Dealings)==17&&w.Valid(),"v6 migration preserves old wars, borders and goodwill");int kept=w.Opinion(2,0);w.UpgradeSave();Check(w.Opinion(2,0)==kept,"migration is idempotent");
   w=Setup();w.turn=20;{var p=w.Relation(0,1);p.friendUntil=w.turn+10;p.researchUntil=w.turn+10;p.trustB=30;p.grievanceB=40;p.embassyA=true;w.Relation(0,2).allianceUntil=w.turn+5;w.Relation(1,2).embargoUntil=w.turn+5;w.warWeariness[0]=9;
    w.offers.Add(new DiplomaticOffer{id=w.nextDiplomaticId++,from=1,to=0,kind=(TreatyKind)6,created=1,expires=4});w.version=39;w.UpgradeSave();
-   Check(w.version==41&&w.Pact(0,1,Pacts.NonAggression)&&w.Pact(0,1,Pacts.Research)&&!w.Pact(0,1,Pacts.Defensive),"an old friendship and research pact become standing agreements");
+   Check(w.version==World.SaveVersion&&w.Pact(0,1,Pacts.NonAggression)&&w.Pact(0,1,Pacts.Research)&&!w.Pact(0,1,Pacts.Defensive),"an old friendship and research pact become standing agreements");
    Check(w.Allied(0,2)&&w.Friends(0,2)&&w.HasAccess(0,2),"an old alliance becomes a defensive pact");
    Check(w.Rival(1,2)&&w.Embargoed(1,2)&&w.CasusBelli(1,2)=="Rivalry","an old embargo becomes a rivalry");
    Check(w.OpinionMod(1,0,OpinionMods.Dealings)==35&&w.OpinionMod(1,0,OpinionMods.Grievance)==-20&&w.Trust(1,0)==30,"old trust, the embassy and grievances become marks on opinion");

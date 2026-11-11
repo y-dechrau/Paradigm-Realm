@@ -55,7 +55,7 @@ public partial class RealmGame {
         }
     }
     void DrawEmpireAdvisors(){
-        if(Button("World atlas"))OpenDetails("Atlas");
+        if(Button("World atlas"))OpenDetails("Atlas");if(world.HasRealms&&Button("Gates and colonies"))OpenDetails("Dimensions");
         if(Button("Military adviser"))OpenDetails("Military");
         GUILayout.Label("World wonders",heading);
         foreach(int id in World.BuildingIds.Where(World.IsWonder)){

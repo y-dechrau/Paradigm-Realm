@@ -48,8 +48,10 @@ public partial class World {
  int GatePair(Tile t){var twin=GateTwin(t);int a=t.y*Width+t.x;return twin==null?a:Math.Min(a,twin.y*Width+twin.x);}
  // Save version 37: gateway pairs opened one by one while the rest stay sealed.
  public List<int> openedGates=new List<int>();
- public bool GateOpen(Tile t){if(t==null||t.gateLink<=0)return false;if(!gatesLocked)return true;return openedGates!=null&&openedGates.Contains(GatePair(t));}
- public bool OpenGate(Tile t,string how=""){if(t==null||t.gateLink<=0||GateOpen(t))return false;if(openedGates==null)openedGates=new List<int>();openedGates.Add(GatePair(t));var twin=GateTwin(t);int r=t.realm>0?t.realm:twin!=null?twin.realm:0;Note((how!=""?how+" ":"")+"An ancient gateway has opened: the "+GateStyleNames[GateStyle(t)].ToLower()+" to the "+RealmNames[r]+".");if(GateCells().Count>0&&openedGates.Count>=GateCells().Count)gatesLocked=false;return true;}
+ public bool GateOpen(Tile t){if(t==null||t.gateLink<=0)return false;if(GateSteady(t))return true;return CycleOpen(FindState(t));}
+ // Open for good, as against open for this part of its cycle (DimensionGates.cs).
+ public bool GateSteady(Tile t){if(t==null||t.gateLink<=0)return false;if(!gatesLocked)return true;return openedGates!=null&&openedGates.Contains(GatePair(t));}
+ public bool OpenGate(Tile t,string how=""){if(t==null||t.gateLink<=0||GateSteady(t))return false;if(openedGates==null)openedGates=new List<int>();openedGates.Add(GatePair(t));var twin=GateTwin(t);int r=t.realm>0?t.realm:twin!=null?twin.realm:0;Note((how!=""?how+" ":"")+"An ancient gateway has opened: the "+GateStyleNames[GateStyle(t)].ToLower()+" to the "+RealmNames[r]+".");if(GateCells().Count>0&&openedGates.Count>=GateCells().Count)gatesLocked=false;return true;}
  // How gateways open (owner request, 8 Nov 2026: "by both"):
  //  - Knowledge: the first home civilisation to learn a world's key technology breaks the seals of every gateway to that world.
  //  - A wonder: the Gatekeeper's Key (Mysticism), built in a city within 10 tiles of a sealed gateway, opens the nearest one.
@@ -62,10 +64,10 @@ public partial class World {
   if(!gatesLocked)return;
   for(int r=1;r<RealmKeyTech.Length;r++){
    int learner=-1;for(int o=0;o<civCount&&learner<0;o++)if(!IsNativeNation(o)&&HasTech(o,RealmKeyTech[r]))learner=o;if(learner<0)continue;
-   foreach(int i in GateCells().ToList()){var t=tiles[i];if(t.realm!=0||GateOpen(t))continue;var twin=GateTwin(t);if(twin==null||twin.realm!=r)continue;OpenGate(t,(learner==0?"Your":NationName(learner)+"'s")+" scholars of "+RealmKeyName(r)+" have broken a seal.");}
+   foreach(int i in GateCells().ToList()){var t=tiles[i];if(t.realm!=0||GateSteady(t))continue;var twin=GateTwin(t);if(twin==null||twin.realm!=r)continue;OpenGate(t,(learner==0?"Your":NationName(learner)+"'s")+" scholars of "+RealmKeyName(r)+" have broken a seal.");}
   }
  }
- public Tile NearestSealedGate(int x,int y,int range){Tile best=null;int least=int.MaxValue;foreach(int i in GateCells()){var t=tiles[i];if(t.realm!=0||GateOpen(t))continue;int d=Distance(x,y,t.x,t.y);if(d<=range&&d<least){least=d;best=t;}}return best;}
+ public Tile NearestSealedGate(int x,int y,int range){Tile best=null;int least=int.MaxValue;foreach(int i in GateCells()){var t=tiles[i];if(t.realm!=0||GateSteady(t))continue;int d=Distance(x,y,t.x,t.y);if(d<=range&&d<least){least=d;best=t;}}return best;}
  public string RiteReason(Unit u){if(u==null||u.type!=PriestUnit)return "Only a priest can perform the rite.";var t=At(u.x,u.y);if(t==null||t.gateLink<=0)return "Stand on a gateway.";if(GateOpen(t))return "This gateway is already open.";if(!HasTech(u.owner,"mysticism"))return "Requires Mysticism.";if(u.moves<=0)return "The priest needs movement.";if(nations[u.owner].faith<RiteFaith)return "Needs "+RiteFaith+" faith.";return "";}
  public bool PerformRite(Unit u){if(RiteReason(u)!="")return false;nations[u.owner].faith-=RiteFaith;var t=At(u.x,u.y);units.Remove(u);OpenGate(t,(u.owner==0?"Your":NationName(u.owner)+"'s")+" priest gave their life to the rite of unsealing.");return true;}
  public string GateName(Tile t){int r=GateRealm(t);if(!GateOpen(t))return "Sealed ancient gateway";return t.realm==0?"Ancient gateway to the "+RealmNames[r]:"Ancient gateway home";}
@@ -82,7 +84,7 @@ public partial class World {
    {double roll=rnd.NextDouble();if(roll<.035)t.ruin=true;else if(roll<.08)t.resource=r==3?(rnd.Next(2)==0?2:3):r==1||r==6?(rnd.Next(2)==0?5:1):r==2?3:r==4?5:1;}
    if(r==5)foreach(var t in RealmTiles(r).Where(t=>t.terrain==4&&rnd.NextDouble()<.03))t.resource=6+rnd.Next(10);
   }
-  PlaceGateways(rnd);
+  PlaceGateways(rnd);EnsureDimensionData();
  }
  IEnumerable<Tile> RealmTiles(int r){if(r>RealmsHere)yield break;for(int y=RealmTop(r);y<RealmBottom(r);y++)for(int x=0;x<Width;x++)yield return tiles[y*Width+x];}
  // Terrain of each world from smooth noise; the top and bottom rows of each world fade to its edge terrain.
@@ -140,7 +142,8 @@ public partial class World {
  // A land unit that enters a gateway it knows of is carried to the twin gateway (or the nearest free tile beside it).
  void GatewayTravel(Unit u){
   var here=At(u.x,u.y);var twin=GateTwin(here);if(twin==null||IsNaval(u.type))return;
-  if(!GateOpen(here)){if(u.owner==0&&!u.exploring)Note("The ancient gateway is sealed. Your "+UnitName(u)+" cannot open it.");return;}
+  if(!GateOpen(here)){if(u.owner==0&&!u.exploring)Note(ConditionOf(here)==GateCondition.Cycling?"The gateway is shut for now. "+GateSchedule(here)+" Your "+UnitName(u)+" can wait on it.":"The ancient gateway is sealed. Your "+UnitName(u)+" cannot open it.");return;}
+  {string hold=GateTroopHold(u,here);if(hold!=""){if(u.owner==0)Note(hold);return;}}
   Tile landing=GateLanding(u,twin);
   if(landing==null){if(u.owner==0)Note("The gateway flickers but will not open: the far side is blocked.");return;}
   int from=here.realm;CancelOrder(u);u.exploring=false;u.x=landing.x;u.y=landing.y;u.moves=0;
@@ -187,12 +190,12 @@ public partial class World {
  // Each turn: the dangers of the other worlds, and plague carried home.
  void RealmTurn(int owner){
   foreach(var u in units.Where(a=>a.owner==owner).ToList()){
-   var t=At(u.x,u.y);if(t==null)continue;bool inCity=cities.Any(c=>c.x==u.x&&c.y==u.y);
+   var t=At(u.x,u.y);if(t==null)continue;bool inCity=cities.Any(c=>c.x==u.x&&c.y==u.y)||ColonyShelter(u);int relief=AttritionRelief(owner,t.realm);
    // A native people is at home in its own world and suffers none of its dangers.
    if(t.realm>0&&CivilisationCatalog.NativeRealm(nations[owner].civ)==t.realm){if(u.plague>0)u.plague--;continue;}
    if(t.realm==1)u.hp=Math.Min(10,u.hp+2);
-   else if((t.realm==2||t.realm==4)&&!inCity)u.hp=Math.Max(1,u.hp-1);
-   else if(t.realm==3&&!inCity)u.hp=Math.Max(1,u.hp-2);
+   else if((t.realm==2||t.realm==4)&&!inCity)u.hp=Math.Max(1,u.hp-Math.Max(0,1-relief));
+   else if(t.realm==3&&!inCity)u.hp=Math.Max(1,u.hp-Math.Max(0,2-relief));
    if(t.realm==4)u.plague=5;
    else if(u.plague>0){u.plague--;var c=cities.Find(a=>a.x==u.x&&a.y==u.y&&a.owner==u.owner);if(c!=null&&c.plague<5){c.plague=5;if(owner==0)Note("Plague! Your "+UnitName(u)+" brought sickness from the Plague Marshes into "+c.name+": -2 food a turn for 5 turns.");}}
   }

@@ -13,7 +13,7 @@ namespace ParadigmRealm {
 // Every cost and consequence is worked out before the choice and shown (GateOutlook), and nothing is left to chance.
 // The older ways still stand: a world's key technology, the Gatekeeper's Key wonder and the priest's rite (Realms.cs).
 [Serializable] public class GateStudy {
- public int pair,owner,turns,approach,ready,partner=-1,side; public bool known,sunstone;// side: which half of a Rift seal is empowered (0 living, 1 burning); sunstone: recovered from a ruin for a Sun seal
+ public int pair,owner,turns,approach,ready,partner=-1,side,method; public bool known,sunstone;// side: which half of a Rift seal is empowered (0 living, 1 burning); sunstone: recovered from a ruin for a Sun seal
 }
 public class GateCost {
  public int gold,faith,influence,resource,techCount; public List<string> techs=new List<string>(); public string main="",activation="";
@@ -62,6 +62,10 @@ public partial class World {
    case 3:c.faith+=h(20);c.activation="Void gate: quiet what whispers in it ("+h(20)+" faith).";break;
    default:c.activation="";break;
   }
+  // The gateway's condition decides what kind of thing is asked (DimensionGates.cs): only a sealed gateway keeps its seal's demand.
+  {var st=FindState(gate);int cond=st==null?GateCondition.Sealed:st.condition;
+   if(cond==GateCondition.Dormant||cond==GateCondition.Constructed||cond==GateCondition.Damaged){c=new GateCost();c.gold=h(DimensionSettings.ActivateGold);c.main=(cond==GateCondition.Damaged&&st.repair>0?"Damaged gate: once repaired, ":"Dormant gate: ")+"its own mechanism wakes when it is worked in the right order ("+h(DimensionSettings.ActivateGold)+" gold for the attempt).";}
+   else if(cond==GateCondition.Cycling){c=new GateCost();c.gold=h(30);c.main="Cycling gate: it opens by itself. Steady its rhythm and it stays open ("+h(30)+" gold).";}}
   if(first)c.activation+=(c.activation==""?"":" ")+"No gateway has opened yet, so this one asks half and stabilises in "+GateApproach.FirstStabiliseTurns+" turns.";
   return c;
  }
@@ -92,8 +96,9 @@ public partial class World {
  public List<int> GatePartners(int owner,Tile gate){var list=new List<int>();var c=GateNeed(gate,owner);for(int o=0;o<civCount;o++){if(o==owner||!HasContact(owner,o)||AtWar(owner,o)||Rivals(owner,o)||IsNativeNation(o)&&gatesLocked)continue;if(!cities.Any(x=>x.owner==o))continue;if(Opinion(o,owner)<GateApproach.PartnerOpinion||Treasury(o)<Half(c.gold))continue;list.Add(o);}return list;}
  public string ApproachReason(int owner,Tile gate,int approach,int partner=-1)
  {
-  if(gate==null||gate.gateLink<=0)return "Not a gateway.";if(GateOpen(gate))return "This gateway is already open.";if(result!="")return "The game has ended.";
-  var s=StudyOf(owner,gate);if(s==null||!s.known)return "Its seal has not been read: keep a Scout, Medic or Priest on it for "+GateApproach.StudyTurns+" turns.";
+  if(gate==null||gate.gateLink<=0)return "Not a gateway.";if(GateSteady(gate))return "This gateway is already open.";if(result!="")return "The game has ended.";
+  var s=StudyOf(owner,gate);if(s==null||!s.known)return "Its seal has not been read: keep a Scout, Medic or Priest on it for "+GateApproach.StudyTurns+" turns, or have a city within "+DimensionSettings.InvestigateRange+" tiles investigate it.";
+  {var st=FindState(gate);if(st!=null&&st.condition==GateCondition.Damaged&&st.repair>0)return "This gateway is damaged. A city within "+DimensionSettings.InvestigateRange+" tiles must repair it first (the Repair Gateway project, Bronze Working).";}
   if(s.approach!=GateApproach.None)return GateApproach.Names[s.approach]+" is already under way.";
   if(Holders(owner,gate).Count==0)return "One of your units must stand on the gateway.";
   if(approach==GateApproach.Stabilise)return GateLacks(owner,gate,false,GateApproach.StabiliseGold);
@@ -142,7 +147,7 @@ public partial class World {
   var counted=new HashSet<long>();
   foreach(var u in units)
   {
-   if(!Investigator(u.type))continue;var t=At(u.x,u.y);if(t==null||t.gateLink<=0||GateOpen(t))continue;int pair=GatePair(t);if(!counted.Add((long)pair*100+u.owner))continue;
+   if(!Investigator(u.type))continue;var t=At(u.x,u.y);if(t==null||t.gateLink<=0||GateSteady(t))continue;int pair=GatePair(t);if(!counted.Add((long)pair*100+u.owner))continue;
    var s=StudyFor(u.owner,t);if(s.known)continue;s.turns++;
    if(s.turns>=GateApproach.StudyTurns){s.known=true;if(u.owner==0){Note("Your "+UnitName(u)+" has read the seal of the "+GateStyleNames[GateStyle(t)].ToLower()+": it leads to the "+RealmNames[GateRealm(t)]+". Choose how to open it.");AddGateNotice(t);}}
   }
@@ -150,7 +155,7 @@ public partial class World {
   {
    var gate=GatePairTile(s.pair);
    if(gate!=null&&s.approach==GateApproach.Closing){if(s.ready<=turn)FinishClosing(s,gate);continue;}
-   if(gate==null||GateOpen(gate)){gateStudies.Remove(s);continue;}
+   if(gate==null||GateSteady(gate)){gateStudies.Remove(s);continue;}
    // A rival that has read a seal and can pay stabilises it; rivals never force.
    if(s.owner!=0&&s.known&&s.approach==GateApproach.None&&ApproachReason(s.owner,gate,GateApproach.Stabilise)=="")BeginApproach(s.owner,gate,GateApproach.Stabilise);
    if(s.approach==GateApproach.None||s.ready>turn)continue;
@@ -161,7 +166,7 @@ public partial class World {
  // ---------- the rest of the owner's design (11 Nov 2026) ----------
  // The danger beyond is only roughly known until the gateway opens: two neighbouring levels, one of them the truth.
  public void DangerRange(Tile gate,out int lo,out int hi){int d=GateDanger(gate);bool up=GatePair(gate)%2==0;lo=up?d:d-1;hi=up?d+1:d;if(lo<1){lo=1;hi=2;}if(hi>3){hi=3;lo=2;}}
- public string DangerText(Tile gate){int lo,hi;DangerRange(gate,out lo,out hi);return GateApproach.Danger[lo].ToLower()+" to "+GateApproach.Danger[hi].ToLower();}
+ public string DangerText(Tile gate,int owner=-1){if(owner>=0){var read=StudyOf(owner,gate);if(read!=null&&read.method>=2)return GateApproach.Danger[GateDanger(gate)].ToLower()+" (measured)";}int lo,hi;DangerRange(gate,out lo,out hi);return GateApproach.Danger[lo].ToLower()+" to "+GateApproach.Danger[hi].ToLower();}
  // A Sun seal's sunstone can be recovered instead of bought: any unit of a civilisation that explores a ruin within reach of the gate.
  public bool RuinNear(Tile gate){var home=HomeSide(gate);if(home==null)return false;foreach(var t in tiles)if(t.ruin&&t.realm==home.realm&&Distance(t.x,t.y,home.x,home.y)<=GateApproach.RuinReach)return true;return false;}
  public bool HasSunstone(int owner,Tile gate){var s=StudyOf(owner,gate);return s!=null&&s.sunstone;}
@@ -192,7 +197,7 @@ public partial class World {
  public string CloseReason(int owner,Tile gate)
  {
   if(gate==null||gate.gateLink<=0)return "Not a gateway.";if(!GateOpen(gate))return "This gateway is sealed.";if(result!="")return "The game has ended.";
-  if(ClosingGate(gate))return "The gateway is already closing.";if(!HoldsGate(owner,gate))return "One of your units must stand on the gateway.";
+  if(!GateSteady(gate))return "It opens and shuts by itself. Steady it before trying to close it.";if(ClosingGate(gate))return "The gateway is already closing.";if(!HoldsGate(owner,gate))return "One of your units must stand on the gateway.";
   if(EnemyAtGate(owner,gate))return "It cannot be closed during a battle at the gate: an enemy stands beside it.";return "";
  }
  public bool BeginClose(int owner,Tile gate)
@@ -203,12 +208,19 @@ public partial class World {
  void FinishClosing(GateStudy s,Tile gate)
  {
   s.approach=GateApproach.None;
-  if(!GateOpen(gate))return;
+  if(!GateSteady(gate))return;
   if(!HoldsGate(s.owner,gate)||EnemyAtGate(s.owner,gate)){if(s.owner==0)Note("The gateway could not be closed: "+(EnemyAtGate(s.owner,gate)?"an enemy stands beside it.":"none of your units holds it."));return;}
   openedGates.Remove(GatePair(gate));gatesLocked=true;
   Note((s.owner==0?"Your people":NationName(s.owner))+" closed the "+GateStyleNames[GateStyle(gate)].ToLower()+" to the "+RealmNames[GateRealm(gate)]+". It is sealed again.");
  }
  // For the checks.
+ public void StudyOfForShot(int owner,Tile gate){var s=StudyFor(owner,HomeSide(gate));s.known=true;s.turns=GateApproach.StudyTurns;}
+ internal GateStudy StudyOfForCheck(int owner,Tile gate){return StudyFor(owner,HomeSide(gate));}
+ internal void SetPactForCheck(int a,int b,int k,bool on){SetPact(a,b,k,on);}
+ internal void MakePeaceForCheck(int a,int b){MakePeace(a,b);}
+ internal void CompleteBuildingForCheck(City c){CompleteBuilding(c);}
+ internal void DimensionsTurnForCheck(int owner){DimensionsTurn(owner);}
+ internal void TravelForCheck(Unit u){GatewayTravel(u);}
  internal void OpenGateForCheck(Tile gate){if(!GateOpen(gate))OpenGate(gate);}
  internal void ExploreRuinForCheck(Unit u){ExploreRuin(u);}
  internal void GiveBuildingForCheck(City c,int b){if(c.buildings==null)c.buildings=new List<int>();if(!c.buildings.Contains(b))c.buildings.Add(b);}

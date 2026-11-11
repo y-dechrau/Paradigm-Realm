@@ -15,7 +15,7 @@ namespace ParadigmRealm
         {
             var args=Environment.GetCommandLineArgs();int i;
             // A test run keeps its saves and autosaves in its own output folder, never among the player's saved games.
-            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot","-cheerShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
+            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot","-cheerShot","-dimShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
             i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
             i=Array.IndexOf(args,"-frameProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FrameProbe(args[i+1],i+2<args.Length?int.Parse(args[i+2]):4,i+3<args.Length?int.Parse(args[i+3]):120));
@@ -28,6 +28,7 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-mapShot");if(i>=0&&i+1<args.Length)StartCoroutine(MapShot(args[i+1]));
             i=Array.IndexOf(args,"-lookShot");if(i>=0&&i+1<args.Length)StartCoroutine(LookShot(args[i+1]));
             i=Array.IndexOf(args,"-cheerShot");if(i>=0&&i+1<args.Length)StartCoroutine(CheerShot(args[i+1]));
+            i=Array.IndexOf(args,"-dimShot");if(i>=0&&i+1<args.Length)StartCoroutine(DimShot(args[i+1]));
         }
         // Development aid: "-mapShot <folder>" starts a fixed game with the whole home world found and saves close views of a river
         // mouth, a farm and a fort on a river, hills, a volcano with a unit on it, sealed and open gateways, resources on land
@@ -113,6 +114,39 @@ namespace ParadigmRealm
             world.researchPrompts.Clear();world.researchPrompts.Add(TechnologyCatalog.Index("agriculture"));yield return Frames(2);
             yield return Shot(folder,"cheers-0-start.bmp");yield return new WaitForSecondsRealtime(.45f);yield return Shot(folder,"cheers-1-raised.bmp");yield return new WaitForSecondsRealtime(1.4f);yield return Shot(folder,"cheers-2-lowered.bmp");
             Probe("the toast frames are loaded",cheers!=null);File.WriteAllText(Path.Combine(folder,"cheers.txt"),"frames loaded: "+(cheers!=null));Application.Quit();
+        }
+        // Development aid: "-dimShot <folder>" plays the dimensional loop with the rules themselves (found a gateway, read it, plant a
+        // colony, run some turns) and photographs the Gates and colonies screen, the gateway panel and the colony on the map.
+        IEnumerator DimShot(string folder)
+        {
+            Directory.CreateDirectory(folder);yield return Frames(5);
+            seedText="421";mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;
+            var founder=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);var home=founder!=null?world.Found(founder):null;var log=new System.Text.StringBuilder();log.AppendLine("dimension rules on: "+world.dimensionRules);
+            if(world.gatesFound==null)world.gatesFound=new System.Collections.Generic.List<int>();foreach(var g in world.HomeGates()){int cell=g.y*world.Width+g.x;if(!world.gatesFound.Contains(cell))world.gatesFound.Add(cell);g.seen=true;}
+            foreach(var g in world.HomeGates())log.AppendLine(World.GateStyleNames[world.GateStyle(g)]+" to "+World.RealmNames[world.GateRealm(g)]+": "+GateCondition.Names[world.ConditionOf(g)]+"; "+world.GateSchedule(g));
+            world.gold=600;world.nations[0].gold=600;world.nations[0].influence=80;foreach(string id in new[]{"agriculture","bronze","writing","wheel"})world.nations[0].tech[TechnologyCatalog.Index(id)]=true;world.tech=world.nations[0].tech;
+            for(int o=1;o<world.civCount;o++){world.met[o]=true;world.AddOpinion(o,0,OpinionMods.Dealings,30);}world.newContacts.Clear();
+            var cyc=world.HomeGates().First(g=>world.ConditionOf(g)==GateCondition.Cycling);var dormant=world.HomeGates().First(g=>world.ConditionOf(g)==GateCondition.Dormant);
+            // The gateway panel: unread, then read by a scout standing on it.
+            var reader=world.Add(0,3,dormant.x,dormant.y);OpenGatePanel(dormant);yield return Shot(folder,"1-gate-panel-dormant-unread.bmp");world.GateExpeditionTurn();world.GateExpeditionTurn();if(world.gateNotices!=null)world.gateNotices.Clear();
+            OpenGatePanel(dormant);yield return Shot(folder,"2-gate-panel-dormant-read.bmp");OpenGatePanel(cyc);yield return Shot(folder,"3-gate-panel-cycling.bmp");gatePanel=null;
+            // A colony beyond the cycling gateway, a foothold beside it, and a few turns of supply.
+            world.StudyOfForShot(0,cyc);world.OpenGate(cyc);gateScene=null;var far=world.GateTwin(cyc);foreach(var t in world.tiles)if(t.realm==far.realm&&world.Distance(t.x,t.y,far.x,far.y)<=9)t.seen=true;
+            var sites=world.ColonySites(0,far.realm);log.AppendLine("colony sites near the far gate: "+sites.Count);
+            if(sites.Count>0){var settler=world.Add(0,0,sites[0].x,sites[0].y);settler.moves=4;world.Found(settler,"Emberwatch");}
+            sites=world.ColonySites(0,far.realm);if(sites.Count>0){var scout=world.Add(0,3,sites[0].x,sites[0].y);scout.moves=4;world.FoundColony(scout);}
+            world.StudyDiscovery(0,DimensionFamily.Ember,AdaptationCatalog.BankedEmbers);world.SetAdaptationFunding(0,DimensionFamily.Ember,1);
+            for(int k=0;k<4;k++){world.EndTurn();yield return null;}world.researchPrompts.Clear();world.buildPrompts.Clear();world.newContacts.Clear();if(world.rivalCalls!=null)world.rivalCalls.Clear();gateScene=null;
+            foreach(var c in world.ColoniesOf(0))log.AppendLine(c.name+": level "+c.level+", stock "+c.stock+", sent "+c.shipShields+" production, home "+(world.ColonyHome(c)==null?"none":world.ColonyHome(c).name));
+            log.AppendLine("known Ember discoveries: "+(world.AdaptationOf(0,DimensionFamily.Ember)==null?0:world.AdaptationOf(0,DimensionFamily.Ember).known.Count));
+            for(int tab=0;tab<5;tab++){detailsScreen="Dimensions";dimensionTab=tab;yield return Frames(3);yield return Shot(folder,"4-screen-"+tab+"-"+DimensionTabs[tab].ToLower().Replace(' ','-')+".bmp");}detailsScreen="";
+            var first=world.ColoniesOf(0).FirstOrDefault();if(first!=null){isoWidth=128;FocusTile(first.x,first.y);yield return CleanShot(folder,"5-colony-on-map.bmp");isoWidth=64;yield return CleanShot(folder,"5b-colony-far.bmp");}
+            // The city's building list with the gateway project in it.
+            if(home!=null){var near=world.tiles.Where(t=>t.realm==0&&t.gateLink==0&&world.Distance(t.x,t.y,dormant.x,dormant.y)==2&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)).FirstOrDefault();var probeGate=world.HomeGates().FirstOrDefault(g=>!world.GateSteady(g)&&(world.StudyOf(0,g)==null||!world.StudyOf(0,g).known));
+                if(probeGate!=null){near=world.tiles.Where(t=>t.realm==0&&t.gateLink==0&&world.Distance(t.x,t.y,probeGate.x,probeGate.y)==2&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)).FirstOrDefault();if(near!=null){home.x=near.x;home.y=near.y;world.RebuildTerritory();}}
+                log.AppendLine("Investigate Gateway offered in "+home.name+": "+world.TechAllows(home,World.InvestigateProject)+" ("+world.BuildReason(home,World.InvestigateProject)+"), cost "+world.CostFor(home,World.InvestigateProject));Probe("a city near an unread gateway is offered the investigation",world.TechAllows(home,World.InvestigateProject));
+                cityId=home.id;selected=-1;cityScreen=true;yield return Frames(3);yield return Shot(folder,"6-city-with-gateway-project.bmp");cityScreen=false;}
+            Probe("the game is valid after the dimensional loop",world.Valid());File.WriteAllText(Path.Combine(folder,"dimensions.txt"),log.ToString());Application.Quit();
         }
         IEnumerator MapShot(string folder)
         {

@@ -28,7 +28,7 @@ public partial class RealmGame {
    GUILayout.Label(foundProblem,small);GUILayout.Space(6);
    var e=Event.current;bool enter=e.type==EventType.KeyDown&&(e.keyCode==KeyCode.Return||e.keyCode==KeyCode.KeypadEnter);
    GUILayout.BeginHorizontal();
-   if(Button("Found city")||enter){foundProblem=world.CityNameProblem(foundName);if(foundProblem==""){var c=world.Found(u,foundName);foundStage=0;if(c!=null){selected=-1;cityId=c.id;status=c.name+" founded.";}else status=world.FoundReason(u);if(enter)e.Use();}}
+   if(Button("Found city")||enter){foundProblem=world.CityNameProblem(foundName);if(foundProblem==""){var c=world.Found(u,foundName);foundStage=0;if(c!=null){selected=-1;cityId=c.id;status=c.name+" founded.";}else if(!world.units.Contains(u)){selected=-1;status="Colony founded. It is run from Empire, Gates and colonies.";}else status=world.ColonyGround(u)?world.ColonyReason(u):world.FoundReason(u);if(enter)e.Use();}}
    if(Button("Back"))foundStage=1;
    GUILayout.EndHorizontal();
   }

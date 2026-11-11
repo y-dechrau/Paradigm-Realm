@@ -12,6 +12,9 @@ public partial class RealmGame {
   var mine=world.units.FirstOrDefault(u=>u.owner==0&&world.RealmOf(u.x,u.y)==r);var city=world.cities.Where(c=>c.owner==0&&world.RealmOf(c.x,c.y)==r).OrderBy(c=>c.id).FirstOrDefault();
   var gate=world.tiles.FirstOrDefault(t=>t.realm==r&&t.gateLink>0&&t.seen);
   int x,y;if(city!=null){x=city.x;y=city.y;}else if(mine!=null){x=mine.x;y=mine.y;}else if(gate!=null){x=gate.x;y=gate.y;}else{x=world.Width/2;y=(world.RealmTop(r)+world.RealmBottom(r))/2;}
+  // The home world is left and found again where the player was looking (the camera's place is kept).
+  if(viewRealm==0&&r!=0){homeCamera=new Vector2(camI,camJ);homeCameraSaved=true;}
+  if(r==0&&viewRealm!=0&&homeCameraSaved){viewRealm=0;atlasTexture=null;camI=homeCamera.x;camJ=homeCamera.y;ClampCamera();return;}
   viewRealm=r;atlasTexture=null;FocusTile(x,y);
  }
  // Legends of the sealed worlds: their histories and all ten peoples of each, to read while the gates stay shut.
