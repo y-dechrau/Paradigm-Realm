@@ -228,7 +228,7 @@ public partial class World {
  void DimensionsTurn(int owner)
  {
   if(gateStates==null||colonies==null||adaptations==null)EnsureDimensionData();if(gatePriority==null||gatePriority.Length<MaxNations)gatePriority=new int[MaxNations];
-  AccordTurn(owner);AdaptationTurn(owner);ColonyTurn(owner);if(owner!=0)ColonyAI(owner);
+  AccordTurn(owner);GateLegends(owner);GateRumours(owner);AdaptationTurn(owner);ColonyTurn(owner);if(owner!=0)ColonyAI(owner);
   if(troopLoads!=null)foreach(var key in troopLoads.Keys.Where(k=>k%200==owner).ToList())troopLoads.Remove(key);
   // One message a turn for everything about gates and colonies that changed.
   if(owner==0&&dimensionNews!=null&&dimensionNews.Count>0){Note("Gates and colonies: "+string.Join(" ",dimensionNews.Distinct().Take(4).ToArray())+(dimensionNews.Count>4?" (and "+(dimensionNews.Count-4)+" more; see Gates and colonies)":""));dimensionNews.Clear();}

@@ -358,13 +358,13 @@ static void GateExpeditionChecks(){
     // The requirement.
     g.gold=0;g.nations[0].gold=0;g.nations[0].faith=0;g.nations[0].influence=0;Check(g.ApproachReason(0,a,GateApproach.Stabilise).StartsWith("Needs"),"a gateway cannot be opened without what its seal asks for");rich();
     // Stabilise: dearer and slower, no fight.
-    int gold=g.gold,faith=g.nations[0].faith,influence=g.nations[0].influence,wait=g.StabiliseTurnsNow;Check(wait==GateApproach.FirstStabiliseTurns&&g.FirstGateway,"the first gateway stabilises in three turns");Check(g.ApproachReason(0,a,GateApproach.Stabilise)==""&&g.BeginApproach(0,a,GateApproach.Stabilise)&&!g.GateOpen(a),"stabilising begins and does not open at once");
+    int gold=g.gold,faith=g.nations[0].faith,influence=g.nations[0].influence,wait=g.StabiliseTurnsNow;Check(wait==GateApproach.FirstStabiliseTurns&&g.FirstGateway,"the first gateway stabilises in half the usual time ("+wait+" turns)");Check(g.ApproachReason(0,a,GateApproach.Stabilise)==""&&g.BeginApproach(0,a,GateApproach.Stabilise)&&!g.GateOpen(a),"stabilising begins and does not open at once");
     Check(g.gold==gold-need.gold-GateApproach.StabiliseGold&&g.nations[0].faith==faith-need.faith&&g.nations[0].influence==influence-need.influence&&warrior.hp==10,"it costs the requirement and 30 gold more, and no one is hurt");
     Check(g.ApproachReason(0,a,GateApproach.Force).Contains("under way"),"one approach at a time");
     g.turn+=wait-1;g.GateExpeditionTurn();Check(!g.GateOpen(a),"not before its time");g.turn++;g.GateExpeditionTurn();var far=g.GateTwin(a);
     Check(g.GateOpen(a)&&far.seen&&g.tiles.Where(t=>t.realm==far.realm&&g.Distance(t.x,t.y,far.x,far.y)<=GateApproach.LandingSight).All(t=>t.seen)&&g.tiles.Any(t=>t.realm==far.realm&&!t.seen),"it opens when the work is done and shows the landing, not the whole world beyond");
     // After the first, gateways ask the full price and take six turns; the first asked half.
-    {var later=g.GateNeed(gates[1]);Check(!g.FirstGateway&&g.StabiliseTurnsNow==GateApproach.StabiliseTurns,"later gateways take six turns");
+    {var later=g.GateNeed(gates[1]);Check(!g.FirstGateway&&g.StabiliseTurnsNow==GateApproach.StabiliseTurns,"later gateways take the full time ("+g.StabiliseTurnsNow+" turns)");
      g.openedGates.Clear();var asFirst=g.GateNeed(gates[1]);g.openedGates.Add(0);g.openedGates.Clear();g.OpenGateForCheck(a);Check(asFirst.gold*2>=later.gold&&asFirst.gold<=later.gold&&(later.gold+later.faith+later.influence==0||asFirst.gold+asFirst.faith+asFirst.influence<later.gold+later.faith+later.influence),"the first gateway asks half ("+asFirst.gold+" gold against "+later.gold+")");}
     // Force: at once, with a fight whose result is known beforehand.
     var b=gates[1];g.Add(0,World.PriestUnit,b.x,b.y);g.GateExpeditionTurn();g.GateExpeditionTurn();rich();Check(g.ApproachReason(0,b,GateApproach.Force).Contains("soldier"),"forcing needs a soldier on the gateway");
@@ -375,7 +375,7 @@ static void GateExpeditionChecks(){
     Check(!g.GatePartners(0,c).Contains(1)||g.Opinion(1,0)>=GateApproach.PartnerOpinion,"a partner must think well of you");g.AddOpinion(1,0,OpinionMods.Dealings,60);
     if(g.cities.Any(x=>x.owner==1)){Check(g.GatePartners(0,c).Contains(1)&&g.ApproachReason(0,c,GateApproach.Negotiate,1)=="","a friendly civilisation with the gold will share the cost");
      var cn=g.GateNeed(c);gold=g.gold;int theirs=g.nations[1].gold;Check(g.BeginApproach(0,c,GateApproach.Negotiate,1)&&g.gold==gold-(cn.gold+1)/2&&g.nations[1].gold==theirs-(cn.gold+1)/2&&g.Pact(0,1,Pacts.Borders),"each pays half the gold and the partner gains open borders");
-     g.turn+=GateApproach.NegotiateTurns;g.GateExpeditionTurn();Check(g.GateOpen(c),"a negotiated gateway opens after three turns");}
+     g.turn+=GateApproach.NegotiateTurns;g.GateExpeditionTurn();Check(g.GateOpen(c),"a negotiated gateway opens when its time is up ("+GateApproach.NegotiateTurns+" turns)");}
     // Danger is given as two neighbouring levels, one of them the truth; the forced fight is within the range shown.
     {var probe=g.tiles.First(t=>t.realm==0&&t.gateLink>0);int lo,hi;g.DangerRange(probe,out lo,out hi);Check(lo>=1&&hi<=3&&hi==lo+1&&g.GateDanger(probe)>=lo&&g.GateDanger(probe)<=hi&&g.DangerText(probe).Contains(" to "),"danger is known roughly: "+g.DangerText(probe));
      Check(g.ForceLoss(0,probe,lo)<=g.ForceLoss(0,probe)&&g.ForceLoss(0,probe)<=g.ForceLoss(0,probe,hi),"and the fight is no worse than the worst shown");}

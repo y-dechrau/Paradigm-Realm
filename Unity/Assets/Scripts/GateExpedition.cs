@@ -21,11 +21,13 @@ public class GateCost {
 public static class GateApproach {
  public const int None=0,Stabilise=1,Force=2,Negotiate=3,Closing=4;
  public static readonly string[] Names={"","Stabilise","Force open","Negotiate access","Closing"};
- public const int StudyTurns=2,StabiliseTurns=6,NegotiateTurns=3,StabiliseGold=30,LandingSight=3,PartnerOpinion=10;
+ // Opening takes four times as long as it first did (owner request, 12 Nov 2026): 24 turns to stabilise and 12 to negotiate,
+ // against 6 and 3. Reading a seal, forcing one and closing one are unchanged.
+ public const int StudyTurns=2,StabiliseTurns=24,NegotiateTurns=12,StabiliseGold=30,LandingSight=3,PartnerOpinion=10;
  // Added 11 Nov 2026 from the rest of the owner's design: the first gateway to open anywhere asks half and stabilises in 3 turns; a
  // Sun seal takes a sunstone from a ruin within 6 tiles; a Grove seal is satisfied by a Shrine within 10; a Rift seal's opener
  // chooses which half to empower; a held gateway can be closed in a full turn.
- public const int FirstStabiliseTurns=3,RuinReach=6,ShrineReach=10,RiftReach=2,FireSight=5;
+ public const int FirstStabiliseTurns=12,RuinReach=6,ShrineReach=10,RiftReach=2,FireSight=5;
  public static readonly string[] RiftSides={"The living side","The burning side"};
  public static readonly string[] Danger={"","Low","Moderate","High"};
 }
@@ -214,6 +216,7 @@ public partial class World {
   Note((s.owner==0?"Your people":NationName(s.owner))+" closed the "+GateStyleNames[GateStyle(gate)].ToLower()+" to the "+RealmNames[GateRealm(gate)]+". It is sealed again.");
  }
  // For the checks.
+ internal bool BeyondErrandForCheck(Unit u){return BeyondErrand(u);}
  public void StudyOfForShot(int owner,Tile gate){var s=StudyFor(owner,HomeSide(gate));s.known=true;s.turns=GateApproach.StudyTurns;}
  internal GateStudy StudyOfForCheck(int owner,Tile gate){return StudyFor(owner,HomeSide(gate));}
  internal void SetPactForCheck(int a,int b,int k,bool on){SetPact(a,b,k,on);}

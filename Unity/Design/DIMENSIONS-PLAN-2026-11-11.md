@@ -49,9 +49,10 @@ Owner brief: adapt the game to exploring and colonising parallel dimensions thro
 **Gates**
 - Cycling: open 4 turns in every 10, on a fixed offset per gate. Usable while open with no investigation. Stabilise makes it open for good.
 - Dormant: read the seal, then a small activation (20 gold; 10 for the first gate of the game) through the existing approaches.
-- Damaged: read the seal, then a city within 8 tiles with Bronze Working runs Repair Gateway (90 production); it is then dormant.
+- Opening times (quadrupled 12 Nov at the owner's request): Stabilise 24 turns (12 for the first gate of the game), Negotiate 12. Forcing is still immediate; reading a seal still takes 2 turns.
+- Damaged: read the seal, then a city within 12 tiles with Bronze Working runs Repair Gateway (90 production); it is then dormant.
 - Sealed: the 10 Nov requirement by gate design.
-- Investigation: a Scout, Medic or Priest for 2 turns as before, or a city within 8 tiles running Investigate Gateway (40 production, no gold). Method by technology: observation and trial (100%), scholarly study with Writing (80%), instruments with the Printing Press (60%, measures danger exactly), probes with Computing (40%, counts colony sites).
+- Investigation: a Scout, Medic or Priest for 2 turns as before, or a city within 12 tiles running Investigate Gateway (40 production, no gold). Method by technology: observation and trial (100%), scholarly study with Writing (80%), instruments with the Printing Press (60%, measures danger exactly), probes with Computing (40%, counts colony sites).
 - Capacity: 6 loads a turn; +2 Engineering, +2 Industry, +4 Computing, +2 from the family's haulage discovery, +3 Gate Harmonics.
 - Who may use a gate: it is open, the land under either end is not held by someone without open borders or at war with you, and no such unit stands on either end.
 
@@ -82,9 +83,19 @@ Owner brief: adapt the game to exploring and colonising parallel dimensions thro
 - Joint investigation: 20 gold to a civilisation that has read a seal you have not.
 - Local peoples: lessons (30 gold, opinion 10, 8 points) and supplies (20 gold, 9 supplies, no gate needed).
 
+## Added 12 Nov 2026: rivals compete, borders escort
+
+- **Legends.** From turn 40 a home civilisation that knows of no gateway hears of the one nearest its capital, within 40 tiles. The player hears the same way.
+- **Word travels.** A civilisation at peace with one that knows a gateway, and not disliked by it, hears where it lies: one gateway every six turns. The player hears the same way.
+- **Rival errands** (`DimensionAI.cs`): a Scout walks to an unread gateway and reads it (`GateErrand`); the nearest spare soldier stands on a read gateway so the work can begin and finish; a soldier goes through to garrison an ungarrisoned colony; at war, a soldier marches through the gateway that feeds an enemy's colonies and on to the colonies (`BeyondErrand`). All of them cross like anyone, when the gateway is open and has room.
+- **Rivals at war still invest** unless an enemy soldier is within 5 tiles of one of their cities (`EnemyAtTheDoor`). Up to 2 colonies each, 3 from the Industrial Age; from 2 cities.
+- **Standing on an open gateway is not possible:** whoever steps on it goes through. A blockade is therefore made on the far end, or by holding the land the home end stands on.
+- **Border escort** (`Trespass.cs`): a land unit standing on a tile that has become another civilisation's land, with no agreement that would let it walk in (`World.CanEnter`: open borders, a defensive pact, or war), is set down on the nearest tile of the same world it may stand on, within 14 tiles, with its orders cancelled. The same for every civilisation. Units in their own city and ships are left alone.
+- **Measured** (one 300-turn game, Small map, idle player): first seal read by a rival on turn 67, first gateway opened for good on turn 143, first rival colony on turn 156; 3 gateways opened, 2 rival colonies and 9 local discoveries by turn 300.
+
 ## Risks and limits
 
-- **Rivals are thin beyond the gates.** In a 160-turn test game on a Small map three rivals opened one gateway and founded one colony. They are poor and the gates are often far from them. They never force a gate and never close one.
+- **Rivals are slower than a player beyond the gates.** See the measurement above. They never force a gate and never close one, and with opening now taking 24 turns their first colony comes around turn 150.
 - **Balance is placeholder.** Every number above is in `DimensionSettings`, `ColonyCatalog`, `AdaptationCatalog` or `AccordCatalog` and has not been tuned by play.
 - **Resonant rules have little to bite on** until units or buildings that depend on electricity exist.
 - **`MilitaryValue` and the forced-gate fight ignore local physics**, so a rival may overrate Riflemen it sends to an Ember world.

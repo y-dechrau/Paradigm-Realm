@@ -2,6 +2,15 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 12 Nov: rivals compete beyond the gates, border escort, slower opening (no save change)
+
+Built in source, checked in the engine harness and in Unity. Not hand-played. Details and the measurement are in `DIMENSIONS-PLAN-2026-11-11.md` under "Added 12 Nov 2026".
+
+- **Rivals compete.** They learn of gateways (a legend of the nearest one from turn 40, and word from civilisations they are on terms with; the player learns the same two ways), send a Scout to read one, post a soldier on a read gateway so it can be opened, garrison their colonies through the gateway, and at war march through to an enemy's colonies. A war no longer stops their gateway work unless an enemy is within 5 tiles of one of their cities.
+- **Border escort.** A land unit left standing on a tile that has become another civilisation's land, with no open borders, defensive pact or war between them, is put down on the nearest ground it may stand on (within 14 tiles) and its orders are cancelled. The player is told. The rule is the same for rivals on the player's land.
+- **Opening a gateway takes four times as long:** 24 turns to stabilise (12 for the first of the game), 12 to negotiate. Forcing is still immediate.
+- **Limits.** One long game was measured, with an idle player. Rivals still never force or close a gateway. A unit with no free ground within 14 tiles stays where it is.
+
 ## Owner brief 11 Nov: dimensions, gates and colonies (save version 42)
 
 The full plan, the shared decisions, every rule and number, the risks and what to test first are in `DIMENSIONS-PLAN-2026-11-11.md`. In short:

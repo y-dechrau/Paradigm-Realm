@@ -17,7 +17,7 @@ public static class DimensionChecks {
  static City MoveCityNear(World w,Tile gate,int owner=0){var c=w.cities.First(x=>x.owner==owner);var spot=w.tiles.Where(t=>t.realm==gate.realm&&t.gateLink==0&&w.Distance(t.x,t.y,gate.x,gate.y)>=2&&w.Distance(t.x,t.y,gate.x,gate.y)<=3&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!w.cities.Any(o=>o!=c&&o.x==t.x&&o.y==t.y)).OrderBy(t=>t.y*w.Width+t.x).First();c.x=spot.x;c.y=spot.y;w.RebuildTerritory();if(owner==0){if(w.gatesFound==null)w.gatesFound=new List<int>();int cell=gate.y*w.Width+gate.x;if(!w.gatesFound.Contains(cell))w.gatesFound.Add(cell);}else w.nations[owner].known[gate.y*w.Width+gate.x]=true;return c;}
  public static void Run()
  {
-  Foundation();Cycling();Investigation();Compatibility();Colonies();Research();Accords();
+  Foundation();Cycling();Investigation();Compatibility();Colonies();Research();Accords();Borders();Competition();
   var early=Scenario(false);var late=Scenario(true);
   Check(late[0]<early[0],"an advanced civilisation investigates with less production ("+early[0]+" against "+late[0]+")");
   Check(late[1]>early[1],"and its gateways carry more ("+early[1]+" against "+late[1]+" loads)");
@@ -192,6 +192,37 @@ public static class DimensionChecks {
   }
   Check(w.Valid(),"valid with accords");
  }
+ // A unit caught inside borders that grew over it is set down just outside them, unless an agreement lets it stay.
+ static void Borders()
+ {
+  var w=Fresh();w.met[1]=true;var theirs=w.cities.First(c=>c.owner==1);var inside=w.tiles.First(t=>t.realm==0&&t.owner==1&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!(t.x==theirs.x&&t.y==theirs.y)&&!w.units.Any(u=>u.x==t.x&&u.y==t.y));
+  var scout=w.Add(0,3,inside.x,inside.y);scout.hasOrder=true;Check(!w.CanEnter(0,inside)&&w.EscortTile(scout)!=null,"a unit inside another civilisation's borders with no agreement has somewhere to be put");
+  var to=w.EscortTile(scout);w.ExpelTrespassers(0);Check(w.units.Contains(scout)&&scout.x==to.x&&scout.y==to.y&&w.CanEnter(0,w.At(scout.x,scout.y))&&!scout.hasOrder,"it is set down just outside those borders, unharmed, with its orders cancelled");
+  Check(w.Distance(to.x,to.y,inside.x,inside.y)<=World.EscortReach&&w.tiles.Where(t=>t.realm==0&&w.CanEnter(0,t)&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!w.units.Any(u=>u.owner!=0&&u.x==t.x&&u.y==t.y)&&!w.cities.Any(c=>c.owner!=0&&c.x==t.x&&c.y==t.y)).All(t=>w.Distance(t.x,t.y,inside.x,inside.y)>=w.Distance(to.x,to.y,inside.x,inside.y)),"on the nearest ground it may stand on");
+  var envoy=w.Add(0,3,inside.x,inside.y);w.SetPactForCheck(0,1,Pacts.Borders,true);w.ExpelTrespassers(0);Check(envoy.x==inside.x&&envoy.y==inside.y,"with open borders it stays");
+  w.SetPactForCheck(0,1,Pacts.Borders,false);w.DeclareWar(0,1);w.ExpelTrespassers(0);Check(envoy.x==inside.x&&envoy.y==inside.y,"and an invader at war is not escorted out");
+  // The same for a rival's unit on the player's land.
+  var w2=Fresh();w2.met[1]=true;var mine=w2.cities.First(c=>c.owner==0);var held=w2.tiles.First(t=>t.realm==0&&t.owner==0&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!(t.x==mine.x&&t.y==mine.y)&&!w2.units.Any(u=>u.x==t.x&&u.y==t.y));
+  var guest=w2.Add(1,2,held.x,held.y);w2.ExpelTrespassers(1);Check(w2.units.Contains(guest)&&w2.At(guest.x,guest.y).owner!=0,"a rival's unit on your land is escorted out by the same rule");
+ }
+ // Rivals act beyond the gates: a soldier garrisons its own colony, and at war one stands on the gateway that feeds an enemy's.
+ static void Competition()
+ {
+  var w=Fresh();Tile gate;City home;var mine=Planted(w,out gate,out home);Rich(w,1);w.met[1]=true;var far=w.GateTwin(gate);w.nations[1].known[gate.y*w.Width+gate.x]=true;
+  var site=w.ColonySites(1,far.realm).First();var settler=w.Add(1,0,site.x,site.y);settler.moves=4;var theirs=w.FoundColony(settler);var beside=Beside(w,far);var soldier=w.Add(1,2,beside.x,beside.y);soldier.moves=4;
+  for(int k=0;k<30&&!(soldier.x==theirs.x&&soldier.y==theirs.y);k++){soldier.moves=4;if(!w.BeyondErrandForCheck(soldier))break;}
+  Check(soldier.x==theirs.x&&soldier.y==theirs.y,"a rival soldier beyond the gate walks to its own colony and garrisons it");
+  // War: a rival soldier at home goes to stand on the gateway that feeds the player's colony.
+  w.DeclareWar(1,0);var near=w.tiles.Where(t=>t.realm==0&&t.gateLink==0&&w.Distance(t.x,t.y,gate.x,gate.y)==3&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!w.cities.Any(c=>c.x==t.x&&c.y==t.y)).First();near.owner=-1;
+  var raider=w.Add(1,2,near.x,near.y);foreach(var u in w.units.Where(u=>u.x==gate.x&&u.y==gate.y).ToList())w.units.Remove(u);
+  // It walks to the gateway that feeds the colony, goes through (an open gateway carries whoever steps on it), and marches on the colony.
+  bool crossed=false,blocked=false;for(int k=0;k<40&&!(raider.x==mine.x&&raider.y==mine.y);k++){raider.moves=4;if(!w.BeyondErrandForCheck(raider))break;if(w.At(raider.x,raider.y).realm==far.realm)crossed=true;if(crossed&&!w.GateUsable(0,gate))blocked=true;}
+  Check(crossed&&raider.x==mine.x&&raider.y==mine.y,"at war, a rival soldier goes through the gateway and marches on your colony ("+raider.x+","+raider.y+")");
+  int held=0;while(mine.owner==0&&held<12){w.DimensionsTurnForCheck(0);held++;}Check(mine.owner==1&&w.colonies.Contains(mine),"an ungarrisoned colony falls to it after "+held+" turns; a garrison would have stopped it");
+  // Word of a gateway travels between civilisations on terms.
+  var w2=Fresh();w2.met[1]=true;w2.AddOpinion(0,1,OpinionMods.Dealings,20);w2.AddOpinion(1,0,OpinionMods.Dealings,20);var g2=w2.HomeGates().First();w2.gatesFound=new List<int>{g2.y*w2.Width+g2.x};w2.nations[0].known[g2.y*w2.Width+g2.x]=true;
+  for(int k=0;k<8;k++){w2.turn++;w2.DimensionsTurnForCheck(1);}Check(w2.nations[1].known[g2.y*w2.Width+g2.x],"a rival on terms with you hears of a gateway you have found");
+ }
  // The whole loop. Returns {production to investigate, gateway loads, production gained at home}.
  static int[] Scenario(bool advanced)
  {
@@ -228,7 +259,10 @@ public static class DimensionChecks {
  // Rivals left to themselves for a long game: the world stays valid, and what they did beyond the gates is reported.
  static void LongGame()
  {
-  var w=Fresh();int turns=160;for(int k=0;k<turns;k++){w.EndTurn();if(k%40==39)Check(w.Valid(),"valid after "+(k+1)+" turns with rivals using gateways");if(w.result!="")break;}
+  var w=Fresh();int turns=300,firstRead=-1,firstOpen=-1,firstColony=-1;for(int k=0;k<turns;k++){w.EndTurn();if(k%40==39)Check(w.Valid(),"valid after "+(k+1)+" turns with rivals using gateways");
+   if(firstRead<0&&w.gateStudies.Any(s=>s.owner!=0&&s.known))firstRead=w.turn;if(firstOpen<0&&w.HomeGates().Any(g=>w.GateSteady(g)))firstOpen=w.turn;if(firstColony<0&&w.colonies.Any(c=>c.owner!=0))firstColony=w.turn;if(w.result!="")break;}
+  Console.WriteLine("MEASURE   first seal read by a rival on turn "+firstRead+", first gateway opened for good on turn "+firstOpen+", first rival colony on turn "+firstColony+"; game result: "+(w.result==""?"none":w.result));
+  foreach(var s in w.gateStudies.Where(s=>s.owner!=0))Console.WriteLine("MEASURE   study: rival "+s.owner+" known "+s.known+" approach "+s.approach+" ready "+s.ready+" condition "+w.ConditionOf(w.tiles[s.pair])+" lacks: "+w.GateLacks(s.owner,w.tiles[s.pair],false,GateApproach.StabiliseGold)+" holder "+w.units.Any(x=>x.owner==s.owner&&x.x==w.tiles[s.pair].x&&x.y==w.tiles[s.pair].y));
   int studied=w.gateStudies.Count(s=>s.owner!=0&&s.known),colonies=w.colonies.Count(c=>c.owner!=0),steady=w.HomeGates().Count(g=>w.GateSteady(g)),cities=w.cities.Count(c=>c.owner!=0&&!w.IsNativeNation(c.owner));
   for(int o=1;o<w.civCount;o++){if(w.IsNativeNation(o))continue;var own=w.cities.Where(c=>c.owner==o).ToList();var known=w.HomeGates().Where(g=>w.nations[o].known[g.y*w.Width+g.x]).ToList();var cyc=Gate(w,GateCondition.Cycling);
    Console.WriteLine("MEASURE   rival "+o+": "+own.Count+" cities, gold "+w.nations[o].gold+", era "+w.Era(o)+", knows "+known.Count+" of "+w.HomeGates().Count+" gateways, nearest known "+(known.Count==0||own.Count==0?-1:known.Min(g=>own.Min(c=>w.Distance(c.x,c.y,g.x,g.y))))+" tiles from a city, cycling gateway "+(own.Count==0?-1:own.Min(c=>w.Distance(c.x,c.y,cyc.x,cyc.y)))+" tiles away, at war "+Enumerable.Range(0,w.civCount).Any(x=>x!=o&&w.AtWar(o,x))+", settlers "+w.units.Count(x=>x.owner==o&&x.type==0));}

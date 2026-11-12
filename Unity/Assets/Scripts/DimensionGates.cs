@@ -50,8 +50,10 @@ public partial class World {
  {
   if(owner==0)return true;if(IsNativeNation(owner))return false;
   if(turn<30&&Era(owner)==0)return false;if(cities.Count(c=>c.owner==owner)<2||nations[owner].gold<15)return false;
-  for(int o=0;o<civCount;o++)if(o!=owner&&AtWar(owner,o))return false;return true;
+  // War stops gateway work only while an enemy is at the door.
+  return !EnemyAtTheDoor(owner);
  }
+ public bool EnemyAtTheDoor(int owner){foreach(var u in units){if(u.owner==owner||u.owner>=civCount||Power[u.type]<=0||!AtWar(owner,u.owner))continue;foreach(var c in cities)if(c.owner==owner&&At(c.x,c.y).realm==At(u.x,u.y).realm&&Distance(c.x,c.y,u.x,u.y)<=5)return true;}return false;}
  public string GateProjectReason(City c,int b)
  {
   if(!HasRealms)return "This world has no gateways.";

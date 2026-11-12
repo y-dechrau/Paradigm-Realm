@@ -85,11 +85,11 @@ public partial class World {
   AddOpinion(native,owner,OpinionMods.Dealings,1);if(owner==0)Note("The "+NationName(native)+" sell "+c.name+" "+AccordCatalog.SupplyAmount+" supplies.");return true;
  }
  // ---------- rivals ----------
- public int ColonyLimit(int owner){return Era(owner)>=3?2:1;}
+ public int ColonyLimit(int owner){return Era(owner)>=3?3:2;}
  // Does this rival want a colony now, and through which gateway? Null when home comes first.
  Tile ColonyGateFor(int owner)
  {
-  if(owner==0||IsNativeNation(owner)||!dimensionRules||!GateInvestWanted(owner))return null;if(cities.Count(c=>c.owner==owner)<3||ColoniesOf(owner).Count>=ColonyLimit(owner)||nations[owner].gold<20)return null;
+  if(owner==0||IsNativeNation(owner)||!dimensionRules||!GateInvestWanted(owner))return null;if(cities.Count(c=>c.owner==owner)<2||ColoniesOf(owner).Count>=ColonyLimit(owner)||nations[owner].gold<20)return null;
   Tile best=null;int least=int.MaxValue;var capital=cities.Find(c=>c.id==nations[owner].capital)??cities.FirstOrDefault(c=>c.owner==owner);if(capital==null)return null;
   foreach(var g in HomeGates()){if(!GateKnownTo(owner,g)||ConditionOf(g)!=GateCondition.Cycling&&!GateOpen(g))continue;if(GateBlock(owner,g)!=""&&!(ConditionOf(g)==GateCondition.Cycling&&!GateOpen(g)))continue;
    if(ColonySites(owner,GateRealm(g)).Count==0)continue;int d=Distance(capital.x,capital.y,g.x,g.y);if(d<least){least=d;best=g;}}
@@ -99,7 +99,7 @@ public partial class World {
  bool ColonySettlerWanted(City c)
  {
   if(c.owner==0||At(c.x,c.y).realm!=0)return false;var gate=ColonyGateFor(c.owner);if(gate==null||c.pop<2||BuildReason(c,0)!=""||units.Any(u=>u.owner==c.owner&&u.type==0))return false;
-  var nearest=cities.Where(x=>x.owner==c.owner&&At(x.x,x.y).realm==0).OrderBy(x=>Distance(x.x,x.y,gate.x,gate.y)).ThenBy(x=>x.id).FirstOrDefault();return nearest==c&&Distance(c.x,c.y,gate.x,gate.y)<=20;
+  var nearest=cities.Where(x=>x.owner==c.owner&&At(x.x,x.y).realm==0).OrderBy(x=>Distance(x.x,x.y,gate.x,gate.y)).ThenBy(x=>x.id).FirstOrDefault();return nearest==c&&Distance(c.x,c.y,gate.x,gate.y)<=45;
  }
  // A rival Settler with a colony to found: walk to the gateway, wait for it to open, cross, walk to a site, found.
  bool ColonyErrand(Unit u)
@@ -122,12 +122,19 @@ public partial class World {
  bool GateErrand(Unit u)
  {
   if(u.owner==0||IsNativeNation(u.owner)||!dimensionRules||Power[u.type]<=0||IsNaval(u.type)||gateStudies==null||!GateInvestWanted(u.owner))return false;
+  // A Scout goes to read a gateway its people know of and nobody of theirs has read.
+  if(Investigator(u.type))foreach(var g in HomeGates())
+  {
+   if(!GateKnownTo(u.owner,g)||GateSteady(g)||g.realm!=At(u.x,u.y).realm)continue;var read=StudyOf(u.owner,g);if(read!=null&&read.known)continue;
+   if(u.x==g.x&&u.y==g.y){u.fortified=true;return true;}if(Distance(u.x,u.y,g.x,g.y)>45||units.Any(o=>o!=u&&o.owner==u.owner&&Investigator(o.type)&&(o.x==g.x&&o.y==g.y||Distance(o.x,o.y,g.x,g.y)<Distance(u.x,u.y,g.x,g.y))))continue;
+   if(Route(u,g.x,g.y).Count==0)continue;Order(u,g.x,g.y);return true;
+  }
   foreach(var s in gateStudies)
   {
    if(s.owner!=u.owner||!s.known)continue;var gate=GatePairTile(s.pair);if(gate==null||GateSteady(gate)||gate.realm!=At(u.x,u.y).realm)continue;
    if(s.approach==GateApproach.None&&GateLacks(u.owner,gate,false,GateApproach.StabiliseGold)!="")continue;{var st=FindState(gate);if(st!=null&&st.condition==GateCondition.Damaged&&st.repair>0)continue;}
    if(u.x==gate.x&&u.y==gate.y){u.fortified=true;return true;}
-   int mine=Distance(u.x,u.y,gate.x,gate.y);if(mine>16)continue;bool nearest=true;
+   int mine=Distance(u.x,u.y,gate.x,gate.y);if(mine>40)continue;bool nearest=true;
    foreach(var o in units){if(o==u||o.owner!=u.owner||Power[o.type]<=0||IsNaval(o.type)||At(o.x,o.y).realm!=gate.realm)continue;int d=Distance(o.x,o.y,gate.x,gate.y);if(d<mine||d==mine&&o.id<u.id){nearest=false;break;}}
    if(!nearest)continue;
    // Never the last soldier in a city.
@@ -136,10 +143,73 @@ public partial class World {
   }
   return false;
  }
+ // Is this the civilisation's nearest spare soldier to a place? Never the last soldier in a city.
+ bool NearestSpare(Unit u,Tile target,int reach)
+ {
+  int mine=Distance(u.x,u.y,target.x,target.y);if(mine>reach)return false;
+  if(cities.Any(c=>c.owner==u.owner&&c.x==u.x&&c.y==u.y)&&!units.Any(a=>a.id!=u.id&&a.owner==u.owner&&Power[a.type]>0&&a.x==u.x&&a.y==u.y))return false;
+  foreach(var o in units){if(o==u||o.owner!=u.owner||Power[o.type]<=0||IsNaval(o.type)||At(o.x,o.y).realm!=target.realm)continue;int d=Distance(o.x,o.y,target.x,target.y);if(d<mine||d==mine&&o.id<u.id)return false;}
+  return true;
+ }
+ // Rivals compete beyond the gates (owner request, 12 Nov 2026). A rival soldier with nothing better to do:
+ //  - at war with a civilisation that has colonies: marches on the nearest of them in the world it stands in, and at home goes
+ //    to stand on the gateway that feeds them, which cuts their supply (the same blockade a player can make);
+ //  - at peace: goes through the gateway to garrison a colony of its own that has no soldier.
+ // It crosses like anyone: when the gateway is open and has room.
+ bool BeyondErrand(Unit u)
+ {
+  if(u.owner==0&&false||IsNativeNation(u.owner)||!dimensionRules||Power[u.type]<=0||IsNaval(u.type)||colonies==null||colonies.Count==0||u.owner==0)return false;var here=At(u.x,u.y);
+  foreach(var c in colonies)
+  {
+   if(c.owner==u.owner||!AtWar(u.owner,c.owner))continue;var at=At(c.x,c.y);
+   if(at.realm==here.realm)
+   {
+    if(u.x==c.x&&u.y==c.y){u.fortified=true;return true;}if(!NearestSpare(u,at,14)||Route(u,c.x,c.y).Count==0)continue;Order(u,c.x,c.y);return true;
+   }
+   if(here.realm!=0||c.gate<0)continue;var gate=GatePairTile(c.gate);if(gate==null||gate.realm!=0||!GateKnownTo(u.owner,gate))continue;
+   if(u.x==gate.x&&u.y==gate.y){u.fortified=true;return true;}if(units.Any(o=>o.owner==u.owner&&o.x==gate.x&&o.y==gate.y)||!NearestSpare(u,gate,18)||Route(u,gate.x,gate.y).Count==0)continue;Order(u,gate.x,gate.y);return true;
+  }
+  foreach(var c in colonies)
+  {
+   if(c.owner!=u.owner||c.level<1)continue;var at=At(c.x,c.y);if(units.Any(o=>o.owner==u.owner&&Power[o.type]>0&&o.x==c.x&&o.y==c.y&&o!=u))continue;
+   if(at.realm==here.realm){if(u.x==c.x&&u.y==c.y){u.fortified=true;return true;}if(!NearestSpare(u,at,40)||Route(u,c.x,c.y).Count==0)continue;Order(u,c.x,c.y);return true;}
+   if(here.realm!=0||c.gate<0||units.Any(o=>o.owner==u.owner&&Power[o.type]>0&&At(o.x,o.y).realm==at.realm))continue;var gate=GatePairTile(c.gate);if(gate==null||gate.realm!=0)continue;
+   if(u.x==gate.x&&u.y==gate.y){if(GateOpen(gate)&&GateBlock(u.owner,gate)=="")GatewayTravel(u);return true;}
+   if(!NearestSpare(u,gate,45)||Route(u,gate.x,gate.y).Count==0)continue;Order(u,gate.x,gate.y);return true;
+  }
+  return false;
+ }
+ // Legends (12 Nov 2026): from turn 40 a home civilisation that still knows of no gateway hears of the one nearest its capital,
+ // if it lies within 40 tiles. The same for the player and for rivals, so nobody is shut out of the gates by where they began.
+ void GateLegends(int owner)
+ {
+  if(IsNativeNation(owner)||!dimensionRules||turn<DimensionSettings.LegendTurn||(turn+owner)%10!=0)return;var gates=HomeGates();if(gates.Any(g=>GateKnownTo(owner,g)))return;
+  var capital=cities.Find(c=>c.id==nations[owner].capital)??cities.FirstOrDefault(c=>c.owner==owner&&At(c.x,c.y).realm==0);if(capital==null)return;
+  var near=gates.Where(g=>Distance(capital.x,capital.y,g.x,g.y)<=DimensionSettings.LegendReach).OrderBy(g=>Distance(capital.x,capital.y,g.x,g.y)).ThenBy(g=>g.y*Width+g.x).FirstOrDefault();if(near==null)return;int cell=near.y*Width+near.x;
+  if(nations[owner].known!=null&&cell<nations[owner].known.Length)nations[owner].known[cell]=true;
+  if(owner==0){if(gatesFound==null)gatesFound=new List<int>();if(!gatesFound.Contains(cell))gatesFound.Add(cell);near.seen=true;dimensionNews.Add("Your people's oldest stories tell of an arch that leads elsewhere. Its place is now marked on your map, "+Distance(capital.x,capital.y,near.x,near.y)+" tiles from "+capital.name+".");}
+ }
+ // Word of a gateway travels (owner request, 12 Nov 2026: rivals must be able to compete). A civilisation at peace with one that
+ // knows of a gateway, and not disliked by it, hears where it lies: one gateway every few turns. The player hears the same way.
+ void GateRumours(int owner)
+ {
+  if(IsNativeNation(owner)||!dimensionRules||(turn+owner)%6!=0)return;
+  for(int o=0;o<civCount;o++)
+  {
+   if(o==owner||IsNativeNation(o)||!HasContact(owner,o)||AtWar(owner,o)||Opinion(o,owner)<0)continue;
+   foreach(var g in HomeGates())
+   {
+    if(!GateKnownTo(o,g)||GateKnownTo(owner,g))continue;int cell=g.y*Width+g.x;
+    if(owner==0){if(gatesFound==null)gatesFound=new List<int>();gatesFound.Add(cell);g.seen=true;if(nations[0].known!=null&&cell<nations[0].known.Length)nations[0].known[cell]=true;dimensionNews.Add("Travellers from "+NationName(o)+" speak of a gateway, now marked on your map.");}
+    else if(nations[owner].known!=null&&cell<nations[owner].known.Length)nations[owner].known[cell]=true;
+    return;
+   }
+  }
+ }
  // A rival looks after its colonies with what it can spare, and deals with its neighbours beyond the gates.
  void ColonyAI(int owner)
  {
-  if(IsNativeNation(owner))return;var mine=ColoniesOf(owner);if(mine.Count==0)return;bool war=false;for(int o=0;o<civCount;o++)if(o!=owner&&AtWar(owner,o))war=true;
+  if(IsNativeNation(owner))return;var mine=ColoniesOf(owner);if(mine.Count==0)return;bool war=EnemyAtTheDoor(owner)||mine.Any(c=>c.siege>0);
   foreach(var c in mine)
   {
    if(war&&c.specialisation!=ColonyCatalog.Military&&c.level>=1)c.specialisation=ColonyCatalog.Military;else if(!war&&c.specialisation==ColonyCatalog.Military)c.specialisation=ChooseSpecialisation(owner);

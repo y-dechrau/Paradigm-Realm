@@ -29,7 +29,8 @@ public static class GateCondition {
 public static class DimensionSettings {
  public const int CyclePeriod=10,CycleOpen=4;          // a cycling gateway is open 4 turns in every 10
  public const int GateCapacity=6;                       // loads a gateway carries each turn it is open
- public const int InvestigateRange=8,InvestigateCost=40,RepairCost=90,ActivateGold=20;
+ public const int InvestigateRange=12,InvestigateCost=40,RepairCost=90,ActivateGold=20;
+ public const int LegendTurn=40,LegendReach=40;           // from this turn a civilisation that knows no gateway hears of the nearest one within reach of its capital
  public const int ColonyLoad=1;                         // loads a turn one colony's supplies take
  public const int HomeGateLimit=6;                      // gateways placed on the home world (one per world today)
 }

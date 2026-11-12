@@ -711,7 +711,7 @@ namespace ParadigmRealm
         void ProcessNation(int owner){UpdatePortLinks();if(owner==0)AutoManageCities();var n=nations[owner];var budget=Budget(owner);int balance=n.gold+budget[2]-DiplomaticNet(owner);n.gold=Math.Max(0,balance);n.arrears=balance<0?n.arrears+1:0;DebtConsequences(owner);if(owner==0&&balance<0)Note("Treasury empty: unpaid upkeep reduces combat strength. Reduce expenses or raise taxes.");int sciencePool=0;var feeding=cities.Where(a=>a.owner==owner).ToList();var fed=new int[feeding.Count][];for(int k=0;k<feeding.Count;k++){NormaliseSpecialists(feeding[k]);AutoEntertainers(feeding[k]);fed[k]=Yield(feeding[k]);}FeedUnits(owner,feeding,fed);for(int k=0;k<feeding.Count;k++){var c=feeding[k];var v=fed[k];c.age++;ProcessCityFood(c,v[0]-c.ration);if(c.occupation>0)c.occupation--;Produce(c,v[1]);sciencePool+=v[2];}if(n.research>=0&&sciencePool>0&&ResearchOpen(owner,n.research))n.progress[n.research]+=Math.Min(sciencePool,ResearchCap(n.research,owner));KeepPace(owner);
             if(n.research>=0&&AvailableTech(owner).Contains(n.research)&&n.progress[n.research]>=ResearchCost(n.research,owner)){int eraBefore=Era(owner),found=n.research;if(owner==0)BeginDiscovery();int spare=n.progress[n.research]-ResearchCost(n.research,owner);n.progress[n.research]=0;n.tech[n.research]=true;MakeArtifact(owner,n.research);if(owner==0)Note(TechNames[n.research]+" discovered.");AnnounceEra(owner,eraBefore);TechEraScore(owner,n.research,eraBefore);n.research=owner==0?AvailableTech(owner).OrderBy(t=>ResearchCost(t,owner)).DefaultIfEmpty(-1).First():PreferredResearch(owner);if(n.research>=0)n.progress[n.research]+=spare;if(owner==0)EndDiscovery(found,spare);}
             foreach(var u in units.Where(a=>a.owner==owner).ToList()){var on=At(u.x,u.y);if(on.terrain==14||on.terrain==15)u.hp=Math.Max(1,u.hp-1);else if(on.terrain==17&&!IsNaval(u.type))VolcanoBurn(u,false);else if(!u.unfed&&(u.moves==MaxMoves(u)||u.fortified))u.hp=Math.Min(10,u.hp+HealAmount(u));u.moves=u.unfed?0:MaxMoves(u);}
-            LivingTurn(owner);ProcessJobs(owner);ProcessEmpireOrders(owner);PriestHealing(owner);AgeTurn(owner);RealmTurn(owner);DimensionsTurn(owner);if(n.revolution>0)n.revolution--;
+            LivingTurn(owner);ProcessJobs(owner);ProcessEmpireOrders(owner);PriestHealing(owner);AgeTurn(owner);RealmTurn(owner);DimensionsTurn(owner);ExpelTrespassers(owner);if(n.revolution>0)n.revolution--;
         }
         // The turn in steps, one after each civilisation, so the game can keep drawing between them; EndTurn runs them all at once.
         public void EndTurn(){foreach(int step in TurnSteps()){}}
@@ -725,6 +725,7 @@ namespace ParadigmRealm
                 if(u.type==1){if(u.flee!=0){if(u.hasOrder)ContinueOrder(u);}else ImproveAI(u);continue;}
                 if(AIUpgrade(u))continue;
                 if(GateErrand(u))continue;
+                if(BeyondErrand(u))continue;
                 if(Power[u.type]>0&&cities.Any(c=>c.owner==owner&&c.x==u.x&&c.y==u.y)&&!units.Any(a=>a.id!=u.id&&a.owner==owner&&Power[a.type]>0&&a.x==u.x&&a.y==u.y)){u.fortified=true;continue;}
                 if((u.type==4||u.type==9)&&RangedTargets(u).Count>0&&Ranged(u,RangedTargets(u)[0].id))continue;
                 // Sealed peoples at peace rouse their idle troops only now and then: nobody can see them, and it saves most of a crowded turn.
