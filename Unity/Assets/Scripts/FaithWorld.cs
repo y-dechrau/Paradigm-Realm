@@ -46,7 +46,7 @@ public static class FaithCatalog {
   "One supreme god: spreads a quarter faster; its cities resist other faiths; minorities of 35% or more cause unrest unless Tolerant.",
   "Enlightenment and wisdom: +2 science in following cities; spreads a quarter slower; never causes religious unrest.",
   "Spirits of land and beast: +1 food in following cities; sacred sites count double for authority.",
-  "Reverence for the dead and the founders: +1 content citizen in following cities with a Shrine; governors grow more loyal."};
+  "Reverence for the dead and the founders: +1 content citizen in following cities with a Shrine."};
  public static readonly string[] Socials={"Equality","Hierarchy","Charity","Asceticism","Scholarship","Militarism","Pacifism","Expansionism","Traditionalism","Tolerance"};
  public static readonly string[] SocialTexts={
   "+1 content citizen in following cities.",

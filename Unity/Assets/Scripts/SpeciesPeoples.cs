@@ -13,7 +13,9 @@ namespace ParadigmRealm {
 //
 // art: which of the owner's pictures the people's units wear. "elf", "dwarf", "minotaur", "orc" and "treefolk" have four
 // pictures each (warrior, settler, worker, scout: Resources/Visuals/Species/<art>-<role>); an "insect-..." or "demon-..." key
-// is one picture worn by every unit of that people (Resources/Visuals/Species/<art>).
+// is one picture worn by every other unit of that people (Resources/Visuals/Species/<art>).
+// Every art key also has an archer, a mounted soldier and a siege engine with its crew (<art>-archer, <art>-cavalry, <art>-siege;
+// owner's second pack, 12 Nov 2026): worn by the Archer, by the Horseman and Knight, and by the Catapult.
 public static partial class SpeciesPeoples {
  public const int First=84;
  public const int Elves=1,Orcs=2,Demons=3,Treefolk=4,Minotaurs=5,Insects=6,Dwarves=7;
@@ -40,7 +42,7 @@ public static partial class SpeciesPeoples {
  // The art key of a civilisation's units, or null for the ordinary human pictures.
  public static string ArtOf(int civ){var p=Of(civ);if(p!=null)return p.Art;string key;return earlier.TryGetValue(civ,out key)?key:null;}
  // The picture file for one unit type of an art key.
- public static string ArtFile(string art,int unitType){if(art==null)return null;if(art.StartsWith("insect-")||art.StartsWith("demon-"))return art;return art+"-"+(unitType==0?"settler":unitType==1?"worker":unitType==3?"scout":"warrior");}
+ public static string ArtFile(string art,int unitType){if(art==null)return null;string role=unitType==4?"archer":unitType==5||unitType==8?"cavalry":unitType==9?"siege":null;if(role!=null)return art+"-"+role;if(art.StartsWith("insect-")||art.StartsWith("demon-"))return art;return art+"-"+(unitType==0?"settler":unitType==1?"worker":unitType==3?"scout":"warrior");}
  // The peoples a new game may place in a world, in the order it tries them. The species civilisations come first; the demon
  // world's earlier peoples and the Hive Expanse's first five follow or join them, and a seed turns the list so that a world with
  // more than ten candidates does not always show the same ten.

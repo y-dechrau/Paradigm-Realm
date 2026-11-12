@@ -406,6 +406,16 @@ static void GateExpeditionChecks(){
 }
 // Owner request, 12 Nov 2026: one species to a world, seventy-five species civilisations, the owner's character artwork.
 static void SpeciesChecks(){
+    // Cities lose their square plot (owner report, 12 Nov 2026): a picture on a rimmed green diamond with a house in the middle.
+    {int n=64;var px=new uint[n*n];for(int y=0;y<n;y++)for(int x=0;x<n;x++){double dd=Math.Abs(x-31.5)/32+Math.Abs(y-47.5)/16;if(dd<=1)px[y*n+x]=dd>.93?0xFF202418u:0xFF5AA03Cu;}
+     for(int y=30;y<46;y++)for(int x=24;x<40;x++)px[y*n+x]=(x==24||x==39||y==30||y==45)?0xFF201810u:0xFFC89650u;
+     var town=SceneryArt.Prepare("city-0-1",px,n,n);int soft=0,rim=0;for(int k=0;k<town.Length;k++){uint a=town[k]>>24;if(a>20&&a<235)soft++;if(a>200&&(town[k]&0xFFFFFFu)==0x202418u)rim++;}
+     Check((town[47*n+1]>>24)==0&&(town[47*n+62]>>24)==0&&(town[62*n+31]>>24)==0,"the corners of a city's plot are gone");
+     Check(rim<=4,"so is the dark line round it ("+rim+" rim pixels left of about 120)");Check(soft>40,"the ground fades out unevenly ("+soft+" part-clear pixels)");
+     bool house=true;for(int y=30;y<46;y++)for(int x=24;x<40;x++)if(town[y*n+x]!=px[y*n+x])house=false;Check(house,"and the house keeps every pixel");
+     // A town whose walls stand on the edge keeps its outline.
+     var walled=(uint[])px.Clone();for(int y=0;y<n;y++)for(int x=0;x<n;x++){double dd=Math.Abs(x-31.5)/32+Math.Abs(y-47.5)/16;if(dd<=1&&dd>.78)walled[y*n+x]=0xFFD2D2DAu;}
+     var kept=SceneryArt.Prepare("city-2-3-walled",walled,n,n);Check((kept[47*n+8]>>24)>0&&(kept[56*n+31]>>24)>0,"a walled town keeps its walls");}
     Check(SpeciesPeoples.People.Count==75&&CivilisationCatalog.Count==SpeciesPeoples.First+75,"seventy-five species civilisations ("+SpeciesPeoples.People.Count+")");
     int[] expect={0,10,10,10,10,10,15,10};string[] arts={"","elf","orc","demon-","treefolk","minotaur","insect-","dwarf"};var allCities=new HashSet<string>();var artSeen=new HashSet<string>();
     for(int r=1;r<=World.RealmCount;r++){
@@ -425,7 +435,8 @@ static void SpeciesChecks(){
     }
     Check(CivilisationCatalog.Names.Distinct().Count()==CivilisationCatalog.Count&&CivilisationCatalog.Leaders.Distinct().Count()==CivilisationCatalog.Count,"every civilisation and leader has its own name");
     // Pictures by unit type, and the earlier peoples that are plainly of a species.
-    Check(SpeciesPeoples.ArtFile("elf",0)=="elf-settler"&&SpeciesPeoples.ArtFile("orc",1)=="orc-worker"&&SpeciesPeoples.ArtFile("dwarf",3)=="dwarf-scout"&&SpeciesPeoples.ArtFile("minotaur",2)=="minotaur-warrior"&&SpeciesPeoples.ArtFile("treefolk",5)=="treefolk-warrior"&&SpeciesPeoples.ArtFile("insect-wasp",0)=="insect-wasp"&&SpeciesPeoples.ArtFile(null,2)==null,"each unit type has its picture");
+    Check(SpeciesPeoples.ArtFile("elf",0)=="elf-settler"&&SpeciesPeoples.ArtFile("orc",1)=="orc-worker"&&SpeciesPeoples.ArtFile("dwarf",3)=="dwarf-scout"&&SpeciesPeoples.ArtFile("minotaur",2)=="minotaur-warrior"&&SpeciesPeoples.ArtFile("treefolk",6)=="treefolk-warrior"&&SpeciesPeoples.ArtFile("insect-wasp",0)=="insect-wasp"&&SpeciesPeoples.ArtFile(null,2)==null,"each unit type has its picture");
+    Check(SpeciesPeoples.ArtFile("elf",4)=="elf-archer"&&SpeciesPeoples.ArtFile("orc",8)=="orc-cavalry"&&SpeciesPeoples.ArtFile("dwarf",5)=="dwarf-cavalry"&&SpeciesPeoples.ArtFile("treefolk",9)=="treefolk-siege"&&SpeciesPeoples.ArtFile("insect-wasp",4)=="insect-wasp-archer"&&SpeciesPeoples.ArtFile("demon-graveback",9)=="demon-graveback-siege"&&SpeciesPeoples.ArtFile("demon-graveback",2)=="demon-graveback"&&SpeciesPeoples.ArtFile("insect-wasp",6)=="insect-wasp","archers, mounted soldiers and siege engines have their own pictures for every species design");
     Check(SpeciesPeoples.ArtOf(79)=="insect-red-wood-ant"&&SpeciesPeoples.ArtOf(29)=="elf"&&SpeciesPeoples.ArtOf(0)==null&&SpeciesPeoples.ArtOf(17)==null,"the earlier insect peoples and elves wear the new pictures; home civilisations do not");
     // A new game: seven worlds, each peopled by its own species.
     var w=World.New(91,peoplesPerWorld:10);Check(w.RealmsHere==7&&w.Valid(),"a new game has seven worlds beyond the gates");
@@ -583,26 +594,20 @@ static void SiegeChecks(){
     // Religious buildings are paid from the civilisation's faith.
     if(w.modernRules){w.nations[0].faith=500;home.faith=0;int cost=w.FaithBuildingCost(World.ShrineBuilding);Check(w.FaithBuildReason(home,World.ShrineBuilding)==""&&w.BuildWithFaith(home,World.ShrineBuilding)&&w.nations[0].faith==500-cost,"a Shrine is paid from the civilisation's faith");}
 }
-// Governors (owner choice, 8 Nov 2026): traits change yields, a new or moved governor settles in first, and a policy that a
-// disloyal governor will not change and a corrupt one skims.
+// Governors were removed on 12 Nov 2026 (owner: too unpredictable, no value). None is appointed, and an older save loses the ones
+// it had together with the corruption, strikes and brewing rebellions they caused.
 static void GovernorChecks(){
     var w=World.New(433,"Governors",0,1,1,0,1,2,3,hex:true,natives:false,rations:true);var home=w.Found(w.units.First(u=>u.owner==0&&u.type==0));
-    Check(home!=null&&w.livingWorld,"a living-world game with a city");w.EndTurn();var g=w.GovernorOf(home);
-    Check(g!=null&&g.settle>0&&w.GovernorPercent(home).All(v=>v==0)&&w.GovernorEffectText(home).StartsWith("Settling in"),"a new governor has no effect while settling in");
-    g.settle=0;g.traitA=LivingCatalog.Ambitious;g.traitB=LivingCatalog.Stoic;g.corruption=0;g.breakTurns=0;g.policy=0;g.loyalty=60;
-    Check(w.GovernorPercent(home).SequenceEqual(new[]{10,15,0,-5}),"traits change yields once settled ("+string.Join(",",w.GovernorPercent(home))+")");
-    g.loyalty=20;Check(w.PolicyReason(home,1).Contains("loyal")&&!w.SetPolicy(home,1),"a disloyal governor will not change policy");
-    g.loyalty=60;Check(w.SetPolicy(home,1)&&g.policy==1&&w.GovernorContent(home)==-1&&w.GovernorPercent(home)[3]==20,"Tax hard: +25% gold and one citizen fewer content");
-    Check(w.MoodReasons(home).Sum(r=>r.Value)==w.ContentSlots(home),"the mood reasons still add up with a policy");
-    g.corruption=50;Check(w.GovernorPercent(home)[3]==10&&w.GovernorPercent(home)[1]==7,"a corrupt governor skims half of each gain");g.corruption=0;
-    {var guard=w.Add(0,2,home.x,home.y);g.policy=0;int before=w.Strength(guard,null,true);g.policy=4;Check(w.Strength(guard,null,true)==before+1,"Fortify: defenders in the city +1");w.units.Remove(guard);g.policy=0;}
-    // A second city to swap with.
-    {var site=w.tiles.Where(t=>t.realm==0&&w.Distance(t.x,t.y,home.x,home.y)>=5&&w.Distance(t.x,t.y,home.x,home.y)<=9).Select(t=>{var s=w.Add(0,0,t.x,t.y);if(w.FoundReason(s)=="")return s;w.units.Remove(s);return null;}).FirstOrDefault(s=>s!=null);
-     if(site!=null){var second=w.Found(site);w.EndTurn();var g2=w.GovernorOf(second);g=w.GovernorOf(home);
-      Check(g2!=null&&g!=null&&w.SwapGovernors(home,second)&&w.GovernorOf(home)==g2&&w.GovernorOf(second)==g&&g.settle>0&&g2.settle>0,"swapped governors change cities and settle in again");}}
-    {w.nations[0].gold=100;w.gold=100;var old=w.GovernorOf(home);Check(w.ReplaceGovernor(home)&&w.GovernorOf(home)!=old&&w.GovernorOf(home).settle>0&&w.nations[0].gold==100-GovernorCatalog.ReplaceCost,"a governor can be replaced for gold");}
-    {foreach(var p in w.characters)p.settle=3;w.version=37;w.UpgradeSave();Check(w.version==World.SaveVersion&&w.characters.All(p=>p.settle==0)&&w.Valid(),"version 37 saves upgrade with governors settled");}
-    Check(w.ChoosePolicy(home)>=0&&w.ChoosePolicy(home)<GovernorCatalog.Policies.Length,"rivals and auto-managed cities can choose a policy");
+    Check(home!=null&&w.livingWorld,"a living-world game with a city");for(int t=0;t<3;t++)w.EndTurn();
+    Check(w.Ruler(0)!=null&&w.characters.All(p=>p.city<0),"a game has rulers and no governors");
+    Check(w.MoodReasons(home).Sum(r=>r.Value)==w.ContentSlots(home),"the mood reasons still add up");
+    // A save made while governors existed.
+    w.characters.Add(new Character{id=w.nextId++,owner=0,city=home.id,traitA=0,traitB=2,loyalty=5,corruption=60,policy=1,name="Old Governor"});home.corruption=60;home.strike=2;home.unrestTurns=4;
+    int before=w.Yield(home)[1];w.UpgradeSave();
+    Check(w.characters.All(p=>p.city<0)&&home.corruption==0&&home.strike==0&&home.unrestTurns==0&&w.Valid(),"loading a save dismisses its governors and clears what they caused");
+    Check(w.Yield(home)[1]>=before&&w.Yield(home)[1]>0,"the city works again without the strike ("+before+" to "+w.Yield(home)[1]+" shields)");
+    {w.version=37;w.UpgradeSave();Check(w.version==World.SaveVersion&&w.Valid(),"version 37 saves still upgrade");}
+    for(int t=0;t<12;t++)w.EndTurn();Check(w.characters.All(p=>p.city<0)&&w.cities.All(c=>c.corruption==0&&c.strike==0),"and none comes back as turns pass");
 }
 static void FaithDesignChecks(){
     var w=World.New(311,"Faith",0,1,1,0,1,2,4,hex:true,natives:false,rations:true);var home=w.Found(w.units.First(u=>u.owner==0&&u.type==0));var me=w.nations[0];
@@ -688,10 +693,8 @@ static void EighthNovemberChecks(){
 }
 static void LivingWorldChecks(){
     var w=World.New(281,"Living",0,1,1,0,1,2,4,hex:true,natives:false,rations:true);Check(w.livingWorld&&w.log.Any(l=>l.StartsWith("Before history"))&&w.grudges.Count>0,"the world starts with a remembered past");
-    var city=w.Found(w.units.First(u=>u.owner==0&&u.type==0));w.EndTurn();var gov=w.GovernorOf(city);Check(w.Ruler(0)!=null&&gov!=null&&gov.traitA!=gov.traitB&&gov.name!="","rulers and governors are people with two traits");
-    Check(w.cities.Where(c=>c.owner!=0).All(c=>w.GovernorOf(c)!=null),"rival cities have governors too");
-    // Breaking point.
-    gov.stress=95;gov.breakTurns=0;gov.traitA=LivingCatalog.Loyal;gov.traitB=LivingCatalog.Ambitious;int gold=w.gold;w.EndTurn();Check(gov.breakKind>0&&gov.stress<85,"a governor under too much stress snaps ("+World.BreakNames[gov.breakKind]+")");
+    var city=w.Found(w.units.First(u=>u.owner==0&&u.type==0));w.EndTurn();{var ruler=w.Ruler(0);Check(ruler!=null&&ruler.traitA!=ruler.traitB&&ruler.name!="","a ruler is a person with two traits");}
+    Check(w.characters.All(p=>p.city<0),"no city has a governor");
     // Grudges never fade and colour diplomacy.
     {int rival=Enumerable.Range(1,w.civCount-1).First(o=>!w.IsNativeNation(o));int before=w.GrudgePenalty(rival,0);w.AddGrudge(rival,0,1,"test");Check(w.GrudgePenalty(rival,0)==Math.Min(40,before+10),"a grudge costs opinion");for(int t=0;t<5;t++)w.EndTurn();Check(w.GrudgePenalty(rival,0)>=Math.Min(40,before+10),"and it does not fade");}
     // Gear from the city's supplies.
@@ -701,12 +704,8 @@ static void LivingWorldChecks(){
     {var t=w.tiles.First(a=>a.realm==0&&!PixelArt.IsWater(a.terrain)&&w.Distance(a.x,a.y,city.x,city.y)==2);var rv=Enumerable.Range(1,w.civCount-1).First(o=>!w.IsNativeNation(o));int faith=w.FaithYield(city);for(int k=0;k<4;k++)w.RecordBattle(t.x,t.y,2,0,rv);Check(w.StoryText(t.x,t.y).StartsWith("Graveyard"),"many deaths make a graveyard");Check(w.PilgrimFaith(city)==2&&w.FaithYield(city)>=faith,"a graveyard nearby draws pilgrims");t.owner=rv;Check(w.GrudgePenalty(0,rv)>=10,"and its holder is resented by the people whose dead lie there");t.owner=0;}
     // Capture: a scar, a grudge and stolen blueprints.
     {var rv=w.cities.First(c=>c.owner!=0&&!w.IsNativeNation(c.owner));int victim=rv.owner;int tech=w.AvailableTech(0).First();w.artifacts.Add(new Artifact{city=rv.id,tech=tech,maker=victim});int before=w.nations[0].progress[tech];w.CityCaptured(rv,victim,0);Check(rv.scars.Contains(LivingCatalog.ScarConquest)&&w.grudges.Any(g=>g.holder==victim&&g.against==0)&&w.nations[0].progress[tech]>before,"a captured city remembers, its people resent, and its blueprints are read");}
-    // Priorities are carried out by loyal cities only.
-    {w.nations[0].priority=4;gov.loyalty=90;gov.corruption=0;gov.breakTurns=0;city.scars.Clear();Check(w.Obeys(city),"a loyal governor follows the priority");gov.loyalty=10;Check(!w.Obeys(city),"a disloyal one does not");}
-    // Rebellion: an ungarrisoned, disloyal city breaks away.
-    {var g=World.New(282,"Rebels",0,1,1,0,1,1,3,natives:false,rations:true);var a=g.Found(g.units.First(u=>u.owner==0&&u.type==0));var land=g.tiles.First(t=>!World.IsImpassable(t.terrain)&&!PixelArt.IsWater(t.terrain)&&g.Distance(t.x,t.y,a.x,a.y)==6&&!g.cities.Any(c=>g.Distance(c.x,c.y,t.x,t.y)<5));var b=g.Found(g.Add(0,0,land.x,land.y));foreach(var u in g.units.Where(u=>u.owner==0).ToList())g.units.Remove(u);g.EndTurn();var gb=g.GovernorOf(b);gb.traitA=LivingCatalog.Ambitious;gb.traitB=LivingCatalog.Greedy;
-     var near=g.cities.First(c=>c.owner==1);foreach(var t in g.tiles)if(g.Distance(t.x,t.y,b.x,b.y)<=1){}near.x=near.x;for(int t=0;t<8&&b.owner==0;t++){gb=g.GovernorOf(b);if(gb==null)break;gb.loyalty=0;gb.stress=50;g.EndTurn();}
-     Check(b.owner!=0||b.strike>0||g.log.Any(l=>l.Contains("risen against you")),"a disloyal city with no garrison rises or breaks away");}
+    // Governors are gone: every city follows the priority, and nobody skims, strikes or rebels.
+    {w.nations[0].priority=4;w.EndTurn();Check(w.characters.All(p=>p.city<0)&&w.cities.All(c=>c.corruption==0&&c.strike==0&&c.unrestTurns==0),"no city has a governor, corruption, a strike or a rebellion brewing");Check(w.cities.Where(c=>c.owner==0).All(c=>c.focus==3),"every city follows the imperial priority");}
     {var old=World.New(283,natives:false);old.modernRules=true;old.characters=null;old.version=33;old.UpgradeSave();Check(old.version==World.SaveVersion&&old.livingWorld&&old.characters!=null&&old.Valid(),"older saves join the living world");}
 }
 // Owner requests of 7 Nov 2026, second batch.

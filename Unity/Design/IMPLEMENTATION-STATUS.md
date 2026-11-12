@@ -2,6 +2,30 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner request 12 Nov: archers, mounted soldiers and siege engines for every species (no save change)
+
+- **Source:** the owner's second pack, 36 sheets each with an archer or crossbowman, a mounted unit and a siege engine: elf, dwarf, minotaur, orc, tree people, 20 insect designs and 11 demon designs. These match the 36 art keys already in the game.
+- **Cutting:** each sheet is separated into its three units by connected shape, so a lance that reaches over the next unit stays with its rider, and a siege crew stays with its engine. Isolated specks are dropped. Each unit is scaled to 128 x 128 with its feet on the bottom edge, like the first pack. Looked at on a dark and a light background: all 108 are clean. The originals are not in the repository.
+- **Files:** `Resources/Visuals/Species/<art>-archer`, `<art>-cavalry`, `<art>-siege` (108 new, 159 in all).
+- **Use:** `SpeciesPeoples.ArtFile`: Archer wears the archer, Horseman and Knight the mounted soldier, Catapult the siege engine. Settler, Worker, Scout and Warrior are as before; Rifleman, Spearman, Medic, Caravan and Priest still wear the warrior (fantasy species) or the single picture (insects, demons). Ships keep the ordinary pictures.
+- **Limits:** all units are drawn in the same space, so a siege engine or rider is drawn smaller than a foot soldier in proportion. No walking frames or guard pose.
+- **Checks:** `ContentChecks.SpeciesChecks` (file chosen per unit type) and `RealmTools.Checks` (every file loads in Unity). Not hand-played.
+
+## Owner request 12 Nov: governors removed (no save version change)
+
+The owner found governors too unpredictable and of no value to the game.
+
+- **Removed:** Governors.cs and GovernorsUI.cs; governor traits and policies changing yields, settling in, swap and replace, skimming, governor breakdowns, feuds, rebellion and defection, city corruption and strikes, and cities refusing the imperial priority.
+- **Kept:** rulers and their breakdowns (melancholy and folly; the purge of a governor is gone), city scars, grudges, gear, blueprints, graveyards. Every city now follows the imperial priority.
+- **Older saves:** World.DismissGovernors runs on load and each turn. It removes any governor and clears city corruption, strikes and brewing rebellion. The Character fields stay so old saves still read.
+- **Screens:** the governor line and panel on the city screen and the governor table in Civics are gone. Civics lists what each city remembers. The city screen's tile text says "the city" where it said "the Governor"; the Focus buttons are unchanged.
+- **Checks:** ContentChecks.GovernorChecks (no governors appear; a save with one loses it and the city works again; version 37 still upgrades) and the living-world checks. Harness passes. Not hand-played; rival balance without governor effects is unmeasured.
+- The 7 and 8 Nov sections below describe governors as they were.
+
+## Owner report 12 Nov: cities no longer stand on a square plot (no save change)
+
+The supplied city and farmstead pictures each stand on a painted diamond of grass with a dark line round it. `SceneryArt.SettledFoot` now removes the line and cuts the ground of the base to an uneven rounded patch that fades into the tile; only ground reachable from the edge of the base is touched, so buildings, fences, fires and animals keep every pixel. Towns drawn with walls on the edge of the base (the walled pictures and the largest castle) keep their outline and only lose the hard rim, as before. The picture files are unchanged. Checked in the harness with a synthetic picture and by eye on the real pictures. Not hand-played.
+
 ## Owner request 12 Nov: one species to a world, 75 new civilisations, the owner's character artwork (no save version change)
 
 Full record in `SPECIES-WORLDS-2026-11-12.md`. Built in source, checked in the engine harness and in Unity. Not hand-played.
@@ -238,7 +262,7 @@ Full design and numbers: [DIPLOMACY-STELLARIS-2026-11-10.md](DIPLOMACY-STELLARIS
   - One-click proposals that show whether the leader would accept, plus a gift.
   - The full offer editor folded under "Custom deal", and every other action under More.
 
-## Owner choice 8 Nov: governors with a purpose (save version 38; `Governors.cs`, `GovernorsUI.cs`)
+## Owner choice 8 Nov: governors with a purpose (REMOVED 12 Nov; was save version 38)
 
 The owner picked ideas 1, 2 and 4 from research on other games: Old World, Civilization VI and Imperator: Rome.
 

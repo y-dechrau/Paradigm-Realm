@@ -52,20 +52,14 @@ public partial class RealmGame {
   GUILayout.EndVertical();GUILayout.EndHorizontal();
   DrawCourt();
  }
- // The ruler, the governors, the priority they are asked to follow, and what this civilisation remembers.
+ // The ruler, the priority the cities follow, and what this civilisation remembers.
  void DrawCourt(){
   if(!world.livingWorld)return;var me=world.nations[0];
   GUILayout.Space(10);GUILayout.Label("The court",heading);
   var ruler=world.Ruler(0);if(ruler!=null)GUILayout.Label("Ruler: "+ruler.name+" ("+world.TraitLine(ruler)+")  •  Stress "+ruler.stress+(ruler.breakTurns>0?"  •  "+World.BreakNames[ruler.breakKind]+" for "+ruler.breakTurns+" turns":""),body);
   GUILayout.BeginHorizontal();GUILayout.Label("Imperial priority",body,GUILayout.Width(150));int pick=GUILayout.SelectionGrid(me.priority,LivingCatalog.Priorities,6,button,GUILayout.Width(900));if(pick!=me.priority){me.priority=pick;status="Imperial priority: "+LivingCatalog.Priorities[pick]+".";}GUILayout.EndHorizontal();
-  var own=world.cities.Where(c=>c.owner==0).ToList();GUILayout.Label(LivingCatalog.PriorityTexts[me.priority]+(me.priority>0?"  "+own.Count(world.Obeys)+" of "+own.Count+" cities follow it; the rest see to their own needs, and corrupt ones skim gold.":""),small);
-  GUILayout.Label("Each city's governor: stress, loyalty and corruption decide whether the city follows your priority.",small);
-  foreach(var c in own){var g=world.GovernorOf(c);if(g==null)continue;GUILayout.BeginHorizontal();
-   GUILayout.Label(c.name,body,GUILayout.Width(150));GUILayout.Label(g.name,body,GUILayout.Width(200));GUILayout.Label(world.TraitLine(g),small,GUILayout.Width(165));
-   GUILayout.Label("Stress "+g.stress,small,GUILayout.Width(80));GUILayout.Label("Loyal "+g.loyalty,small,GUILayout.Width(75));GUILayout.Label("Corrupt "+g.corruption+"%",small,GUILayout.Width(95));
-   GUILayout.Label(me.priority==0?"—":world.Obeys(c)?"Obeys":"Ignores",small,GUILayout.Width(70));
-   var rival=g.rival>=0?world.characters.Find(p=>p.id==g.rival):null;string state=(g.breakTurns>0?World.BreakNames[g.breakKind]+" ":"")+(rival!=null?"feuding with "+rival.name+" ":"")+(c.unrestTurns>0?"rebellion brewing ("+c.unrestTurns+"/5) ":"")+(c.scars!=null&&c.scars.Count>0?"remembers "+string.Join(", ",c.scars.Select(s=>LivingCatalog.Scars[s]).ToArray()):"");
-   GUILayout.Label(state,small,GUILayout.Width(205));GUILayout.EndHorizontal();}
+  var own=world.cities.Where(c=>c.owner==0).ToList();GUILayout.Label(LivingCatalog.PriorityTexts[me.priority]+(me.priority>0?"  Every city follows it.":""),small);
+  foreach(var c in own)if(c.scars!=null&&c.scars.Count>0)GUILayout.Label(c.name+" remembers "+string.Join(", ",c.scars.Select(s=>LivingCatalog.Scars[s]).ToArray())+".",small);
   GUILayout.Space(8);GUILayout.Label("What is remembered",heading);
   var held=world.grudges==null?new List<Grudge>():world.grudges.Where(g=>g.holder==0||g.against==0).OrderByDescending(g=>g.turn).Take(8).ToList();
   if(held.Count==0)GUILayout.Label("No old wrongs between you and anyone yet.",small);

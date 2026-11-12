@@ -24,6 +24,7 @@ Owner request, with the owner's character artwork (57 pictures): each of the fan
 
 - Source: the owner's pack, scaled to 128 x 128 with the feet on the bottom edge, in `Resources/Visuals/Species` (51 files). The originals are not in the repository.
 - `SpeciesPeoples.ArtOf(civ)` gives a civilisation's art key and `ArtFile(art, unitType)` the file. Settler, Worker and Scout have their own pictures for the five fantasy species; every other unit type uses the warrior. A demon or insect people uses its one picture for every unit.
+- Second pack (12 Nov, later): every art key also has an archer, a mounted soldier and a siege engine with its crew (`<art>-archer`, `<art>-cavalry`, `<art>-siege`; 108 files), worn by the Archer, by the Horseman and Knight, and by the Catapult. With these there are 159 files.
 - Ships keep the ordinary pictures. Species units do not use the walking frames or the guard pose.
 - Earlier peoples that are plainly one of these species wear the same pictures in old saves: Sylvan Elves (elf), Ashforge Clans (dwarf), Bloodtusk Horde (orc), the five insect peoples, and the demons of the Infernal Depths (the owner's earlier humanoid demon).
 - All four demon pictures the pack's note called "shaded" were clean cut-outs when checked, so they are used as supplied.
@@ -52,6 +53,6 @@ Each has a leader, a greeting, twelve city names, a background, a history, an ab
 - The names are invented and were checked against each other and against the game's own files, not legally cleared.
 - Several histories mention other peoples of the same world; with fewer than ten placed, a history can name a people that is not in that game.
 - Ability sizes were written to a guide and have not been balanced by play. Some give a bonus per worked tile and can grow large in a big city.
-- A fantasy species has four pictures, so its archers, horsemen and siege engines look like its warrior.
+- Riflemen, spearmen, medics, caravans and priests still look like the warrior (or the single picture for insects and demons).
 - The Plague Marshes and Drowned Deep keep their names and land; the tree people and minotaurs are written to suit them.
 - A game with ten peoples in each of seven worlds has up to 86 nations. Turn time at that size is reported in `IMPLEMENTATION-STATUS.md`.

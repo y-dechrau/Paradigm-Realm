@@ -39,7 +39,7 @@ public static class RealmTools
         var json=JsonUtility.ToJson(world);
         var loaded=JsonUtility.FromJson<World>(json);loaded.UpgradeSave();
         Require(loaded.Valid(),"save round trip validity");
-{var missing=new System.Collections.Generic.List<string>();for(int civ=0;civ<CivilisationCatalog.Count;civ++){string art=SpeciesPeoples.ArtOf(civ);if(art==null)continue;for(int type=0;type<4;type++){string file=SpeciesPeoples.ArtFile(art,type);if(Resources.Load<Texture2D>("Visuals/Species/"+file)==null&&!missing.Contains(file))missing.Add(file);}}
+{var missing=new System.Collections.Generic.List<string>();for(int civ=0;civ<CivilisationCatalog.Count;civ++){string art=SpeciesPeoples.ArtOf(civ);if(art==null)continue;for(int type=0;type<10;type++){string file=SpeciesPeoples.ArtFile(art,type);if(Resources.Load<Texture2D>("Visuals/Species/"+file)==null&&!missing.Contains(file))missing.Add(file);}}
      Require(missing.Count==0,"every species has its unit pictures (missing: "+string.Join(", ",missing.ToArray())+")");
      int portraits=0;for(int civ=SpeciesPeoples.First;civ<CivilisationCatalog.Count;civ++)if(Resources.Load<Texture2D>("Leaders/leader-"+civ.ToString("00"))!=null)portraits++;Debug.Log("Species leader portraits found: "+portraits+" of "+SpeciesPeoples.People.Count);}
             {var dim=World.New(306,"Keys",0,1,1,0,1,2,4,hex:true,rations:true);dim.EnableDimensions();var dg=dim.HomeGates().First(g=>dim.ConditionOf(g)==GateCondition.Cycling);var site=dim.ColonySites(0,dim.GateRealm(dg)).First();

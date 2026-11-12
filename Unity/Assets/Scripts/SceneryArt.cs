@@ -134,13 +134,56 @@ public static class SceneryArt
         }
         return px;
     }
+    // Cities and farmsteads (owner report, 12 Nov 2026: "remove the square outline for cities, they need to be more organic").
+    // Their pictures stand on a painted diamond of grass with a dark line round it, so every town sat on a square plot. A real
+    // settlement has no edge: trodden ground thins into the fields. Here the dark line is removed, and the GROUND of the base is
+    // cut to an uneven rounded patch that fades out raggedly. Only ground-coloured pixels fade; houses, fences, fires and animals
+    // keep every pixel, so a building near the edge of the old diamond simply stands on the land of the tile.
+    public static uint[] SettledFoot(uint[] src,int w,int h)
+    {
+        var px=(uint[])src.Clone();float cx,cy,hw,hh;if(!FindBase(px,w,h,out cx,out cy,out hw,out hh))return px;
+        Func<uint,bool> green=p=>A(p)>=40&&Bright(p)>=90&&G(p)>B(p)+14&&G(p)>=R(p)-10;
+        Func<uint,bool> earth=p=>A(p)>=40&&Bright(p)>=230&&Bright(p)<=560&&R(p)>G(p)&&G(p)>B(p)+18;
+        // What the lower edge of the base is made of. A town whose walls stand on the edge keeps its outline (walls are straight):
+        // it only loses the hard rim, as before.
+        int edgeAll=0,edgeGreen=0,edgeEarth=0;
+        for(int y=0;y<h;y++)for(int x=0;x<w;x++){uint p=px[y*w+x];if(A(p)<128||Bright(p)<200)continue;float d=DiamondDist(x,y,cx,cy,hw,hh);if(y<=cy||d<.8f||d>1.02f)continue;edgeAll++;if(green(p))edgeGreen++;else if(earth(p))edgeEarth++;}
+        if(edgeAll==0||edgeGreen*100<edgeAll*45)return FeatherRim(src,w,h);
+        bool earthToo=edgeEarth*100>=edgeAll*8;Func<uint,bool> ground=p=>green(p)||earthToo&&earth(p);
+        // Ground is what can be reached from the edge of the base through ground-coloured pixels: the outlines of houses stop it,
+        // so thatch and timber of the same colours are never touched.
+        var open=new bool[w*h];var queue=new Queue<int>();
+        for(int y=0;y<h;y++)for(int x=0;x<w;x++){float d=DiamondDist(x,y,cx,cy,hw,hh);if(d<.78f||d>1.08f)continue;int k=y*w+x;if(ground(px[k])){open[k]=true;queue.Enqueue(k);}}
+        while(queue.Count>0){int k=queue.Dequeue(),x=k%w,y=k/w;for(int n=0;n<4;n++){int nx=x+(n==0?1:n==1?-1:0),ny=y+(n==2?1:n==3?-1:0);if(nx<0||ny<0||nx>=w||ny>=h)continue;int q=ny*w+nx;if(open[q]||DiamondDist(nx,ny,cx,cy,hw,hh)>1.08f||!ground(px[q]))continue;open[q]=true;queue.Enqueue(q);}}
+        int seed=0;for(int k=0;k<px.Length;k+=89)seed=seed*31+(int)(px[k]&0xFFFFu);double p1=(seed&255)/255.0*6.283,p2=(seed>>8&255)/255.0*6.283,p3=(seed>>16&255)/255.0*6.283;
+        float band=Math.Max(6f,w/6f),reach=hh*1.45f;
+        // The line drawn round the base, and the darker strip of its side: dark, at the diamond's edge, beside open ground or air.
+        for(int y=0;y<h;y++)for(int x=0;x<w;x++)
+        {
+            int k=y*w+x;uint p=px[k];if(A(p)==0||open[k])continue;float d=DiamondDist(x,y,cx,cy,hw,hh);if(d<.84f||d>1.25f||Bright(p)>=230)continue;
+            bool beside=false,built=false;
+            for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){int nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h){beside=true;continue;}int q=ny*w+nx;if(A(px[q])<40||open[q])beside=true;else if(Bright(px[q])>=230&&DiamondDist(nx,ny,cx,cy,hw,hh)<d-.02f)built=true;}
+            if(beside&&!built)px[k]=0;
+        }
+        for(int y=0;y<h;y++)for(int x=0;x<w;x++)
+        {
+            int k=y*w+x;uint p=px[k];if(A(p)==0||!open[k])continue;
+            double u=(x-cx)/hw,v=(y-cy)/hh,angle=Math.Atan2(v,u),edge=.72+.085*Math.Sin(3*angle+p1)+.06*Math.Sin(5*angle+p2)+.04*Math.Sin(8*angle+p3);
+            float jitter=(((x*73856093)^(y*19349663))&15)/15f*2f-1f;
+            double inside=(edge-Math.Sqrt(u*u+v*v))*reach+jitter*2.6;if(inside>=band)continue;
+            double f=Math.Max(0,inside)/band;f=f*f*(3-2*f);px[k]=((uint)(A(p)*f)<<24)|(p&0xFFFFFFu);
+        }
+        // Loose dark specks left where the rim ran.
+        for(int pass=0;pass<2;pass++){var clear=new List<int>();for(int y=0;y<h;y++)for(int x=0;x<w;x++){int k=y*w+x;uint p=px[k];if(A(p)<40||Bright(p)>=230)continue;float d=DiamondDist(x,y,cx,cy,hw,hh);if(d<.8f||d>1.25f)continue;int n=0;for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){int nx=x+dx,ny=y+dy;if((dx!=0||dy!=0)&&nx>=0&&ny>=0&&nx<w&&ny<h&&A(px[ny*w+nx])>=120)n++;}if(n<=2)clear.Add(k);}foreach(int k in clear)px[k]=0;}
+        return px;
+    }
     // Which treatment a supplied picture gets, by its slot name; null leaves it as it is.
     // Cities and farmsteads keep their ground (their walls stand on its edge) and only lose the hard rim, like landforms.
     // Only open scenery (grassland groves, savanna, bog) is cut out of its ground; dense forest, jungle, rocks, mountains, cities and
     // farmsteads keep their ground, faded softly at the edge, because their trees and walls share colours with it (9 Nov 2026).
     public static bool IsLandform(string slot){return !(slot.StartsWith("terrain-00")||slot.StartsWith("terrain-16")||slot.StartsWith("terrain-09"));}
     public static bool IsScenery(string slot){return slot.StartsWith("field-")||slot.StartsWith("improve-")||slot.StartsWith("terrain-")||slot.StartsWith("hills")||slot.StartsWith("hamlet-")||slot.StartsWith("city-");}
-    public static uint[] Prepare(string slot,uint[] px,int w,int h){return slot.StartsWith("hills")?RoundFoot(px,w,h):IsLandform(slot)?FeatherRim(px,w,h):StripGround(px,w,h,slot.StartsWith("terrain-00"));}
+    public static uint[] Prepare(string slot,uint[] px,int w,int h){return slot.StartsWith("hills")?RoundFoot(px,w,h):slot.StartsWith("city-")||slot.StartsWith("hamlet-")?SettledFoot(px,w,h):IsLandform(slot)?FeatherRim(px,w,h):StripGround(px,w,h,slot.StartsWith("terrain-00"));}
     // Thin dark lines left from the old base (1-2 pixels wide) go; outlines of solid shapes stay, having more of themselves around.
     static void ThinLines(uint[] px,int w,int h)
     {
