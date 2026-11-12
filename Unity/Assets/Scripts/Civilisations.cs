@@ -10,15 +10,16 @@ public static class CivilisationCatalog {
  // 17 civilisations: Sylvan Court and Crystal Dominion are hidden for now (owner request), and the last two wait for their
  // portrait art (leader-15.png, leader-16.png); RealmGame enables them once the picture is found. Hidden or waiting
  // civilisations are never offered or used as rivals, and their indices stay fixed so saves keep working.
- public const int Count=84,TraitCount=12,PortraitCount=84;
+ // 159 since 12 Nov 2026: the seventy-five species civilisations of SpeciesPeoples follow the first eighty-four.
+ public const int Count=159,TraitCount=12,PortraitCount=159;
  // The forty later peoples of the sealed worlds (SealedPeoples) follow the first thirty-nine in every table.
  static CivilisationCatalog(){
-  var more=SealedPeoples.People;
+  var more=SealedPeoples.People.Concat(SpeciesPeoples.People).ToList();int sealedCount=SealedPeoples.People.Count;
   Names=Names.Concat(more.Select(p=>p.Name)).ToArray();Leaders=Leaders.Concat(more.Select(p=>p.Leader)).ToArray();
   Portraits=Portraits.Concat(Enumerable.Range(SealedPeoples.First,more.Count)).ToArray();Traits=Traits.Concat(more.Select(p=>p.Traits)).ToArray();
   Enabled=Enabled.Concat(more.Select(p=>false)).ToArray();AwaitingArt=AwaitingArt.Concat(more.Select(p=>false)).ToArray();
   PortraitTitles=PortraitTitles.Concat(more.Select(p=>p.LeaderTitle)).ToArray();Greetings=Greetings.Concat(more.Select(p=>p.Greeting)).ToArray();
-  var order=new List<int>(NativeOrder);for(int j=0;j<SealedPeoples.PerWorld;j++)foreach(int r in new[]{1,3,2,4,5,6}){int civ=SealedPeoples.First+(r-1)*SealedPeoples.PerWorld+j;if(civ<SealedPeoples.First+more.Count&&(r<6||j<SealedPeoples.HivePeoples))order.Add(civ);}NativeOrder=order.ToArray();
+  var order=new List<int>(NativeOrder);for(int j=0;j<SealedPeoples.PerWorld;j++)foreach(int r in new[]{1,3,2,4,5,6}){int civ=SealedPeoples.First+(r-1)*SealedPeoples.PerWorld+j;if(civ<SealedPeoples.First+sealedCount&&(r<6||j<SealedPeoples.HivePeoples))order.Add(civ);}NativeOrder=order.ToArray();
  }
  public static readonly string[] TraitNames={"Seafaring","Mercantile","Agrarian","Spiritual","Monumental","Diplomatic","Scholarly","Stalwart","Industrious","Militaristic","Horse Lords","Expansionist"};
  public static readonly string[] TraitTexts={
@@ -55,7 +56,7 @@ public static class CivilisationCatalog {
  public static bool RealPortrait(int portrait){return portrait>=FirstReal&&portrait<FirstNative;}
  // Which parallel world each native people lives in (1 Fae Wilds ... 5 Drowned Deep), and the order they are placed in so that
  // every world gets one people before any gets a second.
- public static int NativeRealm(int civ){return !IsNative(civ)?0:civ<SealedPeoples.First?1+(civ-FirstNative)/2:1+(civ-SealedPeoples.First)/SealedPeoples.PerWorld;}
+ public static int NativeRealm(int civ){if(civ>=SpeciesPeoples.First){var sp=SpeciesPeoples.Of(civ);return sp==null?0:sp.World;}return !IsNative(civ)?0:civ<SealedPeoples.First?1+(civ-FirstNative)/2:1+(civ-SealedPeoples.First)/SealedPeoples.PerWorld;}
  // The ten peoples of one world.
  public static IEnumerable<int> PeoplesOf(int realm){return Enumerable.Range(FirstNative,Count-FirstNative).Where(c=>NativeRealm(c)==realm);}
  public static readonly int[] NativeOrder={29,33,31,35,37,30,34,32,36,38};

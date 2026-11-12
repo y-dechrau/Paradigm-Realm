@@ -179,7 +179,17 @@ namespace ParadigmRealm {
   // The unit's picture; a combat unit that is fortified or healing stands guard behind its shield (owner request, 6 Nov 2026).
   // Art supplied as Visuals/unit-NN-guard replaces the generated guard picture.
   Texture2D[] guardSprites;
+  // Units of a people with the owner's own artwork wear it (SpeciesPeoples.ArtOf): four pictures for elves, dwarves, minotaurs,
+  // orcs and tree people (warrior, settler, worker, scout), one for each kind of insect and demon. Ships keep theirs.
+  readonly Dictionary<string,Texture2D> speciesSprites=new Dictionary<string,Texture2D>();
+  Texture2D SpeciesSprite(Unit u){
+   if(u==null||world==null||u.owner<0||u.owner>=world.nations.Length||World.IsNaval(u.type))return null;string file=SpeciesPeoples.ArtFile(SpeciesPeoples.ArtOf(world.nations[u.owner].civ),u.type);if(file==null)return null;
+   Texture2D made;if(speciesSprites.TryGetValue(file,out made))return made;var art=Resources.Load<Texture2D>("Visuals/Species/"+file);
+   if(art!=null){try{made=SoftTexture(PixelArt.UnitSprite(ReadArtPixels(art),art.width,art.height,128));themeTextures.Add(made);}catch(Exception){made=art;}}
+   speciesSprites[file]=made;return made;
+  }
   Texture2D UnitPicture(Unit u){
+   {var own=SpeciesSprite(u);if(own!=null)return own;}
    var plain=unitSprites!=null&&unitSprites[u.type]!=null?unitSprites[u.type]:people[u.type];
    if(!u.fortified||u.hasOrder||u.job>0||World.Power[u.type]<=0||World.IsNaval(u.type))return plain;
    return guardSprites!=null&&guardSprites[u.type]!=null?guardSprites[u.type]:plain;

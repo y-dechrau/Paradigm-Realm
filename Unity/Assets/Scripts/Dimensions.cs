@@ -47,7 +47,7 @@ public static class DimensionFamily {
  public static readonly string[][] Fails={new string[0],new[]{Combustion},new[]{Electrical}};
  // Which family each world belongs to (worlds in Realms.RealmNames order). Two families to begin with; the Plague Marshes and
  // the Hive Expanse keep home physics until the first two play well.
- public static readonly int[] OfRealmTable={Home,Resonant,Ember,Ember,Home,Resonant,Home};
+ public static readonly int[] OfRealmTable={Home,Resonant,Ember,Ember,Home,Resonant,Home,Home};
  public static int OfRealm(int realm){return realm<0||realm>=OfRealmTable.Length?Home:OfRealmTable[realm];}
  public static bool Blocks(int family,string tag){if(family<0||family>=Fails.Length)return false;return Array.IndexOf(Fails[family],tag)>=0;}
 }
@@ -79,6 +79,7 @@ public static class CapabilityCatalog {
 }
 public partial class World {
  public const int SaveVersion=42;
+ public static int DimensionFamilyTableLength{get{return DimensionFamily.OfRealmTable.Length;}}
  public List<GateState> gateStates=new List<GateState>();
  public List<Colony> colonies=new List<Colony>();
  public List<Adaptation> adaptations=new List<Adaptation>();

@@ -29,6 +29,7 @@ public static void Run(){
     EleventhNovemberChecks();
     GateExpeditionChecks();
     DimensionChecks.Run();
+    SpeciesChecks();
     SiegeChecks();
     var cold=World.New(3);var settler=cold.units.First(u=>u.owner==0&&u.type==0);cold.At(settler.x,settler.y).terrain=8;cold.tech[K("fire")]=false;Check(cold.Found(settler)==null,"cold settlement needs Fire");cold.tech[K("fire")]=true;Check(cold.Found(settler)!=null,"Fire (Stone Tools) permits cold settlement");
     var terrainTypes=new HashSet<int>();for(int seed=0;seed<6;seed++){var map=World.New(seed);Check(map.Valid(),"biome map validates");foreach(var tile in map.tiles){terrainTypes.Add(tile.terrain);Check(map.TileYield(tile).Length==3,"all terrain has yields");}}
@@ -154,7 +155,7 @@ static void ReligionChecks(){
 }
 // Owner requests 31 Oct, fifth batch: civilisations in full, real civilisations, priests, era score and ages (save version 26).
 static void CivilisationAndAgeChecks(){
-    int full=Enumerable.Range(0,CivilisationCatalog.Count).Count(CivLore.Full);Check(full==77,"77 civilisations with full lore (10 premade, 12 real, 55 peoples of the sealed worlds), found "+full);
+    int full=Enumerable.Range(0,CivilisationCatalog.Count).Count(CivLore.Full);Check(full==152,"152 civilisations with full lore (10 premade, 12 real, 55 earlier peoples of the other worlds, 75 species civilisations), found "+full);
     foreach(int civ in Enumerable.Range(0,CivilisationCatalog.Count).Where(CivLore.Full)){var e=CivLore.Of(civ);Check(e.Background.Length>100&&e.History.Length>200&&e.Strengths!=""&&e.Weaknesses!=""&&e.Ability!=""&&e.Unit!=""&&e.Building!=""&&e.Weakness!=""&&e.UnitBase>=0&&e.UnitBase<World.UnitNames.Length&&Array.IndexOf(World.BuildingIds,e.BuildingBase)>=0&&e.Agenda>=0&&e.Agenda<CivLore.AgendaNames.Length&&e.Faiths.All(f=>f>=0&&f<ReligionCatalog.Count),CivilisationCatalog.Names[civ]+" is complete");}
     Check(CivilisationCatalog.Names[17]=="China"&&CivilisationCatalog.Leaders[26]=="Cyrus the Great"&&CivilisationCatalog.Enabled[23],"real civilisations offered (China ... Persia, Maya)");
     // Steppe Horde: Keshig name and +2 movement for mounted units; Egypt: river cities +1 food and production.
@@ -403,6 +404,41 @@ static void GateExpeditionChecks(){
     Check(g.Valid(),"valid with gateway work recorded");
     {var old=World.New(307,natives:false);old.version=40;old.gateStudies=null;old.UpgradeSave();Check(old.version==World.SaveVersion&&old.gateStudies!=null&&old.Valid(),"version 40 saves upgrade with no seals read");}
 }
+// Owner request, 12 Nov 2026: one species to a world, seventy-five species civilisations, the owner's character artwork.
+static void SpeciesChecks(){
+    Check(SpeciesPeoples.People.Count==75&&CivilisationCatalog.Count==SpeciesPeoples.First+75,"seventy-five species civilisations ("+SpeciesPeoples.People.Count+")");
+    int[] expect={0,10,10,10,10,10,15,10};string[] arts={"","elf","orc","demon-","treefolk","minotaur","insect-","dwarf"};var allCities=new HashSet<string>();var artSeen=new HashSet<string>();
+    for(int r=1;r<=World.RealmCount;r++){
+        var mine=SpeciesPeoples.People.Where(p=>p.World==r).ToList();Check(mine.Count==expect[r],World.RealmNames[r]+" has "+expect[r]+" "+SpeciesPeoples.SpeciesNames[r].ToLower()+" civilisations ("+mine.Count+")");
+        string h=SpeciesPeoples.WorldHistories[r];Check(h!=null&&h.Length>=300,World.RealmNames[r]+" has its species history");
+        var pairs=mine.Select(p=>Math.Min(p.Traits[0],p.Traits[1])*100+Math.Max(p.Traits[0],p.Traits[1])).ToList();Check(pairs.Distinct().Count()==pairs.Count,SpeciesPeoples.SpeciesNames[r]+" have different trait pairs");
+        foreach(var p in mine)Check(p.Art!=null&&(arts[r].EndsWith("-")?p.Art.StartsWith(arts[r])&&artSeen.Add(p.Art):p.Art==arts[r]),p.Name+" wears its species' pictures ("+p.Art+")");
+    }
+    foreach(var p in SpeciesPeoples.People){int civ=SpeciesPeoples.First+SpeciesPeoples.People.IndexOf(p);var e=p.Lore;string who=p.Name;
+        Check(CivilisationCatalog.NativeRealm(civ)==p.World&&CivilisationCatalog.IsNative(civ)&&CivLore.Of(civ)==e&&CivilisationCatalog.Names[civ]==p.Name&&CivilisationCatalog.Leaders[civ]==p.Leader&&SealedPeoples.Of(civ)==p&&SpeciesPeoples.ArtOf(civ)==p.Art,who+" is in the catalogue");
+        Check(!string.IsNullOrEmpty(p.Leader)&&!string.IsNullOrEmpty(p.LeaderTitle)&&!string.IsNullOrEmpty(p.Greeting)&&p.Cities.Length==12&&p.Cities.Distinct().Count()==12,who+" has a leader and twelve cities");
+        foreach(string c in p.Cities)Check(allCities.Add(c),who+": the city name "+c+" is used once");
+        Check(e.Background.Length>=120&&e.History.Length>=500&&e.Strengths!=""&&e.Weaknesses!="",who+" has a full history ("+e.History.Length+")");
+        Check(p.Traits[0]!=p.Traits[1]&&p.Traits.All(t=>t>=0&&t<CivilisationCatalog.TraitCount)&&e.Agenda>=0&&e.Agenda<CivLore.AgendaNames.Length&&p.Bust>=0&&p.Bust<=14&&p.Hue>=0&&p.Hue<=7,who+" has valid numbers");
+        Check(e.UnitBase>=2&&e.UnitBase<=9&&e.UnitAttack+e.UnitDefence+e.UnitMoves>=1&&e.UnitAttack+e.UnitDefence+e.UnitMoves<=3&&Array.IndexOf(World.BuildingIds,e.BuildingBase)>=0&&!World.IsGateProject(e.BuildingBase)&&!World.IsWonder(e.BuildingBase)&&!World.IsProject(e.BuildingBase),who+" has a valid unit and building");
+        Check(e.AbilityRule!=null&&e.WeaknessRule!=null&&e.BuildingRule!=null&&e.AbilityText!="."&&e.WeaknessText!=".",who+" has rules that do something");
+    }
+    Check(CivilisationCatalog.Names.Distinct().Count()==CivilisationCatalog.Count&&CivilisationCatalog.Leaders.Distinct().Count()==CivilisationCatalog.Count,"every civilisation and leader has its own name");
+    // Pictures by unit type, and the earlier peoples that are plainly of a species.
+    Check(SpeciesPeoples.ArtFile("elf",0)=="elf-settler"&&SpeciesPeoples.ArtFile("orc",1)=="orc-worker"&&SpeciesPeoples.ArtFile("dwarf",3)=="dwarf-scout"&&SpeciesPeoples.ArtFile("minotaur",2)=="minotaur-warrior"&&SpeciesPeoples.ArtFile("treefolk",5)=="treefolk-warrior"&&SpeciesPeoples.ArtFile("insect-wasp",0)=="insect-wasp"&&SpeciesPeoples.ArtFile(null,2)==null,"each unit type has its picture");
+    Check(SpeciesPeoples.ArtOf(79)=="insect-red-wood-ant"&&SpeciesPeoples.ArtOf(29)=="elf"&&SpeciesPeoples.ArtOf(0)==null&&SpeciesPeoples.ArtOf(17)==null,"the earlier insect peoples and elves wear the new pictures; home civilisations do not");
+    // A new game: seven worlds, each peopled by its own species.
+    var w=World.New(91,peoplesPerWorld:10);Check(w.RealmsHere==7&&w.Valid(),"a new game has seven worlds beyond the gates");
+    for(int r=1;r<=7;r++){var there=Enumerable.Range(0,w.civCount).Where(o=>w.IsNativeNation(o)&&CivilisationCatalog.NativeRealm(w.nations[o].civ)==r).Select(o=>w.nations[o].civ).ToList();
+        Check(there.Count==10,World.RealmNames[r]+" has ten peoples ("+there.Count+")");
+        Check(r==6?there.All(c=>c>=79):there.All(c=>c>=SpeciesPeoples.First&&SpeciesPeoples.Of(c).World==r),World.RealmNames[r]+" is peopled by its own species");
+        Check(w.tiles.Any(t=>t.realm==r&&t.gateLink>0)&&w.cities.Count(c=>w.At(c.x,c.y).realm==r)>=8,World.RealmNames[r]+" has its gateway and its peoples' cities");}
+    Check(w.tiles.Where(t=>t.realm==7).Count(t=>!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain))>w.tiles.Count(t=>t.realm==7)/3,"the Stonehold Deeps have room to live in");
+    {var a=SpeciesPeoples.Candidates(6,3);var b=SpeciesPeoples.Candidates(6,4);Check(a.Count==20&&a.Distinct().Count()==20&&!a.Take(10).SequenceEqual(b.Take(10)),"twenty insect peoples, and different games show different ones");}
+    for(int k=0;k<12;k++)w.EndTurn();Check(w.Valid(),"and the game plays on with eighty-odd nations");
+    // An older six-world game keeps its own peoples.
+    Check(World.DimensionFamilyTableLength==World.RealmCount+1&&World.RealmNames.Length==8&&World.RealmTexts.Length==8&&World.RealmGateStyle.Length==8&&World.HomeGateStyle.Length==8&&World.RealmKeyTech.Length==8,"every table has the seventh world");
+}
 // Owner requests, 11 Nov 2026: rivers join like rivers, roads follow the ages, gateways stand off rivers and in a clearing, painted grass.
 static void EleventhNovemberChecks(){
     Func<PixelCanvas,int> ink=cv=>{int n=0;foreach(uint p in cv.p)if((p>>24)!=0)n++;return n;};
@@ -515,8 +551,8 @@ static void NinthNovemberChecks(){
      foreach(var r in rivers){int m=w.RiverLinks(r);for(int k=0;k<6;k++)if((m&(1<<k))!=0){var n=w.Step(r.x,r.y,di[k],dj[k]);if(n!=null&&n.terrain==7&&n.realm==0)links++;}}
      Check(rivers.Count==0||links/2<=rivers.Count-1,"home rivers branch like trees, with no loops ("+links/2+" links, "+rivers.Count+" river tiles)");}
     // The Hive Expanse: a sixth world with its own peoples.
-    Check(w.RealmsHere==6&&w.tiles.Any(t=>t.realm==6)&&Enumerable.Range(0,w.civCount).Any(o=>w.IsNativeNation(o)&&CivilisationCatalog.NativeRealm(w.nations[o].civ)==6),"new games have the Hive Expanse with its insect peoples");
-    Check(CivilisationCatalog.PeoplesOf(6).Count()==5&&CivilisationCatalog.PeoplesOf(6).All(c=>CivilisationCatalog.Names[c]!=""),"five insect peoples");
+    Check(w.RealmsHere==World.RealmCount&&w.tiles.Any(t=>t.realm==6)&&Enumerable.Range(0,w.civCount).Any(o=>w.IsNativeNation(o)&&CivilisationCatalog.NativeRealm(w.nations[o].civ)==6),"new games have the Hive Expanse with its insect peoples");
+    Check(CivilisationCatalog.PeoplesOf(6).Count(c=>c<SpeciesPeoples.First)==5&&CivilisationCatalog.PeoplesOf(6).All(c=>CivilisationCatalog.Names[c]!=""),"five insect peoples");
     // Buildings cost gold: with no gold the finished work waits; with gold it completes and the gold is paid.
     {var home=w.Found(w.units.First(u=>u.owner==0&&u.type==0));w.nations[0].tech[World.BuildingTech[Array.IndexOf(World.BuildingIds,7)]]=true;home.buildingProject=7;home.buildingQueue.Clear();int price=w.BuildingGold(7);Check(price>0&&w.BuildReason(home,7)=="","a Granary costs gold and can be built ("+w.BuildReason(home,7)+")");
      home.buildingProduction=w.CostFor(home,7);w.nations[0].gold=0;w.gold=0;w.EndTurn();Check(!home.granary&&home.buildingProject==7,"without gold the Granary waits");
@@ -863,7 +899,7 @@ static void DifficultyChecks(){
 // Owner request 5 Nov: fifty peoples of the sealed worlds, ten to a world.
 static void PeopleChecks(){
     Check(SealedPeoples.People.Count==SealedPeoples.Count,"forty later peoples written");
-    for(int r=1;r<=World.RealmCount;r++){var ten=CivilisationCatalog.PeoplesOf(r).ToList();int expect=r==6?SealedPeoples.HivePeoples:10;Check(ten.Count==expect,World.RealmNames[r]+" has "+expect+" peoples");string h=SealedPeoples.WorldHistories[r];Check(h!=null&&h.Length>300,World.RealmNames[r]+" has its history");
+    for(int r=1;r<=6;r++){var ten=CivilisationCatalog.PeoplesOf(r).Where(c=>c<SpeciesPeoples.First).ToList();int expect=r==6?SealedPeoples.HivePeoples:10;Check(ten.Count==expect,World.RealmNames[r]+" has "+expect+" peoples");string h=SealedPeoples.WorldHistories[r];Check(h!=null&&h.Length>300,World.RealmNames[r]+" has its history");
      var pairs=ten.Skip(r==6?0:2).Select(c=>{var t=CivilisationCatalog.Traits[c];return Math.Min(t[0],t[1])*100+Math.Max(t[0],t[1]);}).ToList();Check(pairs.Distinct().Count()==pairs.Count,World.RealmNames[r]+" peoples have different traits");}
     foreach(var p in SealedPeoples.People){int civ=SealedPeoples.First+SealedPeoples.People.IndexOf(p);var e=p.Lore;string who=p.Name;
      Check(CivilisationCatalog.NativeRealm(civ)==p.World&&CivLore.Of(civ)==e&&CivilisationCatalog.Names[civ]==p.Name&&CivilisationCatalog.Greetings[civ]==p.Greeting,who+" is in the catalogue");
@@ -876,7 +912,7 @@ static void PeopleChecks(){
      Check(PixelArt.PeoplePortrait(p).w==150,who+" has a portrait");}
     // All ten live in every world in a game, and their rule numbers reach the rules.
     var w=World.New(130,"Crowd",0,1,1,0,1,2,4,hex:true,peoplesPerWorld:10);var peoples=Enumerable.Range(0,w.civCount).Where(w.IsNativeNation).ToList();
-    Check(peoples.Count==55&&w.civCount==59&&w.Valid(),"fifty-five peoples join a game");Check(peoples.All(o=>w.cities.Any(c=>c.owner==o&&w.RealmOf(c.x,c.y)==CivilisationCatalog.NativeRealm(w.nations[o].civ))),"each of the fifty starts with a city in its own world");
+    Check(peoples.Count==70&&w.civCount==74&&w.Valid(),"seventy peoples join a game ("+peoples.Count+")");Check(peoples.All(o=>w.cities.Any(c=>c.owner==o&&w.RealmOf(c.x,c.y)==CivilisationCatalog.NativeRealm(w.nations[o].civ))),"each of the fifty starts with a city in its own world");
     for(int t=0;t<10;t++)w.EndTurn();Check(w.Valid()&&w.result=="","fifty peoples run for ten turns");
     {int o=peoples.First(a=>w.nations[a].civ>=SealedPeoples.First&&CivLore.Of(w.nations[a].civ).AbilityRule.Food>0);var c=w.cities.First(a=>a.owner==o);int with=w.Yield(c)[0];var e=CivLore.Of(w.nations[o].civ);int keep=e.AbilityRule.Food;e.AbilityRule.Food=0;int without=w.Yield(c)[0];e.AbilityRule.Food=keep;Check(with==without+keep,"a people's ability changes its yields");}
 }
@@ -940,10 +976,10 @@ static void RealmChecks(){
     sick.x=home.x;sick.y=home.y;w.EndTurn();int sickFood=w.Yield(hc)[0],keep=hc.plague;hc.plague=0;int wellFood=w.Yield(hc)[0];hc.plague=keep;Check(keep>0&&sickFood==wellFood-2,"plague carried home costs a city 2 food a turn");
     Check(w.Valid(),"world with travellers between worlds stays valid");
     // Native peoples: up to ten (within 16 civilisations), each founded in its own world, never required for a home conquest.
-    var natives=Enumerable.Range(0,w.civCount).Where(w.IsNativeNation).ToList();Check(natives.Count==12,"twelve native peoples (two in each of six worlds) join a three-civilisation game (found "+natives.Count+")");
+    var natives=Enumerable.Range(0,w.civCount).Where(w.IsNativeNation).ToList();Check(natives.Count==14,"fourteen native peoples (two in each of seven worlds) join a three-civilisation game (found "+natives.Count+")");
     Check(natives.All(o=>w.cities.Any(c=>c.owner==o&&w.RealmOf(c.x,c.y)==CivilisationCatalog.NativeRealm(w.nations[o].civ))),"each native people starts with a city in its own world");
     Check(Enumerable.Range(1,World.RealmCount).All(r=>natives.Count(o=>CivilisationCatalog.NativeRealm(w.nations[o].civ)==r)==2),"two native peoples in every parallel world");
-    {var crowded=World.New(93,"",0,1,1,0,5,1,14);Check(Enumerable.Range(0,crowded.civCount).Count(crowded.IsNativeNation)==12&&crowded.civCount==26,"a 14-civilisation game still has its sealed peoples");}
+    {var crowded=World.New(93,"",0,1,1,0,5,1,14);Check(Enumerable.Range(0,crowded.civCount).Count(crowded.IsNativeNation)==14&&crowded.civCount==28,"a 14-civilisation game still has its sealed peoples");}
     // Save version 26 locks the gates and sends stray land units back; a colony's garrison stays.
     {var old=World.New(95);old.version=23;old.gatesLocked=false;var g3=old.tiles.First(t=>t.realm==0&&t.gateLink>0&&old.GateTwin(t).realm==3);var far=old.GateTwin(g3);var stray=old.Add(0,2,far.x,far.y);
      old.UpgradeSave();Check(old.version==World.SaveVersion&&old.gatesLocked&&old.RealmOf(stray.x,stray.y)==0&&old.Distance(stray.x,stray.y,g3.x,g3.y)<=1&&old.Valid(),"an older save locks the gates and brings stray units home");}
@@ -951,7 +987,7 @@ static void RealmChecks(){
     {var land=World.New(96);var ash=land.tiles.First(t=>t.realm==3&&t.terrain==17&&t.resource==0&&!t.farm&&!t.mine&&!t.road);ash.owner=-1;var fed=land.TileYield(ash);Check(fed[0]==3&&fed[1]==2&&fed[2]==1,"volcanic land feeds its native people");
      ash.owner=0;var outsider=land.TileYield(ash);Check(outsider[0]==0&&outsider[1]==3&&outsider[2]==0,"volcanic land stays hard on an outsider");ash.owner=-1;}
     // The Spore Circle's slow units (2 moves) can still leave a city ringed by bog, which costs others 3.
-    {var slow=World.New(98);int spore=Enumerable.Range(0,slow.civCount).First(o=>slow.nations[o].civ==36);var sc=slow.cities.First(c=>c.owner==spore);var bog=slow.tiles.First(t=>t.realm==4&&t.terrain==9);var walker2=slow.Add(spore,2,sc.x,sc.y);Check(slow.StepCost(walker2,sc.x,sc.y,bog)<=slow.MaxMoves(walker2),"a slow people's units can always take a step");}
+    {var slow=World.New(98);int spore=Enumerable.Range(0,slow.civCount).First(o=>slow.IsNativeNation(o)&&CivilisationCatalog.NativeRealm(slow.nations[o].civ)==4);slow.nations[spore].civ=36;var sc=slow.cities.First(c=>c.owner==spore);var bog=slow.tiles.First(t=>t.realm==4&&t.terrain==9);var walker2=slow.Add(spore,2,sc.x,sc.y);Check(slow.StepCost(walker2,sc.x,sc.y,bog)<=slow.MaxMoves(walker2),"a slow people's units can always take a step");}
     // A sealed people behind the home world catches up on research and one far ahead slows; it cannot transcend.
     {var pace=World.New(97);int nativeOwner=Enumerable.Range(0,pace.civCount).First(pace.IsNativeNation);var n=pace.nations[nativeOwner];n.research=pace.AvailableTech(nativeOwner).First();int t0=n.research;n.progress[t0]=0;
      foreach(int o in Enumerable.Range(0,pace.civCount).Where(o=>!pace.IsNativeNation(o)))for(int i=0;i<20;i++)pace.nations[o].tech[i]=true;

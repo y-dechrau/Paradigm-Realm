@@ -10,7 +10,9 @@ namespace ParadigmRealm {
 // danger (attrition, plague) and its own riches (relic sites with richer rewards, rare resources).
 public partial class World {
  // Six worlds since 9 Nov 2026 (the Hive Expanse); a game made before then has five, and RealmsHere says how many this one has.
- public const int RealmCount=6,RealmGap=2;
+ // Seven since 12 Nov 2026: the Stonehold Deeps, the dwarves' world, so that each of seven species has a world of its own
+ // (SpeciesPeoples.cs). RealmsHere still says how many an older game has.
+ public const int RealmCount=7,RealmGap=2;
  public int RealmsHere{get{return realmRows<=0?0:Math.Min(RealmCount,realmRows/(RealmHeight+RealmGap));}}
  // The gates are locked (owner request, 5 Nov 2026): the arches stand on both sides, but nothing crosses. Saved, so a later
  // key or event can open them; the crossing code below stays for that day.
@@ -18,7 +20,7 @@ public partial class World {
  // Each parallel world is as tall as the home world (owner request); saved, so older games keep their own size.
  public int realmHeight;
  public int RealmHeight{get{return realmHeight>0?realmHeight:20;}}
- public static readonly string[] RealmNames={"Home world","Fae Wilds","Ashen Waste","Infernal Depths","Plague Marshes","Drowned Deep","Hive Expanse"};
+ public static readonly string[] RealmNames={"Home world","Fae Wilds","Ashen Waste","Infernal Depths","Plague Marshes","Drowned Deep","Hive Expanse","Stonehold Deeps"};
  public static readonly string[] RealmTexts={
   "The world your people were born in.",
   "An enchanted land of glowing groves and silver lakes. Wounds heal faster here, and the fae leave gifts at their stone circles.",
@@ -26,7 +28,8 @@ public partial class World {
   "A burning underworld of lava and black glass. Units lose 2 health a turn outside cities; its rocks are rich in iron and gold, and its relics in gold.",
   "Fetid bogs and dead forests. Units lose 1 health a turn and carry plague home for 5 turns: a city they enter loses 2 food a turn while the plague lasts.",
   "An endless ocean dotted with small islands and coral. Arrivals land on an island; found a city and build boats to explore its sunken treasures.",
-  "A warm golden world of towering grass, great earth mounds and giant flowers, home to five insect peoples: ants, bees, beetles, mantises and moths. Rich in food and spices."};
+  "A warm golden world of towering grass, great earth mounds and giant flowers, home to the insect peoples. Rich in food and spices.",
+  "A cold, high world of mountains without end, hollowed by halls and mines older than any record. Little grows above ground, but its hills are rich in iron and gold."};
  // Extra rows after the home world (mapHeight) that hold the parallel worlds; 0 for saves made before they existed.
  public int realmRows;
  public int MainHeight{get{return mapHeight;}}
@@ -43,7 +46,7 @@ public partial class World {
  // home designs (arcane castle, steam works, sky scaffold, void spires) chosen by the world it leads to. Every gateway starts sealed
  // and opens on its own (OpenGate), showing its open picture once it does.
  public static readonly string[] GateStyleNames={"Frost gate","Grove gate","Obsidian gate","Void gate","Sun gate","Arcane gate","Sky gate","Steam gate","Rift gate"};
- public static readonly int[] RealmGateStyle={5,1,4,2,8,0,1},HomeGateStyle={5,5,7,6,3,5,3};
+ public static readonly int[] RealmGateStyle={5,1,4,2,8,0,1,7},HomeGateStyle={5,5,7,6,3,5,3,6};
  public int GateStyle(Tile t){if(t==null)return 5;if(t.realm>0)return RealmGateStyle[Math.Max(0,Math.Min(RealmGateStyle.Length-1,t.realm))];var twin=GateTwin(t);int r=twin!=null?twin.realm:1;return HomeGateStyle[Math.Max(0,Math.Min(HomeGateStyle.Length-1,r))];}
  int GatePair(Tile t){var twin=GateTwin(t);int a=t.y*Width+t.x;return twin==null?a:Math.Min(a,twin.y*Width+twin.x);}
  // Save version 37: gateway pairs opened one by one while the rest stay sealed.
@@ -56,7 +59,7 @@ public partial class World {
  //  - Knowledge: the first home civilisation to learn a world's key technology breaks the seals of every gateway to that world.
  //  - A wonder: the Gatekeeper's Key (Mysticism), built in a city within 10 tiles of a sealed gateway, opens the nearest one.
  //  - A quest: a Priest standing on a sealed gateway performs the rite of unsealing for 100 faith (Mysticism); the priest is spent.
- public static readonly string[] RealmKeyTech={"","philosophy","industrialisation","fission","medicine","printing","chemistry"};
+ public static readonly string[] RealmKeyTech={"","philosophy","industrialisation","fission","medicine","printing","chemistry","feudalism"};
  public const int GateKeyWonder=64,GateKeyRange=10,RiteFaith=100;
  public string RealmKeyName(int r){if(r<=0||r>=RealmKeyTech.Length)return "";int t=TechnologyCatalog.Index(RealmKeyTech[r]);return t>=0?TechNames[t]:"";}
  internal void OpenGatesByKnowledge(){
@@ -81,7 +84,7 @@ public partial class World {
   for(int r=1;r<=RealmCount;r++){
    for(int y=RealmTop(r);y<RealmBottom(r);y++)for(int x=0;x<W;x++){var t=tiles[y*W+x];t.realm=r;t.terrain=RealmTerrain(r,x,y-RealmTop(r));t.resource=0;}
    foreach(var t in RealmTiles(r).Where(t=>!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&!Barren(t.terrain)))
-   {double roll=rnd.NextDouble();if(roll<.035)t.ruin=true;else if(roll<.08)t.resource=r==3?(rnd.Next(2)==0?2:3):r==1||r==6?(rnd.Next(2)==0?5:1):r==2?3:r==4?5:1;}
+   {double roll=rnd.NextDouble();if(roll<.035)t.ruin=true;else if(roll<.08)t.resource=r==3||r==7?(rnd.Next(2)==0?2:3):r==1||r==6?(rnd.Next(2)==0?5:1):r==2?3:r==4?5:1;}
    if(r==5)foreach(var t in RealmTiles(r).Where(t=>t.terrain==4&&rnd.NextDouble()<.03))t.resource=6+rnd.Next(10);
   }
   PlaceGateways(rnd);EnsureDimensionData();
@@ -95,6 +98,7 @@ public partial class World {
    case 2:if(edge)return 18;return n<.25?18:n<.55?10:n<.7?3:n<.82?20:m>.55?5:10;
    case 3:if(edge)return 5;return n<.22?5:n<.62?17:m>.5?10:17;
    case 4:if(edge)return 19;return n<.3?6:n<.6?9:n<.75?10:m>.5?19:9;
+   case 7:if(edge)return 5;return n<.18?5:n<.5?2:n<.68?0:n<.8?1:m>.6?5:2;// Stonehold Deeps: mountains and hills, with grass and forest in the valleys
    case 6:if(edge)return 20;return n<.2?11:n<.45?16:n<.62?0:n<.74?20:m>.62?2:16;// Hive Expanse: tall grass, savanna, jungle groves, mounds (hills)
    default:if(edge)return 4;return n<.5?4:n<.55?12:m>.55?11:n<.68?19:0;// islands large enough for its peoples to grow as fast as the home world
   }
@@ -114,10 +118,20 @@ public partial class World {
  // Native peoples (owner request, 31 Oct 2026): up to ten civilisations that live in the parallel worlds, two to a world,
  // added after the home civilisations while the total stays within 16. Each starts with a city, a warrior and a worker
  // on open land in its own world, away from the gateway and from the other people there.
+ // The order peoples are tried in, one from each world in turn. A game with the seventh world peoples every world with its own
+ // species (SpeciesPeoples.Candidates); an older layout keeps the earlier order.
+ IEnumerable<int> NativePlacingOrder(){
+  if(RealmsHere<RealmCount||SpeciesPeoples.People.Count==0)return CivilisationCatalog.NativeOrder;
+  var lists=new List<List<int>>();for(int r=1;r<=RealmsHere;r++){var c=SpeciesPeoples.Candidates(r,seed+r*7);if(c.Count==0)c=CivilisationCatalog.NativeOrder.Where(x=>CivilisationCatalog.NativeRealm(x)==r).ToList();lists.Add(c);}
+  var order=new List<int>();for(int j=0;j<20;j++)foreach(var l in lists)if(j<l.Count)order.Add(l[j]);return order;
+ }
+ // The history of a world as this game's peoples tell it.
+ public string WorldHistory(int realm){bool species=false;for(int o=0;o<civCount&&!species;o++)if(nations[o].civ>=SpeciesPeoples.First&&CivilisationCatalog.NativeRealm(nations[o].civ)==realm)species=true;
+  string h=species&&realm<SpeciesPeoples.WorldHistories.Length?SpeciesPeoples.WorldHistories[realm]:null;return h??(realm<SealedPeoples.WorldHistories.Length?SealedPeoples.WorldHistories[realm]:null)??"";}
  public void AddNatives(int perWorld=2){
   // Up to perWorld peoples from each world this game has (the Hive Expanse has five), in the catalogue's placing order.
   if(!HasRealms)return;int home=civCount;var chosen=new List<int>();var taken=new int[RealmCount+1];
-  foreach(int c in CivilisationCatalog.NativeOrder){int rr=CivilisationCatalog.NativeRealm(c);if(rr<1||rr>RealmsHere||taken[rr]>=Math.Max(0,Math.Min(10,perWorld)))continue;taken[rr]++;chosen.Add(c);}
+  foreach(int c in NativePlacingOrder()){int rr=CivilisationCatalog.NativeRealm(c);if(rr<1||rr>RealmsHere||taken[rr]>=Math.Max(0,Math.Min(10,perWorld)))continue;taken[rr]++;chosen.Add(c);}
   int k=Math.Min(chosen.Count,MaxNations-home);if(k<=0)return;
   SetCivCount(home+k);var placed=new List<Tile>();
   for(int i=0;i<k;i++){
@@ -131,7 +145,7 @@ public partial class World {
    if(start==null)continue;placed.Add(start);start.ruin=false;start.village=false;
    // A little open ground round the capital, as the home starts get.
    for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var q=Step(start.x,start.y,dx,dy);if(q!=null&&q.realm==r&&(IsWater(q.terrain)||IsImpassable(q.terrain)||Barren(q.terrain))&&q.gateLink==0)q.terrain=r==5?11:r==3?17:r==2?10:r==4?9:r==6?16:0;}
-   var settler=Add(o,0,start.x,start.y);var east=Step(start.x,start.y,1,0);var south=Step(start.x,start.y,0,1);Add(o,2,east.x,east.y);Add(o,1,south.x,south.y);
+   var settler=Add(o,0,start.x,start.y);var east=Step(start.x,start.y,1,0)??start;var south=Step(start.x,start.y,0,1)??start;Add(o,2,east.x,east.y);Add(o,1,south.x,south.y);
    Found(settler);
   }
   EnsureFlags();
@@ -171,7 +185,7 @@ public partial class World {
  // Each people of a parallel world lives off its own land as well as a home people does (owner request, 5 Nov 2026): what
  // starves an outsider feeds them, so ash, lava and bog feed like grassland (3 food), other land gives at least 2, and all of it at least 1 trade, on land that is theirs or free.
  void NativeGround(Tile t,int[] yields){
-  if(t.realm<2||t.realm>4||IsWater(t.terrain)||IsImpassable(t.terrain)||(t.owner>=0&&!IsNativeNation(t.owner)))return;
+  if((t.realm<2||t.realm>4)&&t.realm!=7||IsWater(t.terrain)||IsImpassable(t.terrain)||(t.owner>=0&&!IsNativeNation(t.owner)))return;
   yields[0]=Math.Max(yields[0],t.terrain==9||t.terrain==10||t.terrain==17?3:2);yields[2]=Math.Max(yields[2],1);if(t.terrain==17)yields[1]=2;
  }
  // Pace (owner request, 5 Nov 2026): the sealed worlds keep step with the home world. Each turn a people behind the average

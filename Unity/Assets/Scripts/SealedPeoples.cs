@@ -28,32 +28,38 @@ public sealed class PeopleRule {
  public string DescribeBuilding(){return Describe().Replace(" in every city","").TrimEnd('.')+" as well.";}
 }
 public sealed class SealedPerson {
- public string Name,Leader,LeaderTitle,Greeting;public int World,Bust,Hue;public int[] Traits;public string[] Cities;public CivEntry Lore;
+ public string Name,Leader,LeaderTitle,Greeting,Art;public int World,Bust,Hue;public int[] Traits;public string[] Cities;public CivEntry Lore;
 }
 public static partial class SealedPeoples {
  public const int First=39,PerWorld=8,Count=45;
  // The Hive Expanse (world 6, 9 Nov 2026) has five peoples, catalogue 79-83, after the forty of the first five worlds.
  public const int HivePeoples=5;
  // Each world's own history, shown with its peoples.
- public static readonly string[] WorldHistories=new string[7];
+ public static readonly string[] WorldHistories=new string[8];
  public static readonly List<SealedPerson> People=new List<SealedPerson>();
  static int adding;
  static SealedPeoples(){
   adding=1;AddFaeWilds();adding=2;AddAshenWaste();adding=3;AddInfernalDepths();adding=4;AddPlagueMarshes();adding=5;AddDrownedDeep();adding=6;AddHiveExpanse();
  }
- public static SealedPerson Of(int civ){int i=civ-First;return i>=0&&i<People.Count?People[i]:null;}
+ public static SealedPerson Of(int civ){if(civ>=SpeciesPeoples.First)return SpeciesPeoples.Of(civ);int i=civ-First;return i>=0&&i<People.Count?People[i]:null;}
  // bust: the portrait's shape. 0 elf, 1 avian, 2 machine, 3 dwarf, 4 demon, 5 orc, 6 ratkin, 7 mushroom folk, 8 merfolk, 9 lizardfolk,
  // 10 robed human, 11 skeleton, 12 masked spirit, 13 giant, 14 radiant winged. hue: 0-7, colours its robes.
  // unitBase: World.UnitNames index; buildingBase: World.BuildingIds value.
  static void Add(string name,string leader,string title,string greeting,int bust,int hue,int traitA,int traitB,int agenda,string[] cities,string epithet,string background,string history,string strengths,string weaknesses,
   string ability,PeopleRule abilityRule,string unit,int unitBase,int unitAttack,int unitDefence,int unitMoves,string building,int buildingBase,PeopleRule buildingRule,string weakness,PeopleRule weaknessRule){
   string unitParts=string.Join(", ",new[]{unitAttack!=0?"+"+unitAttack+" attack":null,unitDefence!=0?"+"+unitDefence+" defence":null,unitMoves!=0?"+"+unitMoves+" movement":null}.Where(s=>s!=null).ToArray());
-  People.Add(new SealedPerson{Name=name,Leader=leader,LeaderTitle=title,Greeting=greeting,World=adding,Bust=bust,Hue=hue,Traits=new[]{traitA,traitB},Cities=cities,Lore=new CivEntry{
+  People.Add(Make(adding,name,leader,title,greeting,bust,hue,traitA,traitB,agenda,cities,epithet,background,history,strengths,weaknesses,ability,abilityRule,unit,unitBase,unitAttack,unitDefence,unitMoves,building,buildingBase,buildingRule,weakness,weaknessRule));
+ }
+ // Builds one people's record (also used by SpeciesPeoples).
+ public static SealedPerson Make(int world,string name,string leader,string title,string greeting,int bust,int hue,int traitA,int traitB,int agenda,string[] cities,string epithet,string background,string history,string strengths,string weaknesses,
+  string ability,PeopleRule abilityRule,string unit,int unitBase,int unitAttack,int unitDefence,int unitMoves,string building,int buildingBase,PeopleRule buildingRule,string weakness,PeopleRule weaknessRule){
+  string unitParts=string.Join(", ",new[]{unitAttack!=0?"+"+unitAttack+" attack":null,unitDefence!=0?"+"+unitDefence+" defence":null,unitMoves!=0?"+"+unitMoves+" movement":null}.Where(s=>s!=null).ToArray());
+  return new SealedPerson{Name=name,Leader=leader,LeaderTitle=title,Greeting=greeting,World=world,Bust=bust,Hue=hue,Traits=new[]{traitA,traitB},Cities=cities,Lore=new CivEntry{
    Epithet=epithet,Background=background,History=history,Strengths=strengths,Weaknesses=weaknesses,
    Ability=ability,AbilityText=abilityRule.Describe(),AbilityRule=abilityRule,
    Unit=unit,UnitBase=unitBase,UnitAttack=unitAttack,UnitDefence=unitDefence,UnitMoves=unitMoves,UnitText="Replaces the "+World.UnitNames[unitBase]+": "+unitParts+".",
    Building=building,BuildingBase=buildingBase,BuildingText="Replaces the "+World.BuildingNames[Array.IndexOf(World.BuildingIds,buildingBase)]+": "+buildingRule.DescribeBuilding(),BuildingRule=buildingRule,
-   Weakness=weakness,WeaknessText=weaknessRule.Describe(),WeaknessRule=weaknessRule,Agenda=agenda}});
+   Weakness=weakness,WeaknessText=weaknessRule.Describe(),WeaknessRule=weaknessRule,Agenda=agenda}};
  }
 }
 public partial class World {

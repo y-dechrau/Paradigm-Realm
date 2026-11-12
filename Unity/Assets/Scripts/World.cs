@@ -201,7 +201,7 @@ namespace ParadigmRealm
         // Every map size has a fifth more tiles than the older square tables (owner request, 6 Nov 2026).
         public static int HexTiles(int squareTiles){return squareTiles*6/5;}
         public static int HexColumns(int count){return (int)Math.Round(Math.Sqrt(count*15.0/16));}
-        public const int MaxNations=71; // up to 16 home civilisations and the ten peoples of each of the five sealed worlds
+        public const int MaxNations=90; // up to 16 home civilisations and the ten peoples of each of the five sealed worlds
         public static readonly int[] MaxCivsBySize={4,6,8,12,14,16,16};
         public string NationName(int owner){if(owner==0)return civilisationName;if(owner>0&&owner<civCount&&nations!=null&&owner<nations.Length&&nations[owner]!=null&&!string.IsNullOrEmpty(nations[owner].name))return nations[owner].name;return owner>0&&owner<=RivalNames.Length?RivalNames[owner-1]:"Rival "+owner;}
         // Resize every per-civilisation array. Existing entries are kept; new ones start unmet and at peace.

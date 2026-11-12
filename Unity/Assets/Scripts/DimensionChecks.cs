@@ -186,7 +186,7 @@ public static class DimensionChecks {
   int native=-1;for(int o=0;o<w.civCount;o++)if(w.IsNativeNation(o)&&CivilisationCatalog.NativeRealm(w.nations[o].civ)==far.realm&&w.cities.Any(x=>x.owner==o))native=o;
   if(native>=0)
   {
-   w.met[native]=true;Check(w.LessonReason(0,native).Contains("trust"),"a local people teaches only those it trusts");w.AddOpinion(native,0,OpinionMods.Dealings,40);
+   w.met[native]=true;if(w.Opinion(native,0)<World.LocalLessonOpinion)Check(w.LessonReason(0,native).Contains("trust"),"a local people teaches only those it trusts ("+w.LessonReason(0,native)+")");w.AddOpinion(native,0,OpinionMods.Dealings,40);
    int pts=w.AdaptationOf(0,DimensionFamily.Ember,true).points;Check(w.LocalPeoples(0,far.realm).Contains(native)&&w.LocalLesson(0,native)&&w.AdaptationOf(0,DimensionFamily.Ember).points==pts+World.LocalLessonPoints,"then its lessons count toward local discoveries");
    mine.stock=0;Check(w.LocalSupply(0,native,mine)&&mine.stock==AccordCatalog.SupplyAmount,"and it will sell a colony supplies with no gateway at all");
   }

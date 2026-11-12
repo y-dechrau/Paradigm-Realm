@@ -2,6 +2,17 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner request 12 Nov: one species to a world, 75 new civilisations, the owner's character artwork (no save version change)
+
+Full record in `SPECIES-WORLDS-2026-11-12.md`. Built in source, checked in the engine harness and in Unity. Not hand-played.
+
+- **Seven worlds, one species each:** Fae Wilds elves, Ashen Waste orcs, Infernal Depths demons, Plague Marshes tree people, Drowned Deep minotaurs, Hive Expanse insects, and a new seventh world, the Stonehold Deeps, for the dwarves.
+- **75 new civilisations:** ten each of elves, orcs, tree people, minotaurs and dwarves; ten demon civilisations, one for each of the owner's ten demon designs; fifteen insect civilisations, so that with the five that existed each of the twenty insect designs has a people. Each has a leader, greeting, twelve cities, background, history, ability, unique unit, unique building and weakness.
+- **Unit pictures:** the owner's 50 designs and the earlier humanoid demon, scaled to game size. Elves, orcs, tree people, minotaurs and dwarves have a warrior, settler, worker and scout; each demon and insect people has one picture for all its units.
+- **Leader portraits:** 75 made with SpriteCook from a description of each leader.
+- **New games** place each world's own species. **Older saves** are unchanged: six worlds and the peoples they were made with.
+- **Limits:** see the design note. In short: abilities are unbalanced; a fantasy species' archers and cavalry look like its warrior; some histories name peoples that may be absent from a given game; names are not legally cleared.
+
 ## Owner requests 12 Nov: rivals compete beyond the gates, border escort, slower opening (no save change)
 
 Built in source, checked in the engine harness and in Unity. Not hand-played. Details and the measurement are in `DIMENSIONS-PLAN-2026-11-11.md` under "Added 12 Nov 2026".

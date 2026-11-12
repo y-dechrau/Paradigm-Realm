@@ -38,7 +38,7 @@ public partial class World {
  public GateStudy StudyOf(int owner,Tile gate){if(gate==null||gate.gateLink<=0||gateStudies==null)return null;int pair=GatePair(gate);foreach(var s in gateStudies)if(s.pair==pair&&s.owner==owner)return s;return null;}
  GateStudy StudyFor(int owner,Tile gate){var s=StudyOf(owner,gate);if(s==null){s=new GateStudy{pair=GatePair(gate),owner=owner};gateStudies.Add(s);}return s;}
  Tile HomeSide(Tile gate){if(gate==null)return null;if(gate.realm==0)return gate;var twin=GateTwin(gate);return twin!=null&&twin.realm==0?twin:gate;}
- public int GateDanger(Tile gate){int r=GateRealm(gate);int[] d={1,1,2,3,2,1,3};return d[Math.Max(0,Math.Min(d.Length-1,r))];}
+ public int GateDanger(Tile gate){int r=GateRealm(gate);int[] d={1,1,2,3,2,1,3,2};return d[Math.Max(0,Math.Min(d.Length-1,r))];}
  // What the seal asks for: the main requirement from the design of the far side, the activation from the design of the near side.
  public bool FirstGateway{get{return openedGates==null||openedGates.Count==0;}}
  public int StabiliseTurnsNow{get{return FirstGateway?GateApproach.FirstStabiliseTurns:GateApproach.StabiliseTurns;}}

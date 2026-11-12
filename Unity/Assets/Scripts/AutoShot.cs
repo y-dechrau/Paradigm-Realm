@@ -15,7 +15,7 @@ namespace ParadigmRealm
         {
             var args=Environment.GetCommandLineArgs();int i;
             // A test run keeps its saves and autosaves in its own output folder, never among the player's saved games.
-            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot","-cheerShot","-dimShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
+            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot","-cheerShot","-dimShot","-speciesShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
             i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
             i=Array.IndexOf(args,"-frameProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FrameProbe(args[i+1],i+2<args.Length?int.Parse(args[i+2]):4,i+3<args.Length?int.Parse(args[i+3]):120));
@@ -29,6 +29,7 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-lookShot");if(i>=0&&i+1<args.Length)StartCoroutine(LookShot(args[i+1]));
             i=Array.IndexOf(args,"-cheerShot");if(i>=0&&i+1<args.Length)StartCoroutine(CheerShot(args[i+1]));
             i=Array.IndexOf(args,"-dimShot");if(i>=0&&i+1<args.Length)StartCoroutine(DimShot(args[i+1]));
+            i=Array.IndexOf(args,"-speciesShot");if(i>=0&&i+1<args.Length)StartCoroutine(SpeciesShot(args[i+1]));
         }
         // Development aid: "-mapShot <folder>" starts a fixed game with the whole home world found and saves close views of a river
         // mouth, a farm and a fort on a river, hills, a volcano with a unit on it, sealed and open gateways, resources on land
@@ -147,6 +148,33 @@ namespace ParadigmRealm
                 log.AppendLine("Investigate Gateway offered in "+home.name+": "+world.TechAllows(home,World.InvestigateProject)+" ("+world.BuildReason(home,World.InvestigateProject)+"), cost "+world.CostFor(home,World.InvestigateProject));Probe("a city near an unread gateway is offered the investigation",world.TechAllows(home,World.InvestigateProject));
                 cityId=home.id;selected=-1;cityScreen=true;yield return Frames(3);yield return Shot(folder,"6-city-with-gateway-project.bmp");cityScreen=false;}
             Probe("the game is valid after the dimensional loop",world.Valid());File.WriteAllText(Path.Combine(folder,"dimensions.txt"),log.ToString());Application.Quit();
+        }
+        // Development aid: "-speciesShot <folder>" starts a game with ten peoples in each of the seven worlds and photographs, for
+        // each world, a native city with that species' settler, worker, warrior and scout beside it, and the Legends page of one
+        // of its peoples with the leader's portrait.
+        IEnumerator SpeciesShot(string folder)
+        {
+            Directory.CreateDirectory(folder);yield return Frames(5);
+            seedText="421";mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;setupPeoples=10;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;
+            var founder=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);if(founder!=null)world.Found(founder);var log=new System.Text.StringBuilder();log.AppendLine("worlds: "+world.RealmsHere+", nations: "+world.civCount);
+            if(world.gatesFound==null)world.gatesFound=new System.Collections.Generic.List<int>();
+            for(int r=1;r<=world.RealmsHere;r++)
+            {
+                var peoples=Enumerable.Range(0,world.civCount).Where(o=>world.IsNativeNation(o)&&CivilisationCatalog.NativeRealm(world.nations[o].civ)==r).ToList();log.AppendLine(World.RealmNames[r]+": "+string.Join(", ",peoples.Select(o=>world.NationName(o)+" ["+SpeciesPeoples.ArtOf(world.nations[o].civ)+"]").ToArray()));
+                if(peoples.Count==0)continue;foreach(var t in world.tiles)if(t.realm==r)t.seen=true;
+                foreach(var g in world.tiles.Where(t=>t.gateLink>0&&(t.realm==r||t.realm==0&&world.GateRealm(t)==r))){g.seen=true;if(g.realm==0&&!world.gatesFound.Contains(g.y*world.Width+g.x))world.gatesFound.Add(g.y*world.Width+g.x);}
+                int shown=0;foreach(int o in peoples.Take(r==3||r==6?4:1))
+                {
+                    var city=world.cities.FirstOrDefault(c=>c.owner==o);if(city==null)continue;world.met[o]=true;world.nations[o].intel=2;int type=0;
+                    for(int dy=-1;dy<=1&&type<4;dy++)for(int dx=-1;dx<=1&&type<4;dx++){var n=world.Step(city.x,city.y,dx,dy);if(n==null||n.realm!=r||(dx==0&&dy==0)||PixelArt.IsWater(n.terrain)||World.IsImpassable(n.terrain)||world.units.Any(u=>u.x==n.x&&u.y==n.y)||world.cities.Any(c=>c.x==n.x&&c.y==n.y))continue;world.Add(o,type,n.x,n.y);type++;}
+                    Tile watch=null;for(int ring=2;ring<=3&&watch==null;ring++)for(int dy=-ring;dy<=ring&&watch==null;dy++)for(int dx=-ring;dx<=ring&&watch==null;dx++){var n=world.StepIn(city.x,city.y,dx,dy,ring);if(n!=null&&n.realm==r&&world.Distance(n.x,n.y,city.x,city.y)==ring&&!PixelArt.IsWater(n.terrain)&&!World.IsImpassable(n.terrain)&&!world.units.Any(u=>u.x==n.x&&u.y==n.y))watch=n;}
+                    if(watch!=null)world.Add(0,3,watch.x,watch.y);world.Reveal();world.newContacts.Clear();if(world.rivalCalls!=null)world.rivalCalls.Clear();
+                    isoWidth=128;FocusTile(city.x,city.y);yield return CleanShot(folder,"world-"+r+"-units-"+(shown++)+".bmp");
+                }
+                world.newContacts.Clear();legendsOpen=true;legendsWorld=r;legendsPeople=world.nations[peoples[0]].civ;detailsScreen="Atlas";yield return Frames(3);yield return Shot(folder,"world-"+r+"-legend.bmp");legendsPeople=-1;legendsOpen=false;detailsScreen="";
+            }
+            Probe("the game with seven peopled worlds is valid",world.Valid());var sw=System.Diagnostics.Stopwatch.StartNew();world.EndTurn();log.AppendLine("one end of turn with "+world.civCount+" nations: "+sw.ElapsedMilliseconds+" ms");
+            File.WriteAllText(Path.Combine(folder,"species.txt"),log.ToString());Application.Quit();
         }
         IEnumerator MapShot(string folder)
         {

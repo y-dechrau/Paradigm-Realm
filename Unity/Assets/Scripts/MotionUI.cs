@@ -94,7 +94,7 @@ public partial class RealmGame {
   if(unitGlides.Count==0&&animalGlides.Count==0)return;
   glideUnits.Clear();foreach(var u in world.units)if(unitGlides.ContainsKey(u.id))glideUnits[u.id]=u;
   foreach(var kv in unitGlides){Unit u;if(!glideUnits.TryGetValue(kv.Key,out u))continue;Vector2 at;if(!GlidePoint(kv.Value,tw,s,out at))continue;
-   DrawUnitArt(u,new Rect(at.x-20*s,at.y-36*s,40*s,40*s),1,WalkFrame(u.type,kv.Value.walk));}
+   DrawUnitArt(u,new Rect(at.x-20*s,at.y-36*s,40*s,40*s),1,SpeciesSprite(u)!=null?null:WalkFrame(u.type,kv.Value.walk));}
   if(world.animals!=null)foreach(var a in world.animals){Glide g;if(!animalGlides.TryGetValue(a.id,out g))continue;Vector2 at;if(!GlidePoint(g,tw,s,out at))continue;
    bool painted=SpriteSlot("animal-"+a.kind)!=null;float size=painted?(AnimalCatalog.Carnivore[a.kind]?40:48):64;
    GUI.DrawTexture(painted?new Rect(at.x-size/2*s,at.y-(size-6)*s,size*s,size*s):new Rect(at.x-32*s,at.y-42*s,64*s,64*s),IsoPicture(12,a.kind,0),ScaleMode.ScaleToFit,true);}

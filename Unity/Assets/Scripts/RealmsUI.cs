@@ -29,10 +29,10 @@ public partial class RealmGame {
   var knownWorlds=Enumerable.Range(1,World.RealmCount).Where(world.WorldKnownAtHome).ToList();
   if(knownWorlds.Count==0){GUI.Label(new Rect(84,170,1100,120),"Nothing is known of any other world. No civilisation of your world has yet found an ancient gateway. Explore: the first gateway found, by you or any civilisation of your world, will begin this book.",body);return;}
   if(!knownWorlds.Contains(legendsWorld))legendsWorld=knownWorlds[0];
-  for(int r=1;r<=World.RealmCount;r++){var tab=new Rect(84+(r-1)*188,118,182,32);bool known=knownWorlds.Contains(r);if(r==legendsWorld)Fill(new Rect(tab.x-2,tab.y-2,tab.width+4,tab.height+4),UiAccent);bool was=GUI.enabled;GUI.enabled=was&&known;if(GUI.Button(tab,known?World.RealmNames[r]:"Unknown world",button)){legendsWorld=r;legendsScroll=Vector2.zero;GUI.enabled=was;GUIUtility.ExitGUI();}GUI.enabled=was;}
+  for(int r=1;r<=World.RealmCount;r++){var tab=new Rect(84+(r-1)*161,118,156,32);bool known=knownWorlds.Contains(r);if(r==legendsWorld)Fill(new Rect(tab.x-2,tab.y-2,tab.width+4,tab.height+4),UiAccent);bool was=GUI.enabled;GUI.enabled=was&&known;if(GUI.Button(tab,known?World.RealmNames[r]:"Unknown world",button)){legendsWorld=r;legendsScroll=Vector2.zero;GUI.enabled=was;GUIUtility.ExitGUI();}GUI.enabled=was;}
   var peoples=CivilisationCatalog.PeoplesOf(legendsWorld).Where(c=>world.NationOfPeople(c)>=0).ToList();bool told=peoples.Any(c=>world.PeopleDetail(world.NationOfPeople(c))>=2);
   GUILayout.BeginArea(new Rect(84,162,560,570));legendsScroll=GUILayout.BeginScrollView(legendsScroll);
-  GUILayout.Label(World.RealmTexts[legendsWorld],body);GUILayout.Space(8);GUILayout.Label("History",heading);GUILayout.Label(told?SealedPeoples.WorldHistories[legendsWorld]:"Its history is unknown. Learn the customs of one of its peoples, and the story of the world comes with it.",body);
+  GUILayout.Label(World.RealmTexts[legendsWorld],body);GUILayout.Space(8);GUILayout.Label("History",heading);GUILayout.Label(told?world.WorldHistory(legendsWorld):"Its history is unknown. Learn the customs of one of its peoples, and the story of the world comes with it.",body);
   GUILayout.EndScrollView();GUILayout.EndArea();
   float y=162,step=peoples.Count==0?57:Mathf.Min(57,570f/peoples.Count);
   foreach(int civ in peoples){int o=world.NationOfPeople(civ),detail=world.PeopleDetail(o);var row=new Rect(664,y,532,step-5);bool canOpen=detail>=1;
