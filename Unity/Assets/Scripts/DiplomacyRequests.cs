@@ -12,14 +12,17 @@ namespace ParadigmRealm {
 // and the threatened consequence). Refused requests carry the consequence only when the threat is credible. A request whose
 // target vanishes, or whose gateway changes hands, is Cancelled with no blame (an unavoidable interruption).
 public static class RequestKinds {
- public const int StopWar=0,Withdraw=1,JoinWar=2,DefendGate=3,Aid=4,Count=5;
- public static readonly string[] Names={"Stop a war","Withdraw troops","Join a war","Defend a gateway","Send aid"};
+ public const int StopWar=0,Withdraw=1,JoinWar=2,DefendGate=3,Aid=4,Resource=5,Count=6;
+ public static readonly string[] Names={"Stop a war","Withdraw troops","Join a war","Defend a gateway","Send aid","Share a resource"};
  public static readonly string[] Texts={
   "Make peace with the named civilisation before the deadline.",
   "Keep every soldier at least 4 tiles from the asker's cities for the whole term (a 2-turn grace to march out).",
   "Declare war on the named civilisation before the deadline (it must be an enemy of the asker).",
   "Keep a soldier within 2 tiles of the asker's gateway on at least half the turns of the term.",
-  "Send the gold asked at once."};
+  "Send the gold asked at once.",
+  "Share an improved, road-connected resource for the term (it arrives as an import, as in a trade deal; a cut road ends it with no blame)."};
+ // Resources that can be shared: Wheat, Iron, Gold, Horses, Spices (the ones trade deals carry).
+ public const int FirstShared=1,LastShared=5;
  // Distance from the asker's cities that troops must keep under a withdrawal.
  public const int WithdrawRange=3,GateGuardRange=2,Grace=2,Cooldown=10,AnswerTurns=3,MaxActive=3;
 }
@@ -36,6 +39,8 @@ public static class RequestConsequence {
  // unit is the soldier a rival recipient has posted to a gateway.
  public int id,from,to,kind,target=-1,gate=-1,created,accepted,deadline,duration=10,status,gold,aid,consequence,served,unit=-1;
  public bool endRivalry;public string answer="";
+ // Share a resource (added 13 Nov 2026, after the save version 43 change; older version 43 saves read it as 0): the resource id.
+ public int resource;
  public DiplomaticRequest Copy(){return (DiplomaticRequest)MemberwiseClone();}
 }
 public partial class World {
@@ -58,7 +63,8 @@ public partial class World {
    case RequestKinds.Withdraw:if(TroopsNear(r.to,r.from,RequestKinds.WithdrawRange)==0)return "None of their soldiers are near your cities.";break;
    case RequestKinds.JoinWar:if(!AtWar(r.from,r.target))return "You are not at war with "+NationName(r.target)+".";if(AtWar(r.to,r.target))return "They are already at war with "+NationName(r.target)+".";if(Friends(r.to,r.target))return "A pact binds them to "+NationName(r.target)+".";break;
    case RequestKinds.DefendGate:{var g=GateTileOf(r);if(g==null||g.gateLink<=0||g.owner!=r.from)return "Choose a gateway on your own land.";if(!HasAccess(r.to,r.from)&&!Pact(r.to,r.from,Pacts.GateAccess))return "They need open borders or gate access to reach it.";break;}
-   case RequestKinds.Aid:if(r.aid<=0)return "Ask for some gold.";if(Treasury(r.to)<r.aid)return "They do not have "+r.aid+" gold.";break;}
+   case RequestKinds.Aid:if(r.aid<=0)return "Ask for some gold.";if(Treasury(r.to)<r.aid)return "They do not have "+r.aid+" gold.";break;
+   case RequestKinds.Resource:if(r.resource<RequestKinds.FirstShared||r.resource>RequestKinds.LastShared)return "Choose Wheat, Iron, Gold, Horses or Spices.";if(!HasDomesticResource(r.to,r.resource))return "They have no improved, road-connected "+ResourceNames[r.resource]+".";if(HasDomesticResource(r.from,r.resource))return "You already have your own "+ResourceNames[r.resource]+".";if(Embargoed(r.from,r.to))return "No dealings between rivals.";if(contracts.Any(c=>SamePair(c.from,c.to,r.from,r.to)))return "End the trade deal between you first (one deal per pair).";break;}
   if(requests.Any(x=>x.kind==r.kind&&x.from==r.from&&x.to==r.to&&(x.status==RequestStatus.Pending||x.status==RequestStatus.Active)))return "That request is already open.";
   if(requests.Any(x=>x.kind==r.kind&&x.from==r.from&&x.to==r.to&&x.status==RequestStatus.Refused&&turn-x.created<RequestKinds.Cooldown))return "Asked too recently; wait "+RequestKinds.Cooldown+" turns after a refusal.";
   if(requests.Count(x=>SamePair(x.from,x.to,r.from,r.to)&&x.status==RequestStatus.Active)>=RequestKinds.MaxActive)return "At most "+RequestKinds.MaxActive+" commitments between two civilisations at once.";
@@ -85,7 +91,8 @@ public partial class World {
    case RequestKinds.Withdraw:Part(lines,ref sum,"Troops to pull back ("+TroopsNear(to,from,RequestKinds.WithdrawRange)+")",-5-3*TroopsNear(to,from,RequestKinds.WithdrawRange));if(to!=0&&Ambition(to,from)>=50)Part(lines,ref sum,"They have designs on your land",-40);break;
    case RequestKinds.JoinWar:{Part(lines,ref sum,"Reluctance to go to war",-40);if(Threat(to,r.target)>=30||Rival(to,r.target)||Opinion(to,r.target)<=-30)Part(lines,ref sum,"They have their own quarrel with "+NationName(r.target),30);if(Opinion(to,r.target)>=40)Part(lines,ref sum,"They like "+NationName(r.target),-30);break;}
    case RequestKinds.DefendGate:Part(lines,ref sum,"A soldier kept far from home",-15);break;
-   case RequestKinds.Aid:Part(lines,ref sum,"Reluctance to give",-5);break;}
+   case RequestKinds.Aid:Part(lines,ref sum,"Reluctance to give",-5);break;
+   case RequestKinds.Resource:{Part(lines,ref sum,"Reluctance to share "+ResourceNames[r.resource],-10);int need=ResourceNeed(to,r.resource);if(UnitResource.Contains(r.resource)&&Threat(to,from)>=30)Part(lines,ref sum,"It would arm a power they fear",-30);if(AtWar(from,to)==false&&r.to!=0&&Ambition(to,from)>=50)Part(lines,ref sum,"They have designs on your land",-40);if(need>=180)Part(lines,ref sum,"They need it for their own war",-15);break;}}
   sum+=Feasibility(r,lines);
   Part(lines,ref sum,"Opinion of you",Opinion(to,from)/3);
   Part(lines,ref sum,"Trust in you",Trust(to,from)/3);
@@ -102,8 +109,8 @@ public partial class World {
  // Who opened the war between a and b, read from the war's record (the first line naming the declaration).
  bool WarStartedBy(int a,int b){var p=Relation(a,b);if(p==null||!AtWar(a,b))return false;return p.lastDeclarer==a;}
  public string DescribeRequest(DiplomaticRequest r){
-  string what=r.kind==RequestKinds.StopWar?"make peace with "+NationName(r.target):r.kind==RequestKinds.Withdraw?"keep troops "+(RequestKinds.WithdrawRange+1)+" tiles from "+NationName(r.from)+"'s cities":r.kind==RequestKinds.JoinWar?"declare war on "+NationName(r.target):r.kind==RequestKinds.DefendGate?"defend the gateway at "+GateLabel(r):"send "+r.aid+" gold";
-  string s=NationName(r.from)+" asks "+NationName(r.to)+" to "+what+(r.kind==RequestKinds.Aid?"":" within "+r.duration+" turns");
+  string what=r.kind==RequestKinds.Resource?"share its "+(r.resource>0&&r.resource<ResourceNames.Length?ResourceNames[r.resource]:"resource"):r.kind==RequestKinds.StopWar?"make peace with "+NationName(r.target):r.kind==RequestKinds.Withdraw?"keep troops "+(RequestKinds.WithdrawRange+1)+" tiles from "+NationName(r.from)+"'s cities":r.kind==RequestKinds.JoinWar?"declare war on "+NationName(r.target):r.kind==RequestKinds.DefendGate?"defend the gateway at "+GateLabel(r):"send "+r.aid+" gold";
+  string s=NationName(r.from)+" asks "+NationName(r.to)+" to "+what+(r.kind==RequestKinds.Aid?"":r.kind==RequestKinds.Resource?" for "+r.duration+" turns":" within "+r.duration+" turns");
   var gives=new List<string>();if(r.gold>0)gives.Add(r.gold+" gold");if(r.endRivalry)gives.Add("an end to the rivalry");
   if(gives.Count>0)s+=", for "+string.Join(" and ",gives.ToArray());if(r.consequence>0)s+=". If not: "+RequestConsequence.Names[r.consequence];return s+".";}
  string GateLabel(DiplomaticRequest r){var g=GateTileOf(r);if(g==null)return "?";var near=cities.Where(c=>At(c.x,c.y).realm==g.realm).OrderBy(c=>Distance(c.x,c.y,g.x,g.y)).FirstOrDefault();return near==null?"("+g.x+", "+g.y+")":"near "+near.name;}
@@ -121,6 +128,8 @@ public partial class World {
   DiplomacyEvent(r.from,r.to,"Agreed: "+DescribeRequest(r));
   if(r.from==0)AddRivalCall(r.to,0,"agrees: "+RequestKinds.Names[r.kind].ToLower()+".");
   if(r.kind==RequestKinds.Aid){AddDiplomaticGold(r.to,-r.aid);AddDiplomaticGold(r.from,r.aid);Fulfil(r);return;}
+  // Shared through the trade-deal contract, so a lost road or improvement ends it with no blame, like any resource deal.
+  if(r.kind==RequestKinds.Resource){contracts.Add(new DiplomaticContract{id=nextDiplomaticId++,from=r.to,to=r.from,start=turn,end=turn+r.duration,giveResource=r.resource});networks=null;Fulfil(r);return;}
   if(r.to!=0)CarryOut(r);
   CheckRequest(r);}
  void RefuseRequest(DiplomaticRequest r,int score){
@@ -140,7 +149,7 @@ public partial class World {
   r.status=RequestStatus.Fulfilled;r.answer="Fulfilled.";
   if(r.gold>0){if(Treasury(r.from)>=r.gold){AddDiplomaticGold(r.from,-r.gold);AddDiplomaticGold(r.to,r.gold);}else{r.answer="Fulfilled, but the promised gold could not be paid.";AddOpinion(r.to,r.from,OpinionMods.Broken,-12);SetTrust(r.to,r.from,Trust(r.to,r.from)-12);}}
   if(r.endRivalry&&Rival(r.from,r.to)){var p=Relation(r.from,r.to);if(r.from==p.a)p.rivalA=-1;else p.rivalB=-1;networks=null;}
-  bool help=r.kind==RequestKinds.JoinWar||r.kind==RequestKinds.DefendGate||r.kind==RequestKinds.Aid;
+  bool help=r.kind==RequestKinds.JoinWar||r.kind==RequestKinds.DefendGate||r.kind==RequestKinds.Aid||r.kind==RequestKinds.Resource;
   AddOpinion(r.from,r.to,OpinionMods.KeptWord,help?15:10);if(help)AddOpinion(r.from,r.to,OpinionMods.Aid,10);
   SetTrust(r.from,r.to,Math.Min(TrustCap(r.from,r.to),Trust(r.from,r.to)+8));
   DiplomacyEvent(r.from,r.to,"Kept their word: "+DescribeRequest(r));
@@ -206,11 +215,15 @@ public partial class World {
    // 3. b attacks a friend of ours: tell it to stop.
    for(int f=0;f<civCount;f++){if(f==a||f==b||!AtWar(b,f)||!(Friends(a,f)||Opinion(a,f)>=40)||Friends(a,b))continue;if(!WarStartedBy(b,f))continue;
     bool strong=Strength(a,a)>=Strength(a,b);var stop=new DiplomaticRequest{from=a,to=b,kind=RequestKinds.StopWar,target=f,duration=10,consequence=strong?RequestConsequence.Rivalry:RequestConsequence.Remember,endRivalry=Rival(a,b)};if(RequestProblem(stop)==""){Ask(stop);break;}}
-   // 4. b's soldiers crowd our cities in peacetime and we are uneasy.
+   // 4. A resource our next soldiers need (Iron, Horses) that b has and we lack: ask to share it, paying on delivery.
+   if(b!=a&&(Opinion(b,a)>=0||Friends(a,b)))foreach(int res in new[]{2,4}){if(HasResource(a,res)||!HasTech(a,ResourceTech[res])||!HasDomesticResource(b,res))continue;var share=new DiplomaticRequest{from=a,to=b,kind=RequestKinds.Resource,resource=res,duration=15,gold=Math.Min(40,Treasury(a)/4)};if(RequestProblem(share)==""){Ask(share);break;}}
+   // 5. b's soldiers crowd our cities in peacetime and we are uneasy.
    if(Threat(a,b)>=20&&TroopsNear(b,a,RequestKinds.WithdrawRange)>=2){var w=new DiplomaticRequest{from=a,to=b,kind=RequestKinds.Withdraw,duration=10,consequence=RequestConsequence.Remember};if(RequestProblem(w)=="")Ask(w);}
   }}
  // A rival only asks what the recipient might plausibly grant (the player is always asked; the answer is theirs).
  void Ask(DiplomaticRequest r){if(r.to!=0&&RequestScore(r,null)<-60)return;ProposeRequest(r);}
- internal bool RequestsValid(){if(requests==null)return false;var ids=new HashSet<int>();foreach(var r in requests)if(r==null||r.id<1||r.id>=nextDiplomaticId||!ids.Add(r.id)||r.from<0||r.to<0||r.from>=civCount||r.to>=civCount||r.from==r.to||r.kind<0||r.kind>=RequestKinds.Count||r.status<0||r.status>RequestStatus.Cancelled||r.duration<5||r.duration>30||r.answer==null)return false;return true;}
+ // A leader refused a resource in the last 20 turns values it more in deals (DiplomacyDepth.ResourceNeed).
+ internal bool RefusedResource(int owner,int r){return requests!=null&&requests.Any(x=>x.from==owner&&x.kind==RequestKinds.Resource&&x.resource==r&&x.status==RequestStatus.Refused&&turn-x.created<=20);}
+ internal bool RequestsValid(){if(requests==null)return false;var ids=new HashSet<int>();foreach(var r in requests)if(r==null||r.id<1||r.id>=nextDiplomaticId||!ids.Add(r.id)||r.from<0||r.to<0||r.from>=civCount||r.to>=civCount||r.from==r.to||r.kind<0||r.kind>=RequestKinds.Count||r.status<0||r.status>RequestStatus.Cancelled||r.duration<5||r.duration>30||r.answer==null||r.resource<0||r.resource>=ResourceNames.Length)return false;return true;}
 }
 }

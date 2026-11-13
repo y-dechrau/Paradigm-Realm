@@ -250,4 +250,6 @@ Other checks:
 | 7. Pacing and endings | A diplomatic or coalition victory tied to standing pacts and kept words (Concord is the nearest), gate stabilisation as an objective | Victory screen; a measure of influence |
 | 8. Balance | Numbers above are first guesses: request weights, leverage limits, gift cap, fade rates | Hand-played games |
 
-**Next step:** add a "Send a resource" request kind (a timed resource delivery that uses the trade-deal contract). Have rivals that lack Iron or Horses for their next unit ask for it, and let a refusal feed `ResourceNeed`. That joins requests to the 13 Nov resource rules and starts stage 5.
+**Done (13 Nov, later):** "Share a resource" is a sixth request kind (`RequestKinds.Resource`, `DiplomaticRequest.resource`; Wheat, Iron, Gold, Horses or Spices). On acceptance it runs as a trade-deal contract for the term, so a lost mine or road ends it with no blame. Rivals that know Iron Working or Horseback Riding but lack the resource ask a neighbour who has it, paying on delivery. A refusal in the last 20 turns raises the asker's `ResourceNeed` for it to 160, so it pays more in later deals. Checks in `DiplomacyStrategyChecks`.
+
+**Earlier next step (now built):** add a "Send a resource" request kind (a timed resource delivery that uses the trade-deal contract). Have rivals that lack Iron or Horses for their next unit ask for it, and let a refusal feed `ResourceNeed`. That joins requests to the 13 Nov resource rules and starts stage 5.

@@ -29,6 +29,7 @@ Full write-up, test results, limitations and the next step: [DIPLOMACY-STRATEGY-
   - The answer is a named reckoning, with a credible-threat rule, cooldowns and feasibility checks.
   - An ally that cannot fight sends gold instead.
   - Rivals ask (`RequestsAI`) and carry out duties with their units (`DutyErrand`).
+- **Share a resource** (added later the same day): a sixth request kind; the resource is shared as a contract for the term, rivals ask for Iron or Horses they lack, and a refusal raises their need for it (`RefusedResource`).
 - **Gate access**: a sixth agreement that opens only the land within 2 tiles of the partner's gateways (`GateAccessTile` in `CanEnter`).
 - **Behaviour profile** on New Game (`World.aiProfile`):
   - World simulation (default).

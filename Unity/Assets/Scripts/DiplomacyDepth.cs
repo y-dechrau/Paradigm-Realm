@@ -54,7 +54,7 @@ public partial class World {
  }
  // ---------- utility: what a deal is worth to the leader receiving it ----------
  public int GoldNeed(int owner){var n=nations[owner];int need=100+(Treasury(owner)<30?50:0)+(n.arrears>0?50:0)+(Flavour(owner,DiplomacyFlavours.Greed)-5)*10;return Math.Max(50,Math.Min(250,need));}
- public int ResourceNeed(int owner,int r){if(r<=0||r>=ResourceNames.Length)return 100;if(ResourceFood[r]>0&&nations[owner].foodState<0)return 200;if(AtWarWithAnyone(owner)&&UnitResource.Contains(r))return 180;if(ResourceTrade[r]>0&&cities.Any(c=>c.owner==owner&&Disorder(c)))return 150;return 100;}
+ public int ResourceNeed(int owner,int r){if(r<=0||r>=ResourceNames.Length)return 100;if(ResourceFood[r]>0&&nations[owner].foodState<0)return 200;if(AtWarWithAnyone(owner)&&UnitResource.Contains(r))return 180;if(RefusedResource(owner,r))return 160;if(ResourceTrade[r]>0&&cities.Any(c=>c.owner==owner&&Disorder(c)))return 150;return 100;}
  public string NeedText(int owner){var parts=new List<string>();int g=GoldNeed(owner);if(g>=150)parts.Add("they need gold badly (worth "+g+"% to them)");else if(g<=70)parts.Add("gold matters little to them");if(nations[owner].foodState<0)parts.Add("they are hungry: food resources are worth double");if(AtWarWithAnyone(owner))parts.Add("at war: iron and horses are worth more");return parts.Count==0?"":" Their needs: "+string.Join("; ",parts.ToArray())+".";}
  // ---------- why a leader feels as it does ----------
  [NonSerialized] Dictionary<int,int> rulerOpinionMemo;[NonSerialized] int rulerOpinionTurn=-1;

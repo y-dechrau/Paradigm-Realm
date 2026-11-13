@@ -7,7 +7,7 @@ namespace ParadigmRealm {
 // diplomacy screen's right side, the peace-terms rows of the deal panel, and the memory, commitments and explanation sections
 // of the More page. Same frame, styles and hover notes as the rest of the screen.
 public partial class RealmGame {
- bool requestsView;int reqKind,reqTarget,reqGate,reqDuration=1,reqConsequence;string reqGold="0",reqAid="25";bool reqEndRivalry;
+ bool requestsView;int reqResource,reqKind,reqTarget,reqGate,reqDuration=1,reqConsequence;string reqGold="0",reqAid="25";bool reqEndRivalry;
  int peaceAskCity,peaceGiveCity,peaceTruce;bool peaceWithdraw;
  static readonly int[] RequestDurations={5,10,20};
  // ---- Requests (right panel) ----
@@ -27,6 +27,7 @@ public partial class RealmGame {
    var gates=world.AllGates().Where(g=>g.owner==0).ToList();
    if(gates.Count==0){GUI.Label(new Rect(left,y,wide,22),"You hold no gateway.",new GUIStyle(dipRow){fontSize=13});y+=26;}
    else{reqGate=Mathf.Clamp(reqGate,0,gates.Count-1);GUI.Label(new Rect(left,y+3,90,22),"Gateway",new GUIStyle(dipRow){fontSize=13});reqGate=Dropdown(new Rect(left+92,y,wide-92,26),"reqgate",reqGate,gates.Select(g=>{var near=world.cities.Where(c=>c.owner==0).OrderBy(c=>world.Distance(c.x,c.y,g.x,g.y)).FirstOrDefault();return near==null?"("+g.x+", "+g.y+")":"near "+near.name;}).ToArray());var pick=gates[reqGate];r.gate=pick.y*world.Width+pick.x;y+=30;}}
+  if(reqKind==RequestKinds.Resource){var shared=Enumerable.Range(RequestKinds.FirstShared,RequestKinds.LastShared-RequestKinds.FirstShared+1).ToArray();reqResource=Mathf.Clamp(reqResource,0,shared.Length-1);GUI.Label(new Rect(left,y+3,90,22),"Resource",new GUIStyle(dipRow){fontSize=13});reqResource=Dropdown(new Rect(left+92,y,wide-92,26),"reqres",reqResource,shared.Select(i=>World.ResourceNames[i]+(world.HasDomesticResource(partner,i)?"":" (they have none)")).ToArray());r.resource=shared[reqResource];y+=30;}
   if(reqKind==RequestKinds.Aid){GUI.Label(new Rect(left,y+3,90,22),"Gold asked",new GUIStyle(dipRow){fontSize=13});reqAid=Stepper(new Rect(left+92,y,wide-92,24),reqAid,25,2000);r.aid=DealNumber(reqAid,2000);y+=30;}
   else{GUI.Label(new Rect(left,y+3,90,22),"Term",new GUIStyle(dipRow){fontSize=13});reqDuration=Dropdown(new Rect(left+92,y,wide-92,26),"reqterm",reqDuration,new[]{"5 turns","10 turns","20 turns"});r.duration=RequestDurations[Mathf.Clamp(reqDuration,0,2)];y+=30;}
   GUI.Label(new Rect(left,y+3,90,22),"You pay",new GUIStyle(dipRow){fontSize=13});reqGold=Stepper(new Rect(left+92,y,wide-92,24),reqGold,25,2000);r.gold=DealNumber(reqGold,2000);y+=28;

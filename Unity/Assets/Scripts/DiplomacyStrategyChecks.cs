@@ -75,6 +75,19 @@ public static class DiplomacyStrategyChecks {
     w.AddOpinion(1,0,OpinionMods.Dealings,40);var buy=w.Propose(new DiplomaticOffer{from=0,to=1,kind=TreatyKind.Trade,duration=10,givePerTurn=6,askResource=2});Check(buy.status==1&&w.HasResource(0,2),"by trade: Iron imported for gold: "+buy.answer+" "+w.HasResource(0,2));
     var w2=Setup(619);var second2=SecondCity(w2,1);var t2=w2.At(second2.x,second2.y);t2.resource=2;t2.mine=true;t2.road=true;foreach(int o in new[]{0,1})w2.nations[o].tech[TechnologyCatalog.Index("iron")]=true;w2.tech=w2.nations[0].tech;w2.DeclareWar(1,0);w2.turn+=8;w2.AddExhaustion(1,0,90);Beaten(w2,1,0,second2);
     var cede=w2.Propose(new DiplomaticOffer{from=0,to=1,kind=TreatyKind.Peace,askCity=second2.id});Check(cede.status==1&&second2.owner==0,"or by peace terms: the city with the Iron is handed over");Connect(w2,0,second2);Check(w2.HasDomesticResource(0,2),"and once joined by road its Iron is the player's own");}}
+  // ---- Scenario 5, a third way: asked for, and shared for a term. ----
+  {var w=Setup(624);var home1=w.cities.First(c=>c.owner==1);var t=w.At(home1.x,home1.y);t.resource=2;t.mine=true;t.road=true;foreach(int o in new[]{0,1,2})w.nations[o].tech[TechnologyCatalog.Index("iron")]=true;w.tech=w.nations[0].tech;w.RebuildTerritory();
+   Check(!w.HasResource(0,2)&&w.HasDomesticResource(1,2),"only rival 1 has Iron");
+   w.AddOpinion(1,0,OpinionMods.Dealings,40);
+   var ask=new DiplomaticRequest{from=0,to=1,kind=RequestKinds.Resource,resource=2,duration=10,gold=50};Check(w.RequestProblem(ask)=="","the request is valid ("+w.RequestProblem(ask)+")");
+   var got=w.ProposeRequest(ask);Check(got.status==RequestStatus.Fulfilled&&w.HasResource(0,2)&&w.contracts.Any(c=>c.from==1&&c.to==0&&c.giveResource==2)&&w.gold==450,"asked politely and paid on delivery, rival 1 shares its Iron for the term ("+got.answer+")");
+   Check(w.RequestProblem(new DiplomaticRequest{from=0,to=1,kind=RequestKinds.Resource,resource=2,duration=10})!="","no second share while the first runs");
+   t.mine=false;w.RebuildTerritory();w.ProcessDiplomacyPayments();Check(!w.HasResource(0,2)&&w.OpinionMod(0,1,OpinionMods.Broken)==0,"a lost mine ends the share with no blame");
+   // A rival that knows Iron Working and lacks Iron asks a neighbour who has it.
+   var w2=Setup(625);var h0=w2.cities.First(c=>c.owner==0);var t0=w2.At(h0.x,h0.y);t0.resource=2;t0.mine=true;t0.road=true;foreach(int o in new[]{0,1,2})w2.nations[o].tech[TechnologyCatalog.Index("iron")]=true;w2.tech=w2.nations[0].tech;w2.RebuildTerritory();w2.AddOpinion(1,0,OpinionMods.Dealings,20);w2.nations[1].gold=200;
+   w2.turn=6;w2.DiplomacyAI();var asked=w2.requests.FirstOrDefault(r=>r.from==1&&r.to==0&&r.kind==RequestKinds.Resource);
+   Check(asked!=null&&asked.resource==2&&asked.status==RequestStatus.Pending,"a rival short of Iron asks the player to share it");
+   int before=w2.ResourceNeed(1,2);w2.RespondToRequest(asked.id,false);Check(w2.ResourceNeed(1,2)>before,"refused, it values Iron more in later trade ("+before+" to "+w2.ResourceNeed(1,2)+")");Check(w2.Valid(),"valid after resource requests");}
   // ---- Scenario 7: gate access opens the way to a gateway, and nothing else. ----
   {var w=Setup(620);var gate=w.HomeGates().FirstOrDefault();Check(gate!=null,"the test map has a gateway");{
     foreach(var t in w.tiles)if(t.realm==gate.realm&&w.Distance(t.x,t.y,gate.x,gate.y)<=4)t.owner=1;
