@@ -14,6 +14,8 @@ public static class GraphicsChecks {
   foreach(var name in new[]{"trees","pines","mountain","farm","mine","fort","village","palms"})Check("Visuals/"+name,true,ref count);
   for(int i=0;i<21;i++)Check("Terrain/terrain-"+i.ToString("00"),false,ref count);
   Check("Visuals/title-world",false,ref count);
+  // The Chronicle of Discovery's text faces (13 Nov 2026, EB Garamond, SIL Open Font Licence).
+  foreach(var face in new[]{"Fonts/EBGaramond-Regular","Fonts/EBGaramond-SemiBold","Fonts/EBGaramond-Italic"})if(Resources.Load<Font>(face)==null)throw new Exception("Missing font: "+face);
   // The owner's technology icons (13 Nov 2026): one for every technology that can be researched, 128 x 128 (UI art, smooth filtering).
   for(int t=0;t<ParadigmRealm.TechnologyCatalog.Count;t++){if(!ParadigmRealm.TechnologyCatalog.Active[t])continue;string p="UI/Tech/tech-"+ParadigmRealm.TechnologyCatalog.Ids[t];var icon=Resources.Load<Texture2D>(p);if(icon==null)throw new Exception("Missing technology icon: "+p);if(icon.width!=128||icon.height!=128)throw new Exception("Technology icon is not 128 x 128: "+p);count++;}
   var names=Resources.Load<TextAsset>("Visuals/gallery-names");

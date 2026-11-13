@@ -2,6 +2,33 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner request 13 Nov: the research screen after the owner's mockup, "The Chronicle of Discovery" (no save change)
+
+- **Screen** (`TechTreeScreen.cs`, replaces the old `DrawExpandedResearch` and `DrawTechnologyDetails` in `ContentUI.cs`). A full-screen page, drawn without the top bar:
+  - **Header:** a framed band with the compass logo, "PARADIGM REALM", the title "The Chronicle of Discovery", the subtitle "Technology & Civilisation", and a close button.
+  - **Age tabs:** gold tabs with pointed ends; the chosen age is filled gold. An age not yet reachable is greyed and says why on hover.
+  - **Tree:** framed cards on a starry field, joined by elbow arrows. An arrow is solid gold from a known technology and dashed amber otherwise.
+  - **Detail panel:** the chosen technology in a medallion with its age on a gold ribbon, a line of text (the keystone's own description, or the age's motto), its benefits, research progress, a main button and "View unlocks".
+  - **Bottom bar:** the research queue, "+ Add technology" and the zoom.
+- **Cards:**
+  - Each card shows the painted icon, the name, a status pill (Researched with a green check, Researching, Available, Locked with a padlock) and two benefit lines.
+  - Its foot shows a progress bar, a "Research · N turns" button, or "Requires …" / its place in the queue.
+  - Finished technologies have a shorter green card. The technology being researched glows.
+- **Research queue** (`ResearchQueue.cs`, `World.researchQueue`):
+  - "Add technology" queues the chosen technology after any prerequisites still missing.
+  - When research completes, the first queued technology that can be researched is taken up; with nothing queued, the cheapest is taken, as before.
+  - The panel can remove a queued technology. Older saves load with an empty queue.
+- **Unchanged:** the "View unlocks" page keeps the edict choice, requirements, "leads to" and the original design unlocks. A gold strip above the tree opens it when an age is complete and an edict is waiting.
+- **Art and fonts:**
+  - Reused: the owner's painted frame, panel, medallion, logo and technology icons.
+  - Drawn in code: the tabs, pills, buttons, bars, padlock, check, arrowheads and star field.
+  - New fonts: EB Garamond Regular, SemiBold and Italic (SIL Open Font Licence, `Resources/Fonts`, static cuts made from the Google Fonts variable files).
+- **Checks:**
+  - `ContentChecks.ResearchQueueChecks`.
+  - `GraphicsChecks` requires the three fonts.
+  - The stand-in Unity library gained the APIs the screen uses, and the screen compiles against it.
+  - A preview was drawn in Python from the same coordinates. The game itself was not run in Unity, and nothing was hand-played.
+
 ## Owner request 13 Nov: painted technology icons (no save change)
 
 - **Art:** the owner's six age sheets (`Paradigm_Realm_Technology_Icons.zip`, not in the repository) were cut into 99 icons, one for every researchable technology, each with its gold frame. They are padded to square and scaled to 128 x 128: `Resources/UI/Tech/tech-<technology id>.png`, imported like the other UI icons.

@@ -22,6 +22,7 @@ public static void Run(){
     PacingAndPopulationChecks();
     EighthNovemberChecks();
     CityResourceChecks();
+    ResearchQueueChecks();
     FaithDesignChecks();
     EveningRequestChecks();
     GovernorChecks();
@@ -640,6 +641,18 @@ static void FaithDesignChecks(){
     {float[] progress;var lines=w.VictoryText(out progress);string line;float p=w.ReligiousProgress(0,out line);Check(lines.Length==4&&progress.Length==4&&p>=0f&&p<=1f&&line.Contains("% of the world"),"religious victory is measured");}
     // Older saves gain the new records.
     {var old=World.New(312,natives:false,rations:true);old.version=35;old.faithRecords=null;foreach(var c in old.cities)c.faithPressure=new int[ReligionCatalog.FoundableCount];old.UpgradeSave();Check(old.version==World.SaveVersion&&old.faithRecords!=null&&old.Valid(),"version 35 saves upgrade to 37");}
+}
+// Owner request of 13 Nov 2026: the research queue of the Chronicle of Discovery screen (ResearchQueue.cs).
+static void ResearchQueueChecks(){
+    var w=World.New(404,"Queue",0,1,1,0,1,2,3,hex:true,natives:false,rations:true);w.Found(w.units.First(u=>u.owner==0&&u.type==0));
+    int agri=K("agriculture"),bronze=K("bronze"),writing=K("writing"),currency=K("currency");w.SelectResearch(agri);
+    Check(w.research==agri&&w.QueueTechnology(currency)==3,"queuing Currency also queues the prerequisites not yet known or under way");
+    Check(w.ResearchQueue().SequenceEqual(new[]{bronze,writing,currency}),"prerequisites come first, in an order that can be researched");
+    Check(w.QueueReason(currency)!=""&&w.QueueReason(agri)!=""&&w.QueueTechnology(currency)==0,"nothing is queued twice, nor what is being researched");
+    w.nations[0].progress[agri]=w.ResearchCost(agri);w.science=w.ResearchCost(agri);w.EndTurn();
+    Check(w.tech[agri]&&w.research==bronze&&w.ResearchQueue().SequenceEqual(new[]{writing,currency}),"when research completes the queue's first available technology is taken up");
+    Check(w.Unqueue(currency)&&w.ResearchQueue().SequenceEqual(new[]{writing}),"a queued technology can be removed");
+    w.researchQueue=null;w.UpgradeSave();Check(w.researchQueue!=null&&w.Valid(),"older saves load with an empty queue");
 }
 // Owner request of 13 Nov 2026: resources decide much of a city's success (CityResources.cs).
 static void CityResourceChecks(){
