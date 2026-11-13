@@ -82,7 +82,7 @@ public partial class World {
  // How much a home rival wants to attack another home civilisation, from what it can see; 50 or more starts it down the road
  // to war. Agendas and traits make leaders differ, and a small roll fixed for each game means they differ between games.
  // Posture (Aggressor +15, Builder -10, Defensive -25) and containment (+15 against a power it fears) on top of the core reckoning.
- public int Ambition(int a,int b){int s=AmbitionCore(a,b);if(s==0||!modernRules)return s;return s+PostureAmbition(a)+(Threat(a,b)>=50?15:0);}
+ public int Ambition(int a,int b){int s=AmbitionCore(a,b);if(s==0||!modernRules)return s;return s+PostureAmbition(a)+(Threat(a,b)>=50?15:0)+CompetitiveAmbition(a,b);}
  int AmbitionCore(int a,int b){
   // The player gets a longer grace, to build a first army before anyone comes for them.
   if(turn<(b==0?PlayerGraceTurn:40)||!ActiveRival(a)||a==b||(gatesLocked&&IsNativeNation(b))||!HasContact(a,b))return 0;

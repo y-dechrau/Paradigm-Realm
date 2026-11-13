@@ -16,27 +16,37 @@ namespace ParadigmRealm {
 //     cause for war. War without a cause is allowed, and frightens everyone who hears of it.
 //  6. WAR EXHAUSTION AND THREAT: each side of a war tires (0..100) with time and losses, and peace is judged on it. Conquest
 //     makes the conqueror a threat to everyone watching, and leaders who fear the same power seek each other out.
-public enum TreatyKind { Access, NonAggression, Defensive, Research, Trade, Peace, Commercial, Retired }
+// GateAccess (13 Nov 2026, save version 43) comes after Retired so the stored numbers of older kinds keep their meaning.
+public enum TreatyKind { Access, NonAggression, Defensive, Research, Trade, Peace, Commercial, Retired, GateAccess }
 public static class Pacts {
- public const int Borders=0,NonAggression=1,Commercial=2,Research=3,Defensive=4,Count=5;
- public static readonly string[] Names={"Open borders","Non-aggression pact","Commercial pact","Research agreement","Defensive pact"};
+ public const int Borders=0,NonAggression=1,Commercial=2,Research=3,Defensive=4,GateAccess=5,Count=6;
+ public static readonly string[] Names={"Open borders","Non-aggression pact","Commercial pact","Research agreement","Defensive pact","Gate access"};
  public static readonly string[] Effects={
   "Units of both sides may cross each other's land.",
   "Neither side may declare war on the other. Ending it gives ten turns' notice.",
   "Both treasuries gain gold every turn, more as the smaller partner grows.",
   "Both gain +2 science a turn, +1 more for a partner who knows more.",
-  "If either is attacked, the other joins the war. Includes open borders."};
+  "If either is attacked, the other joins the war. Includes open borders.",
+  "Units of both sides may cross land within 2 tiles of the other's gateways and pass through them; nothing else of their land opens."};
  // How high trust can grow under each agreement, and how reluctant a leader is to sign it before opinion is counted.
- public static readonly int[] TrustCap={20,50,40,40,100};
- public static readonly int[] Reluctance={10,-15,-20,-25,-50};
- public static readonly TreatyKind[] Kind={TreatyKind.Access,TreatyKind.NonAggression,TreatyKind.Commercial,TreatyKind.Research,TreatyKind.Defensive};
+ public static readonly int[] TrustCap={20,50,40,40,100,30};
+ public static readonly int[] Reluctance={10,-15,-20,-25,-50,-5};
+ // Standing opinion each agreement adds while it lasts.
+ public static readonly int[] Worth={5,10,5,5,20,5};
+ public static readonly TreatyKind[] Kind={TreatyKind.Access,TreatyKind.NonAggression,TreatyKind.Commercial,TreatyKind.Research,TreatyKind.Defensive,TreatyKind.GateAccess};
  public static int Of(TreatyKind k){for(int i=0;i<Count;i++)if(Kind[i]==k)return i;return -1;}
  public const int MinTurns=10,Notice=10,Truce=10,CauseDelay=3,EnvoyCap=30,EnvoyTrust=20,MaxRivals=2,MaxClaims=3,InfluenceCap=200;
 }
 // Marks that deeds leave on one leader's opinion of another. Each fades toward nothing.
 public static class OpinionMods {
- public const int Dealings=0,Gifts=1,Grievance=2,War=3,Conquest=4,Borders=5,Envoy=6,Broken=7,Count=8;
- public static readonly string[] Names={"Past dealings","Gifts","Grievances","Declared war on us","Took our cities","Settled against our borders","Their envoy at our court","Broke an agreement"};
+ // Save version 43 (13 Nov 2026) adds four marks of what was done for or against a partner (DiplomacyMemory.cs).
+ public const int Dealings=0,Gifts=1,Grievance=2,War=3,Conquest=4,Borders=5,Envoy=6,Broken=7,Aid=8,KeptWord=9,Abandoned=10,Protected=11,Count=12;
+ public static readonly string[] Names={"Past dealings","Gifts","Grievances","Declared war on us","Took our cities","Settled against our borders","Their envoy at our court","Broke an agreement","Helped us","Kept their word","Abandoned us","Attacked those we protect"};
+ // How many turns pass for each point a mark fades (a forgiving leader halves it). Help and kept words fade slowest: a long
+ // record of good faith is what makes a relationship hard to shake. Envoy (1) is handled on its own.
+ public static readonly int[] FadeEvery={3,3,2,2,4,2,1,4,6,6,4,3};
+ // Gifts can never add more than this, however many are sent.
+ public const int GiftCap=20;
 }
 public static class Attitudes {
  public const int Hostile=0,Unfriendly=1,Wary=2,Neutral=3,Cordial=4,Friendly=5,Loyal=6,Threatened=7,Domineering=8,Rival=9,AtWar=10;
@@ -66,6 +76,8 @@ public static class Attitudes {
  public int pacts; public int[] pactSince=new int[Pacts.Count];
  public int[] modsA=new int[OpinionMods.Count],modsB=new int[OpinionMods.Count];
  public int rivalA=-1,rivalB=-1,envoyA,envoyB,exhaustA,exhaustB;
+ // Save version 43: who declared the war under way (or the last one), so allies can tell the attacker from the attacked.
+ public int lastDeclarer=-1;
  // Save version 36: a religious treaty (no missionaries or funded clergy between the two) lasts until this turn.
  public int faithTreatyUntil;
  public List<string> events=new List<string>();
@@ -75,6 +87,9 @@ public static class Attitudes {
 }
 [Serializable] public class DiplomaticOffer {
  public int id,from,to,duration=15,created,expires,status,target=-1,giveGold,askGold,givePerTurn,askPerTurn,giveResource,askResource;
+ // Save version 43, peace terms only (DiplomacyPeace.cs): a city handed over each way (-1 none), the recipient's withdrawal
+ // pledge, and the truce length (0 means the usual ten turns).
+ public int giveCity=-1,askCity=-1,truce;public bool withdraw;
  public TreatyKind kind; public string answer="";
  public DiplomaticOffer Copy(){return (DiplomaticOffer)MemberwiseClone();}
 }
@@ -115,6 +130,7 @@ public partial class World {
   int k=Pacts.Of(kind);if(k<0||PactEndReason(a,b,k)!="")return false;var p=Relation(a,b);bool bond=k==Pacts.NonAggression||k==Pacts.Defensive;
   SetPact(a,b,k,false);AddOpinion(b,a,OpinionMods.Broken,k==Pacts.Defensive?-25:bond?-15:-8);SetTrust(b,a,Trust(b,a)-(bond?20:10));
   if(bond&&!Friends(a,b))p.peaceUntil=Math.Max(p.peaceUntil,turn+Pacts.Notice);
+  if(k==Pacts.Defensive)AbandonCommitmentsOnBreak(a,b);
   if(b==0)AddRivalCall(a,0,"has ended our "+Pacts.Names[k].ToLower()+".");
   DiplomacyEvent(a,b,Pacts.Names[k]+" ended by "+NationName(a)+(bond&&!Friends(a,b)?": ten turns' notice before any war.":"."));return true;}
  public int DiplomaticScience(int owner){int s=0;foreach(var p in diplomacy){if(p.a!=owner&&p.b!=owner||(p.pacts&(1<<Pacts.Research))==0||AtWar(p.a,p.b))continue;int other=p.a==owner?p.b:p.a;s+=2+(TechCount(other)>TechCount(owner)?1:0);}return s;}
@@ -128,14 +144,19 @@ public partial class World {
  // Leaves a mark on the observer's opinion of the other. Positive marks cannot go below nothing, nor negative ones above it.
  public void AddOpinion(int observer,int other,int kind,int amount){
   if(observer==other||Relation(observer,other)==null)return;var m=Mods(observer,other);bool either=kind==OpinionMods.Dealings||kind==OpinionMods.Envoy;
-  m[kind]=Clamp(m[kind]+amount,either||kind!=OpinionMods.Gifts?-100:0,either||kind==OpinionMods.Gifts?100:0);}
+  bool good=kind==OpinionMods.Gifts||kind==OpinionMods.Aid||kind==OpinionMods.KeptWord;
+  // Each gift is worth less as gifts pile up, and together they never pass GiftCap: gold cannot wash out a betrayal.
+  if(kind==OpinionMods.Gifts&&amount>0){if(m[kind]>=OpinionMods.GiftCap)return;amount=Math.Max(1,amount*(OpinionMods.GiftCap-m[kind])/OpinionMods.GiftCap);m[kind]=Clamp(m[kind]+amount,0,OpinionMods.GiftCap);return;}
+  m[kind]=Clamp(m[kind]+amount,either||!good?-100:0,either||good?100:0);}
  // An offence against the victim (the old grievance scale: two points of grievance cost one of opinion).
  void Grieve(int victim,int offender,int amount){AddOpinion(victim,offender,OpinionMods.Grievance,-(amount+1)/2);}
  public int Grievances(int observer,int other){var m=Mods(observer,other);int s=0;for(int k=0;k<m.Length;k++)if(m[k]<0)s-=m[k];return s;}
  public int Trust(int observer,int other){var p=Relation(observer,other);return p==null?0:observer==p.a?p.trustA:p.trustB;}
  internal void SetTrust(int observer,int other,int v){var p=Relation(observer,other);if(p==null)return;v=Clamp(v,0,100);if(observer==p.a)p.trustA=v;else p.trustB=v;}
  // The highest trust the observer can come to feel: set by the strongest agreement, or by the other's envoy at its court.
- public int TrustCap(int observer,int other){var p=Relation(observer,other);if(p==null||AtWar(observer,other))return 0;int cap=0;for(int k=0;k<Pacts.Count;k++)if((p.pacts&(1<<k))!=0)cap=Math.Max(cap,Pacts.TrustCap[k]);if(Envoy(other,observer))cap=Math.Max(cap,Pacts.EnvoyTrust);return cap;}
+ public int TrustCap(int observer,int other){var p=Relation(observer,other);if(p==null||AtWar(observer,other))return 0;int cap=0;for(int k=0;k<Pacts.Count;k++)if((p.pacts&(1<<k))!=0)cap=Math.Max(cap,Pacts.TrustCap[k]);if(Envoy(other,observer))cap=Math.Max(cap,Pacts.EnvoyTrust);
+  // A partner who has kept its word or helped in need is trusted ten points further than any paper allows.
+  var m=Mods(observer,other);if(m[OpinionMods.KeptWord]>0||m[OpinionMods.Aid]>0)cap=Math.Min(100,cap+10);return cap;}
  public int Threat(int observer,int target){var p=Relation(observer,target);return p==null?0:observer==p.a?p.alarmA:p.alarmB;}
  internal void SetThreat(int observer,int target,int v){var p=Relation(observer,target);if(p==null)return;v=Clamp(v,0,100);if(observer==p.a)p.alarmA=v;else p.alarmB=v;}
  // Scaled by how much the observer hates warmongers (5 = as given).
@@ -151,7 +172,8 @@ public partial class World {
   var p=Relation(o,t);if(p==null)return 0;int sum=0;var m=o==p.a?p.modsA:p.modsB;
   for(int k=0;k<OpinionMods.Count;k++)Part(lines,ref sum,OpinionMods.Names[k],m[k]);
   Part(lines,ref sum,"Trust ("+Trust(o,t)+")",Trust(o,t)/2);
-  {int bonds=0,n=0;int[] worth={5,10,5,5,20};for(int k=0;k<Pacts.Count;k++)if((p.pacts&(1<<k))!=0){bonds+=worth[k];n++;}if(n>0)Part(lines,ref sum,n==1?"An agreement between us":n+" agreements between us",bonds);}
+  {int bonds=0,n=0;for(int k=0;k<Pacts.Count;k++)if((p.pacts&(1<<k))!=0){bonds+=Pacts.Worth[k];n++;}if(n>0)Part(lines,ref sum,n==1?"An agreement between us":n+" agreements between us",bonds);}
+  Part(lines,ref sum,"A long friendship",LongFriendship(o,t));
   if(AtWar(o,t))Part(lines,ref sum,"At war",-50);
   if(Rival(t,o))Part(lines,ref sum,"Named us a rival",-30);
   if(Rival(o,t))Part(lines,ref sum,"We named them a rival",-30);
@@ -240,8 +262,9 @@ public partial class World {
   if(b==0)AddRivalCall(a,0,"has declared war on you!"+(just?" ("+cause+")":""));
   var defenders=Enumerable.Range(0,civCount).Where(c=>c!=a&&c!=b&&Allied(c,b)).ToArray();
   var p=Relation(a,b);if(a==0||b==0){war[a==0?b:a]=true;openBorders[a==0?b:a]=false;}else p.atWar=true;
-  p.warStarted=turn;p.pacts=0;p.envoyA=p.envoyB=0;p.exhaustA=p.exhaustB=0;contracts.RemoveAll(c=>SamePair(c.from,c.to,a,b));networks=null;
+  p.warStarted=turn;p.lastDeclarer=a;p.pacts=0;p.envoyA=p.envoyB=0;p.exhaustA=p.exhaustB=0;contracts.RemoveAll(c=>SamePair(c.from,c.to,a,b));networks=null;
   if(!defensive){
+   ProtectedAttacked(a,b);
    AddOpinion(b,a,OpinionMods.War,just?-20:-40);
    // War without a cause frightens everyone who hears of it; a just war worries only the victim.
    if(just)AddThreat(b,a,4);else for(int o=0;o<civCount;o++)if(o!=a){AddThreat(o,a,o==b?12:6);if(o!=b&&HasContact(o,a))AddOpinion(o,a,OpinionMods.Grievance,-5);}

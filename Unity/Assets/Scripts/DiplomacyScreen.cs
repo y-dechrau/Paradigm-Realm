@@ -64,7 +64,8 @@ public partial class RealmGame {
   var lines=world.OpinionLines(partner,0);int shown=Math.Min(7,lines.Count);int attitude=world.Attitude(partner,0);
   var box=new Rect(inner.x+10,inner.yMax-(88+shown*20),inner.width-20,78+shown*20);DipPanel(box,.9f);float y=box.y+6;
   GUI.Label(new Rect(box.x+12,y,box.width-24,22),"WHY "+world.NationName(partner).ToUpperInvariant()+" FEELS THIS WAY: "+world.Opinion(partner,0),new GUIStyle(dipCaps){alignment=TextAnchor.MiddleLeft});y+=24;
-  for(int k=0;k<shown;k++){var l=lines[k];GUI.Label(new Rect(box.x+16,y,box.width-110,20),l.Key,new GUIStyle(dipRow){fontSize=13});GUI.Label(new Rect(box.xMax-90,y,76,20),(l.Value>0?"+":"")+l.Value,new GUIStyle(dipRow){fontSize=13,alignment=TextAnchor.MiddleRight,normal={textColor=l.Value>0?DipGood:DipBad}});y+=20;}
+  var fade=world.MemoryLines(partner,0).Where(m=>m.turnsLeft>0).ToDictionary(m=>m.text,m=>m.turnsLeft);
+  for(int k=0;k<shown;k++){var l=lines[k];int left;GUI.Label(new Rect(box.x+16,y,box.width-110,20),l.Key+(fade.TryGetValue(l.Key,out left)?"  (fades in ~"+left+" turns)":""),new GUIStyle(dipRow){fontSize=13});GUI.Label(new Rect(box.xMax-90,y,76,20),(l.Value>0?"+":"")+l.Value,new GUIStyle(dipRow){fontSize=13,alignment=TextAnchor.MiddleRight,normal={textColor=l.Value>0?DipGood:DipBad}});y+=20;}
   if(lines.Count>shown)GUI.Label(new Rect(box.x+16,y-2,box.width-32,18),"+"+(lines.Count-shown)+" smaller reasons under More",hudSmall);
   var ink=AttitudeInk(attitude);GUI.Label(new Rect(box.x+12,box.yMax-46,box.width-24,20),Attitudes.Names[attitude]+": "+Attitudes.Texts[attitude],new GUIStyle(dipRow){fontSize=13,normal={textColor=ink}});
   GUI.Label(new Rect(box.x+12,box.yMax-25,box.width-24,20),"Your influence "+world.nations[0].influence+" (+"+world.InfluencePerTurn(0)+" a turn, spent on claims)   •   Envoys away "+world.EnvoysOut(0)+" of "+world.EnvoyLimit(0)+"   •   Rivals "+world.RivalCount(0)+" of "+Pacts.MaxRivals,new GUIStyle(dipRow){fontSize=12});
@@ -147,8 +148,8 @@ public partial class RealmGame {
   {var row=new Rect(left,y,wide2,22);int power=world.PowerLevel(0,partner);
    GUI.Label(row,"Their strength: "+Attitudes.Power[power]+"   •   Trust in you: "+world.Trust(partner,0)+" of "+world.TrustCap(partner,0)+"   •   Fear of you: "+world.Threat(partner,0),new GUIStyle(dipRow){fontSize=13});
    Tip(row,"Strength is what you can see of their army and cities beside your own. Trust grows by 1 every second turn while agreements stand, up to the ceiling of the strongest one (an envoy alone allows 20); each 2 trust is 1 opinion. Fear comes from conquest and war without cause; at 50 they become Threatened.");y+=26;}
-  var pending=world.offers.Where(o=>o.to==0&&o.status==0&&o.expires>world.turn).ToList();
-  if(pending.Count>0){var strip=new Rect(side.x+14,y,side.width-28,28);Fill(strip,new Color(.5f,.38f,.12f,.9f));GUI.Label(new Rect(strip.x+10,strip.y,strip.width-110,28),pending.Count+" proposal"+(pending.Count==1?"":"s")+" awaiting your answer",dipRow);if(GUI.Button(new Rect(strip.xMax-96,strip.y+2,90,24),"Review")){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}y+=34;}
+  var pending=world.offers.Where(o=>o.to==0&&o.status==0&&o.expires>world.turn).ToList();int asked=world.requests.Count(r=>r.to==0&&r.status==RequestStatus.Pending);
+  if(pending.Count+asked>0){var strip=new Rect(side.x+14,y,side.width-28,28);Fill(strip,new Color(.5f,.38f,.12f,.9f));GUI.Label(new Rect(strip.x+10,strip.y,strip.width-110,28),(pending.Count+asked)+" proposal"+(pending.Count+asked==1?"":"s")+" and request"+(pending.Count+asked==1?"":"s")+" await your answer",dipRow);if(GUI.Button(new Rect(strip.xMax-96,strip.y+2,90,24),"Review")){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}y+=34;}
   if(claimsView){
    // ---- Claims on their cities ----
    if(DipButton(new Rect(left,y,wide2,26),"◂ Back",navy))claimsView=false;y+=32;
@@ -163,6 +164,9 @@ public partial class RealmGame {
     y+=30;}
    if(theirs.Count>10){GUI.Label(new Rect(left,y,wide2,20),"+"+(theirs.Count-10)+" smaller cities",hudSmall);y+=22;}
    var onMe=world.ClaimsOn(partner,0);if(onMe.Count>0){GUI.Label(new Rect(left,y+4,wide2,22),"They claim: "+string.Join(", ",onMe.Select(c=>c.name).ToArray()),new GUIStyle(dipRow){fontSize=13,normal={textColor=DipBad}});y+=28;}
+  }else if(requestsView){
+   // ---- Requests and guarantees (DiplomacyRequestsUI.cs) ----
+   DrawRequestsPanel(partner,side,y);
   }else if(customDeal){
    // ---- A trade deal, or the terms of a peace ----
    if(DipButton(new Rect(left,y,wide2,26),"◂ Back",navy))customDeal=false;y+=32;
@@ -180,10 +184,13 @@ public partial class RealmGame {
    }
    y+=158;
    var offer=new DiplomaticOffer{from=0,to=partner,kind=war?TreatyKind.Peace:TreatyKind.Trade,duration=new[]{10,15,30}[diplomacyDuration],giveGold=DealNumber(giveGold,10000),askGold=DealNumber(askGold,10000),givePerTurn=DealNumber(givePerTurn,20),askPerTurn=DealNumber(askPerTurn,20),giveResource=giveResource,askResource=askResource};
+   if(war)y=DrawPeaceTerms(partner,side,y,offer);
    string problem=world.OfferProblem(offer);int will=problem==""?world.OfferWillingness(offer):-1;
    var verdict=new Rect(left,y,wide2,40);var keep=GUI.color;GUI.color=problem!=""?new Color(.75f,.75f,.78f):will>=0?DipGood:DipBad;GUI.Label(verdict,problem!=""?problem:world.OfferAssessment(offer),new GUIStyle(dipRow){fontSize=13,wordWrap=true});GUI.color=keep;y+=44;
-   var send=new Rect(left,y,wide2,40);GUI.enabled=enabled&&problem=="";
-   if(DipButton(send,war?"OFFER PEACE ON THESE TERMS":"PROPOSE TRADE",teal)){var sent=world.Propose(offer);status=sent.answer;dipReply=world.LeaderReply(partner,sent,sent.status==1);dipReplyPartner=partner;if(sent.status==1){customDeal=false;giveGold=askGold=givePerTurn=askPerTurn="0";giveResource=askResource=0;}}
+   float sendW=(wide2-8)*.58f;var send=new Rect(left,y,sendW,40);GUI.enabled=enabled&&problem=="";
+   if(DipButton(send,war?"OFFER PEACE":"PROPOSE TRADE",teal)){var sent=world.Propose(offer);status=sent.answer;dipReply=world.LeaderReply(partner,sent,sent.status==1);dipReplyPartner=partner;if(sent.status==1){customDeal=false;giveGold=askGold=givePerTurn=askPerTurn="0";giveResource=askResource=0;ResetPeaceTerms();}}
+   // The least gold now that would turn their answer; nothing else in the deal is touched.
+   if(DipButton(new Rect(left+sendW+8,y,wide2-sendW-8,40),"What would it take?",navy)){int need=world.GoldToAccept(offer);if(need>0){giveGold=(DealNumber(giveGold,10000)+need).ToString();status="They would accept with "+need+" more gold now.";}else status=need==0?"They would already accept.":"No gold you hold would change their mind: "+string.Join("; ",world.AcceptanceLines(offer).Where(l=>l.Value<0).OrderBy(l=>l.Value).Take(2).Select(l=>l.Key).ToArray())+".";}
    GUI.enabled=enabled;if(problem=="")Tip(send,"Why they would answer so:",world.AcceptanceLines(offer));
   }else{
    if(war){
@@ -232,12 +239,14 @@ public partial class RealmGame {
     if(DipAction(new Rect(left+half+8,y,half,29),"Gift 25 gold",canGift?"":"Needs 25 gold and peace.","A gift adds 10 to their opinion of you; it fades by 1 every third turn.",blue))status=world.GiftGold(partner)?"Gift sent to "+world.NationName(partner)+".":"Gift not possible.";
     y+=33;}
    if(!war){if(DipAction(new Rect(left,y,wide2,29),"Trade deal  ▸  (gold, payments, resources)",world.Rivals(0,partner)?"No dealings between rivals.":"","Exchange gold now, gold by the turn and access to resources for a set number of turns.",blue))customDeal=true;y+=33;}
+   {int open=world.requests.Count(x=>(x.from==0&&x.to==partner||x.to==0&&x.from==partner)&&(x.status==RequestStatus.Active||x.status==RequestStatus.Pending));
+    if(DipAction(new Rect(left,y,wide2,29),"Requests and guarantees  ▸"+(open>0?"  ("+open+" open)":""),"","Ask them to stop a war, keep troops from your cities, join a war, guard your gateway or send aid: with a deadline, a payment on completion and, if you like, a threat. See every commitment between you.",blue)){requestsView=true;customDeal=false;claimsView=false;}y+=33;}
    // Their leader's agenda and how it judges you.
    {string agenda=world.AgendaReason(partner,0);if(agenda!=""&&y<side.yMax-110){GUI.Label(new Rect(left,y+6,wide2,40),agenda,new GUIStyle(dipRow){fontSize=12,wordWrap=true});y+=46;}}
   }
   float bw=(side.width-48)/3;
   if(DipButton(new Rect(side.x+16,side.yMax-54,bw,42),"More",navy)){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}
-  if(DipButton(new Rect(side.x+24+bw,side.yMax-54,bw,42),"Leave",navy)){detailsScreen="";diplomacyDiscuss=false;claimsView=false;customDeal=false;GUIUtility.ExitGUI();}
+  if(DipButton(new Rect(side.x+24+bw,side.yMax-54,bw,42),"Leave",navy)){detailsScreen="";diplomacyDiscuss=false;claimsView=false;customDeal=false;requestsView=false;GUIUtility.ExitGUI();}
   {string warReason=world.WarReason(0,partner);string cause=world.CasusBelli(0,partner);var wr=new Rect(side.x+32+2*bw,side.yMax-54,bw,42);
    if(DipAction(wr,"Declare War",warReason,warReason!=""?"War is not possible now.":cause!=""?"You have a just cause: "+cause+". Only they will hold it against you.":"You have no just cause. "+(world.CausePending(0,partner)!=""?world.CausePending(0,partner)+" ":"Name them a rival or claim a city, then wait "+Pacts.CauseDelay+" turns. ")+"War without cause makes every civilisation that knows you fear and dislike you.",red)){pendingUnit=-2;pendingWars=new[]{partner};detailsScreen="";cityScreen=false;GUIUtility.ExitGUI();}}
   DrawTip(side);

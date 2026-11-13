@@ -78,7 +78,7 @@ public static class CapabilityCatalog {
  public int owner,family,points,current=-1,funding;public List<int> known=new List<int>();
 }
 public partial class World {
- public const int SaveVersion=42;
+ public const int SaveVersion=43;
  public static int DimensionFamilyTableLength{get{return DimensionFamily.OfRealmTable.Length;}}
  public List<GateState> gateStates=new List<GateState>();
  public List<Colony> colonies=new List<Colony>();

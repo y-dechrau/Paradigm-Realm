@@ -328,7 +328,7 @@ namespace ParadigmRealm
             for(int i=1;i<civCount;i++)if((mover<=0||mover==i)&&!met[i]&&!(gatesLocked&&IsNativeNation(i))&&(units.Any(u=>u.owner==i&&Visible(u.x,u.y))||cities.Any(c=>c.owner==i&&Visible(c.x,c.y)))){met[i]=true;Note("First contact: "+NationName(i)+".");AddEraScore(0,1,"first contact with "+NationName(i));AddEraScore(i,1,"first contact");if(newContacts==null)newContacts=new List<int>();newContacts.Add(i);}}
         public bool AtWar(int a,int b){return a>=0&&b>=0&&a<civCount&&b<civCount&&a!=b&&(a!=0&&b!=0?RivalWar(a,b):war[a==0?b:a]);}
         bool RivalWar(int a,int b){var p=Relation(a,b);return p!=null&&p.atWar;}
-        public bool CanEnter(int owner,Tile t){return t.owner<0||t.owner==owner||AtWar(owner,t.owner)||HasAccess(owner,t.owner);}
+        public bool CanEnter(int owner,Tile t){return t.owner<0||t.owner==owner||AtWar(owner,t.owner)||HasAccess(owner,t.owner)||GateAccessTile(owner,t);}
         public void RebuildTerritory()
         {
             // A city is joined to the roads that reach it; workers cannot build on its tile.
@@ -724,6 +724,7 @@ namespace ParadigmRealm
             aiBalanceFor=-1;foreach(var u in units.Where(a=>a.owner==owner).ToList()){if(!units.Contains(u)||result!=""||u.job>0)continue;if(u.type==11){AICaravan(u);continue;}if(u.type==PriestUnit){PriestAI(u);continue;}if(IsNaval(u.type)){NavalUnitAI(u);continue;}if(u.type==0){PlanAISettlement(u);continue;}if(AtSea(u)){if(!units.Any(g=>g.owner==owner&&g.type==GalleyUnit&&g.x==u.x&&g.y==u.y))GoAshore(u);continue;}
                 if(u.type==1){if(u.flee!=0){if(u.hasOrder)ContinueOrder(u);}else ImproveAI(u);continue;}
                 if(AIUpgrade(u))continue;
+                if(DutyErrand(u))continue;
                 if(GateErrand(u))continue;
                 if(BeyondErrand(u))continue;
                 if(Power[u.type]>0&&cities.Any(c=>c.owner==owner&&c.x==u.x&&c.y==u.y)&&!units.Any(a=>a.id!=u.id&&a.owner==owner&&Power[a.type]>0&&a.x==u.x&&a.y==u.y)){u.fortified=true;continue;}
@@ -784,6 +785,8 @@ namespace ParadigmRealm
             // Save version 42: gateway conditions, colonies and local adaptation (Dimensions.cs). An older game's gateways are all sealed,
             // as they were, and it has no colonies.
             if(version==41){EnsureDimensionData();version=42;}
+            // Save version 43: diplomatic memory, gate access, peace terms and requests (DiplomacyMemory.cs, DiplomacyRequests.cs).
+            if(version==42){UpgradeDiplomacy43();version=43;}
             // Governors were removed on 12 Nov 2026: any in an older save are dismissed, whatever its version.
             DismissGovernors();
             // Every civilisation remembers the whole map, parallel worlds included.

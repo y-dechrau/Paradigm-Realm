@@ -1,5 +1,7 @@
 # Diplomacy, rebuilt after Stellaris (10 Nov 2026, save version 40)
 
+> Extended on 13 Nov 2026 (save version 43) with memory marks, peace with terms, requests and guarantees, gate access and a rival behaviour profile: see [DIPLOMACY-STRATEGY-2026-11-13.md](DIPLOMACY-STRATEGY-2026-11-13.md). Two items under "Not built" below are now built: war goals that hand over cities at the peace table, and rivals asking a third party to join a war.
+
 Owner request: "re-work the diplomacy from the ground up. base it on a stellaris style system. tailor make it so that it simple but extremely effective."
 
 This replaces the earlier treaty system (timed friendship, alliance, research pact, border promise, joint war, embassy, denounce, embargo, influence-bought envoys, incitement and coalitions). Code: `Diplomacy.cs` (rules), `DiplomacyDeals.cs` (proposals, reasons, turn, rivals' diplomacy, save upgrade), `DiplomacyDepth.cs` (leader character), `DiplomacyScreen.cs` and `DiplomacyUI.cs` (screen).

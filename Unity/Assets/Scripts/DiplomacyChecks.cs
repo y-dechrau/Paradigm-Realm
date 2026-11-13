@@ -94,6 +94,7 @@ public static class DiplomacyChecks {
   w.turn=11;w.DiplomacyAI();Check(w.AtWar(1,2)&&w.Relation(1,2).events.Any(e=>e.Contains("Rivalry")),"and goes to war only once it has a cause and the strength");
   w=Setup();w.SetEnvoy(1,0,false);w.SetThreat(0,1,40);w.turn=6;w.DiplomacyAI();Check(w.Envoy(1,0),"a rival sends its envoy to calm a power that fears it");
   Check(w.Valid(),"valid after the rivals' turn");w.Relation(0,1).modsA[0]=500;Check(!w.Valid(),"malformed marks rejected");w.Relation(0,1).modsA[0]=0;w.offers.Add(new DiplomaticOffer{id=w.nextDiplomaticId++,from=1,to=0,kind=TreatyKind.Access,created=1,expires=4,givePerTurn=-1});Check(!w.Valid(),"malformed offers rejected");
+  DiplomacyStrategyChecks.Run();
  }
 }
 }

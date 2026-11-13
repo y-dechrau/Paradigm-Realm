@@ -7,7 +7,7 @@ namespace ParadigmRealm {
 public partial class RealmGame {
  int diplomacyPartner=1,diplomacyDuration=1,giveResource,askResource;
  string giveGold="0",askGold="0",givePerTurn="0",askPerTurn="0";
- void ResetDiplomacyUI(){giveGold=askGold=givePerTurn=askPerTurn="0";giveResource=askResource=0;customDeal=false;claimsView=false;pendingUnit=-1;pendingWars=new int[0];}
+ void ResetDiplomacyUI(){giveGold=askGold=givePerTurn=askPerTurn="0";giveResource=askResource=0;customDeal=false;claimsView=false;requestsView=false;ResetPeaceTerms();pendingUnit=-1;pendingWars=new int[0];}
  static int DealNumber(string text,int maximum){int value;return int.TryParse(text,out value)?Math.Max(0,Math.Min(maximum,value)):0;}
  void DrawAdvancedDiplomacy(){
   GUILayout.Label("Proposals awaiting your answer",heading);
@@ -16,11 +16,13 @@ public partial class RealmGame {
   foreach(var o in pending){GUILayout.Label(world.DescribeOffer(o),body);GUILayout.Label("Answer within "+(o.expires-world.turn)+" turns.",small);GUILayout.BeginHorizontal();
    if(Button("Accept #"+o.id))status=world.RespondToOffer(o.id,true)?"Agreement accepted.":"Agreement unavailable: terms changed or expired.";
    if(Button("Decline #"+o.id))world.RespondToOffer(o.id,false);GUILayout.EndHorizontal();}
+  DrawRequestInbox();
   var known=Enumerable.Range(1,world.civCount-1).Where(i=>world.met[i]).ToArray();if(known.Length==0){GUILayout.Label("Explore to meet other civilisations.",body);return;}
   if(!world.met[diplomacyPartner])diplomacyPartner=known[0];int partner=diplomacyPartner;var p=world.Relation(0,partner);var pn=world.nations[partner];int attitude=world.Attitude(partner,0);
   GUILayout.Label(world.NationName(partner)+" — "+Attitudes.Names[attitude],heading);
   GUILayout.Label(Attitudes.Texts[attitude]+"  "+(string.IsNullOrEmpty(pn.leader)?"":"Led by "+pn.leader+".  ")+(pn.traits!=null&&pn.traits.Any(t=>t>=0)?CivilisationCatalog.TraitLine(pn.traits):""),body);
   GUILayout.Label(world.RelationshipBreakdown(partner,0),body);
+  DrawRelationshipMemory(partner);
   GUILayout.Label("Their strength beside yours: "+Attitudes.Power[world.PowerLevel(0,partner)]+". Their fear of you: "+world.Threat(partner,0)+"; yours of them: "+world.Threat(0,partner)+". Posture: "+DiplomacyFlavours.PostureNames[world.Posture(partner)]+" — "+DiplomacyFlavours.PostureTexts[world.Posture(partner)],small);
   {var flavours=Enumerable.Range(0,DiplomacyFlavours.Names.Length).Select(k=>DiplomacyFlavours.Names[k]+" "+world.Flavour(partner,k)).ToArray();GUILayout.Label("Character (1-10): "+string.Join(", ",flavours)+".  "+world.Personality(partner),small);}
   {string agenda=world.AgendaReason(partner,0);if(agenda!="")GUILayout.Label(agenda,small);}

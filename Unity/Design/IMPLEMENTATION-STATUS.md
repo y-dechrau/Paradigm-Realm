@@ -2,6 +2,40 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner brief 13 Nov: diplomacy that changes outcomes (save version 43)
+
+Full write-up, test results, limitations and the next step: [DIPLOMACY-STRATEGY-2026-11-13.md](DIPLOMACY-STRATEGY-2026-11-13.md). It builds on the 10 Nov rebuild.
+
+**Implemented** (source; harness checks pass; not compiled in Unity, not hand-played):
+- **Memory** (`DiplomacyMemory.cs`):
+  - Four new opinion marks: helped us, kept their word, abandoned us, attacked those we protect. Each fades at its own pace (`OpinionMods.FadeEvery`).
+  - Gifts are capped at +20 in all, so gold cannot wash out a betrayal.
+  - A long friendship adds up to +15, and a proven partner is trusted 10 points beyond its agreements.
+  - The screens show when each mark fades, how to improve relations, and how the leader sees you (`MemoryLines`, `ImproveTips`, `AiExplanation`).
+- **Peace with terms** (`DiplomacyPeace.cs`):
+  - Terms: cities handed over (never a capital), reparations, a withdrawal pledge, and a 10/20/30-turn truce.
+  - The answer is judged against `Leverage`. An undefeated enemy will not cede a city, and demands beyond what was won are refused.
+  - Rivals ask for or offer terms (`AIPeaceOffer`).
+- **Requests and guarantees** (`DiplomacyRequests.cs`, `DiplomacyRequestsUI.cs`):
+  - Five kinds: stop a war, withdraw troops, join a war, defend a gateway, send aid.
+  - Each has a term, a payment on completion and an optional threat, with a full lifecycle (pending, in force, fulfilled, broken, refused, cancelled with no blame).
+  - The answer is a named reckoning, with a credible-threat rule, cooldowns and feasibility checks.
+  - An ally that cannot fight sends gold instead.
+  - Rivals ask (`RequestsAI`) and carry out duties with their units (`DutyErrand`).
+- **Gate access**: a sixth agreement that opens only the land within 2 tiles of the partner's gateways (`GateAccessTile` in `CanEnter`).
+- **Behaviour profile** on New Game (`World.aiProfile`):
+  - World simulation (default).
+  - Competitive, where rivals also turn on whoever is halfway to winning (`CompetitiveAmbition`).
+- **Screens**:
+  - Diplomacy has a Requests and guarantees panel, peace-terms rows, and "What would it take?" buttons.
+  - The More page has the request inbox, a commitments and deadlines summary, memory, tips and the rival's reckoning.
+- **Checks**:
+  - `DiplomacyStrategyChecks`: scenarios 1-5 and 7 of the brief, the profile, rival-to-rival requests, and the version 42 upgrade.
+  - A save round trip during a war with commitments in force (`Tests/Run.cs`).
+  - The 300-turn rival report now counts requests and peace terms.
+
+**Planned, not built:** troop gifting or leasing; tile-level demilitarised zones; a gate "keep closed" treaty and civilian-only passage; resource requests and blockades; trait effects on diplomacy; late-game administration (repeatable queues, specialisation presets, grouped orders, multi-unit upgrades, notification filters); a diplomatic or coalition victory. Balance is untested by hand.
+
 ## Owner requests 13 Nov: settler suggestion, hexagonal hover, resources matter (no save change)
 
 - **Settler suggestion:** selecting one of your Settlers marks the best site within 12 tiles on the map with a pulsing green outline and a plate saying why (fresh water, coast, resources, food and shields). The next two sites get a faint outline. The unit panel repeats the suggestion with a "Go to the suggested site" button. If the Settler already stands on the best site, the plate says to found the city there [B]. Uses the settlement adviser's search (`SettlementOptions`), which runs again only when the Settler moves, the turn changes or units or cities change (`SettlerSuggestion.cs`, `World.SiteHighlights`).

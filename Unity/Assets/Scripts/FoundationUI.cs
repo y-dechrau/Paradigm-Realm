@@ -105,6 +105,7 @@ namespace ParadigmRealm
             GUILayout.Space(10);GUILayout.Label("Seed (optional)",heading);seedText=GUILayout.TextField(seedText,11);
             GUILayout.Label("The same number and settings make the same world again.",small);
             GUILayout.Space(10);GUILayout.Label("Difficulty: "+DifficultyTable.Names[setupLevel],heading);setupLevel=GUILayout.SelectionGrid(setupLevel,DifficultyTable.Names,4);GUILayout.Label(DifficultyTable.Describe(setupLevel),small);
+            GUILayout.Space(6);GUILayout.Label("Rival behaviour: "+AiProfiles.Names[setupProfile],heading);setupProfile=GUILayout.SelectionGrid(setupProfile,AiProfiles.Names,2);GUILayout.Label(AiProfiles.Texts[setupProfile]+" Difficulty bonuses are set separately above.",small);
             GUILayout.EndArea();
             GUILayout.BeginArea(new Rect(469,128,342,496));
             GUILayout.Label("Your world",heading);
