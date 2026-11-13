@@ -9,6 +9,7 @@ namespace ParadigmRealm { public partial class RealmGame {
   GUILayout.Label("City centre here: "+centre[0]+" food, "+centre[1]+" production. Early population limit "+(world.FreshWater(u.x,u.y)?8:6)+".",small);
   string warning=world.SettlementDiplomacyWarning(u.owner,u.x,u.y);if(warning!="")GUILayout.Label(warning,small);
   string reason=world.FoundReason(u);if(reason!="")GUILayout.Label(reason,small);
+  DrawSettlerPrompt(u);
   if(Button("Compare settlement sites"))OpenSettlementAdviser(u);
  }
  void DrawSettlementAdviser(){

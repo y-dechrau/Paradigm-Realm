@@ -2,6 +2,20 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 13 Nov: settler suggestion, hexagonal hover, resources matter (no save change)
+
+- **Settler suggestion:** selecting one of your Settlers marks the best site within 12 tiles on the map with a pulsing green outline and a plate saying why (fresh water, coast, resources, food and shields). The next two sites get a faint outline. The unit panel repeats the suggestion with a "Go to the suggested site" button. If the Settler already stands on the best site, the plate says to found the city there [B]. Uses the settlement adviser's search (`SettlementOptions`), which runs again only when the Settler moves, the turn changes or units or cities change (`SettlerSuggestion.cs`, `World.SiteHighlights`).
+- **City screen hover:** the outline under the cursor on the land around a city now has the tile's own shape, a hexagon on hex maps and a diamond otherwise (`SelectionPicture`). It was a rectangle.
+- **Resources matter** (modern rules, so every new game and upgraded saves; `CityResources.cs`). Each resource is food (Wheat and the sea foods), luxury (Gold, Spices, Whales, Pearls, Oysters, Sponges) or strategic (Iron, Horses, Offshore oil).
+  - **Worked:** a worked resource tile yields one more: +1 food, +1 trade or +1 shield. The city's tile choice therefore favours resource tiles.
+  - **Developed:** a farm or mine on land; at sea, a Harbour or a road-linked port. Food resources give +2 population limit, luxuries +1 content place, Iron +20% shields, Horses +10%, Offshore oil +25% (at most +40%).
+  - **Variety:** three kinds in use give +1 content place and +10% gold; five give +2 and +20%.
+  - **No resource:** a city of size 6 or more that works no resource loses 1 content place.
+  - **Empire-wide effects unchanged:** Iron and Horses for units, and the +2 content from connected Spices.
+  - **Where it shows:** a Resources button on the city screen lists each resource and what developing it would add; the tile hover names the kind; the mood breakdown has a "Resources this city uses" line with advice.
+  - **Settling:** the adviser and rival settlers now value each known resource by kind (food 12, luxury 10, Iron 14, Horses 11, oil 9) plus 4 for each different kind, instead of 4 a resource.
+- **Checks:** `ContentChecks.CityResourceChecks`. The .NET engine harness passes, with Small/Medium/Large turn times unchanged (31/42/75 ms at turn 30). The interface files compile against the stand-ins without errors of their own. The stand-in Unity library itself is out of date: AutoShot, FaithScreen, FlagUI, GateUI, HudTheme, MiniMapArt, MotionUI and RealmGame line 350 fail there, as they did before this change. Not compiled in Unity, not hand-played; balance with the new resource bonuses is unmeasured.
+
 ## Owner request 12 Nov: archers, mounted soldiers and siege engines for every species (no save change)
 
 - **Source:** the owner's second pack, 36 sheets each with an archer or crossbowman, a mounted unit and a siege engine: elf, dwarf, minotaur, orc, tree people, 20 insect designs and 11 demon designs. These match the 36 art keys already in the game.

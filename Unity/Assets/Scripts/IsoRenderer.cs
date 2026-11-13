@@ -530,7 +530,7 @@ namespace ParadigmRealm
             {
                 IsoScreen(chosen.x,chosen.y,out sx,out sy);sy-=Lift(chosen.x,chosen.y,s);
                 GUI.DrawTexture(TileRect(sx,sy,s),SelectionPicture());
-                DrawRouteLine(chosen,s);if(roadMode)DrawRoadPlot(chosen,s);
+                DrawSiteSuggestion(chosen,s);DrawRouteLine(chosen,s);if(roadMode)DrawRoadPlot(chosen,s);
                 if(chosen.hasOrder)
                 {
                     IsoScreen(chosen.destinationX,chosen.destinationY,out sx,out sy);

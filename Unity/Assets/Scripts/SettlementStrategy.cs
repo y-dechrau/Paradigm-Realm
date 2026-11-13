@@ -58,15 +58,22 @@ namespace ParadigmRealm {
     // Existing cities get first claim on tiles at the same distance (older id).
     bool shared=cities.Any(c=>c.owner==owner&&Distance(c.x,c.y,t.x,t.y)<=Distance(x,y,t.x,t.y));
     if(shared||dx==0&&dy==0)continue;
-    yields.Add(TileYield(t));if(t.resource>0)resources.Add(t.resource);
+    yields.Add(TileYield(t));if(t.resource>0&&ResourceKnown(owner,t.resource))resources.Add(t.resource);
    }
    var best=yields.OrderByDescending(v=>v[0]*3+v[1]*2+v[2]).Take(3).ToList();
    report.food=central[0]+best.Sum(v=>v[0])-6;report.production=central[1]+best.Sum(v=>v[1]);report.gold=best.Sum(v=>v[2]);
    report.resources=resources.OrderBy(r=>r).ToList();report.housing=report.freshWater?8:6;
    var capital=cities.Where(c=>c.owner==owner).OrderBy(c=>c.id).FirstOrDefault();report.upkeep=1+(capital==null?0:Distance(x,y,capital.x,capital.y)/10);
    report.threat=SettlementThreat(owner,x,y);report.diplomacyWarning=SettlementDiplomacyWarning(owner,x,y);
-   report.score=report.food*4+report.production*2+report.gold*2+report.resources.Count*4+(report.freshWater?8:0)+(report.coastal?2:0)-report.upkeep*3-report.distance*2-(report.threat?60:0)-(report.diplomacyWarning!=""?100:0);
+   report.score=report.food*4+report.production*2+report.gold*2+(modernRules?report.resources.Sum(r=>ResourceSiteValue(r))+DistinctKinds(report.resources)*4:report.resources.Count*4)+(report.freshWater?8:0)+(report.coastal?2:0)-report.upkeep*3-report.distance*2-(report.threat?60:0)-(report.diplomacyWarning!=""?100:0);
    return report;
+  }
+  static int DistinctKinds(List<int> resources){return resources.Where(r=>r>0&&r<ResourceKind.Length).Select(r=>ResourceKind[r]).Distinct().Count();}
+  // One short line for the map prompt: why this site is suggested.
+  public string SiteHighlights(SettlementReport r){
+   var bits=new List<string>();if(r.freshWater)bits.Add("fresh water");if(r.coastal)bits.Add("coast");
+   if(r.resources.Count>0)bits.Add(string.Join(", ",r.resources.Select(i=>ResourceNames[i])));
+   bits.Add("food "+(r.food>=0?"+":"")+r.food+", shields "+r.production);return string.Join(" • ",bits);
   }
   bool SettlementThreat(int owner,int x,int y){return AnimalThreat(owner,x,y)||units.Any(u=>Power[u.type]>0&&AtWar(owner,u.owner)&&VisibleTo(owner,u.x,u.y)&&Distance(u.x,u.y,x,y)<=3);}
   bool SafeSettlerPath(Unit u,List<Tile> route){return route.All(t=>!SettlementThreat(u.owner,t.x,t.y));}
@@ -92,7 +99,7 @@ namespace ParadigmRealm {
    if(!r.Suitable)return r.reason;
    return "Site ("+r.x+", "+r.y+") | early population limit "+r.housing+(r.freshWater?" — fresh water":" — no known fresh water")+
     "\nPotential at 3 citizens: net food "+r.food+", production "+r.production+", tile trade "+r.gold+". Uses the best 3 known tiles; excludes future improvements, buildings and policies."+
-    "\nKnown nearby resources: "+(r.resources.Count==0?"none":string.Join(", ",r.resources.Select(i=>ResourceNames[i])))+
+    "\nKnown nearby resources: "+(r.resources.Count==0?"none":string.Join(", ",r.resources.Select(i=>ResourceNames[i]+(modernRules?" ("+ResourceKindNames[ResourceKind[i]]+")":""))))+
     ". Initial city upkeep about "+r.upkeep+" gold/turn. Road connections still require workers."+
     "\n"+r.knownTiles+" tiles assessed; "+r.unknownTiles+" unexplored. "+(r.threat?"Enemy troops nearby!":"No currently visible military threat at this site.")+"\n"+r.diplomacyWarning;
   }

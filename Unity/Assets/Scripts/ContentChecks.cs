@@ -21,6 +21,7 @@ public static void Run(){
     LivingWorldChecks();
     PacingAndPopulationChecks();
     EighthNovemberChecks();
+    CityResourceChecks();
     FaithDesignChecks();
     EveningRequestChecks();
     GovernorChecks();
@@ -639,6 +640,26 @@ static void FaithDesignChecks(){
     {float[] progress;var lines=w.VictoryText(out progress);string line;float p=w.ReligiousProgress(0,out line);Check(lines.Length==4&&progress.Length==4&&p>=0f&&p<=1f&&line.Contains("% of the world"),"religious victory is measured");}
     // Older saves gain the new records.
     {var old=World.New(312,natives:false,rations:true);old.version=35;old.faithRecords=null;foreach(var c in old.cities)c.faithPressure=new int[ReligionCatalog.FoundableCount];old.UpgradeSave();Check(old.version==World.SaveVersion&&old.faithRecords!=null&&old.Valid(),"version 35 saves upgrade to 37");}
+}
+// Owner request of 13 Nov 2026: resources decide much of a city's success (CityResources.cs).
+static void CityResourceChecks(){
+    var w=World.New(403,"Resources",0,1,1,0,1,2,4,hex:true,natives:false,rations:true);var city=w.Found(w.units.First(u=>u.owner==0&&u.type==0));Check(city!=null,"a city to test resources");
+    foreach(var k in new[]{"agriculture","bronze","iron","horseback","currency"})w.nations[0].tech[K(k)]=true;w.tech=w.nations[0].tech;
+    var land=w.Workable(city).Where(t=>!PixelArt.IsWater(t.terrain)).OrderBy(t=>t.y*w.Width+t.x).Take(5).ToList();Check(land.Count==5,"five land tiles to work");
+    foreach(var t in w.Workable(city)){t.resource=0;t.farm=false;t.mine=false;}foreach(var t in land)t.terrain=0;
+    city.pop=6;city.scientists=city.merchants=city.entertainers=0;city.locked=new List<int>();
+    var rep=w.CityResources(city);Check(rep.nothingToTrade&&rep.content==-1,"a size 6 city with no resource has nothing to trade");
+    int limit=w.GrowthLimit(city),content=w.ContentSlots(city);
+    land[0].resource=1;foreach(var t in land)w.ToggleLock(city,t);
+    w.modernRules=false;int plain=w.EffectiveTileYield(city,land[0])[0];w.modernRules=true;Check(w.EffectiveTileYield(city,land[0])[0]==plain+1,"a worked Wheat tile gives one more food");
+    Check(w.GrowthLimit(city)==limit,"an undeveloped Wheat does not raise the population limit");land[0].farm=true;Check(w.GrowthLimit(city)==limit+2,"a farmed Wheat raises the population limit by 2");
+    land[1].resource=5;land[1].farm=true;land[2].resource=2;land[2].mine=true;rep=w.CityResources(city);
+    Check(rep.inUse.Count==3&&rep.variety==3&&rep.productionPercent==20&&rep.goldPercent==10&&rep.content==2&&!rep.nothingToTrade,"Wheat, Spices and Iron: +1 luxury content, +1 for variety, +20% shields, +10% gold");
+    Check(w.ContentSlots(city)>=content+3,"resources add content places (and the -1 is gone)");
+    land[3].resource=4;land[3].farm=true;land[4].resource=3;land[4].mine=true;rep=w.CityResources(city);Check(rep.variety==5&&rep.productionPercent==30&&rep.goldPercent==20&&rep.content==4,"five kinds: +2 content and +20% gold; Iron and Horses +30% shields");
+    Check(w.ResourceLines(city).Count>=5&&w.ResourceLines(city).Any(l=>l.Contains("5 different")),"the city screen lists each resource and the variety bonus");
+    w.modernRules=false;Check(w.CityResources(city).inUse.Count==0&&w.ResourceGrowth(city)==0&&w.ResourceContent(city)==0,"old rules keep resources as they were");w.modernRules=true;
+    Check(World.ResourceKind.Length==World.ResourceNames.Length&&World.ResourceSiteValue(2)>World.ResourceSiteValue(0),"every resource has a kind and the adviser values them");
 }
 // Owner requests of 8 Nov 2026.
 static void EighthNovemberChecks(){

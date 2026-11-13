@@ -21,7 +21,7 @@ public partial class World {
   add("A wonder of yours",OwnWonder(c.owner,61)?2:0);add("Revolution under way",n.revolution>0?-2:0);
   add("Soldiers fighting abroad under this government",n.government==3&&units.Any(u=>u.owner==c.owner&&Power[u.type]>0&&At(u.x,u.y).owner>=0&&At(u.x,u.y).owner!=c.owner&&AtWar(c.owner,At(u.x,u.y).owner))?-2:0);
   add("War exhaustion",-WarUnhappiness(c.owner));add(n.tax==0?"Low taxes (60% science)":n.tax==2?"High taxes (30% science or less)":"Taxes",1-n.tax);
-  add("Longevity",HasTech(c.owner,"longevity")?2:0);add("A luxury resource",HasResource(c.owner,5)?2:0);
+  add("Longevity",HasTech(c.owner,"longevity")?2:0);add("A luxury resource",HasResource(c.owner,5)?2:0);add("Resources this city uses",ResourceContent(c));
   add("Occupied after capture",c.occupation>0?-3:0);add("Unpaid upkeep (treasury empty)",n.arrears>0?-1:0);
   return list;
  }
@@ -39,6 +39,7 @@ public partial class World {
   if(n.arrears>0)tips.Add("Pay your upkeep: an empty treasury costs a content place.");
   if(modernRules&&CutOff(c))tips.Add("Join the city to your others by road.");
   if(!HasResource(c.owner,5))tips.Add("Connect a luxury resource by road (+2).");
+  if(modernRules){var rr=CityResources(c);if(rr.idle.Any(t=>KindOf(t.resource)==ResourceLuxuryKind)||rr.inUse.Any(t=>KindOf(t.resource)==ResourceLuxuryKind&&!ResourceDeveloped(c,t)))tips.Add("Work and develop the luxury resource in this city's land (+1).");if(rr.variety<3&&rr.idle.Count>0)tips.Add("Work more kinds of resource: three kinds add 1 content place.");}
   tips.Add("Or let it shrink to a size it can keep happy: stop growth by working fewer food tiles.");
   return tips;
  }

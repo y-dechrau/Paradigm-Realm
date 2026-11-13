@@ -319,7 +319,7 @@ namespace ParadigmRealm
             DrawUnitLabels();
             foreach(var city in world.cities){if(!(city.owner==0||world.Visible(city.x,city.y)))continue;var plateAt=ClassicRect(city.x,city.y);float cx=plateAt.center.x,cy=plateAt.y+plateAt.height*.82f;
                 if(cx<mapScroll.x-80||cx>right+80||cy<mapScroll.y-20||cy>bottom)continue;DrawCityPlate(city,city.name,new Vector2(cx,cy),nations[city.owner]);}
-            var chosen=Selected();if(chosen!=null)DrawRouteLine(chosen,tilePixels/64f);if(chosen!=null&&chosen.hasOrder){
+            var chosen=Selected();if(chosen!=null){DrawSiteSuggestion(chosen,tilePixels/64f);DrawRouteLine(chosen,tilePixels/64f);}if(chosen!=null&&chosen.hasOrder){
                 var destRect=ClassicRect(chosen.destinationX,chosen.destinationY);var marker=new Rect(destRect.center.x-10,destRect.center.y-10,20,20);
                 Fill(marker,new Color(1,.8f,0,.55f));GUI.Label(marker,"X",small);
             }

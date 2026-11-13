@@ -103,9 +103,9 @@ namespace ParadigmRealm
              if(GUI.Button(new Rect(780,110,38,34),"◀",button)){OpenCityKeepOrigin(mine[(at-1+mine.Count)%mine.Count]);}
              if(GUI.Button(new Rect(822,110,38,34),"▶",button)){OpenCityKeepOrigin(mine[(at+1)%mine.Count]);}
              GUI.enabled=was;}
-            if(GUI.Button(new Rect(1055,110,180,34),"Back to map",button)){cityScreen=false;moodPanel=false;GUI.FocusControl(null);var origin=world.cities.Find(a=>a.owner==0&&a.id==cityOrigin);if(origin!=null)FocusTile(origin.x,origin.y);cityOrigin=-1;GUIUtility.ExitGUI();}
+            if(GUI.Button(new Rect(1055,110,180,34),"Back to map",button)){cityScreen=false;moodPanel=false;resourcePanel=false;GUI.FocusControl(null);var origin=world.cities.Find(a=>a.owner==0&&a.id==cityOrigin);if(origin!=null)FocusTile(origin.x,origin.y);cityOrigin=-1;GUIUtility.ExitGUI();}
             DrawCityTiles(c,new Rect(40,150,440,520));
-            if(moodPanel)DrawMoodPanel(c,new Rect(40,150,440,520));
+            if(moodPanel)DrawMoodPanel(c,new Rect(40,150,440,520));else if(resourcePanel)DrawResourcePanel(c,new Rect(40,150,440,520));
             DrawCityTotals(c,new Rect(495,150,370,520));
             GUI.Box(new Rect(880,150,355,520),"");
             if(GUI.Button(new Rect(890,158,165,28),(cityBuildingTab?"":"● ")+"Units",button))cityBuildingTab=false;
@@ -176,14 +176,15 @@ namespace ParadigmRealm
                 if(active)DrawYieldPips(new Rect(sx-tw/2+5,sy+th/2-14,tw-10,10),v);
                 if(locked){Fill(new Rect(sx+tw/2-16,sy-th/2+5,11,11),new Color(.08f,.16f,.3f,.9f));Fill(new Rect(sx+tw/2-14,sy-th/2+7,7,7),UiAccent);}
                 if((world.Hex?PixelArt.InHex(e.mousePosition.x-sx,e.mousePosition.y-sy,tw):Mathf.Abs(e.mousePosition.x-sx)/(tw/2)+Mathf.Abs(e.mousePosition.y-sy)/(th/2)<=1)&&viewLocal.Contains(e.mousePosition)){
-                    hoverRect=r;hover=World.TerrainNames[known.terrain]+(known.resource>0?" with "+World.ResourceNames[known.resource]:"")+": "+v[0]+" food, "+v[1]+" shields, "+v[2]+" trade — "+(centre?"city centre":locked?"locked citizen (click to release)":active?"worked (click to lock)":"not worked (click to lock a citizen here)");
+                    hoverRect=r;hover=World.TerrainNames[known.terrain]+(known.resource>0?" with "+World.ResourceNames[known.resource]:"")+": "+v[0]+" food, "+v[1]+" shields, "+v[2]+" trade — "+(centre?"city centre":locked?"locked citizen (click to release)":active?"worked (click to lock)":"not worked (click to lock a citizen here)")+(!centre&&known.resource>0&&world.modernRules&&world.ResourceKnown(0,known.resource)?" — "+World.ResourceKindNames[World.ResourceKind[known.resource]]+" resource"+(world.ResourceDeveloped(c,t)?", developed":", develop it for its full effect"):"");
                     if(!ring&&!centre){var ctl=world.TileController(t,c.owner);if(ctl!=null&&ctl!=c)hover+=" — worked by "+ctl.name+"; click to take it over";}
                     if(!centre&&e.type==EventType.MouseDown&&e.button==0&&GUI.enabled){bool ok=world.ToggleLock(c,t);status=ok?(world.IsLocked(c,t)?"Citizen locked on "+World.TerrainNames[known.terrain]+".":"Tile released to the city."):"Cannot lock: every working citizen is already locked here.";e.Use();}
                 }
             }
             // A soft round vignette, rather than dimmed squares, fades the land beyond the city's reach.
             if(!scrollX)GUI.DrawTexture(new Rect(0,0,view.width,view.height),CityVignette());
-            if(hover!=null){var h=hoverRect;Color glow=new Color(1,1,1,.85f);Fill(new Rect(h.x+3,h.y,h.width-6,2),glow);Fill(new Rect(h.x+3,h.yMax-2,h.width-6,2),glow);Fill(new Rect(h.x,h.y+3,2,h.height-6),glow);Fill(new Rect(h.xMax-2,h.y+3,2,h.height-6),glow);}
+            // The hover outline follows the tile's own shape: a hexagon on hex maps, a diamond otherwise (owner request, 13 Nov 2026).
+            if(hover!=null){var h=hoverRect;var was=GUI.color;GUI.color=new Color(1,1,1,.95f);GUI.DrawTexture(h,SelectionPicture());GUI.DrawTexture(new Rect(h.x+1,h.y+1,h.width-2,h.height-2),SelectionPicture());GUI.color=was;}
             GUI.EndGroup();
             GUI.Label(new Rect(area.x+12,area.y+414,area.width-24,40),hover??"Hover over the land to see what it yields. Click to lock a citizen on a tile; the city works the rest.",small);
             float lx=area.x+12,ly=area.y+466;
@@ -212,7 +213,21 @@ namespace ParadigmRealm
             for(int k=0;k<3;k++){for(int n=0;n<Math.Min(6,v[k]);n++){Fill(new Rect(x,r.y,8,8),new Color(.1f,.1f,.1f,.85f));Fill(new Rect(x+1,r.y+1,6,6),colours[k]);x+=8;}if(v[k]>0)x+=4;}
         }        void DrawBar(Rect r,float fraction,Color colour){Fill(r,UiTrough);Fill(new Rect(r.x,r.y,r.width*Mathf.Clamp01(fraction),r.height),colour);}
         // Why citizens are content or unhappy, and what can be done (owner request, 8 Nov 2026). Drawn over the land view.
-        bool moodPanel;int cityOrigin=-1;Vector2 moodScroll;
+        bool moodPanel,resourcePanel;int cityOrigin=-1;Vector2 moodScroll;
+        // Owner request (13 Nov 2026): what each resource in the city's land does for it (CityResources.cs).
+        void DrawResourcePanel(City c,Rect area)
+        {
+            GUI.Box(area,"");GUI.Box(area,"");float x=area.x+14,w=area.width-28,y=area.y+10;
+            GUI.Label(new Rect(x,y,w-70,26),"Resources of "+c.name,heading);if(GUI.Button(new Rect(area.xMax-74,y,60,24),"Close",button))resourcePanel=false;y+=30;
+            var rep=world.CityResources(c);
+            GUI.Label(new Rect(x,y,w,22),rep.inUse.Count+" in use"+(rep.growth>0?"  •  population limit +"+rep.growth:"")+(rep.content!=0?"  •  content "+(rep.content>0?"+":"")+rep.content:"")+(rep.productionPercent>0?"  •  shields +"+rep.productionPercent+"%":"")+(rep.goldPercent>0?"  •  gold +"+rep.goldPercent+"%":""),body);y+=28;
+            var lines=world.ResourceLines(c);
+            moodScroll=GUI.BeginScrollView(new Rect(x,y,w,area.yMax-y-8),moodScroll,new Rect(0,0,w-18,lines.Count*38+150));float iy=0;
+            foreach(var l in lines){GUI.Label(new Rect(0,iy,w-24,36),"• "+l,small);iy+=38;}
+            iy+=6;GUI.Label(new Rect(0,iy,w-18,24),"How resources work",heading);iy+=24;
+            GUI.Label(new Rect(0,iy,w-24,120),"Worked: food resources +1 food, luxuries +1 trade, Iron, Horses and oil +1 shield. Developed (farm or mine; at sea a Harbour or linked port): food +2 population limit, luxury +1 content, Iron +20%, Horses +10%, oil +25% shields. Three kinds in use: +1 content, +10% gold; five: +2, +20%. A city of size 6 with none loses 1 content.",small);
+            GUI.EndScrollView();
+        }
         void OpenCityKeepOrigin(City next){OpenCity(next);}
         void DrawMoodPanel(City c,Rect area)
         {
@@ -239,7 +254,7 @@ namespace ParadigmRealm
             GUI.Label(new Rect(x,y,w,40),world.GrowthStatus(c),small);y+=42;
             int content=world.ContentCitizens(c),unhappy=world.UnhappyCitizens(c),workers=Math.Max(1,world.Workers(c));
             GUI.Label(new Rect(x,y,w-64,22),"Content "+content+"   Unhappy "+unhappy+(world.Disorder(c)?"   — disorder: no shields or gold":"")+(world.ReligiousUnrest(c)>0?"   (religious unrest -"+world.ReligiousUnrest(c)+")":""),body);
-            if(GUI.Button(new Rect(x+w-60,y-1,60,22),moodPanel?"Close":"Why?",button)){moodPanel=!moodPanel;}y+=22;
+            if(GUI.Button(new Rect(x+w-60,y-1,60,22),moodPanel?"Close":"Why?",button)){moodPanel=!moodPanel;resourcePanel=false;}y+=22;
             Fill(new Rect(x,y,w,12),UiTrough);Fill(new Rect(x,y,w*content/workers,12),new Color(.4f,.72f,.5f));Fill(new Rect(x+w*content/workers,y,w*unhappy/workers,12),new Color(.9f,.45f,.35f));y+=22;
             GUI.Label(new Rect(x,y,w,24),"Citizens",heading);y+=26;
             GUI.Label(new Rect(x,y,w,22),"Working "+world.Workers(c)+"  Entertainers "+c.entertainers+"  Scientists "+c.scientists+"  Tax collectors "+c.merchants,small);y+=24;
@@ -256,7 +271,7 @@ namespace ParadigmRealm
             GUI.enabled=enabled&&world.Workers(c)>0;if(GUI.Button(new Rect(x,y,half,26),"Worker → Entertainer",button))world.AdjustSpecialist(c,2,1);
             GUI.enabled=enabled&&c.entertainers+c.scientists+c.merchants>0;if(GUI.Button(new Rect(x+half+6,y,half,26),"Specialist → back to work",button))world.ReturnToWork(c);GUI.enabled=enabled;y+=32;
             GUI.Label(new Rect(x,y,w,36),"Entertainers +2 content • Scientists +3 science\nTax collectors +3 gold",small);y+=38;
-            GUI.Label(new Rect(x,y,w,24),"Buildings",heading);y+=26;
+            GUI.Label(new Rect(x,y,w,24),"Buildings",heading);if(world.modernRules&&GUI.Button(new Rect(x+w-100,y,100,22),resourcePanel?"Close":"Resources",button)){resourcePanel=!resourcePanel;moodPanel=false;moodScroll=Vector2.zero;}y+=26;
             var buildings=World.BuildingIds.Where(b=>world.HasBuilding(c,b)).Concat(World.FaithBuildingIds.Where(b=>b!=36&&world.HasBuilding(c,b))).Select(World.BuildName).ToArray();
             GUI.Label(new Rect(x,y,w,area.yMax-y-6),buildings.Length==0?"None yet.":string.Join(", ",buildings),small);
         }        void DrawProductionLine(City c,bool building,Rect area)

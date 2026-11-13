@@ -19,7 +19,7 @@ public partial class World {
     public bool AdjustSpecialist(City c,int type,int delta){if(c==null||!cities.Contains(c)||result!=""||type<0||type>2||(delta!=1&&delta!=-1))return false;int value=type==0?c.scientists:type==1?c.merchants:c.entertainers;if(delta<0&&value==0||delta>0&&c.scientists+c.merchants+c.entertainers>=c.pop)return false;if(type==0)c.scientists+=delta;else if(type==1)c.merchants+=delta;else c.entertainers+=delta;return true;}
     // With a Sewer system cities grow to 20, to 30 with Electricity and 40 with Computing, so the work area keeps widening
 // to size 30 (owner request, 31 Oct).
-public int GrowthLimit(City c){return HasBuilding(c,41)?20+(HasTech(c.owner,"electricity")?10:0)+(HasTech(c.owner,"computers")?10:0):HasBuilding(c,37)?12:FreshWater(c.x,c.y)?8:6;}
+public int GrowthLimit(City c){return ResourceGrowth(c)+(HasBuilding(c,41)?20+(HasTech(c.owner,"electricity")?10:0)+(HasTech(c.owner,"computers")?10:0):HasBuilding(c,37)?12:FreshWater(c.x,c.y)?8:6);}
     void ApplyEmpireYields(City c,ref int food,ref int production,ref int science,ref int goldYield){var n=nations[c.owner];science+=c.scientists*3+(n.capital==c.id?DiplomaticScience(c.owner):0);goldYield+=c.merchants*3;
         // Stage 8: flat building bonuses as the design states (University +3); research pacts count once, at the capital.
         if(HasBuilding(c,38))science+=3;if(HasBuilding(c,MonasteryBuilding))science+=2;if(HasBuilding(c,40))production=production*3/2;

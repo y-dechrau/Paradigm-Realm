@@ -14,6 +14,7 @@ namespace ParadigmRealm {
    if(HasBuilding(c,43)&&(t.terrain==4||t.terrain==6||t.terrain==12))v[0]++;
    if(HasTrait(c.owner,TraitSeafaring)&&(t.terrain==4||t.terrain==6||t.terrain==12))v[0]++;
    if(c.portLinked&&IsSeaResource(t.resource)&&ResourceKnown(c.owner,t.resource))v[0]++;
+   ResourceTileBonus(c,t,v);
    return v;
   }
   bool NearRiver(Tile t){for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){var a=Step(t.x,t.y,x,y);if(a!=null&&a.terrain==7)return true;}return false;}
