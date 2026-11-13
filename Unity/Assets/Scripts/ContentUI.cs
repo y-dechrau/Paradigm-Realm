@@ -32,6 +32,9 @@ namespace ParadigmRealm
         Rect ExpandedTechRect(int i){return new Rect(20+techDepth[i]*252,20+techRow[i]*230,220,200);}
         void FocusTechnology(int i){if(!EraViewable(TechnologyCatalog.Eras[i]))return;researchEra=TechnologyCatalog.Eras[i];LayoutTechnologyTree();inspectedTech=i;var r=ExpandedTechRect(i);researchScroll=new Vector2(Math.Max(0,r.x*techZoom-20),Math.Max(0,r.y*techZoom-20));techDetailScroll=Vector2.zero;}
         void DrawTechnologyGlyph(Rect r,int id){
+            // The owner's painted icon for the technology (owner request, 13 Nov 2026: Resources/UI/Tech/tech-<id>, 128 x 128,
+            // cut from the six age sheets); the coded glyph below is kept for any technology without one.
+            if(id>=0&&id<TechnologyCatalog.Count){var art=UiTex("Tech/tech-"+TechnologyCatalog.Ids[id]);if(art!=null){GUI.DrawTexture(r,art,ScaleMode.ScaleToFit,true);return;}}
             // An era-coloured glyph with a unique seven-bit centre pattern for each technology.
             Fill(r,new Color(.10f,.18f,.22f));float cell=r.width/8;int bits=id+1;
             for(int y=0;y<8;y++)for(int x=0;x<8;x++)if(x==0||x==7||y==0||y==7||(y==3&&(bits&(1<<(x-1)))!=0)||(y==4&&x==2&&(bits&64)!=0)||(y==5&&x==1+TechnologyCatalog.Eras[id]%6))Fill(new Rect(r.x+x*cell,r.y+y*cell,cell,cell),new Color(.85f,.55f+TechnologyCatalog.Eras[id]*.02f,.35f));
@@ -68,9 +71,10 @@ namespace ParadigmRealm
             }
             var available=world.AvailableTech();int perTurn=Math.Max(1,world.cities.Where(c=>c.owner==0).Sum(c=>world.Yield(c)[2]));
             foreach(int i in shown){
-                Rect r=ExpandedTechRect(i);Fill(Z(r),world.tech[i]?new Color(.12f,.3f,.21f):inspectedTech==i?new Color(.25f,.29f,.4f):new Color(.10f,.15f,.18f));GUI.Box(Z(r),"");if(world.tech[i])GlowBorder(Z(r),GlowGold);else if(world.research==i)GlowBorder(Z(r),GlowSilver);DrawTechnologyGlyph(Z(new Rect(r.x+8,r.y+10,24,24)),i);
-                GUI.Label(Z(new Rect(r.x+40,r.y+8,173,44)),World.TechNames[i],zBody);
-                GUI.Label(Z(new Rect(r.x+10,r.y+51,200,24)),TechnologyCatalog.EraNames[TechnologyCatalog.Eras[i]],zSmall);
+                Rect r=ExpandedTechRect(i);Fill(Z(r),world.tech[i]?new Color(.12f,.3f,.21f):inspectedTech==i?new Color(.25f,.29f,.4f):new Color(.10f,.15f,.18f));GUI.Box(Z(r),"");if(world.tech[i])GlowBorder(Z(r),GlowGold);else if(world.research==i)GlowBorder(Z(r),GlowSilver);DrawTechnologyGlyph(Z(new Rect(r.x+8,r.y+8,66,66)),i);
+                // The icon fills the top-left of the card (owner request, 13 Nov 2026); name and age sit beside it.
+                GUI.Label(Z(new Rect(r.x+82,r.y+6,131,46)),World.TechNames[i],zBody);
+                GUI.Label(Z(new Rect(r.x+82,r.y+50,131,24)),TechnologyCatalog.EraNames[TechnologyCatalog.Eras[i]],zSmall);
                 var benefits=World.ActiveTechBenefits(i);string summary=benefits.Length>0?string.Join("\n",benefits.Take(2).Select(v=>"• "+v).ToArray()):"• Advances the research tree\n• Content unlocks planned";
                 GUI.Label(Z(new Rect(r.x+10,r.y+78,200,53)),summary,zSmall);
                 GUI.Label(Z(new Rect(r.x+10,r.y+132,200,26)),world.tech[i]?"Discovered":world.research==i?"Researching":available.Contains(i)?"Available • "+world.ResearchCost(i)+" science":"Locked • "+World.Requirements[i].Length+" prerequisites",zSmall);

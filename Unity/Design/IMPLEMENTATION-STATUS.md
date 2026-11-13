@@ -2,6 +2,13 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner request 13 Nov: painted technology icons (no save change)
+
+- **Art:** the owner's six age sheets (`Paradigm_Realm_Technology_Icons.zip`, not in the repository) were cut into 99 icons, one for every researchable technology, each with its gold frame. They are padded to square and scaled to 128 x 128: `Resources/UI/Tech/tech-<technology id>.png`, imported like the other UI icons.
+- **Matching:** each icon is matched to its technology by the name printed under it on the sheet. A contact sheet of all 99 was checked by eye.
+- **Research cards:** `DrawTechnologyGlyph` draws the painted icon when one exists and falls back to the coded glyph otherwise. The card shows it at 66 x 66 in the top left (was 24 x 24), with the name and age beside it (`ContentUI.cs`).
+- **Checks:** `GraphicsChecks` requires a 128 x 128 icon for every active technology. Not run in Unity; not hand-played.
+
 ## Owner brief 13 Nov: diplomacy that changes outcomes (save version 43)
 
 Full write-up, test results, limitations and the next step: [DIPLOMACY-STRATEGY-2026-11-13.md](DIPLOMACY-STRATEGY-2026-11-13.md). It builds on the 10 Nov rebuild.
