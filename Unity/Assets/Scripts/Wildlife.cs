@@ -116,7 +116,7 @@ public partial class World {
  // A unit attacks an animal by moving onto it. Civilians cannot. Combat has no dice, so the result can be known in advance.
  public void AnimalExchange(Unit u,Animal a,out int dealt,out int taken){int own=Strength(u,null,false);dealt=Damage(own,AnimalCatalog.Defence[a.kind]);taken=IsRanged(u.type)?0:Damage(AnimalCatalog.Defence[a.kind],own);}
  bool FightAnimal(Unit u,Animal a){
-  if(Power[u.type]==0)return false;int dealt,taken;AnimalExchange(u,a,out dealt,out taken);a.hp-=dealt;u.hp-=taken;u.moves=0;string name=AnimalCatalog.Names[a.kind];
+  if(Power[u.type]==0)return false;int dealt,taken;AnimalExchange(u,a,out dealt,out taken);LogStrike(u,a.x,a.y);a.hp-=dealt;u.hp-=taken;u.moves=0;string name=AnimalCatalog.Names[a.kind];
   if(u.owner==0)Note(UnitName(u)+" fights a "+name+".");
   if(a.hp<=0){animals.Remove(a);if(u.hp>0)Victory(u);if(u.owner==0)Note("The "+name+" is dead.");}
   if(u.hp<=0){if(u.owner==0)Note("The "+name+" killed your "+UnitName(u)+".");units.Remove(u);DrownStranded();}

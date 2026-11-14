@@ -28,6 +28,18 @@ namespace ParadigmRealm { public partial class RealmGame {
    selected=-1;cityId=home.id;isoWidth=160;FocusTile(home.x,home.y);yield return Frames(30);yield return Shot(folder,"hud-map-city.bmp");
    yield return Frames(3);yield return Shot(folder,"hud-workers-b.bmp");
    cityScreen=true;cityMapScroll=Vector2.zero;yield return Frames(20);yield return Shot(folder,"hud-city-screen.bmp");cityScreen=false;
+   // Soldiers: each type strikes the tile beside it (mid-blow), then takes guard (mid-clip, then held).
+   var field=world.tiles.Where(t=>t.realm==0&&world.Distance(t.x,t.y,home.x,home.y)>=2&&world.Distance(t.x,t.y,home.x,home.y)<=4&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)).Take(5).ToList();
+   int[] types={2,7,4,8,5};var soldiers=new System.Collections.Generic.List<Unit>();
+   for(int k=0;k<field.Count;k++){var s=world.Add(0,types[k],field[k].x,field[k].y);soldiers.Add(s);}
+   selected=-1;isoWidth=128;FocusTile(home.x,home.y);yield return Frames(10);
+   if(world.strikeLog==null)world.strikeLog=new System.Collections.Generic.List<int[]>();
+   foreach(var s in soldiers){var to=world.Step(s.x,s.y,1,0)??world.Step(s.x,s.y,-1,0);if(to!=null)world.strikeLog.Add(new[]{s.id,to.x,to.y});}
+   yield return new WaitForSecondsRealtime(.45f);yield return Shot(folder,"hud-strike-mid.bmp",0);
+   yield return new WaitForSecondsRealtime(1f);foreach(var s in soldiers)s.fortified=true;
+   yield return new WaitForSecondsRealtime(.35f);yield return Shot(folder,"hud-guard-mid.bmp",0);
+   yield return new WaitForSecondsRealtime(1f);yield return Shot(folder,"hud-guard-held.bmp");
+   foreach(var s in soldiers)world.units.Remove(s);
   }
   for(int o=1;o<world.civCount;o++){if(world.IsNativeNation(o))continue;world.met[o]=true;}world.newContacts.Clear();
   detailsScreen="Diplomacy";diplomacyChooser=true;yield return Frames(20);yield return Shot(folder,"hud-council.bmp");

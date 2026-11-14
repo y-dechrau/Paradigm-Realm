@@ -45,6 +45,9 @@ public partial class World {
  // Every step a unit takes, for the map to animate (owner request, 9 Nov 2026): unit id, from x, y, to x, y. Not saved; the
  // interface empties it each frame, and it never holds more than a few thousand steps.
  [NonSerialized] public List<int[]> moveLog;
+ // Every blow struck, for the screen to animate (owner request, 14 Nov 2026): attacker id and the tile it struck. Not saved.
+ [NonSerialized] public List<int[]> strikeLog;
+ void LogStrike(Unit u,int x,int y){if(strikeLog==null)strikeLog=new List<int[]>();if(strikeLog.Count<400)strikeLog.Add(new[]{u.id,x,y});}
  void LogStep(Unit u,int x,int y){if(moveLog==null)moveLog=new List<int[]>();if(moveLog.Count<4000)moveLog.Add(new[]{u.id,u.x,u.y,x,y});}
 }
 }

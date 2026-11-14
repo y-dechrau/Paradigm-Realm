@@ -448,10 +448,11 @@ namespace ParadigmRealm
             }
             File.WriteAllText(Path.Combine(folder,"flicker.txt"),log.ToString());Application.Quit();
         }
-        IEnumerator Shot(string folder,string name)
+        IEnumerator Shot(string folder,string name,int settle=90)
         {
-            // Terrain pictures are composed under a per-frame budget, so give the view time to fill in first.
-            yield return Frames(90);
+            // Terrain pictures are composed under a per-frame budget, so give the view time to fill in first
+            // (settle 0 catches a short animation mid-way).
+            yield return Frames(settle);
             yield return new WaitForEndOfFrame();
             // The project has no screenshot or image-encoding modules, so read the frame back and write a 24-bit BMP.
             int w=Screen.width,h=Screen.height;var frame=new Texture2D(w,h,TextureFormat.RGBA32,false);

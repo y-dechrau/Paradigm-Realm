@@ -67,7 +67,7 @@ public partial class RealmGame {
     if(animalLast.TryGetValue(a.id,out was)&&was!=now2&&(world.Visible(a.x,a.y)||world.Visible(was.x,was.y))&&world.Distance(was.x,was.y,a.x,a.y)<=4){var g=new Glide();g.path.Add(was);g.path.Add(now2);animalGlides[a.id]=g;}
     animalLast[a.id]=now2;}
   }
-  Advance(unitGlides,dt);Advance(animalGlides,dt);
+  Advance(unitGlides,dt);Advance(animalGlides,dt);UpdateStrikes(dt);
  }
  static void Advance(Dictionary<int,Glide> glides,float dt){
   List<int> done=null;
