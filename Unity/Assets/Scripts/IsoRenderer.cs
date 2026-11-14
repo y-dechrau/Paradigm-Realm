@@ -324,6 +324,53 @@ namespace ParadigmRealm
                 if(!source.seen){var keep=GUI.color;GUI.color=MistDeep;GUI.DrawTexture(TileRect(sx,sy,s),IsoPicture(4,5,0));GUI.color=keep;isoFog.Add(new Vector3(sx,sy,(i*7+j*13)&3));continue;}
                 bool water=PixelArt.IsWater(t.terrain);float gy=sy;
                 if(!visible)isoMist.Add(new Vector3(sx,sy,(i*5+j*11)&3));
+                DrawTileScene(source,t,visible,i,j,sx,sy,s,frame);int cell=t.y*width+t.x;
+                Unit first=null,picked=null;int count=0;List<Unit> stackAt;
+                if(viewStacks.TryGetValue(cell,out stackAt))foreach(var a in stackAt){if(!(a.owner==0||visible)||Gliding(a.id))continue;count++;if(first==null)first=a;if(a.id==selected)picked=a;}
+                // At sea the ship is drawn, not the units it carries.
+                if(picked==null&&water&&stackAt!=null){var ship=stackAt.Find(a=>World.IsNaval(a.type)&&(a.owner==0||visible));if(ship!=null)first=ship;}
+                var shown=picked??first;
+                if(visible&&world.wildlife){Animal beast;viewAnimals.TryGetValue(cell,out beast);if(beast!=null&&!AnimalGliding(beast.id)){var feet=new Rect(sx-20*s,gy-8*s,40*s,15*s);GUI.DrawTexture(feet,IsoPicture(4,8,0));// The painted animals are cropped tight, so they are drawn smaller than the old 64-pixel cells: about unit size, the
+                    // mammoth, sloth and rhinoceros a little larger.
+                    {bool painted=SpriteSlot("animal-"+beast.kind)!=null;float size=painted?(AnimalCatalog.Carnivore[beast.kind]?40:48):64;
+                     GUI.DrawTexture(painted?new Rect(sx-size/2*s,gy-(size-6)*s,size*s,size*s):new Rect(sx-32*s,gy-42*s,64*s,64*s),IsoPicture(12,beast.kind,0),ScaleMode.ScaleToFit,true);}
+                    // An animal's health shows during a fight (owner request, 8 Nov 2026): whenever it is hurt or one of your
+                    // units stands within two tiles, a bar over its back, red-edged for a hunter.
+                    if(beast.hp<10||AnimalNearPlayer(beast)){float bh=Mathf.Max(3,2.8f*s),bw=34*s,by=gy-(AnimalCatalog.Carnivore[beast.kind]?38:46)*s;bool hunter=AnimalCatalog.Carnivore[beast.kind];
+                        Fill(new Rect(sx-bw/2-1,by-1,bw+2,bh+2),hunter?new Color(.45f,.08f,.06f,.9f):new Color(.08f,.1f,.12f,.85f));
+                        Fill(new Rect(sx-bw/2,by,bw*Mathf.Clamp01(beast.hp/10f),bh),beast.hp>5?new Color(.37f,.8f,.47f):beast.hp>2?new Color(.95f,.75f,.3f):new Color(.9f,.3f,.25f));}}}
+                if(shown!=null){var unitRect=new Rect(sx-20*s,gy-36*s,40*s,40*s);DrawUnitArt(shown,unitRect,count);isoUnitDraws.Add(new KeyValuePair<Unit,Rect>(shown,unitRect));isoUnitCounts.Add(count);}
+            }
+            // Fog of war as dark mist (owner request): a thin drifting veil over land seen before but not watched now, and
+            // thick dark banks (the cloud puffs, darkened) over unexplored land, spilling a little over the known world's edge.
+            DrawGlides(tw,s);
+            DrawCloudShadows(s);
+            float clock=Time.realtimeSinceStartup;var before=GUI.color;
+            if(mistBank==null){mistBank=SoftPicture(PixelArt.MistBank());mistWisp=SoftPicture(PixelArt.MistWisp());}
+            foreach(var f in isoMist){float drift=Mathf.Sin(clock*.35f+f.z*1.7f+f.x*.013f)*5*s;GUI.color=MistThin;GUI.DrawTexture(new Rect(f.x-64*s+drift,f.y-44*s,128*s,88*s),mistBank);}
+            GUI.color=Color.white;foreach(var f in isoFog){float drift=Mathf.Sin(clock*.25f+f.z*2.1f+f.y*.011f)*5*s;GUI.DrawTexture(new Rect(f.x-64*s+drift,f.y-44*s,128*s,88*s),mistBank);}
+            GUI.color=MistWisp;foreach(var f in isoFog){if(f.z!=0)continue;float drift=clock*2.2f%64f,sway=Mathf.Sin(clock*.2f+f.x*.02f)*6*s;GUI.DrawTexture(new Rect(f.x-64*s+drift*s-32*s,f.y-30*s+sway,128*s,60*s),mistWisp);}
+            GUI.color=before;
+            // A found gateway stands clear of the mist, so it stays on the map however far the fog closes in.
+            for(int gi=0;gi<isoGates.Count;gi++){var g=isoGates[gi];if(gi<isoGateStyles.Count&&DrawGateArt(isoGateStyles[gi],false,g.x,g.y,s,gi<isoGateLand.Count?isoGateLand[gi]:0,gi<isoGateFit.Count?isoGateFit[gi]:1f))continue;Texture2D gateTex;if(!gateTextures.TryGetValue(PixelArt.SealedGate,out gateTex)){gateTex=PixelTexture(PixelArt.GatewaySprite(PixelArt.SealedGate));gateTextures[PixelArt.SealedGate]=gateTex;}GUI.DrawTexture(new Rect(g.x-PixelArt.AX*s,g.y-PixelArt.AY*s,64*s,64*s),gateTex);}isoGates.Clear();isoGateStyles.Clear();isoGateLand.Clear();isoGateFit.Clear();
+            // Units stand in front of the cloud banks of unexplored land next to them (owner request): drawn again over the mist.
+            for(int n=0;n<isoUnitDraws.Count;n++)DrawUnitArt(isoUnitDraws[n].Key,isoUnitDraws[n].Value,isoUnitCounts[n]);
+            // Resource badges go on after every tile so the tiles in front can never cover them.
+            // A resource on land that is remembered but not watched now is shadowed like the land under it (owner request, 10 Nov 2026).
+            // (Resources are drawn with their tiles now, so trees in front cover them and animals stand before them.)
+            // City plates go on after the tiles (so no ground covers them), then any unit standing over a plate is drawn again on
+            // top, so plates never hide units (owner request).
+            var plates=new List<Rect>();
+            for(int n=0;n<isoCityNames.Count;n++){var at=new Vector2(isoCityPos[n].x,isoCityPos[n].y+24*s);DrawCityPlate(isoCityRefs[n],isoCityNames[n],at,isoCityInk[n]);plates.Add(new Rect(at.x-120,at.y,240,36));}
+            for(int n=0;n<isoUnitDraws.Count;n++){var ur=isoUnitDraws[n].Value;if(plates.Any(p=>p.x<ur.x+ur.width&&ur.x<p.x+p.width&&p.y<ur.y+ur.height&&ur.y<p.y+p.height))DrawUnitArt(isoUnitDraws[n].Key,ur,isoUnitCounts[n]);}
+            DrawIsoOverlay(s);
+            compositeBudgetOn=false;
+        }
+        // One tile as the main map paints it: ground, farm, road, territory, trees or farmstead, improvements, resource, city and colony.
+        // The city screen uses it too, so the land round a city looks the same there as on the map (owner report, 14 Nov 2026).
+        void DrawTileScene(Tile source,Tile t,bool visible,int i,int j,float sx,float sy,float s,int frame)
+        {
+                int width=world.Width;bool water=PixelArt.IsWater(t.terrain);float gy=sy;
                 var old=GUI.color;if(!visible)GUI.color=Remembered;
                 var ground=TileRect(sx,sy,s);
                 GUI.DrawTexture(ground,IsoGround(t,i,j,frame));
@@ -401,46 +448,7 @@ namespace ParadigmRealm
                 // A colony beyond a gateway: a few houses, larger as it grows, under its owner's flag (Colonies.cs).
                 {Colony col;if(viewColonies.TryGetValue(cell,out col)&&(col.owner==0||visible)){float cs=64*s*(col.level<=0?.34f:col.level==1?.46f:.56f);GUI.DrawTexture(new Rect(sx-cs/2,gy+TileHalf()*s*.5f-cs*.8f,cs,cs),IsoPicture(6,CityVisualEra(col.owner),col.id&7),ScaleMode.ScaleToFit,true);
                     var pole=new Rect(sx+9*s,gy-24*s,Mathf.Max(1,1.5f*s),13*s);Fill(pole,new Color(.3f,.22f,.14f));Fill(new Rect(pole.xMax,pole.y,8*s,5*s),nations[col.owner]);isoCityNames.Add(col.name);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(nations[col.owner]);isoCityRefs.Add(null);}}
-                Unit first=null,picked=null;int count=0;List<Unit> stackAt;
-                if(viewStacks.TryGetValue(cell,out stackAt))foreach(var a in stackAt){if(!(a.owner==0||visible)||Gliding(a.id))continue;count++;if(first==null)first=a;if(a.id==selected)picked=a;}
-                // At sea the ship is drawn, not the units it carries.
-                if(picked==null&&water&&stackAt!=null){var ship=stackAt.Find(a=>World.IsNaval(a.type)&&(a.owner==0||visible));if(ship!=null)first=ship;}
-                var shown=picked??first;
-                if(visible&&world.wildlife){Animal beast;viewAnimals.TryGetValue(cell,out beast);if(beast!=null&&!AnimalGliding(beast.id)){var feet=new Rect(sx-20*s,gy-8*s,40*s,15*s);GUI.DrawTexture(feet,IsoPicture(4,8,0));// The painted animals are cropped tight, so they are drawn smaller than the old 64-pixel cells: about unit size, the
-                    // mammoth, sloth and rhinoceros a little larger.
-                    {bool painted=SpriteSlot("animal-"+beast.kind)!=null;float size=painted?(AnimalCatalog.Carnivore[beast.kind]?40:48):64;
-                     GUI.DrawTexture(painted?new Rect(sx-size/2*s,gy-(size-6)*s,size*s,size*s):new Rect(sx-32*s,gy-42*s,64*s,64*s),IsoPicture(12,beast.kind,0),ScaleMode.ScaleToFit,true);}
-                    // An animal's health shows during a fight (owner request, 8 Nov 2026): whenever it is hurt or one of your
-                    // units stands within two tiles, a bar over its back, red-edged for a hunter.
-                    if(beast.hp<10||AnimalNearPlayer(beast)){float bh=Mathf.Max(3,2.8f*s),bw=34*s,by=gy-(AnimalCatalog.Carnivore[beast.kind]?38:46)*s;bool hunter=AnimalCatalog.Carnivore[beast.kind];
-                        Fill(new Rect(sx-bw/2-1,by-1,bw+2,bh+2),hunter?new Color(.45f,.08f,.06f,.9f):new Color(.08f,.1f,.12f,.85f));
-                        Fill(new Rect(sx-bw/2,by,bw*Mathf.Clamp01(beast.hp/10f),bh),beast.hp>5?new Color(.37f,.8f,.47f):beast.hp>2?new Color(.95f,.75f,.3f):new Color(.9f,.3f,.25f));}}}
-                if(shown!=null){var unitRect=new Rect(sx-20*s,gy-36*s,40*s,40*s);DrawUnitArt(shown,unitRect,count);isoUnitDraws.Add(new KeyValuePair<Unit,Rect>(shown,unitRect));isoUnitCounts.Add(count);}
-            }
-            // Fog of war as dark mist (owner request): a thin drifting veil over land seen before but not watched now, and
-            // thick dark banks (the cloud puffs, darkened) over unexplored land, spilling a little over the known world's edge.
-            DrawGlides(tw,s);
-            DrawCloudShadows(s);
-            float clock=Time.realtimeSinceStartup;var before=GUI.color;
-            if(mistBank==null){mistBank=SoftPicture(PixelArt.MistBank());mistWisp=SoftPicture(PixelArt.MistWisp());}
-            foreach(var f in isoMist){float drift=Mathf.Sin(clock*.35f+f.z*1.7f+f.x*.013f)*5*s;GUI.color=MistThin;GUI.DrawTexture(new Rect(f.x-64*s+drift,f.y-44*s,128*s,88*s),mistBank);}
-            GUI.color=Color.white;foreach(var f in isoFog){float drift=Mathf.Sin(clock*.25f+f.z*2.1f+f.y*.011f)*5*s;GUI.DrawTexture(new Rect(f.x-64*s+drift,f.y-44*s,128*s,88*s),mistBank);}
-            GUI.color=MistWisp;foreach(var f in isoFog){if(f.z!=0)continue;float drift=clock*2.2f%64f,sway=Mathf.Sin(clock*.2f+f.x*.02f)*6*s;GUI.DrawTexture(new Rect(f.x-64*s+drift*s-32*s,f.y-30*s+sway,128*s,60*s),mistWisp);}
-            GUI.color=before;
-            // A found gateway stands clear of the mist, so it stays on the map however far the fog closes in.
-            for(int gi=0;gi<isoGates.Count;gi++){var g=isoGates[gi];if(gi<isoGateStyles.Count&&DrawGateArt(isoGateStyles[gi],false,g.x,g.y,s,gi<isoGateLand.Count?isoGateLand[gi]:0,gi<isoGateFit.Count?isoGateFit[gi]:1f))continue;Texture2D gateTex;if(!gateTextures.TryGetValue(PixelArt.SealedGate,out gateTex)){gateTex=PixelTexture(PixelArt.GatewaySprite(PixelArt.SealedGate));gateTextures[PixelArt.SealedGate]=gateTex;}GUI.DrawTexture(new Rect(g.x-PixelArt.AX*s,g.y-PixelArt.AY*s,64*s,64*s),gateTex);}isoGates.Clear();isoGateStyles.Clear();isoGateLand.Clear();isoGateFit.Clear();
-            // Units stand in front of the cloud banks of unexplored land next to them (owner request): drawn again over the mist.
-            for(int n=0;n<isoUnitDraws.Count;n++)DrawUnitArt(isoUnitDraws[n].Key,isoUnitDraws[n].Value,isoUnitCounts[n]);
-            // Resource badges go on after every tile so the tiles in front can never cover them.
-            // A resource on land that is remembered but not watched now is shadowed like the land under it (owner request, 10 Nov 2026).
-            // (Resources are drawn with their tiles now, so trees in front cover them and animals stand before them.)
-            // City plates go on after the tiles (so no ground covers them), then any unit standing over a plate is drawn again on
-            // top, so plates never hide units (owner request).
-            var plates=new List<Rect>();
-            for(int n=0;n<isoCityNames.Count;n++){var at=new Vector2(isoCityPos[n].x,isoCityPos[n].y+24*s);DrawCityPlate(isoCityRefs[n],isoCityNames[n],at,isoCityInk[n]);plates.Add(new Rect(at.x-120,at.y,240,36));}
-            for(int n=0;n<isoUnitDraws.Count;n++){var ur=isoUnitDraws[n].Value;if(plates.Any(p=>p.x<ur.x+ur.width&&ur.x<p.x+p.width&&p.y<ur.y+ur.height&&ur.y<p.y+p.height))DrawUnitArt(isoUnitDraws[n].Key,ur,isoUnitCounts[n]);}
-            DrawIsoOverlay(s);
-            compositeBudgetOn=false;
+                GUI.color=old;
         }
         // Soft cloud shadows drift slowly across the map so the world feels alive. They move with the map as it scrolls.
         Texture2D cloudTexture;

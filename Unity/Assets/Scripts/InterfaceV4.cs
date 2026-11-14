@@ -139,6 +139,10 @@ namespace ParadigmRealm
             GUI.BeginGroup(view);
             Fill(new Rect(0,0,view.width,view.height),scrollX?MistDeep:new Color(.2f,.25f,.31f));
             float cx=Mathf.Round(view.width/2-cityMapScroll.x),cy=Mathf.Round(view.height/2-cityMapScroll.y);var viewLocal=new Rect(0,0,view.width,view.height);
+            // The main map is not drawn behind the city screen, so what its tile painter reads is gathered here.
+            viewCities.Clear();foreach(var city in world.cities)viewCities[city.y*world.Width+city.x]=city;
+            viewColonies.Clear();if(world.colonies!=null)foreach(var colony in world.colonies)viewColonies[colony.y*world.Width+colony.x]=colony;
+            if(e.type==EventType.Repaint)BuildSuburbs();
             for(int pass=0;pass<2;pass++)
             // Diagonal layout, back to front by diagonal so scenery overlaps the tiles behind it.
             // Hex maps go row by row instead.
@@ -153,23 +157,15 @@ namespace ParadigmRealm
                 if(pass==0)
                 {
                     if(known==null){GUI.color=MistDeep;GUI.DrawTexture(r,IsoPicture(4,5,0));GUI.color=old;continue;}
-                    GUI.DrawTexture(r,IsoGround(known,c.x+dx,c.y+dy,frame));
-                    if(known.road){var road=RoadPicture(known);if(road!=null)GUI.DrawTexture(r,road);}
-                    // Once the view scrolls there is no soft edge to fade the land out, so land outside the territory is shaded,
-                    // and the territory carries the same bold edge as on the map.
+                    // The tile exactly as the main map paints it (farms, farmsteads, trees, mines, resources, the city).
+                    DrawTileScene(t,known,world.Visible(t.x,t.y),c.x+dx,c.y+dy,sx,sy,s,frame);
+                    // Once the view scrolls there is no soft edge to fade the land out, so land outside the territory is shaded.
                     if(known.owner!=c.owner&&scrollX){GUI.color=new Color(.04f,.05f,.08f,.55f);GUI.DrawTexture(r,IsoPicture(4,9,0));}
-                    if(known.owner>=0){Color edgeInk=nations[known.owner];edgeInk.a=1;int[] oi=world.Hex?World.HexDi:new[]{0,1,0,-1},oj=world.Hex?World.HexDj:new[]{-1,0,1,0};for(int k=0;k<oi.Length;k++){var nb=world.Step(t.x,t.y,oi[k],oj[k]);if(nb!=null&&nb.seen&&world.KnownOwner(nb)==known.owner)continue;GUI.color=edgeInk;GUI.DrawTexture(r,world.Hex?IsoPicture(10,k,0):IsoPicture(4,k,0));}}
                     GUI.color=old;continue;
                 }
-                // Second pass: scenery, the city, and markers, so they stand over the row behind.
+                // Second pass: the city's markers, over all the scenery.
                 if(known==null)continue;
                 bool centre=dx==0&&dy==0;
-                var sprite=PixelArt.IsWater(known.terrain)||centre?null:IsoPicture(1,known.terrain,IsoVariant(t.x,t.y));
-                if(sprite!=null)GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,sy-PixelArt.AY*s,64*s,64*s),sprite);
-                if(centre)DrawCityArt(c,new Rect(sx-36,sy-52,72,72));
-                GUI.color=old;
-                // Resources around the city, with their own icons.
-                if(known.resource>0)DrawResource(known,new Rect(sx-tw/2+tw*.55f,sy-th/2+2,tw*.45f,tw*.45f));
                 // Tiles in reach that another of your cities works can be taken over by locking them here (owner request).
                 bool reachable=centre||world.InReach(c,t);if(!reachable||!mine)continue;
                 int[] v=centre?world.CityCentreYield(c):world.EffectiveTileYield(c,t);bool active=centre||worked.Contains(t),locked=world.IsLocked(c,t);
@@ -186,6 +182,8 @@ namespace ParadigmRealm
             // The hover outline follows the tile's own shape: a hexagon on hex maps, a diamond otherwise (owner request, 13 Nov 2026).
             if(hover!=null){var h=hoverRect;var was=GUI.color;GUI.color=new Color(1,1,1,.95f);GUI.DrawTexture(h,SelectionPicture());GUI.DrawTexture(new Rect(h.x+1,h.y+1,h.width-2,h.height-2),SelectionPicture());GUI.color=was;}
             GUI.EndGroup();
+            // The tile painter notes names and gateways for the main map's plates; none of them belong to this view.
+            isoCityNames.Clear();isoCityPos.Clear();isoCityInk.Clear();isoCityRefs.Clear();isoGates.Clear();isoGateStyles.Clear();isoGateLand.Clear();isoGateFit.Clear();
             GUI.Label(new Rect(area.x+12,area.y+414,area.width-24,40),hover??"Hover over the land to see what it yields. Click to lock a citizen on a tile; the city works the rest.",small);
             float lx=area.x+12,ly=area.y+466;
             DrawYieldPips(new Rect(lx,ly+6,30,10),new[]{1,0,0});GUI.Label(new Rect(lx+12,ly,60,22),"food",small);

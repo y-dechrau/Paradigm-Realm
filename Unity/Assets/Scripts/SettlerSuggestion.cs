@@ -39,8 +39,9 @@ namespace ParadigmRealm { public partial class RealmGame {
  void DrawSiteCard(Unit u){
   Rect box;string head,line;if(!SiteCard(u,out box,out head,out line))return;
   GUI.Box(box,"");var old=GUI.color;
-  GUI.color=new Color(.55f,1f,.6f);GUI.Label(new Rect(box.x+12,box.y+7,box.width-24,20),head,hudLabel);GUI.color=old;
-  GUI.Label(new Rect(box.x+12,box.y+27,box.width-24,box.height-30),line,hudSmall);
+  // Rows are tall enough for the letters that hang below the line (owner report, 14 Nov 2026: the g's were cut off).
+  GUI.color=new Color(.55f,1f,.6f);GUI.Label(new Rect(box.x+12,box.y+5,box.width-24,24),head,new GUIStyle(hudLabel){clipping=TextClipping.Overflow});GUI.color=old;
+  GUI.Label(new Rect(box.x+12,box.y+28,box.width-24,box.height-28),line,new GUIStyle(hudSmall){clipping=TextClipping.Overflow});
  }
  // The unit panel line, above "Compare settlement sites".
  void DrawSettlerPrompt(Unit u){

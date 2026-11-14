@@ -13,9 +13,10 @@ namespace ParadigmRealm {
  public partial class World {
   public const int ResourceFoodKind=0,ResourceLuxuryKind=1,ResourceStrategicKind=2;
   // Index by resource id: None, Wheat, Iron, Gold, Horses, Spices, Fish, Whales, Pearls, Crabs, Kelp, Oysters, Seals, Tuna, Sponges, Offshore oil.
-  public static readonly int[] ResourceKind={-1,0,2,1,2,1,0,1,1,0,0,1,0,0,1,2};
+  // ... then Sheep, Cattle, Pigs (food) and Camels (strategic, +10% shields like Horses).
+  public static readonly int[] ResourceKind={-1,0,2,1,2,1,0,1,1,0,0,1,0,0,1,2,0,0,0,2};
   public static readonly string[] ResourceKindNames={"food","luxury","strategic"};
-  static readonly int[] StrategicPercent={0,0,20,0,10,0,0,0,0,0,0,0,0,0,0,25};
+  static readonly int[] StrategicPercent={0,0,20,0,10,0,0,0,0,0,0,0,0,0,0,25,0,0,0,10};
   public sealed class CityResourceReport {
    public List<Tile> inUse=new List<Tile>(),idle=new List<Tile>();
    public int growth,content,productionPercent,goldPercent,variety;

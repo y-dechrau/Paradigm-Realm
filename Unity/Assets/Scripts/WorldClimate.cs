@@ -250,13 +250,16 @@ namespace ParadigmRealm
                 int roll=r.Next(1000);
                 switch(t.terrain)
                 {
-                    case 2:  t.resource=roll<(mountainsNear?330:220)?2:roll<(mountainsNear?420:265)?3:0;break;      // hills: iron, gold near ranges
+                    // Livestock (owner request, 14 Nov 2026: too many horses): sheep on hills and steppe, cattle on grassland and
+                    // savanna, pigs at the forest edge and on grassland, camels in desert and dry steppe; horses about a third as common.
+                    case 2:  t.resource=roll<(mountainsNear?330:220)?2:roll<(mountainsNear?420:265)?3:roll<(mountainsNear?480:345)?16:0;break; // hills: iron, gold near ranges, sheep
                     case 17: t.resource=roll<180?2:roll<230?3:0;break;                                              // volcanic: iron, some gold
-                    case 7:  t.resource=roll<45?3:roll<150?1:0;break;                                               // river: placer gold, wheat
-                    case 3:  t.resource=roll<40?3:0;break;                                                           // desert shields: rare gold
-                    case 20: t.resource=roll<150?4:roll<(water?250:200)?1:0;break;                                  // dry steppe: horses, wheat
-                    case 0:  t.resource=roll<(water?140:70)?1:roll<(water?200:130)?4:0;break;                       // grassland: wheat, horses
-                    case 16: t.resource=roll<70?4:roll<130?5:0;break;                                               // savanna: horses, spices
+                    case 7:  t.resource=roll<45?3:roll<150?1:roll<185?17:0;break;                                   // river: placer gold, wheat, cattle
+                    case 3:  t.resource=roll<40?3:roll<120?19:0;break;                                              // desert: rare gold, camels
+                    case 20: t.resource=roll<50?4:roll<120?16:roll<170?19:roll<(water?270:220)?1:0;break;           // dry steppe: horses, sheep, camels, wheat
+                    case 0:  t.resource=roll<(water?140:70)?1:roll<(water?160:90)?4:roll<(water?210:140)?17:roll<(water?250:180)?16:roll<(water?285:215)?18:0;break; // grassland: wheat, horses, cattle, sheep, pigs
+                    case 16: t.resource=roll<20?4:roll<80?17:roll<110?19:roll<170?5:0;break;                        // savanna: horses, cattle, camels, spices
+                    case 1:  t.resource=roll<55?18:0;break;                                                          // forest: pigs
                     case 11: t.resource=roll<160?5:0;break;                                                          // jungle: spices
                     case 19: t.resource=roll<90?5:0;break;                                                           // mangrove: spices
                 }

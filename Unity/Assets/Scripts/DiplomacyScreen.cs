@@ -9,23 +9,7 @@ namespace ParadigmRealm {
 // it would sign and exactly why (hover a row). Claims and trade deals open in place; More holds the inbox, the record and details.
 public partial class RealmGame {
  bool diplomacyDiscuss,diplomacyChooser,diplomacyDirect,customDeal,claimsView;string dipReply="";int dipReplyPartner=-1;
- // The Diplomacy button first asks which leader to contact; the talk that follows is with that leader alone.
- void DrawLeaderChooser(int[] known){
-  DipPanel(new Rect(400,84,480,44),.9f);GUI.Label(new Rect(400,88,480,34),"Choose a leader to contact",dipBig);
-  var backdrop=Art("diplomacy-backdrop");
-  // Up to 15 leaders (with the native peoples): two rows of up to eight cards, smaller as more are known.
-  int cols=known.Length<=5?known.Length:Math.Min(8,(known.Length+1)/2);int rows=(known.Length+cols-1)/cols;float gap=14,cw=Math.Min(220,(1220-(cols-1)*gap)/cols),ch=Math.Min(300,(580-(rows-1)*gap)/rows),x0=640-(cols*cw+(cols-1)*gap)/2;
-  for(int k=0;k<known.Length;k++){
-   int other=known[k];var card=new Rect(x0+(k%cols)*(cw+gap),140+(k/cols)*(ch+gap),cw,ch);DipPanel(card,1);var pic=new Rect(card.x+4,card.y+4,card.width-8,card.height-60);
-   if(backdrop!=null)DrawCropped(pic,backdrop,BackdropAspect);var face=Portrait(world.nations[other].portrait,world.Era(other));if(face!=null)DrawPortrait(pic,face);
-   Fill(new Rect(card.x+4,card.yMax-56,card.width-8,52),new Color(.04f,.06f,.12f,.96f));FitLabel(new Rect(card.x+2,card.yMax-54,card.width-4,24),world.NationName(other).ToUpperInvariant(),new GUIStyle(dipCaps){fontSize=14},9);
-   Color ink;GUI.Label(new Rect(card.x,card.yMax-30,card.width,22),MoodText(other,out ink),new GUIStyle(dipBadge){normal={textColor=ink}});
-   int waiting=world.offers.Count(o=>o.to==0&&o.from==other&&o.status==0&&o.expires>world.turn);if(waiting>0){var b=new Rect(card.xMax-30,card.y+8,22,22);Fill(b,new Color(.75f,.18f,.14f));GUI.Label(b,waiting.ToString(),dipBadge);}
-   if(card.Contains(Event.current.mousePosition))Fill(new Rect(card.x,card.y,card.width,2),new Color(1f,.82f,.42f));
-   if(GUI.Button(card,"",GUIStyle.none)){diplomacyPartner=other;diplomacyChooser=false;ResetDiplomacyUI();}
-  }
-  if(DipButton(new Rect(560,730,160,44),"Leave",new Color(.1f,.16f,.3f))){detailsScreen="";GUIUtility.ExitGUI();}
- }GUIStyle dipTitle,dipName,dipQuote,dipRow,dipBadge,dipCaps,dipBig;
+ GUIStyle dipTitle,dipName,dipQuote,dipRow,dipBadge,dipCaps,dipBig;
  void DiplomacyStyles(){
   if(dipTitle!=null)return;
   dipTitle=new GUIStyle(hudTitle){fontSize=26,alignment=TextAnchor.MiddleCenter};
@@ -103,53 +87,216 @@ public partial class RealmGame {
  void DipBar(Rect r,string label,int value,Color fill){Fill(r,new Color(.03f,.05f,.1f,.95f));Fill(new Rect(r.x+1,r.y+1,(r.width-2)*Mathf.Clamp01(value/100f),r.height-2),fill);GUI.Label(r,label+"  "+value+" / 100",new GUIStyle(dipBadge){fontSize=12});}
  // One row of a two-button line. Returns true when clicked; reason greys it and is shown on hover with what the button does.
  bool DipAction(Rect r,string text,string reason,string what,Color face){bool enabled=GUI.enabled;GUI.enabled=enabled&&reason=="";bool hit=DipButton(r,text,face);GUI.enabled=enabled;Tip(r,what,null,reason);return hit;}
+ // ---------- The Council of Realms and the Imperial Court (owner request, 14 Nov 2026) ----------
+ // The owner's two mockups: the Diplomacy button opens the Council of Realms, every known leader in a painted hall (more cards,
+ // smaller, as more civilisations are met) with filters, a search box and the chosen leader's summary beside the hall; talking to
+ // one leader opens the Court, the leader's scene and relations on the left and agreements and actions on the right. Gold icons
+ // and the hall were made in SpriteCook (Resources/UI/Diplomacy, Visuals/council-hall).
+ readonly Dictionary<string,Texture2D> dipIcons=new Dictionary<string,Texture2D>();
+ Texture2D DipIcon(string name){Texture2D t;if(!dipIcons.TryGetValue(name,out t)){t=Resources.Load<Texture2D>("UI/Diplomacy/dip-"+name);if(t!=null)t.filterMode=FilterMode.Trilinear;dipIcons[name]=t;}return t;}
+ void DrawDipIcon(string name,Rect r,Color? tint=null){var t=DipIcon(name);if(t==null)return;var old=GUI.color;if(tint.HasValue)GUI.color=tint.Value;GUI.DrawTexture(r,t,ScaleMode.ScaleToFit,true);GUI.color=old;}
+ static readonly Color CourtCream=new Color(.95f,.9f,.78f),CourtGold=new Color(.86f,.7f,.39f),CourtNavy=new Color(.08f,.12f,.22f),CourtGoldFace=new Color(.52f,.4f,.17f),CourtRed=new Color(.45f,.08f,.07f);
+ GUIStyle courtTitle,courtSub,courtCaps,courtText,courtItalic;
+ void CourtStyles(){
+  if(courtTitle!=null)return;DiplomacyStyles();
+  courtTitle=new GUIStyle(hudTitle){fontSize=30,alignment=TextAnchor.MiddleCenter,clipping=TextClipping.Overflow};courtTitle.normal.textColor=CourtCream;
+  courtSub=new GUIStyle(hudLabel){fontSize=17,fontStyle=FontStyle.Italic,alignment=TextAnchor.MiddleCenter,clipping=TextClipping.Overflow};courtSub.normal.textColor=CourtCream;
+  courtCaps=new GUIStyle(hudTitle){fontSize=16,alignment=TextAnchor.MiddleLeft,clipping=TextClipping.Overflow};
+  courtText=new GUIStyle(hudLabel){fontSize=14,clipping=TextClipping.Overflow};courtText.normal.textColor=CourtCream;
+  courtItalic=new GUIStyle(courtText){fontStyle=FontStyle.Italic,wordWrap=true};
+ }
+ // A heading in gold capitals with a fine rule and a small diamond after it.
+ void CourtHeading(Rect r,string text){var s=new GUIStyle(courtCaps);float w=s.CalcSize(new GUIContent(text.ToUpperInvariant())).x;GUI.Label(new Rect(r.x,r.y-2,w+4,r.height+4),text.ToUpperInvariant(),s);
+  float x=r.x+w+12,cy=Mathf.Round(r.center.y);if(x<r.xMax-20){Fill(new Rect(x,cy,r.xMax-x,1),new Color(CourtGold.r,CourtGold.g,CourtGold.b,.6f));float mx=x+(r.xMax-x)*.4f;Fill(new Rect(mx-3,cy-3,7,7),CourtGold);Fill(new Rect(mx-2,cy-2,5,5),new Color(.05f,.08f,.15f));}}
+ // The top banner (emblem, title and subtitle, close cross) and the strip of figures along the bottom.
+ bool CourtChrome(string titleText,string subtitle){
+  var full=new Rect(0,0,1280,800);Fill(full,new Color(.03f,.05f,.1f));
+  {var painting=Art("title-world");if(painting!=null){GUI.DrawTexture(full,painting,ScaleMode.ScaleAndCrop);Fill(full,new Color(.03f,.05f,.11f,.86f));}}
+  // A sprinkling of faint stars over the navy, fixed so it does not shimmer.
+  for(int k=0;k<70;k++){int h=(k*7919+13)%100003;float sx=h%1280,sy=(h/1280*37)%800;Fill(new Rect(sx,sy,1,1),new Color(1,1,1,.12f+(k%3)*.06f));}
+  GoldFrame(new Rect(-14,-14,1308,84));
+  DrawDipIcon("compass",new Rect(30,10,44,44));GUI.Label(new Rect(82,12,260,26),"PARADIGM REALM",new GUIStyle(courtCaps){fontSize=17,normal={textColor=CourtCream}});
+  Fill(new Rect(82,42,200,1),new Color(CourtGold.r,CourtGold.g,CourtGold.b,.6f));
+  GUI.Label(new Rect(340,2,600,40),titleText.ToUpperInvariant(),courtTitle);
+  GUI.Label(new Rect(340,38,600,26),subtitle,courtSub);
+  {var lineInk=new Color(CourtGold.r,CourtGold.g,CourtGold.b,.6f);float tw=courtTitle.CalcSize(new GUIContent(titleText.ToUpperInvariant())).x;Fill(new Rect(640-tw/2-150,22,130,1),lineInk);Fill(new Rect(640+tw/2+20,22,130,1),lineInk);}
+  var close=new Rect(1226,12,40,40);Fill(close,CourtNavy);Fill(new Rect(close.x,close.y,close.width,1),CourtGold);Fill(new Rect(close.x,close.yMax-1,close.width,1),CourtGold);Fill(new Rect(close.x,close.y,1,close.height),CourtGold);Fill(new Rect(close.xMax-1,close.y,1,close.height),CourtGold);
+  GUI.Label(close,"✕",new GUIStyle(courtTitle){fontSize=22});
+  return GUI.Button(close,"",GUIStyle.none);
+ }
+ void CourtFooter(Rect bar){GoldFrame(bar);}
+ void FooterFigure(float cx,string icon,string text,string extra){var s=new GUIStyle(courtText){fontSize=16,alignment=TextAnchor.MiddleLeft};var it=new GUIStyle(courtItalic){fontSize=14,wordWrap=false,alignment=TextAnchor.MiddleLeft};
+  float w=s.CalcSize(new GUIContent(text)).x+(extra==""?0:8+it.CalcSize(new GUIContent(extra)).x)+34,x=cx-w/2;DrawDipIcon(icon,new Rect(x,763,26,26));GUI.Label(new Rect(x+34,760,w,30),text,s);if(extra!="")GUI.Label(new Rect(x+40+s.CalcSize(new GUIContent(text)).x,761,200,30),extra,it);}
+ void FooterRule(float x){Fill(new Rect(x,762,1,28),new Color(CourtGold.r,CourtGold.g,CourtGold.b,.5f));}
+ // A court button: a face colour, a gold edge, an optional icon at the left, the caption, an optional italic note and arrow.
+ bool CourtButton(Rect r,string icon,string text,Color face,string note="",bool arrow=false){
+  bool hover=r.Contains(Event.current.mousePosition)&&GUI.enabled;
+  Fill(r,face);Fill(new Rect(r.x+1,r.y+1,r.width-2,r.height*.45f),new Color(1,1,1,.06f));var edge=GUI.enabled?CourtGold:new Color(.45f,.4f,.32f);Fill(new Rect(r.x,r.y,r.width,1),edge);Fill(new Rect(r.x,r.yMax-1,r.width,1),edge);Fill(new Rect(r.x,r.y,1,r.height),edge);Fill(new Rect(r.xMax-1,r.y,1,r.height),edge);
+  if(hover)Fill(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new Color(1,1,1,.08f));
+  var keep=GUI.color;if(!GUI.enabled)GUI.color=new Color(1,1,1,.45f);
+  float iconW=icon==""?0:r.height-8;if(icon!="")DrawDipIcon(icon,new Rect(r.x+12,r.y+4,iconW,iconW));
+  float noteW=0;if(note!=""){var ns=new GUIStyle(courtItalic){fontSize=13,wordWrap=false,alignment=TextAnchor.MiddleRight};noteW=Mathf.Min(r.width*.5f,ns.CalcSize(new GUIContent(note)).x+8);GUI.Label(new Rect(r.xMax-noteW-(arrow?30:12),r.y,noteW,r.height),note,ns);}
+  var ts=new GUIStyle(courtText){fontSize=18,alignment=note==""?TextAnchor.MiddleCenter:TextAnchor.MiddleLeft};if(displayFont!=null)ts.font=displayFont;
+  var tr=note==""?new Rect(r.x+iconW+12,r.y,r.width-iconW-24-(arrow?20:0),r.height):new Rect(r.x+iconW+28,r.y,r.width-iconW-noteW-60,r.height);
+  while(ts.fontSize>11&&ts.CalcSize(new GUIContent(text)).x>tr.width)ts.fontSize--;GUI.Label(tr,text,ts);
+  if(arrow)GUI.Label(new Rect(r.xMax-26,r.y,20,r.height),"▸",new GUIStyle(courtText){fontSize=16,alignment=TextAnchor.MiddleCenter});
+  GUI.color=keep;return GUI.Button(r,"",GUIStyle.none)&&GUI.enabled;}
+ bool CourtAction(Rect r,string icon,string text,string reason,string what,Color face,string note="",bool arrow=false){bool enabled=GUI.enabled;GUI.enabled=enabled&&reason=="";bool hit=CourtButton(r,icon,text,face,note,arrow);GUI.enabled=enabled;Tip(r,what,null,reason);return hit;}
+ // The attitude badge: a framed plate in the attitude's colour.
+ void MoodBadge(Rect r,int partner,int fontSize=15){Color ink;string mood=MoodText(partner,out ink);Fill(r,new Color(ink.r*.22f,ink.g*.22f,ink.b*.22f,.95f));var e=new Color(ink.r,ink.g,ink.b,.9f);Fill(new Rect(r.x,r.y,r.width,1),e);Fill(new Rect(r.x,r.yMax-1,r.width,1),e);Fill(new Rect(r.x,r.y,1,r.height),e);Fill(new Rect(r.xMax-1,r.y,1,r.height),e);
+  var s=new GUIStyle(courtCaps){fontSize=fontSize,alignment=TextAnchor.MiddleCenter};s.normal.textColor=ink;GUI.Label(r,mood,s);}
+ // Which group of the Council a leader falls in: 0 allies, 1 neutral, 2 rivals, 3 at war.
+ int CouncilGroup(int o){if(world.AtWar(0,o))return 3;int a=world.Attitude(o,0);if(a==Attitudes.Cordial||a==Attitudes.Friendly||a==Attitudes.Loyal)return 0;if(a==Attitudes.Rival||a==Attitudes.Hostile||a==Attitudes.Unfriendly||world.Rival(0,o))return 2;return 1;}
+ static readonly string[] CouncilGroupIcons={"laurel","scales","swords","swords"};
+ int councilFilter,councilPick=-1;string councilSearch="";
+ void DrawCouncil(int[] known){
+  if(CourtChrome("The Council of Realms","Known Civilisations")){detailsScreen="";GUIUtility.ExitGUI();}
+  // Filters and the search box.
+  string[] tabs={"All Contacts ("+known.Length+")","Allies","Neutral","Rivals","At War"};string[] tabIcons={"","laurel","scales","swords","swords"};
+  GoldFrame(new Rect(8,72,940,46));
+  for(int k=0;k<tabs.Length;k++){var tr=new Rect(22+k*184,80,174,30);bool on=councilFilter==k;
+   if(CourtButton(tr,tabIcons[k],tabs[k],on?CourtGoldFace:CourtNavy))councilFilter=k;
+   if(on){Fill(new Rect(tr.x,tr.y,tr.width,2),new Color(1f,.86f,.5f));}}
+  GoldFrame(new Rect(956,72,316,46));
+  {var box=new Rect(972,80,284,30);Fill(box,new Color(.04f,.06f,.12f));DrawDipIcon("compass",new Rect(box.x+6,box.y+5,20,20));
+   var fs=new GUIStyle(courtText){fontSize=15,alignment=TextAnchor.MiddleLeft};fs.normal.background=null;fs.focused.background=null;fs.focused.textColor=CourtCream;fs.hover.textColor=CourtCream;
+   GUI.SetNextControlName("councilSearch");councilSearch=GUI.TextField(new Rect(box.x+32,box.y,box.width-38,box.height),councilSearch??"",40,fs);
+   if(string.IsNullOrEmpty(councilSearch)&&GUI.GetNameOfFocusedControl()!="councilSearch")GUI.Label(new Rect(box.x+34,box.y,box.width-40,box.height),"Search contacts...",new GUIStyle(courtItalic){fontSize=15,wordWrap=false,alignment=TextAnchor.MiddleLeft,normal={textColor=new Color(.7f,.66f,.58f)}});}
+  string q=(councilSearch??"").Trim().ToLowerInvariant();
+  var shown=known.Where(o=>(councilFilter==0||CouncilGroup(o)==councilFilter-1)&&(q==""||world.NationName(o).ToLowerInvariant().Contains(q)||(world.nations[o].leader??"").ToLowerInvariant().Contains(q))).ToArray();
+  if(councilPick<0||!known.Contains(councilPick))councilPick=shown.Length>0?shown[0]:known[0];
+  // ---- The hall ----
+  var hall=new Rect(8,124,940,620);GoldFrame(hall);var inner=new Rect(hall.x+14,hall.y+14,hall.width-28,hall.height-28);
+  {var art=Art("council-hall");if(art!=null)DrawCropped(inner,art,art.width/(float)art.height);else Fill(inner,new Color(.2f,.18f,.16f));Fill(new Rect(inner.x,inner.yMax-34,inner.width,34),new Color(.03f,.05f,.1f,.82f));}
+  var area=new Rect(inner.x+10,inner.y+12,inner.width-20,inner.height-58);
+  if(shown.Length==0)GUI.Label(area,"No known civilisation in this group.",new GUIStyle(courtTitle){fontSize=20});
+  else{
+   // The cards grow fewer per row only while they still fit: one row up to five, two up to twelve, then three, so the hall
+   // fills as more civilisations are met.
+   int rows=shown.Length<=5?1:shown.Length<=12?2:3,cols=(shown.Length+rows-1)/rows;float gap=12;
+   float ch=Mathf.Min(rows==1?400:270,(area.height-(rows-1)*gap)/rows),pw=Mathf.Min((area.width-(cols-1)*gap)/cols,(ch-58)*.86f),cw=pw;
+   for(int k=0;k<shown.Length;k++){int o=shown[k];int row=k/cols,inRow=Math.Min(cols,shown.Length-row*cols);float x0=area.center.x-(inRow*cw+(inRow-1)*gap)/2,y0=area.center.y-(rows*ch+(rows-1)*gap)/2;
+    var card=new Rect(x0+(k%cols)*(cw+gap),y0+row*(ch+gap),cw,ch);DrawCouncilCard(card,o,o==councilPick);
+    if(GUI.Button(card,"",GUIStyle.none)){if(councilPick==o&&Event.current.clickCount>=2){OpenCourt(o);GUIUtility.ExitGUI();}councilPick=o;}}}
+  {var lg=new Rect(inner.x+12,inner.yMax-32,inner.width-24,30);GUI.Label(lg,"Select a leader, then Open Diplomacy (or double-click)",new GUIStyle(courtItalic){fontSize=14,wordWrap=false,alignment=TextAnchor.MiddleLeft});
+   string[] names={"Allied","Neutral","Rival","At War"};float x=lg.xMax-4;
+   for(int k=3;k>=0;k--){var s=new GUIStyle(courtItalic){fontSize=13,wordWrap=false,alignment=TextAnchor.MiddleLeft};string t="= "+names[k];float w=s.CalcSize(new GUIContent(t)).x;x-=w;GUI.Label(new Rect(x,lg.y,w+4,lg.height),t,s);x-=24;DrawDipIcon(CouncilGroupIcons[k],new Rect(x,lg.y+5,20,20),k==3?new Color(1f,.45f,.4f):(Color?)null);x-=18;}}
+  // ---- The chosen leader ----
+  DrawCouncilSide(new Rect(956,124,316,620),councilPick);
+  // ---- Figures along the bottom ----
+  CourtFooter(new Rect(-14,748,1308,66));
+  FooterFigure(150,"people",known.Length+" known civilisation"+(known.Length==1?"":"s"),"");FooterRule(330);
+  FooterFigure(520,"compass","Influence "+world.nations[0].influence,"(+"+world.InfluencePerTurn(0)+" / turn)");FooterRule(720);
+  FooterFigure(860,"people","Envoys "+world.EnvoysOut(0)+" / "+world.EnvoyLimit(0),"");FooterRule(990);
+  if(CourtButton(new Rect(1030,758,226,34),"","Return to Map",CourtNavy)){detailsScreen="";GUIUtility.ExitGUI();}
+  DrawTip(new Rect(956,124,316,620));
+ }
+ void OpenCourt(int o){diplomacyPartner=o;diplomacyChooser=false;ResetDiplomacyUI();}
+ void DrawCouncilCard(Rect card,int o,bool chosen){
+  var pn=world.nations[o];var pic=new Rect(card.x,card.y,card.width,card.height-58);
+  if(chosen){Fill(new Rect(card.x-6,card.y-6,card.width+12,card.height+12),new Color(1f,.82f,.4f,.18f));Fill(new Rect(card.x-3,card.y-3,card.width+6,card.height+6),new Color(1f,.82f,.4f,.35f));}
+  Fill(new Rect(pic.x-2,pic.y-2,pic.width+4,pic.height+4),chosen?new Color(1f,.86f,.5f):CourtGold);
+  {var bd=Art("diplomacy-backdrop");if(bd!=null)DrawCropped(pic,bd,BackdropAspect);else Fill(pic,new Color(.15f,.2f,.3f));}
+  var face=Portrait(pn.portrait,world.Era(o));if(face!=null)DrawPortrait(pic,face);
+  {var flag=FlagTexture(o);if(flag!=null){var fr=new Rect(pic.x+6,pic.y+6,Mathf.Min(42,pic.width*.28f),Mathf.Min(28,pic.width*.19f));Fill(new Rect(fr.x-1,fr.y-1,fr.width+2,fr.height+2),CourtGold);GUI.DrawTexture(fr,flag,ScaleMode.StretchToFill,true);}}
+  int waiting=world.offers.Count(x=>x.to==0&&x.from==o&&x.status==0&&x.expires>world.turn);if(waiting>0){var b=new Rect(pic.xMax-28,pic.y+6,22,22);Fill(b,new Color(.75f,.18f,.14f));GUI.Label(b,waiting.ToString(),dipBadge);}
+  var plate=new Rect(card.x-4,card.yMax-56,card.width+8,56);Fill(plate,new Color(.04f,.06f,.12f,.97f));Fill(new Rect(plate.x,plate.y,plate.width,1),CourtGold);Fill(new Rect(plate.x,plate.yMax-1,plate.width,1),CourtGold);Fill(new Rect(plate.x,plate.y,1,plate.height),CourtGold);Fill(new Rect(plate.xMax-1,plate.y,1,plate.height),CourtGold);
+  FitLabel(new Rect(plate.x+4,plate.y+3,plate.width-8,24),world.NationName(o).ToUpperInvariant(),new GUIStyle(courtCaps){fontSize=15,alignment=TextAnchor.MiddleCenter,normal={textColor=CourtCream}},9);
+  Color ink;string mood=MoodText(o,out ink);var ms=new GUIStyle(courtCaps){fontSize=13,alignment=TextAnchor.MiddleLeft};ms.normal.textColor=ink;while(ms.fontSize>9&&ms.CalcSize(new GUIContent(mood)).x>plate.width-40)ms.fontSize--;
+  float mw=ms.CalcSize(new GUIContent(mood)).x,mx=plate.center.x-(mw+24)/2;int g=CouncilGroup(o);DrawDipIcon(CouncilGroupIcons[g],new Rect(mx,plate.y+30,18,18),g==3?new Color(1f,.45f,.4f):(Color?)null);GUI.Label(new Rect(mx+24,plate.y+27,mw+6,24),mood,ms);
+ }
+ void DrawCouncilSide(Rect side,int o){
+  GoldFrame(side);var pn=world.nations[o];float x=side.x+18,w=side.width-36,y=side.y+18;
+  {var flag=FlagTexture(o);var fr=new Rect(x,y+2,60,40);Fill(new Rect(fr.x-2,fr.y-2,fr.width+4,fr.height+4),CourtGold);if(flag!=null)GUI.DrawTexture(fr,flag,ScaleMode.StretchToFill,true);}
+  FitLabel(new Rect(x+70,y,w-70,44),world.NationName(o).ToUpperInvariant(),new GUIStyle(courtCaps){fontSize=21,normal={textColor=CourtCream}},11);y+=50;
+  {var pr=new Rect(x,y,96,96);Fill(new Rect(pr.x-3,pr.y-3,pr.width+6,pr.height+6),CourtGold);Fill(pr,new Color(.12f,.15f,.24f));var face=Portrait(pn.portrait,world.Era(o));if(face!=null)DrawPortrait(pr,face);}
+  {var it=new GUIStyle(courtItalic){fontSize=16,alignment=TextAnchor.UpperLeft};GUI.Label(new Rect(x+108,y,w-108,44),string.IsNullOrEmpty(pn.leader)?world.NationName(o):pn.leader,it);
+   GUI.Label(new Rect(x+108,y+40,w-108,22),DiplomacyFlavours.PostureNames[world.Posture(o)],new GUIStyle(it){fontSize=14});MoodBadge(new Rect(x+108,y+66,w-108,28),o,14);}
+  y+=108;
+  CourtHeading(new Rect(x,y,w,22),"Relations");y+=26;
+  {string[] icons={"handshake","mask","crown"};string[] text={"Trust: "+world.Trust(o,0),"Fear: "+world.Threat(o,0),"Strength: "+Attitudes.Power[world.PowerLevel(0,o)]};
+   for(int k=0;k<3;k++){var row=new Rect(x,y,w,27);Fill(row,new Color(.06f,.09f,.17f,.9f));Fill(new Rect(row.x,row.yMax-1,row.width,1),new Color(CourtGold.r,CourtGold.g,CourtGold.b,.35f));DrawDipIcon(icons[k],new Rect(row.x+8,row.y+3,22,22));GUI.Label(new Rect(row.x+40,row.y,row.width-44,row.height),text[k],new GUIStyle(courtText){fontSize=15,alignment=TextAnchor.MiddleLeft});y+=29;}}
+  y+=4;CourtHeading(new Rect(x,y,w,22),"Agreements");y+=26;
+  {var held=Enumerable.Range(0,Pacts.Count).Where(k=>world.Pact(0,o,k)).Select(k=>Pacts.Names[k]).ToList();DrawDipIcon("book",new Rect(x+4,y+2,22,22));
+   GUI.Label(new Rect(x+34,y,w-34,44),held.Count==0?"No active agreements.":string.Join(", ",held.ToArray())+".",new GUIStyle(courtItalic){fontSize=14});y+=40;}
+  CourtHeading(new Rect(x,y,w,22),"Latest Contact");y+=26;
+  {string said=world.Greeting(o);var qs=new GUIStyle(courtItalic){fontSize=14,alignment=TextAnchor.UpperCenter};var qr=new Rect(x,y,w,side.yMax-16-4*38-6-y);while(qs.fontSize>10&&qs.CalcHeight(new GUIContent("“"+said+"”"),qr.width)>qr.height)qs.fontSize--;GUI.Label(qr,"“"+said+"”",qs);y+=66;}
+  float by=side.yMax-16-4*38;bool war=world.AtWar(0,o);
+  if(CourtButton(new Rect(x,by,w,34),"handshake","Open Diplomacy",CourtGoldFace)){OpenCourt(o);GUIUtility.ExitGUI();}
+  if(CourtAction(new Rect(x,by+38,w,34),"coins",war?"Offer Peace Terms":"Propose Trade",!war&&world.Rivals(0,o)?"No dealings between rivals.":"",war?"Offer peace with gold and resources.":"Exchange gold, payments and resources.",CourtNavy)){OpenCourt(o);customDeal=true;GUIUtility.ExitGUI();}
+  if(CourtButton(new Rect(x,by+76,w,34),"scroll","View Agreements",CourtNavy)){OpenCourt(o);GUIUtility.ExitGUI();}
+  if(CourtButton(new Rect(x,by+114,w,34),"gateway","View Civilisation",CourtNavy)){OpenCourt(o);diplomacyDiscuss=true;detailsScroll=Vector2.zero;GUIUtility.ExitGUI();}
+ }
+ // ---- The Court: one leader ----
+ static readonly string[] PactIcons={"handshake","dove","coins","book","shield","gateway"};
+ void DrawCourtScene(int partner,Rect scene){
+  var pn=world.nations[partner];GoldFrame(scene);var inner=new Rect(scene.x+16,scene.y+16,scene.width-32,scene.height-32);
+  var backdrop=Art("diplomacy-backdrop");if(backdrop!=null)DrawCropped(inner,backdrop,BackdropAspect);else Fill(inner,new Color(.3f,.28f,.36f));
+  var face=Portrait(pn.portrait,world.Era(partner));if(face!=null){float h=inner.height-6,w2=Mathf.Min(inner.width-40,h*.9f);DrawPortrait(new Rect(inner.center.x-w2/2,inner.y+6,w2,h),face);}
+  {var flag=FlagTexture(partner);if(flag!=null){var fr=new Rect(inner.x+12,inner.y+12,84,56);Fill(new Rect(fr.x-3,fr.y-3,fr.width+6,fr.height+6),new Color(.16f,.11f,.05f));Fill(new Rect(fr.x-2,fr.y-2,fr.width+4,fr.height+4),CourtGold);GUI.DrawTexture(fr,flag,ScaleMode.StretchToFill,true);}}
+  // The name plate across the foot of the picture, laurels either side.
+  var plate=new Rect(inner.center.x-230,inner.yMax-78,460,70);Fill(new Rect(plate.x-4,plate.y-4,plate.width+8,plate.height+8),new Color(.16f,.11f,.05f,.9f));Fill(plate,new Color(.05f,.08f,.15f,.97f));
+  var e=CourtGold;Fill(new Rect(plate.x,plate.y,plate.width,2),e);Fill(new Rect(plate.x,plate.yMax-2,plate.width,2),e);Fill(new Rect(plate.x,plate.y,2,plate.height),e);Fill(new Rect(plate.xMax-2,plate.y,2,plate.height),e);
+  DrawDipIcon("laurel",new Rect(plate.x+8,plate.y+9,52,52));DrawDipIcon("laurel",new Rect(plate.xMax-60,plate.y+9,52,52));
+  FitLabel(new Rect(plate.x+66,plate.y+4,plate.width-132,36),(string.IsNullOrEmpty(pn.leader)?world.NationName(partner):pn.leader).ToUpperInvariant(),new GUIStyle(courtCaps){fontSize=24,alignment=TextAnchor.MiddleCenter,normal={textColor=CourtCream}},12);
+  FitLabel(new Rect(plate.x+66,plate.y+38,plate.width-132,26),world.NationName(partner)+"  •  "+DiplomacyFlavours.PostureNames[world.Posture(partner)],new GUIStyle(courtText){fontSize=16,alignment=TextAnchor.MiddleCenter},10);
+ }
+ void DrawCourtRelations(int partner,Rect box){
+  GoldFrame(box);float x=box.x+24,w=box.width-48,y=box.y+16;
+  GUI.Label(new Rect(x,y,140,30),"RELATIONS  •",new GUIStyle(courtCaps){fontSize=19});MoodBadge(new Rect(x+150,y+1,170,28),partner,14);
+  Tip(new Rect(x+150,y+1,170,28),Attitudes.Names[world.Attitude(partner,0)]+": "+Attitudes.Texts[world.Attitude(partner,0)]);y+=38;
+  var lines=world.OpinionLines(partner,0);var fade=world.MemoryLines(partner,0).Where(m=>m.turnsLeft>0).GroupBy(m=>m.text).ToDictionary(g=>g.Key,g=>g.First().turnsLeft);
+  int room=(int)((box.yMax-16-y)/22)-1,shown=Math.Max(0,Math.Min(room,lines.Count));
+  for(int k=0;k<shown;k++){var l=lines[k];int left;GUI.Label(new Rect(x+4,y,16,22),"•",courtText);GUI.Label(new Rect(x+20,y,w-90,22),l.Key+(fade.TryGetValue(l.Key,out left)?"  (fades in ~"+left+" turns)":""),new GUIStyle(courtText){fontSize=14});
+   GUI.Label(new Rect(x+w-70,y,70,22),(l.Value>0?"+":"")+l.Value,new GUIStyle(courtText){fontSize=14,alignment=TextAnchor.MiddleRight,normal={textColor=l.Value>0?DipGood:DipBad}});y+=22;}
+  GUI.Label(new Rect(x+4,y,16,22),"•",courtText);GUI.Label(new Rect(x+20,y,w-20,22),Attitudes.Texts[world.Attitude(partner,0)]+(lines.Count>shown?"   (+"+(lines.Count-shown)+" more under More)":""),new GUIStyle(courtText){fontSize=14});
+ }
  void DrawDiplomacyScreen(){
-  DiplomacyStyles();
+  DiplomacyStyles();CourtStyles();
   DropdownClicks();
   tipTitle=null;
-  // A painted world behind the talks instead of plain black (owner request): the title landscape under a navy veil, darker
-  // towards the top and bottom edges so the panels and cards stand out.
-  {var full=new Rect(0,0,1280,800);var painting=Art("title-world");Fill(full,new Color(.03f,.05f,.1f,1f));if(painting!=null)GUI.DrawTexture(full,painting,ScaleMode.ScaleAndCrop);
-   Fill(full,new Color(.03f,.05f,.11f,diplomacyChooser?.5f:.62f));for(int band=0;band<8;band++){float a=.09f*(8-band)/8f;Fill(new Rect(0,band*14,1280,14),new Color(.02f,.03f,.07f,a));Fill(new Rect(0,800-(band+1)*14,1280,14),new Color(.02f,.03f,.07f,a));}}
-  DipPanel(new Rect(450,6,380,60));GUI.Label(new Rect(450,8,380,34),"PARADIGM REALM",dipTitle);GUI.Label(new Rect(450,40,380,22),"—  D I P L O M A C Y  —",dipCaps);
   var known=Enumerable.Range(1,world.civCount-1).Where(i=>world.met[i]).ToArray();
-  if(known.Length==0){DipPanel(new Rect(340,300,600,120));GUI.Label(new Rect(340,320,600,40),"No civilisations met yet",dipBig);GUI.Label(new Rect(340,360,600,30),"Explore to meet other civilisations.",new GUIStyle(dipRow){alignment=TextAnchor.MiddleCenter});
-   if(DipButton(new Rect(560,440,160,44),"Leave",new Color(.1f,.16f,.3f))){detailsScreen="";GUIUtility.ExitGUI();}return;}
-  if(diplomacyChooser){DrawLeaderChooser(known);return;}
+  if(known.Length==0){
+   if(CourtChrome("The Council of Realms","Known Civilisations")){detailsScreen="";GUIUtility.ExitGUI();}
+   var box=new Rect(340,290,600,170);GoldFrame(box);GUI.Label(new Rect(340,318,600,40),"No civilisations met yet",new GUIStyle(courtTitle){fontSize=22});
+   GUI.Label(new Rect(340,356,600,30),"Explore: seeing another people's borders, units or cities opens the talks.",new GUIStyle(courtText){alignment=TextAnchor.MiddleCenter});
+   if(CourtButton(new Rect(560,398,160,40),"","Leave",CourtNavy)){detailsScreen="";GUIUtility.ExitGUI();}return;}
+  if(diplomacyChooser){DrawCouncil(known);DrawOpenDropdown();return;}
   if(!known.Contains(diplomacyPartner))diplomacyPartner=known[0];int partner=diplomacyPartner;var pn=world.nations[partner];bool war=world.AtWar(0,partner);
-  // ---- Scene: the leader before the painted coast ----
-  var scene=new Rect(14,74,800,712);DipPanel(scene,1);var inner=new Rect(scene.x+4,scene.y+4,scene.width-8,scene.height-8);
-  var backdrop=Art("diplomacy-backdrop");
-  if(backdrop!=null)DrawCropped(inner,backdrop,BackdropAspect);else{Fill(inner,new Color(.35f,.3f,.42f));Fill(new Rect(inner.x,inner.y+inner.height*.6f,inner.width,inner.height*.4f),new Color(.15f,.25f,.4f));}
-  {var banner=FlagTexture(partner);var br=new Rect(inner.x+18,inner.y+10,66,44);if(banner!=null){Fill(new Rect(br.x-2,br.y-6,2,br.height+120),new Color(.32f,.22f,.12f));GUI.DrawTexture(br,banner,ScaleMode.StretchToFill,true);}}
-  var face=Portrait(pn.portrait,world.Era(partner));
-  if(face!=null){float h=inner.height-36,w=h*.9f;var frame=new Rect(inner.x+86,inner.y+18,w,h);DipPanel(new Rect(frame.x-4,frame.y-4,frame.width+8,frame.height+8),1);DrawPortrait(frame,face);}
-  if(!diplomacyDiscuss)DrawOpinionPanel(partner,inner);
-  // ---- Right panel ----
-  var side=new Rect(828,74,440,712);DipPanel(side);
+  if(CourtChrome("The Imperial Court","Diplomacy & Agreements")){detailsScreen="";diplomacyDiscuss=false;claimsView=false;customDeal=false;requestsView=false;GUIUtility.ExitGUI();}
+  CourtFooter(new Rect(-14,748,1308,66));
+  FooterFigure(260,"compass","Influence "+world.nations[0].influence,"(+"+world.InfluencePerTurn(0)+" / turn)");FooterRule(470);
+  FooterFigure(640,"people","Envoys "+world.EnvoysOut(0)+" / "+world.EnvoyLimit(0),"");FooterRule(820);
+  FooterFigure(1010,"swords","Rivals "+world.RivalCount(0)+" / "+Pacts.MaxRivals,"");
   if(diplomacyDiscuss){
    // The inbox, the full record and the finer details, in a scrolling page across the whole width.
-   var wide=new Rect(14,74,1254,712);DipPanel(wide);side=wide;
-   GUILayout.BeginArea(new Rect(wide.x+18,wide.y+12,wide.width-36,wide.height-70));detailsScroll=GUILayout.BeginScrollView(detailsScroll,false,false,GUIStyle.none,GUIStyle.none);detailsScroll.x=0;DrawAdvancedDiplomacy();GUILayout.EndScrollView();GUILayout.EndArea();
-   if(DipButton(new Rect(side.x+14,side.yMax-52,side.width-28,40),"Back to the talks",new Color(.1f,.16f,.3f)))diplomacyDiscuss=false;
-   return;}
-  float y=side.y+14;float left=side.x+16,wide2=side.width-32;bool enabled=GUI.enabled;
-  Color navy=new Color(.1f,.16f,.3f),teal=new Color(.07f,.38f,.4f),blue=new Color(.08f,.2f,.3f),red=new Color(.45f,.08f,.07f);
-  // Flag, name, leader and the attitude badge.
-  {var theirFlag=FlagTexture(partner);var fr=new Rect(side.x+14,y+12,72,48);DipPanel(new Rect(fr.x-3,fr.y-3,fr.width+6,fr.height+6),1);if(theirFlag!=null)GUI.DrawTexture(fr,theirFlag,ScaleMode.StretchToFill,true);}
-  FitLabel(new Rect(side.x+92,y,side.width-250,40),world.NationName(partner),dipName,14);
-  GUI.Label(new Rect(side.x+92,y+40,330,22),(string.IsNullOrEmpty(pn.leader)?"":pn.leader+" — ")+DiplomacyFlavours.PostureNames[world.Posture(partner)],new GUIStyle(dipRow){fontSize=14});
-  Color moodInk;string mood=MoodText(partner,out moodInk);var badge=new Rect(side.xMax-154,y+6,138,26);Fill(badge,new Color(moodInk.r*.25f,moodInk.g*.25f,moodInk.b*.25f,.95f));Fill(new Rect(badge.x,badge.y,badge.width,1),moodInk);Fill(new Rect(badge.x,badge.yMax-1,badge.width,1),moodInk);var bs=new GUIStyle(dipBadge);bs.normal.textColor=moodInk;GUI.Label(badge,mood,bs);
-  Tip(badge,Attitudes.Names[world.Attitude(partner,0)]+": "+Attitudes.Texts[world.Attitude(partner,0)]);
-  Fill(new Rect(side.x+92,y+68,side.width-108,1),new Color(.78f,.62f,.32f,.7f));
-  y+=84;
-  var quote=new Rect(side.x+14,y,side.width-28,72);DipPanel(quote,.9f);{string said=dipReplyPartner==partner&&!string.IsNullOrEmpty(dipReply)?dipReply:world.Greeting(partner);var qs=new GUIStyle(dipQuote);var qr=new Rect(quote.x+14,quote.y+4,quote.width-28,quote.height-8);while(qs.fontSize>11&&qs.CalcHeight(new GUIContent(said),qr.width)>qr.height)qs.fontSize--;GUI.Label(qr,said,qs);}y+=80;
-  // Three numbers: their strength beside yours, their trust in you (and how high it can go), their fear of you.
-  {var row=new Rect(left,y,wide2,22);int power=world.PowerLevel(0,partner);
-   GUI.Label(row,"Their strength: "+Attitudes.Power[power]+"   •   Trust in you: "+world.Trust(partner,0)+" of "+world.TrustCap(partner,0)+"   •   Fear of you: "+world.Threat(partner,0),new GUIStyle(dipRow){fontSize=13});
-   Tip(row,"Strength is what you can see of their army and cities beside your own. Trust grows by 1 every second turn while agreements stand, up to the ceiling of the strongest one (an envoy alone allows 20); each 2 trust is 1 opinion. Fear comes from conquest and war without cause; at 50 they become Threatened.");y+=26;}
+   var wide=new Rect(8,72,1264,672);GoldFrame(wide);
+   GUILayout.BeginArea(new Rect(wide.x+28,wide.y+22,wide.width-56,wide.height-90));detailsScroll=GUILayout.BeginScrollView(detailsScroll,false,false,GUIStyle.none,GUIStyle.none);detailsScroll.x=0;DrawAdvancedDiplomacy();GUILayout.EndScrollView();GUILayout.EndArea();
+   if(CourtButton(new Rect(wide.x+28,wide.yMax-60,wide.width-56,40),"scroll","Back to the talks",CourtNavy))diplomacyDiscuss=false;
+   if(CourtButton(new Rect(wide.x+28,wide.y+18,180,30),"","◂ All leaders",CourtNavy)){diplomacyDiscuss=false;diplomacyChooser=true;}
+   DrawOpenDropdown();return;}
+  // ---- Left: the leader's scene, then why they feel as they do ----
+  DrawCourtScene(partner,new Rect(8,72,644,500));
+  DrawCourtRelations(partner,new Rect(8,578,644,166));
+  // ---- Right: everything that can be done with them ----
+  var side=new Rect(660,72,612,672);GoldFrame(side);
+  float y=side.y+22;float left=side.x+24,wide2=side.width-48;bool enabled=GUI.enabled;
+  Color navy=CourtNavy,teal=new Color(.07f,.38f,.4f),blue=CourtNavy,red=CourtRed;
+  {var theirFlag=FlagTexture(partner);var fr=new Rect(left,y,80,52);Fill(new Rect(fr.x-2,fr.y-2,fr.width+4,fr.height+4),CourtGold);if(theirFlag!=null)GUI.DrawTexture(fr,theirFlag,ScaleMode.StretchToFill,true);}
+  FitLabel(new Rect(left+96,y-4,wide2-96-180,38),world.NationName(partner).ToUpperInvariant(),new GUIStyle(courtCaps){fontSize=27,normal={textColor=CourtCream}},13);
+  GUI.Label(new Rect(left+96,y+32,wide2-96,24),(string.IsNullOrEmpty(pn.leader)?"":pn.leader+" — ")+DiplomacyFlavours.PostureNames[world.Posture(partner)],new GUIStyle(courtItalic){fontSize=16,wordWrap=false});
+  {var badge=new Rect(side.xMax-24-170,y+2,170,30);MoodBadge(badge,partner,15);Tip(badge,Attitudes.Names[world.Attitude(partner,0)]+": "+Attitudes.Texts[world.Attitude(partner,0)]);}
+  y+=66;
+  {var quote=new Rect(left,y,wide2,58);Fill(quote,new Color(.03f,.05f,.1f,.92f));Fill(new Rect(quote.x,quote.y,quote.width,1),CourtGold);Fill(new Rect(quote.x,quote.yMax-1,quote.width,1),CourtGold);Fill(new Rect(quote.x,quote.y,1,quote.height),CourtGold);Fill(new Rect(quote.xMax-1,quote.y,1,quote.height),CourtGold);
+   string said=dipReplyPartner==partner&&!string.IsNullOrEmpty(dipReply)?dipReply:"“"+world.Greeting(partner)+"”";var qs=new GUIStyle(courtItalic){fontSize=17,alignment=TextAnchor.MiddleCenter};var qr=new Rect(quote.x+14,quote.y+3,quote.width-28,quote.height-6);while(qs.fontSize>11&&qs.CalcHeight(new GUIContent(said),qr.width)>qr.height)qs.fontSize--;GUI.Label(qr,said,qs);}
+  y+=66;
+  // Their strength beside yours, their trust in you, their fear of you.
+  {float third=wide2/3;string[] icons={"crown","handshake","mask"};string[] text={"Strength: "+Attitudes.Power[world.PowerLevel(0,partner)],"Trust: "+world.Trust(partner,0),"Fear: "+world.Threat(partner,0)};
+   for(int k=0;k<3;k++){var cell=new Rect(left+k*third,y,third,26);var s=new GUIStyle(courtText){fontSize=15,alignment=TextAnchor.MiddleLeft};float tw=s.CalcSize(new GUIContent(text[k])).x+30;float cx=cell.center.x-tw/2;DrawDipIcon(icons[k],new Rect(cx,cell.y+1,24,24));GUI.Label(new Rect(cx+30,cell.y,tw,26),text[k],s);if(k>0)Fill(new Rect(cell.x,cell.y+3,1,20),new Color(CourtGold.r,CourtGold.g,CourtGold.b,.5f));}
+   Tip(new Rect(left,y,wide2,26),"Strength is what you can see of their army and cities beside your own. Trust grows by 1 every second turn while agreements stand, up to the ceiling of the strongest one (an envoy alone allows 20); each 2 trust is 1 opinion. Fear comes from conquest and war without cause; at 50 they become Threatened.");y+=32;}
   var pending=world.offers.Where(o=>o.to==0&&o.status==0&&o.expires>world.turn).ToList();int asked=world.requests.Count(r=>r.to==0&&r.status==RequestStatus.Pending);
-  if(pending.Count+asked>0){var strip=new Rect(side.x+14,y,side.width-28,28);Fill(strip,new Color(.5f,.38f,.12f,.9f));GUI.Label(new Rect(strip.x+10,strip.y,strip.width-110,28),(pending.Count+asked)+" proposal"+(pending.Count+asked==1?"":"s")+" and request"+(pending.Count+asked==1?"":"s")+" await your answer",dipRow);if(GUI.Button(new Rect(strip.xMax-96,strip.y+2,90,24),"Review")){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}y+=34;}
+  if(pending.Count+asked>0){var strip=new Rect(left,y,wide2,28);Fill(strip,new Color(.5f,.38f,.12f,.9f));GUI.Label(new Rect(strip.x+10,strip.y,strip.width-110,28),(pending.Count+asked)+" proposal"+(pending.Count+asked==1?"":"s")+" and request"+(pending.Count+asked==1?"":"s")+" await your answer",dipRow);if(GUI.Button(new Rect(strip.xMax-96,strip.y+2,90,24),"Review")){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}y+=34;}
+  if(claimsView||requestsView||customDeal){
   if(claimsView){
    // ---- Claims on their cities ----
    if(DipButton(new Rect(left,y,wide2,26),"◂ Back",navy))claimsView=false;y+=32;
@@ -192,7 +339,7 @@ public partial class RealmGame {
    // The least gold now that would turn their answer; nothing else in the deal is touched.
    if(DipButton(new Rect(left+sendW+8,y,wide2-sendW-8,40),"What would it take?",navy)){int need=world.GoldToAccept(offer);if(need>0){giveGold=(DealNumber(giveGold,10000)+need).ToString();status="They would accept with "+need+" more gold now.";}else status=need==0?"They would already accept.":"No gold you hold would change their mind: "+string.Join("; ",world.AcceptanceLines(offer).Where(l=>l.Value<0).OrderBy(l=>l.Value).Take(2).Select(l=>l.Key).ToArray())+".";}
    GUI.enabled=enabled;if(problem=="")Tip(send,"Why they would answer so:",world.AcceptanceLines(offer));
-  }else{
+  }}else{
    if(war){
     // ---- War: exhaustion on both sides, and peace ----
     var p=world.Relation(0,partner);DipHeading(new Rect(left,y,wide2,22),"At war since turn "+p.warStarted);y+=28;
@@ -205,50 +352,53 @@ public partial class RealmGame {
     if(problem=="")Tip(row,"Peace: each side keeps what it holds, with "+Pacts.Truce+" turns of truce.",world.AcceptanceLines(o));y+=40;
     if(DipButton(new Rect(left,y,wide2,28),"Peace with terms ▸ (gold, resources)",navy))customDeal=true;y+=36;
    }else{
-    // ---- The five standing agreements ----
-    DipHeading(new Rect(left,y,wide2,22),"Agreements");y+=26;
+    // ---- The six standing agreements: icon, name, and whether they would sign ----
+    CourtHeading(new Rect(left,y,wide2,22),"Agreements");y+=26;
     for(int k=0;k<Pacts.Count;k++){
-     var row=new Rect(left,y,wide2,29);
+     var row=new Rect(left,y,wide2,29);Fill(row,new Color(.06f,.09f,.17f,.92f));var edge=new Color(CourtGold.r,CourtGold.g,CourtGold.b,.45f);Fill(new Rect(row.x,row.y,row.width,1),edge);Fill(new Rect(row.x,row.yMax-1,row.width,1),edge);Fill(new Rect(row.x,row.y,1,row.height),edge);Fill(new Rect(row.xMax-1,row.y,1,row.height),edge);
+     var nameStyle=new GUIStyle(courtText){fontSize=16,alignment=TextAnchor.MiddleLeft};if(displayFont!=null)nameStyle.font=displayFont;var cell=new Rect(row.x+290,row.y,row.width-298,row.height);
      if(world.Pact(0,partner,k)){
-      Fill(row,new Color(.1f,.3f,.16f,.55f));GUI.Label(new Rect(row.x+8,row.y+3,210,22),"✔ "+Pacts.Names[k],new GUIStyle(dipRow){fontSize=14,normal={textColor=DipGood}});
-      GUI.Label(new Rect(row.x+214,row.y+4,110,22),"for "+world.PactAge(0,partner,k)+" turns",new GUIStyle(dipRow){fontSize=12});
+      Fill(new Rect(row.x+1,row.y+1,row.width-2,row.height-2),new Color(.1f,.3f,.16f,.5f));DrawDipIcon(PactIcons[k],new Rect(row.x+8,row.y+2,25,25));GUI.Label(new Rect(row.x+44,row.y,240,row.height),Pacts.Names[k],new GUIStyle(nameStyle){normal={textColor=DipGood}});
+      GUI.Label(new Rect(cell.x,cell.y,cell.width-78,cell.height),"✔ In force, "+world.PactAge(0,partner,k)+" turns",new GUIStyle(courtText){fontSize=14,alignment=TextAnchor.MiddleLeft,normal={textColor=DipGood}});
       string held=world.PactEndReason(0,partner,k);GUI.enabled=enabled&&held=="";
-      if(DipButton(new Rect(row.xMax-76,row.y+2,76,25),"End",red)){if(world.EndTreaty(0,partner,Pacts.Kind[k])){dipReply=(string.IsNullOrEmpty(pn.leader)?world.NationName(partner):pn.leader)+": \"So your word lasts only this long. We will not forget.\"";dipReplyPartner=partner;}}
+      if(DipButton(new Rect(row.xMax-72,row.y+3,66,row.height-6),"End",red)){if(world.EndTreaty(0,partner,Pacts.Kind[k])){dipReply=(string.IsNullOrEmpty(pn.leader)?world.NationName(partner):pn.leader)+": \"So your word lasts only this long. We will not forget.\"";dipReplyPartner=partner;}}
       GUI.enabled=enabled;Tip(row,Pacts.Names[k]+": "+Pacts.Effects[k],null,held!=""?held:"Ending it is remembered as a broken word (opinion and trust fall)."+(k==Pacts.NonAggression||k==Pacts.Defensive?" Neither side may declare war for "+Pacts.Notice+" turns afterwards.":""));
      }else{
       var o=new DiplomaticOffer{from=0,to=partner,kind=Pacts.Kind[k]};string problem=world.OfferProblem(o);int will=problem==""?world.OfferWillingness(o):-1;
-      GUI.enabled=enabled&&problem=="";
-      if(DipButton(new Rect(row.x,row.y,196,row.height),Pacts.Names[k],blue)){var sent=world.Propose(o);status=sent.answer;dipReply=world.LeaderReply(partner,sent,sent.status==1);dipReplyPartner=partner;}
-      GUI.enabled=enabled;var keep=GUI.color;GUI.color=problem!=""?new Color(.75f,.75f,.78f):will>=0?DipGood:DipBad;
-      GUI.Label(new Rect(row.x+204,row.y+1,row.width-204,row.height),problem!=""?problem:will>=0?"Would sign (+"+will+")":"Would refuse ("+will+")",new GUIStyle(dipRow){fontSize=12,wordWrap=true});GUI.color=keep;
-      Tip(row,Pacts.Names[k]+": "+Pacts.Effects[k]+" It lasts until one side ends it.",problem==""?world.AcceptanceLines(o):null,problem);
+      var keep=GUI.color;if(problem!="")GUI.color=new Color(1,1,1,.55f);DrawDipIcon(PactIcons[k],new Rect(row.x+8,row.y+2,25,25));GUI.Label(new Rect(row.x+44,row.y,240,row.height),Pacts.Names[k],nameStyle);GUI.color=keep;
+      if(problem!=""){DrawDipIcon("lock",new Rect(cell.x,cell.y+5,19,19),new Color(.85f,.85f,.88f));FitLabel(new Rect(cell.x+26,cell.y,cell.width-26,cell.height),problem,new GUIStyle(courtText){fontSize=14,alignment=TextAnchor.MiddleLeft,normal={textColor=new Color(.75f,.75f,.78f)}},9);}
+      else{var ink=will>=0?DipGood:DipPlain;GUI.Label(new Rect(cell.x,cell.y,24,cell.height),will>=0?"✓":"~",new GUIStyle(courtText){fontSize=18,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter,normal={textColor=ink}});
+       GUI.Label(new Rect(cell.x+28,cell.y,cell.width-28,cell.height),will>=0?"Would sign (+"+will+")":"Would refuse ("+will+")",new GUIStyle(courtText){fontSize=15,alignment=TextAnchor.MiddleLeft,normal={textColor=ink}});
+       if(row.Contains(Event.current.mousePosition)&&GUI.enabled)Fill(new Rect(row.x+1,row.y+1,row.width-2,row.height-2),new Color(1,1,1,.06f));
+       if(GUI.Button(row,"",GUIStyle.none)&&GUI.enabled){var sent=world.Propose(o);status=sent.answer;dipReply=world.LeaderReply(partner,sent,sent.status==1);dipReplyPartner=partner;}}
+      Tip(row,Pacts.Names[k]+": "+Pacts.Effects[k]+" It lasts until one side ends it. Click to propose it.",problem==""?world.AcceptanceLines(o):null,problem);
      }
      y+=32;}
     y+=4;
    }
-   // ---- Actions ----
-   DipHeading(new Rect(left,y,wide2,22),"Actions");y+=26;float half=(wide2-8)/2;
+   // ---- Diplomatic actions ----
+   CourtHeading(new Rect(left,y,wide2,22),"Diplomatic Actions");y+=28;float half=(wide2-10)/2;
    {bool has=world.Envoy(0,partner);string reason=world.EnvoyReason(0,partner);
-    if(DipAction(new Rect(left,y,half,29),has?"Recall envoy":"Send envoy",has?"":reason,"An envoy at their court adds 1 to their opinion each turn up to +"+Pacts.EnvoyCap+", makes their fear of you fade twice as fast, and lets trust reach "+Pacts.EnvoyTrust+" without any agreement. You have "+world.EnvoyLimit(0)+" envoy"+(world.EnvoyLimit(0)==1?"":"s")+" (more in later ages); "+(world.EnvoyLimit(0)-world.EnvoysOut(0))+" free.",teal))world.SetEnvoy(0,partner,!has);
+    if(CourtAction(new Rect(left,y,half,34),"envoy",has?"Recall Envoy":"Send Envoy",has?"":reason,"An envoy at their court adds 1 to their opinion each turn up to +"+Pacts.EnvoyCap+", makes their fear of you fade twice as fast, and lets trust reach "+Pacts.EnvoyTrust+" without any agreement. You have "+world.EnvoyLimit(0)+" envoy"+(world.EnvoyLimit(0)==1?"":"s")+" (more in later ages); "+(world.EnvoyLimit(0)-world.EnvoysOut(0))+" free.",CourtGoldFace))world.SetEnvoy(0,partner,!has);
     bool rival=world.Rival(0,partner);string rr=rival?world.EndRivalReason(0,partner):world.RivalReason(0,partner);
-    if(DipAction(new Rect(left+half+8,y,half,29),rival?"End rivalry":"Name as rival",rr,rival?"Stop naming them a rival; trade can resume.":"A public declaration: all trade with them stops, you gain 1 influence a turn, both opinions fall by 30, and after "+Pacts.CauseDelay+" turns you have a just cause for war. It stands for at least "+Pacts.MinTurns+" turns.",red)){if(rival)world.EndRivalry(0,partner);else if(world.DeclareRival(0,partner)){dipReply=(string.IsNullOrEmpty(pn.leader)?world.NationName(partner):pn.leader)+": \"A rival? Then we know where we stand.\"";dipReplyPartner=partner;}}
-    y+=33;}
+    if(CourtAction(new Rect(left+half+10,y,half,34),"laurel",rival?"End Rivalry":"Name as Rival",rr,rival?"Stop naming them a rival; trade can resume.":"A public declaration: all trade with them stops, you gain 1 influence a turn, both opinions fall by 30, and after "+Pacts.CauseDelay+" turns you have a just cause for war. It stands for at least "+Pacts.MinTurns+" turns.",red)){if(rival)world.EndRivalry(0,partner);else if(world.DeclareRival(0,partner)){dipReply=(string.IsNullOrEmpty(pn.leader)?world.NationName(partner):pn.leader)+": \"A rival? Then we know where we stand.\"";dipReplyPartner=partner;}}
+    y+=38;}
    {int mine=world.ClaimsOn(0,partner).Count,theirs=world.ClaimsOn(partner,0).Count;
-    if(DipAction(new Rect(left,y,half,29),"Claims ("+mine+")  ▸","","Claim their cities with influence. A claim is a just cause for war after "+Pacts.CauseDelay+" turns, and a claimed city can be taken without alarming the world."+(theirs>0?" They claim "+theirs+" of yours.":""),blue))claimsView=true;
+    if(CourtAction(new Rect(left,y,half,34),"scales","Claims ("+mine+")","","Claim their cities with influence. A claim is a just cause for war after "+Pacts.CauseDelay+" turns, and a claimed city can be taken without alarming the world."+(theirs>0?" They claim "+theirs+" of yours.":""),navy,"",true))claimsView=true;
     bool canGift=!war&&world.gold>=25;
-    if(DipAction(new Rect(left+half+8,y,half,29),"Gift 25 gold",canGift?"":"Needs 25 gold and peace.","A gift adds 10 to their opinion of you; it fades by 1 every third turn.",blue))status=world.GiftGold(partner)?"Gift sent to "+world.NationName(partner)+".":"Gift not possible.";
-    y+=33;}
-   if(!war){if(DipAction(new Rect(left,y,wide2,29),"Trade deal  ▸  (gold, payments, resources)",world.Rivals(0,partner)?"No dealings between rivals.":"","Exchange gold now, gold by the turn and access to resources for a set number of turns.",blue))customDeal=true;y+=33;}
+    if(CourtAction(new Rect(left+half+10,y,half,34),"coins","Gift 25 Gold",canGift?"":"Needs 25 gold and peace.","A gift adds 10 to their opinion of you; it fades by 1 every third turn.",navy))status=world.GiftGold(partner)?"Gift sent to "+world.NationName(partner)+".":"Gift not possible.";
+    y+=38;}
+   if(!war){if(CourtAction(new Rect(left,y,wide2,34),"handshake","Trade Deal",world.Rivals(0,partner)?"No dealings between rivals.":"","Exchange gold now, gold by the turn and access to resources for a set number of turns.",navy,"Gold, payments & resources",true))customDeal=true;y+=38;}
    {int open=world.requests.Count(x=>(x.from==0&&x.to==partner||x.to==0&&x.from==partner)&&(x.status==RequestStatus.Active||x.status==RequestStatus.Pending));
-    if(DipAction(new Rect(left,y,wide2,29),"Requests and guarantees  ▸"+(open>0?"  ("+open+" open)":""),"","Ask them to stop a war, keep troops from your cities, join a war, guard your gateway or send aid: with a deadline, a payment on completion and, if you like, a threat. See every commitment between you.",blue)){requestsView=true;customDeal=false;claimsView=false;}y+=33;}
+    if(CourtAction(new Rect(left,y,wide2,34),"scroll","Requests & Guarantees"+(open>0?"  ("+open+" open)":""),"","Ask them to stop a war, keep troops from your cities, join a war, guard your gateway or send aid: with a deadline, a payment on completion and, if you like, a threat. See every commitment between you.",navy,"",true)){requestsView=true;customDeal=false;claimsView=false;}y+=38;}
    // Their leader's agenda and how it judges you.
-   {string agenda=world.AgendaReason(partner,0);if(agenda!=""&&y<side.yMax-110){GUI.Label(new Rect(left,y+6,wide2,40),agenda,new GUIStyle(dipRow){fontSize=12,wordWrap=true});y+=46;}}
+   {string agenda=world.AgendaReason(partner,0);if(agenda!=""&&y<side.yMax-92){var s=new GUIStyle(courtItalic){fontSize=14,alignment=TextAnchor.MiddleCenter};GUI.Label(new Rect(left,y,wide2,side.yMax-70-y),agenda,s);}}
   }
-  float bw=(side.width-48)/3;
-  if(DipButton(new Rect(side.x+16,side.yMax-54,bw,42),"More",navy)){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}
-  if(DipButton(new Rect(side.x+24+bw,side.yMax-54,bw,42),"Leave",navy)){detailsScreen="";diplomacyDiscuss=false;claimsView=false;customDeal=false;requestsView=false;GUIUtility.ExitGUI();}
-  {string warReason=world.WarReason(0,partner);string cause=world.CasusBelli(0,partner);var wr=new Rect(side.x+32+2*bw,side.yMax-54,bw,42);
-   if(DipAction(wr,"Declare War",warReason,warReason!=""?"War is not possible now.":cause!=""?"You have a just cause: "+cause+". Only they will hold it against you.":"You have no just cause. "+(world.CausePending(0,partner)!=""?world.CausePending(0,partner)+" ":"Name them a rival or claim a city, then wait "+Pacts.CauseDelay+" turns. ")+"War without cause makes every civilisation that knows you fear and dislike you.",red)){pendingUnit=-2;pendingWars=new[]{partner};detailsScreen="";cityScreen=false;GUIUtility.ExitGUI();}}
+  float bw=(wide2-20)/3,by=side.yMax-62;
+  if(CourtButton(new Rect(left,by,bw,42),"book","More",navy)){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}
+  if(CourtButton(new Rect(left+bw+10,by,bw,42),"gateway","Leave",navy)){diplomacyChooser=true;diplomacyDiscuss=false;claimsView=false;customDeal=false;requestsView=false;}
+  {string warReason=world.WarReason(0,partner);string cause=world.CasusBelli(0,partner);var wr=new Rect(left+2*bw+20,by,bw,42);
+   if(CourtAction(wr,"swords","Declare War",warReason,warReason!=""?"War is not possible now.":cause!=""?"You have a just cause: "+cause+". Only they will hold it against you.":"You have no just cause. "+(world.CausePending(0,partner)!=""?world.CausePending(0,partner)+" ":"Name them a rival or claim a city, then wait "+Pacts.CauseDelay+" turns. ")+"War without cause makes every civilisation that knows you fear and dislike you.",red)){pendingUnit=-2;pendingWars=new[]{partner};detailsScreen="";cityScreen=false;GUIUtility.ExitGUI();}}
   DrawTip(side);
   DrawOpenDropdown();
  }

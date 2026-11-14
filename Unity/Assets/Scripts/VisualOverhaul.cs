@@ -198,13 +198,25 @@ namespace ParadigmRealm {
    guardSprites=new Texture2D[people.Length];
    for(int i=0;i<people.Length;i++){if(World.Power[i]<=0||World.IsNaval(i)||unitSprites[i]==null)continue;var made=Art("unit-"+i.ToString("00")+"-guard");if(made==null){try{var from=ReadArtPixels(unitSprites[i]);int size=unitSprites[i].width;made=SoftTexture(size>=128?PixelArt.GuardSpriteHD(from,size,unitSprites[i].height,i):PixelArt.GuardSprite(from,size,unitSprites[i].height,i));themeTextures.Add(made);}catch(Exception){made=null;}}guardSprites[i]=made;}
   }
+  // A worker at work plays its tool's loop (owner request, 14 Nov 2026; frames made in SpriteCook from the worker's picture):
+  // the axe while clearing forest, the pickaxe while digging a mine, the shovel for farms, roads and forts. Peoples with their
+  // own worker art keep it still.
+  readonly Dictionary<string,Texture2D[]> workFrames=new Dictionary<string,Texture2D[]>();
+  Texture2D WorkPose(Unit u){
+   if(u==null||u.type!=1||u.job<=0||u.hasOrder||SpeciesSprite(u)!=null)return null;
+   string tool=u.job==5?"chop":u.job==3?"mine":"dig";Texture2D[] frames;
+   if(!workFrames.TryGetValue(tool,out frames)){var list=new List<Texture2D>();for(int k=0;k<16;k++){var f=Resources.Load<Texture2D>("Visuals/Work/worker-"+tool+"-"+k.ToString("00"));if(f==null)break;f.filterMode=FilterMode.Point;list.Add(f);}frames=list.ToArray();workFrames[tool]=frames;}
+   if(frames.Length==0)return null;
+   // Each worker keeps its own beat, so a team does not swing in step.
+   return frames[((int)(Time.realtimeSinceStartup*8)+u.id*3)%frames.Length];
+  }
   // r is the unit's box on the tile. The figure is drawn 1.6 times its width (64 px at the default zoom, so pixels stay
   // whole), standing on a soft ground shadow inside a ring in its owner's colour.
   void DrawUnitArt(Unit u,Rect r,int count,Texture2D pose=null){
    float size=r.width*1.6f;var feet=new Vector2(r.center.x,r.yMax);
    var baseRect=new Rect(feet.x-size*.3f,feet.y-size*.09f,size*.6f,size*.225f);
    GUI.DrawTexture(baseRect,IsoPicture(4,8,0));var old=GUI.color;GUI.color=nations[u.owner];GUI.DrawTexture(baseRect,IsoPicture(4,7,0));GUI.color=old;
-   var art=pose!=null?pose:UnitPicture(u);// pose: a walking frame while the unit glides (MotionUI)
+   var art=pose!=null?pose:WorkPose(u)??UnitPicture(u);// pose: a walking frame while the unit glides (MotionUI)
    // Armies carry a banner in their owner's colour behind them, as in the owner's mockup.
    if(World.Power[u.type]>0&&!World.IsNaval(u.type)){float px=feet.x+size*.26f,top=feet.y-size*1.02f,pole=Mathf.Max(1,size*.025f);
     Fill(new Rect(px,top,pole,size*.9f),new Color(.32f,.22f,.12f));var ink=nations[u.owner];var flag=new Rect(px+pole,top+size*.02f,size*.2f,size*.24f);

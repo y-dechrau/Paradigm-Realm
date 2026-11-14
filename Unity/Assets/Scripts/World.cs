@@ -93,14 +93,16 @@ namespace ParadigmRealm
         public int Height{get{return mapHeight+realmRows;}}
         public static readonly string[] TerrainNames={"Grassland","Forest","Hills","Desert","Ocean","Mountains","Lake","River","Arctic tundra","Bog","Desolate wasteland","Jungle","Coral reef","Arctic forest","Ice sheet","Glacier","Savanna","Volcanic terrain","Rocky coastline","Mangrove","Dry steppe"};
         // 0-5 land resources; 6-15 sea resources (owner request), placed by water type and latitude in SeedSeaResources.
-        public static readonly string[] ResourceNames={"None","Wheat","Iron","Gold","Horses","Spices","Fish","Whales","Pearls","Crabs","Kelp","Oysters","Seals","Tuna","Sponges","Offshore oil"};
-        public static readonly int[] ResourceFood={0,2,0,0,0,0,2,1,0,1,1,1,1,2,0,0},ResourceShields={0,0,2,0,0,0,0,1,0,0,1,0,1,0,0,0},ResourceTrade={0,0,0,2,0,0,0,1,3,1,0,2,0,1,2,0};
+        // 16-19 livestock on land (owner request, 14 Nov 2026): Sheep, Cattle, Pigs, Camels.
+        public static readonly string[] ResourceNames={"None","Wheat","Iron","Gold","Horses","Spices","Fish","Whales","Pearls","Crabs","Kelp","Oysters","Seals","Tuna","Sponges","Offshore oil","Sheep","Cattle","Pigs","Camels"};
+        public static readonly int[] ResourceFood={0,2,0,0,0,0,2,1,0,1,1,1,1,2,0,0,1,2,2,0},ResourceShields={0,0,2,0,0,0,0,1,0,0,1,0,1,0,0,0,0,1,0,1},ResourceTrade={0,0,0,2,0,0,0,1,3,1,0,2,0,1,2,0,1,0,0,1};
         public static bool IsSeaResource(int r){return r>=6&&r<=15;}
         // Resources stay hidden, and give nothing, until the civilisation knows the technology that uses them (owner request):
         // wheat with Agriculture, iron with Iron Working, gold with Bronze Working (mining), horses with Horseback Riding,
         // spices with Currency, whales, pearls, seals, tuna and sponges with Sailing, offshore oil with Refining.
         // Fish, crabs, kelp and oysters are known from the start (gathered from the shore).
-        public static readonly string[] ResourceTech={"","agriculture","iron","bronze","horseback","currency","","sailing","sailing","","","","sailing","sailing","sailing","refining"};
+        // Sheep, cattle and pigs with Agriculture (animal husbandry), camels with The Wheel (riding).
+        public static readonly string[] ResourceTech={"","agriculture","iron","bronze","horseback","currency","","sailing","sailing","","","","sailing","sailing","sailing","refining","husbandry","husbandry","husbandry","horseback"};
         public bool ResourceKnown(int owner,int r){return r<=0||r>=ResourceTech.Length||ResourceTech[r]==""||owner<0||HasTech(owner,ResourceTech[r]);}
         public static readonly string[] UnitNames={"Settler","Worker","Warrior","Scout","Archer","Knight","Rifleman","Spearman","Horseman","Catapult","Medic","Caravan","Boat","Galley","War Galley","Priest"};
         // Stage 4 combat (CORE-DESIGN-16BIT.md): Attack and Defence per unit, health 10. Power is the attack value and doubles as
@@ -282,7 +284,7 @@ namespace ParadigmRealm
                 if(i>0)w.Found(w.units.First(u=>u.owner==i&&u.type==0));
             }
             w.PlaceLandResources(r);
-            for(int i=0;i<civs;i++){w.Step(sx[i],sy[i],-1,0).resource=1;w.Step(sx[i],sy[i],2,0).resource=4;var hill=w.Step(sx[i],sy[i],0,-2);hill.terrain=2;hill.resource=2;}
+            for(int i=0;i<civs;i++){w.Step(sx[i],sy[i],-1,0).resource=1;w.Step(sx[i],sy[i],2,0).resource=new[]{17,16,18,4}[(sx[i]*7+sy[i]*3)&3];/* a herd beside each start: cattle, sheep, pigs, now and then horses (owner request, 14 Nov 2026) */var hill=w.Step(sx[i],sy[i],0,-2);hill.terrain=2;hill.resource=2;}
             w.HarmoniseBiomes();w.SeedSeaResources();
             if(w.mapShape==0&&w.climate>0)w.RemapFlatClimate();if(rations)w.StartLivingWorld();w.EnsureFlags();w.SeedVillages();w.SeedRuins();w.AddRealms();if(natives)w.AddNatives(peoplesPerWorld);w.ApplyDifficultyStart();w.RebuildTerritory();w.Reveal();w.Note("Found a city, choose production and research. F1 opens the guide.");return w;
         }
@@ -324,8 +326,12 @@ namespace ParadigmRealm
         void RevealAfterMove(int owner){RevealOne(owner,false);if(owner!=0)RevealOne(0,false);FirstContacts(owner);}
         public void Reveal(){for(int owner=0;owner<civCount;owner++)RevealOne(owner,true);FirstContacts();}
         // The player's move can reveal anyone; a rival's move can reveal only that rival. -1 checks everyone.
+        // Seeing a civilisation's borders is a meeting too (owner request, 14 Nov 2026): a unit that brings any of its territory into
+        // view makes first contact, and the talks open, as when one of its units or cities comes into view.
         void FirstContacts(int mover=-1){
-            for(int i=1;i<civCount;i++)if((mover<=0||mover==i)&&!met[i]&&!(gatesLocked&&IsNativeNation(i))&&(units.Any(u=>u.owner==i&&Visible(u.x,u.y))||cities.Any(c=>c.owner==i&&Visible(c.x,c.y)))){met[i]=true;Note("First contact: "+NationName(i)+".");AddEraScore(0,1,"first contact with "+NationName(i));AddEraScore(i,1,"first contact");if(newContacts==null)newContacts=new List<int>();newContacts.Add(i);}}
+            bool[] bordersSeen=null;
+            for(int i=1;i<civCount;i++)if((mover<=0||mover==i)&&!met[i]&&!(gatesLocked&&IsNativeNation(i))){bordersSeen=new bool[civCount];foreach(var t in tiles)if(t.owner>0&&t.owner<civCount&&!met[t.owner]&&!bordersSeen[t.owner]&&Visible(t.x,t.y))bordersSeen[t.owner]=true;break;}
+            for(int i=1;i<civCount;i++)if((mover<=0||mover==i)&&!met[i]&&!(gatesLocked&&IsNativeNation(i))&&(bordersSeen!=null&&bordersSeen[i]||units.Any(u=>u.owner==i&&Visible(u.x,u.y))||cities.Any(c=>c.owner==i&&Visible(c.x,c.y)))){met[i]=true;Note("First contact: "+NationName(i)+".");AddEraScore(0,1,"first contact with "+NationName(i));AddEraScore(i,1,"first contact");if(newContacts==null)newContacts=new List<int>();newContacts.Add(i);}}
         public bool AtWar(int a,int b){return a>=0&&b>=0&&a<civCount&&b<civCount&&a!=b&&(a!=0&&b!=0?RivalWar(a,b):war[a==0?b:a]);}
         bool RivalWar(int a,int b){var p=Relation(a,b);return p!=null&&p.atWar;}
         public bool CanEnter(int owner,Tile t){return t.owner<0||t.owner==owner||AtWar(owner,t.owner)||HasAccess(owner,t.owner)||GateAccessTile(owner,t);}
