@@ -44,7 +44,9 @@ namespace ParadigmRealm
         List<string> notesMemo;int notesTurn=-1,notesLog=-1;string notesStatus;
         List<string> RecentNotes(){if(notesMemo!=null&&notesTurn==world.turn&&notesLog==world.log.Count&&notesStatus==status)return notesMemo;notesTurn=world.turn;notesLog=world.log.Count;notesStatus=status;notesMemo=WorkOutNotes();return notesMemo;}
         List<string> WorkOutNotes(){string now="Turn "+world.turn+":",last="Turn "+(world.turn-1)+":";var notes=new List<string>();if(!string.IsNullOrEmpty(status))notes.Add(status);foreach(var l in world.log.Where(l=>l.StartsWith(now)||l.StartsWith(last))){if(notes.Count>=3)break;string text=l.Substring(l.IndexOf(':')+1).Trim();if(text!=status)notes.Add(text);}return notes;}
-        Rect NoteRect(int i){float top=MetRivals().Count>0?150:46;return new Rect(1040,top+i*52,234,46);}
+        // Each note is as tall as its text needs (owner report, 14 Nov 2026: long notes were cut off at a fixed 46 units).
+        Rect NoteRect(int i){float y=MetRivals().Count>0?150:46;var notes=RecentNotes();for(int k=0;k<i&&k<notes.Count;k++)y+=NoteHeight(notes[k])+6;return new Rect(1040,y,234,i<notes.Count?NoteHeight(notes[i]):46);}
+        float NoteHeight(string text){if(hudSmall==null)return 46;return Mathf.Max(46,Mathf.Ceil(hudSmall.CalcHeight(new GUIContent(text),188))+12);}
         bool CardShown(){return Selected()!=null||world.cities.Any(a=>a.owner==0&&a.id==cityId);}
         void BuildHudRects()
         {
@@ -53,6 +55,7 @@ namespace ParadigmRealm
             if(CardShown())hudRects.Add(UnitCard);if(moreActions&&CardShown())hudRects.Add(MorePanel);
             for(int i=0;i<MetRivals().Count;i++)hudRects.Add(LeaderRect(i));
             for(int i=0;i<RecentNotes().Count;i++)hudRects.Add(NoteRect(i));
+            {Rect site;if(CardShown()&&SiteCard(Selected(),out site,out _,out _))hudRects.Add(site);}
             // The tutorial panel takes its own clicks (its Next, Hide and End buttons), not the map underneath.
             if(TutorialShown())hudRects.Add(TutorialRect());
             if(NoticeShown())hudRects.Add(NoticeRect);if(CallShown())hudRects.Add(CallRect);
@@ -98,7 +101,7 @@ namespace ParadigmRealm
         {
             bool idle=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen()&&!turnRunning;GUI.enabled=idle;
             DrawRail();DrawResearchCard();DrawLeaders();DrawNotices();DrawMiniMap();
-            if(CardShown()){if(moreActions)DrawMoreActions();DrawUnitCard();}else moreActions=false;
+            if(CardShown()){if(moreActions)DrawMoreActions();DrawUnitCard();DrawSiteCard(Selected());}else moreActions=false;
             DrawTileCard();DrawMedalBar();DrawBuildNotice();DrawRivalCall();
 
             GUI.enabled=idle&&world.result=="";
@@ -197,7 +200,7 @@ namespace ParadigmRealm
             {
                 var r=NoteRect(i);if(GUI.Button(r,""))OpenDetails("Chronicle");
                 DrawIcon(i==0&&notes[i]==status?PixelArt.IconHelp:PixelArt.IconChronicle,new Rect(r.x+8,r.y+11,24,24));string text=notes[i];
-                GUI.Label(new Rect(r.x+40,r.y+4,r.width-46,r.height-6),text,hudSmall);
+                GUI.Label(new Rect(r.x+40,r.y+5,r.width-46,r.height-8),text,hudSmall);
             }
         }
         // The known world in miniature with the visible area outlined; click or drag to move the view.

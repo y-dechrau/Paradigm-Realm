@@ -16,19 +16,31 @@ namespace ParadigmRealm { public partial class RealmGame {
   var sites=SuggestedSites(u);if(sites.Count==0)return;
   float pulse=.55f+.45f*Mathf.Sin(Time.realtimeSinceStartup*4f);var old=GUI.color;
   for(int i=sites.Count-1;i>=0;i--){
-   var r=sites[i];Rect cell;float cx,top;
-   if(diamondView){float sx,sy;IsoScreen(r.x,r.y,out sx,out sy);sy-=Lift(r.x,r.y,s);cell=TileRect(sx,sy,s);cx=sx;top=cell.y;}
-   else {cell=ClassicRect(r.x,r.y);cx=cell.center.x;top=cell.y;}
+   var r=sites[i];Rect cell;
+   if(diamondView){float sx,sy;IsoScreen(r.x,r.y,out sx,out sy);sy-=Lift(r.x,r.y,s);cell=TileRect(sx,sy,s);}
+   else cell=ClassicRect(r.x,r.y);
+   // The why of the best site is told in a box above the unit panel (DrawSiteCard), not on the map (owner request, 14 Nov 2026).
    if(i==0){
     GUI.color=new Color(.25f,1f,.45f,.5f+.5f*pulse);GUI.DrawTexture(cell,SelectionPicture());GUI.DrawTexture(new Rect(cell.x+1,cell.y+1,cell.width-2,cell.height-2),SelectionPicture());GUI.color=old;
-    string head=r.x==u.x&&r.y==u.y?"Best site nearby: found the city here [B]":"Suggested city site";
-    string line=world.SiteHighlights(r);var style=new GUIStyle(hudSmall){wordWrap=false,clipping=TextClipping.Overflow,alignment=TextAnchor.MiddleCenter};
-    float w=Mathf.Max(style.CalcSize(new GUIContent(head)).x,style.CalcSize(new GUIContent(line)).x)+20;
-    var plate=new Rect(cx-w/2,top-46,w,40);DrawGuideFrame(plate);
-    GUI.color=new Color(.55f,1f,.6f);GUI.Label(new Rect(plate.x,plate.y+3,plate.width,18),head,style);GUI.color=old;
-    GUI.Label(new Rect(plate.x,plate.y+20,plate.width,18),line,style);
    } else {GUI.color=new Color(.6f,1f,.7f,.35f);GUI.DrawTexture(cell,SelectionPicture());GUI.color=old;}
   }
+ }
+ // The suggestion box sits just above the unit panel, as tall as its text needs.
+ bool SiteCard(Unit u,out Rect box,out string head,out string line){
+  box=default(Rect);head=line="";
+  // With the More panel open the same suggestion is in it (DrawSettlerPrompt), so the box steps aside.
+  if(u==null||u.type!=0||u.owner!=0||roadMode||moreActions)return false;
+  var sites=SuggestedSites(u);if(sites.Count==0)return false;var r=sites[0];
+  head=r.x==u.x&&r.y==u.y?"Best site nearby: found the city here [B]":"Suggested city site, "+r.distance+(r.distance==1?" tile":" tiles")+" away";
+  line=world.SiteHighlights(r);
+  float h=hudSmall==null?44:Mathf.Ceil(hudSmall.CalcHeight(new GUIContent(line),UnitCard.width-24))+34;
+  box=new Rect(UnitCard.x,UnitCard.y-6-h,UnitCard.width,h);return true;
+ }
+ void DrawSiteCard(Unit u){
+  Rect box;string head,line;if(!SiteCard(u,out box,out head,out line))return;
+  GUI.Box(box,"");var old=GUI.color;
+  GUI.color=new Color(.55f,1f,.6f);GUI.Label(new Rect(box.x+12,box.y+7,box.width-24,20),head,hudLabel);GUI.color=old;
+  GUI.Label(new Rect(box.x+12,box.y+27,box.width-24,box.height-30),line,hudSmall);
  }
  // The unit panel line, above "Compare settlement sites".
  void DrawSettlerPrompt(Unit u){

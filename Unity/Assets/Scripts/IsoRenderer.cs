@@ -530,7 +530,11 @@ namespace ParadigmRealm
             {
                 IsoScreen(chosen.x,chosen.y,out sx,out sy);sy-=Lift(chosen.x,chosen.y,s);
                 GUI.DrawTexture(TileRect(sx,sy,s),SelectionPicture());
-                DrawSiteSuggestion(chosen,s);DrawRouteLine(chosen,s);if(roadMode)DrawRoadPlot(chosen,s);
+                DrawSiteSuggestion(chosen,s);
+                // The outline runs behind units (owner request, 14 Nov 2026): every unit that overlaps it, on its tile or a neighbour's,
+                // is drawn again over it, back to front as before.
+                {var ring=TileRect(sx,sy,s);for(int n=0;n<isoUnitDraws.Count;n++)if(isoUnitDraws[n].Value.Overlaps(ring))DrawUnitArt(isoUnitDraws[n].Key,isoUnitDraws[n].Value,isoUnitCounts[n]);}
+                DrawRouteLine(chosen,s);if(roadMode)DrawRoadPlot(chosen,s);
                 if(chosen.hasOrder)
                 {
                     IsoScreen(chosen.destinationX,chosen.destinationY,out sx,out sy);

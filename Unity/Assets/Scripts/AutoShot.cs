@@ -15,7 +15,7 @@ namespace ParadigmRealm
         {
             var args=Environment.GetCommandLineArgs();int i;
             // A test run keeps its saves and autosaves in its own output folder, never among the player's saved games.
-            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot","-cheerShot","-dimShot","-speciesShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
+            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot","-cheerShot","-dimShot","-speciesShot","-hudShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
             i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
             i=Array.IndexOf(args,"-frameProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FrameProbe(args[i+1],i+2<args.Length?int.Parse(args[i+2]):4,i+3<args.Length?int.Parse(args[i+3]):120));
@@ -30,6 +30,7 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-cheerShot");if(i>=0&&i+1<args.Length)StartCoroutine(CheerShot(args[i+1]));
             i=Array.IndexOf(args,"-dimShot");if(i>=0&&i+1<args.Length)StartCoroutine(DimShot(args[i+1]));
             i=Array.IndexOf(args,"-speciesShot");if(i>=0&&i+1<args.Length)StartCoroutine(SpeciesShot(args[i+1]));
+            i=Array.IndexOf(args,"-hudShot");if(i>=0&&i+1<args.Length)StartCoroutine(HudShot(args[i+1]));
         }
         // Development aid: "-mapShot <folder>" starts a fixed game with the whole home world found and saves close views of a river
         // mouth, a farm and a fort on a river, hills, a volcano with a unit on it, sealed and open gateways, resources on land
