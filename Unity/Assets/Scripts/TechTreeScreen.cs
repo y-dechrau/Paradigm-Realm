@@ -77,6 +77,48 @@ public partial class RealmGame {
  Texture2D StarFieldCached(){Texture2D t;return chronicleArt.TryGetValue("stars",out t)&&t!=null?t:StarField();}
  // A painted frame drawn in nine slices (border in pixels of the picture).
  void Framed(Rect r,string art,int border){var tex=UiTex(art);if(tex==null){GUI.Box(r,"");return;}var s=new GUIStyle{border=new RectOffset(border,border,border,border)};s.normal.background=tex;if(Event.current.type==EventType.Repaint)s.Draw(r,false,false,false,false);}
+ // The gold frame (UI/frame, 512 x 287) drawn piece by piece, one picture pixel to one screen unit (owner report 14 Nov:
+ // the trim was blurred and stretched). A nine-slice cut at 26 pixels sliced through the 46-pixel corner scrolls and the
+ // edge jewels and stretched those pieces along every edge. Now the corners and the four jewels keep their own size,
+ // the rails are a single column or row of plain rail stretched along their length (identical all the way, so nothing
+ // smears), and only the even navy middle is stretched.
+ const int FrameCorner=46,FrameRail=16,FrameJewelLong=44,FrameJewelDeep=24,FrameSideLong=56;
+ void GoldFrame(Rect r){
+  var t=UiTex("frame");if(t==null){GUI.Box(r,"");return;}
+  if(Event.current.type!=EventType.Repaint)return;
+  float W=t.width,H=t.height;
+  Func<float,float,float,float,Rect> px=(x,y,w,h)=>new Rect(x/W,1-(y+h)/H,w/W,h/H);
+  float c=Mathf.Min(FrameCorner,Mathf.Floor(r.width/2),Mathf.Floor(r.height/2)),rail=Mathf.Min(FrameRail,c);
+  // Pieces overlap by a couple of units: at the screen's fractional scale, edges that only meet left hairline gaps.
+  const float lap=2;
+  GUI.DrawTextureWithTexCoords(new Rect(r.x+rail-lap,r.y+rail-lap,r.width-2*rail+2*lap,r.height-2*rail+2*lap),t,px(FrameCorner,FrameCorner,W-2*FrameCorner,H-2*FrameCorner));
+  float run=r.width-2*c,rise=r.height-2*c;
+  if(run>0){
+   GUI.DrawTextureWithTexCoords(new Rect(r.x+c-lap,r.y,run+2*lap,rail),t,px(128,0,1,rail));
+   GUI.DrawTextureWithTexCoords(new Rect(r.x+c-lap,r.yMax-rail,run+2*lap,rail),t,px(128,H-rail,1,rail));
+  }
+  if(rise>0){
+   GUI.DrawTextureWithTexCoords(new Rect(r.x,r.y+c-lap,rail,rise+2*lap),t,px(0,80,rail,1));
+   GUI.DrawTextureWithTexCoords(new Rect(r.xMax-rail,r.y+c-lap,rail,rise+2*lap),t,px(W-rail,80,rail,1));
+  }
+  GUI.DrawTextureWithTexCoords(new Rect(r.x,r.y,c,c),t,px(0,0,c,c));
+  GUI.DrawTextureWithTexCoords(new Rect(r.xMax-c,r.y,c,c),t,px(W-c,0,c,c));
+  GUI.DrawTextureWithTexCoords(new Rect(r.x,r.yMax-c,c,c),t,px(0,H-c,c,c));
+  GUI.DrawTextureWithTexCoords(new Rect(r.xMax-c,r.yMax-c,c,c),t,px(W-c,H-c,c,c));
+  // Jewels at the middle of each edge, only where the rail between the corners has room for one.
+  float L=FrameJewelLong,D=FrameJewelDeep;
+  if(run>=L+16){
+   float jx=Mathf.Round(r.center.x-L/2);
+   GUI.DrawTextureWithTexCoords(new Rect(jx,r.y,L,D),t,px(W/2-L/2,0,L,D));
+   GUI.DrawTextureWithTexCoords(new Rect(jx,r.yMax-D,L,D),t,px(W/2-L/2,H-D,L,D));
+  }
+  L=FrameSideLong;
+  if(rise>=L+16){
+   float jy=Mathf.Round(r.center.y-L/2);
+   GUI.DrawTextureWithTexCoords(new Rect(r.x,jy,D,L),t,px(0,Mathf.Round(H/2-L/2),D,L));
+   GUI.DrawTextureWithTexCoords(new Rect(r.xMax-D,jy,D,L),t,px(W-D,Mathf.Round(H/2-L/2),D,L));
+  }
+ }
  bool GoldButton(Rect r,string text,bool enabled=true,GUIStyle style=null){var was=GUI.color;if(!enabled)GUI.color=new Color(.75f,.75f,.75f,.75f);GUI.DrawTexture(r,RoundBox("gold",256,48,9,true));GUI.color=was;ShadowLabel(r,text,style??chGoldButton);return enabled&&GUI.Button(r,GUIContent.none,GUIStyle.none);}
  bool NavyButton(Rect r,string text,bool enabled=true){var was=GUI.color;if(!enabled)GUI.color=new Color(.7f,.7f,.7f,.6f);GUI.DrawTexture(r,RoundBox("navy",256,48,6,false));GUI.Label(r,text,chNavyButton);GUI.color=was;return enabled&&GUI.Button(r,GUIContent.none,GUIStyle.none);}
  void GoldRule(float x,float y,float w,bool diamond=true){Fill(new Rect(x,y,w,1),new Color(.78f,.62f,.32f,.8f));if(diamond)GUI.DrawTexture(new Rect(x+w/2-6,y-5,12,12),Diamond());}
@@ -98,7 +140,7 @@ public partial class RealmGame {
   var available=world.AvailableTech();
   Fill(new Rect(0,0,1280,800),new Color(.03f,.05f,.1f));
   // ---- Header ----
-  Framed(new Rect(-14,-14,1308,92),"frame",26);
+  GoldFrame(new Rect(-14,-14,1308,92));
   {var logo=UiTex("logo");if(logo!=null)GUI.DrawTexture(new Rect(46,4,56,56),logo,ScaleMode.ScaleToFit);}
   GUI.Label(new Rect(110,12,260,26),"PARADIGM REALM",chBrand);GoldRule(110,42,190);
   ShadowLabel(new Rect(340,0,600,36),"THE CHRONICLE OF DISCOVERY",chTitle);GUI.Label(new Rect(340,31,600,24),"Technology & Civilisation",chSub);
@@ -170,7 +212,7 @@ public partial class RealmGame {
   if(GUI.Button(r,GUIContent.none,GUIStyle.none)){inspectedTech=i;techUnlocksView=false;techDetailScroll=Vector2.zero;}
  }
  void DrawChronicleDetail(Rect panel,List<int> available){
-  Framed(panel,"frame",26);int i=inspectedTech;if(i<0)return;float x=panel.x+22,w=panel.width-44,cx=panel.center.x;
+  GoldFrame(panel);int i=inspectedTech;if(i<0)return;float x=panel.x+22,w=panel.width-44,cx=panel.center.x;
   FitLabel(new Rect(x,panel.y+16,w,36),World.TechNames[i].ToUpperInvariant(),chPanelTitle,14);
   var titleStyle=new GUIStyle(chPanelTitle);GoldRule(x+20,panel.y+56,w-40);
   if(techUnlocksView){DrawChronicleUnlocks(new Rect(x,panel.y+66,w,panel.height-130),available);if(NavyButton(new Rect(x,panel.yMax-56,w,36),"Back to overview")){techUnlocksView=false;}return;}
@@ -215,7 +257,7 @@ public partial class RealmGame {
   foreach(string unlock in TechnologyCatalog.Unlocks[i])GUILayout.Label("• "+unlock.Substring(2),text);
   GUILayout.EndScrollView();GUILayout.EndArea();}
  void DrawChronicleQueue(Rect bar){
-  Framed(bar,"frame",26);float y=bar.y+20;
+  GoldFrame(bar);float y=bar.y+20;
   {var books=UiTex("icon-chronicle")??UiTex("icon-research");if(books!=null)GUI.DrawTexture(new Rect(44,y+6,40,40),books,ScaleMode.ScaleToFit);}
   GUI.Label(new Rect(94,y+6,180,40),"Research queue",new GUIStyle(chName){fontSize=22,font=garamond});
   Fill(new Rect(282,y+8,1,36),new Color(.78f,.62f,.32f,.6f));
