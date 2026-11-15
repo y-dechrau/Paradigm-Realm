@@ -4,7 +4,7 @@ using UnityEngine;
 namespace ParadigmRealm {
 // The message on the map when a city finishes something, and the glowing technology borders.
 public partial class RealmGame {
- static readonly Rect NoticeRect=new Rect(452,46,380,118);
+ static Rect NoticeRect{get{return new Rect(452+MidShift,46,380,118);}}
  bool NoticeShown(){return world!=null&&world.buildNotices!=null&&world.buildNotices.Count>0&&world.result=="";}
  void DrawBuildNotice(){
   if(!NoticeShown())return;var n=world.buildNotices[0];var c=world.cities.Find(a=>a.id==n.city&&a.owner==0);if(c==null){world.buildNotices.RemoveAt(0);return;}
@@ -20,7 +20,7 @@ public partial class RealmGame {
   if(GUI.Button(new Rect(r.x+282,y,88,28),"OK",button)){world.buildNotices.RemoveAt(0);GUIUtility.ExitGUI();}
  }
  // Another leader calling: the portrait, what they want, and the way to answer.
- static readonly Rect CallRect=new Rect(452,170,380,76);
+ static Rect CallRect{get{return new Rect(452+MidShift,170,380,76);}}
  bool CallShown(){return world!=null&&world.result==""&&world.NextRivalCall()!=null;}
  void DrawRivalCall(){
   var call=world.NextRivalCall();if(call==null||world.result!="")return;var r=CallRect;GUI.Box(r,"");Fill(new Rect(r.x,r.y,r.width,2),GlowGold);

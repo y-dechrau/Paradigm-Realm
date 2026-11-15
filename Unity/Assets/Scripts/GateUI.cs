@@ -12,7 +12,7 @@ public partial class RealmGame {
  // An open gateway: who holds its tile holds the crossing, and may close it (owner design, 11 Nov 2026).
  void DrawOpenGatePanel(Tile gate)
  {
-  Fill(new Rect(0,0,1280,800),new Color(0,0,0,.72f));var box=new Rect(190,170,900,420);DipPanel(box,.98f);int style=world.GateStyle(gate),realm=world.GateRealm(gate);
+  Fill(FullCanvas,new Color(0,0,0,.72f));var box=new Rect(190,170,900,420);DipPanel(box,.98f);int style=world.GateStyle(gate),realm=world.GateRealm(gate);
   var art=SpriteSlot("gate-open-"+style);var pic=new Rect(box.x+24,box.y+70,230,230);DipPanel(new Rect(pic.x-4,pic.y-4,pic.width+8,pic.height+8),1);if(art!=null)GUI.DrawTexture(pic,art,ScaleMode.ScaleToFit,true);
   GUI.Label(new Rect(box.x,box.y+12,box.width,40),"THE "+World.GateStyleNames[style].ToUpperInvariant(),dipTitle);
   var text=new GUIStyle(dipRow){fontSize=14,wordWrap=true};float x=box.x+280,w=box.width-304,y=box.y+66;
@@ -27,7 +27,7 @@ public partial class RealmGame {
  void DrawGatePanel()
  {
   GUI.enabled=true;DiplomacyStyles();HudStyles();var gate=gatePanel;if(gate==null){gatePanel=null;return;}if(world.GateSteady(gate)){DrawOpenGatePanel(gate);return;}
-  Fill(new Rect(0,0,1280,800),new Color(0,0,0,.72f));var box=new Rect(190,90,900,620);DipPanel(box,.98f);
+  Fill(FullCanvas,new Color(0,0,0,.72f));var box=new Rect(190,90,900,620);DipPanel(box,.98f);
   int style=world.GateStyle(gate),realm=world.GateRealm(gate);var study=world.StudyOf(0,gate);bool known=study!=null&&study.known;
   // The gateway's sealed picture on the left.
   var art=SpriteSlot("gate-sealed-"+style);var pic=new Rect(box.x+24,box.y+70,230,230);DipPanel(new Rect(pic.x-4,pic.y-4,pic.width+8,pic.height+8),1);if(art!=null)GUI.DrawTexture(pic,art,ScaleMode.ScaleToFit,true);

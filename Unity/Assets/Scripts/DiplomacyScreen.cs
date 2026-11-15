@@ -110,7 +110,7 @@ public partial class RealmGame {
   float x=r.x+w+12,cy=Mathf.Round(r.center.y);if(x<r.xMax-20){Fill(new Rect(x,cy,r.xMax-x,1),new Color(CourtGold.r,CourtGold.g,CourtGold.b,.6f));float mx=x+(r.xMax-x)*.4f;Fill(new Rect(mx-3,cy-3,7,7),CourtGold);Fill(new Rect(mx-2,cy-2,5,5),new Color(.05f,.08f,.15f));}}
  // The top banner (emblem, title and subtitle, close cross) and the strip of figures along the bottom.
  bool CourtChrome(string titleText,string subtitle){
-  var full=new Rect(0,0,1280,800);Fill(full,new Color(.03f,.05f,.1f));
+  var full=FullCanvas;Fill(full,new Color(.03f,.05f,.1f));
   {var painting=Art("title-world");if(painting!=null){GUI.DrawTexture(full,painting,ScaleMode.ScaleAndCrop);Fill(full,new Color(.03f,.05f,.11f,.86f));}}
   // A sprinkling of faint stars over the navy, fixed so it does not shimmer.
   for(int k=0;k<70;k++){int h=(k*7919+13)%100003;float sx=h%1280,sy=(h/1280*37)%800;Fill(new Rect(sx,sy,1,1),new Color(1,1,1,.12f+(k%3)*.06f));}

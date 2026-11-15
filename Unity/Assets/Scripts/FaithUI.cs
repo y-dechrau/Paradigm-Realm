@@ -153,7 +153,7 @@ public partial class RealmGame {
  void DrawFaithPrompt(){
   var e=world.NextFaithEvent();if(e==null)return;GUI.enabled=true;var choices=FaithCatalog.EventChoices[e.kind];
   var picture=Art("faith-event-"+e.kind);float ph=picture!=null?212:0;
-  var box=new Rect(330,Mathf.Max(44,400-(150+ph+choices.Length*48)/2),620,150+ph+choices.Length*48);Fill(new Rect(0,0,1280,800),new Color(0,0,0,.35f));FaithFrame(box,.97f);
+  var box=new Rect(330,Mathf.Max(44,400-(150+ph+choices.Length*48)/2),620,150+ph+choices.Length*48);Fill(FullCanvas,new Color(0,0,0,.35f));FaithFrame(box,.97f);
   if(picture!=null){var pr=new Rect(box.x+12,box.y+12,box.width-24,ph-12);GUI.DrawTexture(pr,picture,ScaleMode.ScaleAndCrop);Fill(new Rect(pr.x,pr.yMax-1,pr.width,1),FaithGold);}
   GUI.Label(new Rect(box.x+20,box.y+ph+12,box.width-40,30),FaithCatalog.EventNames[e.kind].ToUpperInvariant(),hudTitle);
   GUI.Label(new Rect(box.x+20,box.y+ph+48,box.width-40,84),world.EventText(e),new GUIStyle(body){wordWrap=true});

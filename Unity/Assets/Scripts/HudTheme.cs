@@ -12,11 +12,22 @@ namespace ParadigmRealm
     public partial class RealmGame
     {
         // ---------- layout ----------
-        public const float MapX=0,MapY=0,MapW=1280,MapH=800;
-        static readonly Rect MapView=new Rect(MapX,MapY,MapW,MapH);
-        static readonly Rect TopBar=new Rect(0,0,1280,38),ResearchCard=new Rect(174,46,300,52),UnitCard=new Rect(8,592,410,200),
-            TileCard=new Rect(571,694,336,52),MiniMap=new Rect(1004,590,234,138),MiniButtons=new Rect(1242,590,32,138),
-            EndTurnRect=new Rect(1060,738,214,54),MorePanel=new Rect(8,246,410,340);
+        // The playing screen fills the whole display (owner request, 15 Nov 2026). The canvas is 800 units tall; on a display wider
+        // than 16:10 it is wider than 1280 (MapW), the map fills it, and the HUD keeps to the edges: panels on the right move right
+        // by RightShift, centred ones by MidShift. Full-page screens and prompts keep their 1280 design, centred (Centred()).
+        public const float MapX=0,MapY=0,MapH=800;
+        public static float MapW=1280;static bool centredNow;
+        static float RightShift{get{return MapW-1280;}}
+        static float MidShift{get{return (MapW-1280)/2;}}
+        // The whole display, in whichever frame is current.
+        static Rect FullCanvas{get{return centredNow?new Rect(-MidShift,0,MapW,800):new Rect(0,0,MapW,800);}}
+        static Rect MapView{get{return new Rect(MapX,MapY,MapW,MapH);}}
+        static Rect TopBar{get{return new Rect(0,0,MapW,38);}}
+        static readonly Rect ResearchCard=new Rect(174,46,300,52),UnitCard=new Rect(8,592,410,200),MorePanel=new Rect(8,246,410,340);
+        static Rect TileCard{get{return new Rect(571+MidShift,694,336,52);}}
+        static Rect MiniMap{get{return new Rect(1004+RightShift,590,234,138);}}
+        static Rect MiniButtons{get{return new Rect(1242+RightShift,590,32,138);}}
+        static Rect EndTurnRect{get{return new Rect(1060+RightShift,738,214,54);}}
         static readonly string[] RailScreens={"Economy","Civics","Research","Diplomacy","Religion","Cities","Military","Atlas","Victory","Chronicle"};
         static readonly string[] RailLabels={"Empire","Civics","Research","Diplomacy","Religion","Cities","Units","Realms","Victory","Chronicle"};
         static readonly int[] RailIcons={PixelArt.IconEmpire,PixelArt.IconCivics,PixelArt.IconResearch,PixelArt.IconDiplomacy,PixelArt.IconFaith,PixelArt.IconCities,PixelArt.IconMilitary,PixelArt.IconRealms,PixelArt.IconVictory,PixelArt.IconChronicle,PixelArt.IconIdentity};
@@ -39,13 +50,13 @@ namespace ParadigmRealm
             hudBudget=world.Budget(0)[2];hudOwnCities=0;hudCalm=0;hudScience=0;foreach(var c in world.cities)if(c.owner==0){hudOwnCities++;if(!world.Disorder(c))hudCalm++;hudScience+=world.Yield(c)[2];}
             int need;hudFood=world.FoodBalance(0,out need);hudFaith=world.FaithPerTurn(0);hudResearchTurns=world.research>=0?world.ResearchTurns(world.research,0):-1;hudEra=world.Era(0);
         }
-        Rect LeaderRect(int i){return new Rect(1274-(i+1)*80,46,74,96);}
+        Rect LeaderRect(int i){return new Rect(1274+RightShift-(i+1)*80,46,74,96);}
         // The current message (what just happened or why an order failed) leads, then the newest log entries of this turn and last.
         List<string> notesMemo;int notesTurn=-1,notesLog=-1;string notesStatus;
         List<string> RecentNotes(){if(notesMemo!=null&&notesTurn==world.turn&&notesLog==world.log.Count&&notesStatus==status)return notesMemo;notesTurn=world.turn;notesLog=world.log.Count;notesStatus=status;notesMemo=WorkOutNotes();return notesMemo;}
         List<string> WorkOutNotes(){string now="Turn "+world.turn+":",last="Turn "+(world.turn-1)+":";var notes=new List<string>();if(!string.IsNullOrEmpty(status))notes.Add(status);foreach(var l in world.log.Where(l=>l.StartsWith(now)||l.StartsWith(last))){if(notes.Count>=3)break;string text=l.Substring(l.IndexOf(':')+1).Trim();if(text!=status)notes.Add(text);}return notes;}
         // Each note is as tall as its text needs (owner report, 14 Nov 2026: long notes were cut off at a fixed 46 units).
-        Rect NoteRect(int i){float y=MetRivals().Count>0?150:46;var notes=RecentNotes();for(int k=0;k<i&&k<notes.Count;k++)y+=NoteHeight(notes[k])+6;return new Rect(1040,y,234,i<notes.Count?NoteHeight(notes[i]):46);}
+        Rect NoteRect(int i){float y=MetRivals().Count>0?150:46;var notes=RecentNotes();for(int k=0;k<i&&k<notes.Count;k++)y+=NoteHeight(notes[k])+6;return new Rect(1040+RightShift,y,234,i<notes.Count?NoteHeight(notes[i]):46);}
         float NoteHeight(string text){if(hudSmall==null)return 46;return Mathf.Max(46,Mathf.Ceil(hudSmall.CalcHeight(new GUIContent(text),188))+12);}
         bool CardShown(){return Selected()!=null||world.cities.Any(a=>a.owner==0&&a.id==cityId);}
         void BuildHudRects()
@@ -57,9 +68,10 @@ namespace ParadigmRealm
             for(int i=0;i<RecentNotes().Count;i++)hudRects.Add(NoteRect(i));
             {Rect site;if(CardShown()&&SiteCard(Selected(),out site,out _,out _))hudRects.Add(site);}
             // The tutorial panel takes its own clicks (its Next, Hide and End buttons), not the map underneath.
-            if(TutorialShown())hudRects.Add(TutorialRect());
+            // The tutorial panel is drawn in the centred frame, so its box is moved into the map's frame here.
+            if(TutorialShown()){var tr=TutorialRect();tr.x+=MidShift;hudRects.Add(tr);}
             if(NoticeShown())hudRects.Add(NoticeRect);if(CallShown())hudRects.Add(CallRect);
-            if(viewRealm>0)hudRects.Add(new Rect(472,708,336,30));
+            if(viewRealm>0)hudRects.Add(new Rect(472+MidShift,708,336,30));
 
         }
 
@@ -118,7 +130,9 @@ namespace ParadigmRealm
         void DrawTopBar()
         {
             HudStyles();RefreshHudNumbers();
-            Fill(TopBar,new Color(.035f,.055f,.095f,.96f));Fill(new Rect(0,TopBar.yMax-2,1280,1),UiGold);Fill(new Rect(0,TopBar.yMax-1,1280,1),new Color(0,0,0,.6f));
+            // In a centred screen (city, details) the bar still spans the whole display.
+            var bar=TopBar;if(centredNow)bar.x-=MidShift;float shift=centredNow?MidShift:RightShift;
+            Fill(bar,new Color(.035f,.055f,.095f,.96f));Fill(new Rect(bar.x,bar.yMax-2,bar.width,1),UiGold);Fill(new Rect(bar.x,bar.yMax-1,bar.width,1),new Color(0,0,0,.6f));
             // The compass-rose emblem and name on a gold-framed plate, as in the mockup.
             {var plate=new Rect(2,1,228,36);GUI.Box(plate,"");var logo=UiTex("logo");if(logo!=null)GUI.DrawTexture(new Rect(6,0,38,38),logo,ScaleMode.ScaleToFit,true);else DrawIcon(PixelArt.IconRealms,new Rect(12,7,24,24));FitLabel(new Rect(50,8,172,26),"PARADIGM  REALM",hudTitle,11);}
             int budget=hudBudget,ownCities=hudOwnCities,calm=hudCalm;
@@ -142,11 +156,11 @@ namespace ParadigmRealm
                 if(new Rect(start,2,x-start,34).Contains(mouse))hoverTip=item.Value[2];
                 x+=18;Fill(new Rect(x-10,9,1,20),new Color(UiGold.r,UiGold.g,UiGold.b,.45f));
             }
-            if(hoverTip!=null){var size=hudSmall.CalcSize(new GUIContent(hoverTip));var tr=new Rect(Mathf.Min(mouse.x,1270-size.x-12),40,size.x+12,size.y+6);Fill(tr,new Color(.05f,.08f,.16f,.95f));Fill(new Rect(tr.x,tr.yMax-1,tr.width,1),UiGold);GUI.Label(new Rect(tr.x+6,tr.y+3,size.x+2,size.y),hoverTip,hudSmall);}
-            {float tx=Math.Max(x,1036);DrawIcon(PixelArt.IconTurn,new Rect(tx,8,22,22));GUI.Label(new Rect(tx+26,9,1192-tx-26,22),"Turn "+world.turn+"  •  "+world.Calendar(),hudLabel);}
+            if(hoverTip!=null){var size=hudSmall.CalcSize(new GUIContent(hoverTip));var tr=new Rect(Mathf.Min(mouse.x,1270+shift-size.x-12),40,size.x+12,size.y+6);Fill(tr,new Color(.05f,.08f,.16f,.95f));Fill(new Rect(tr.x,tr.yMax-1,tr.width,1),UiGold);GUI.Label(new Rect(tr.x+6,tr.y+3,size.x+2,size.y),hoverTip,hudSmall);}
+            {float tx=Math.Max(x,1036+shift);DrawIcon(PixelArt.IconTurn,new Rect(tx,8,22,22));GUI.Label(new Rect(tx+26,9,1192+shift-tx-26,22),"Turn "+world.turn+"  •  "+world.Calendar(),hudLabel);}
             bool enabled=GUI.enabled;GUI.enabled=!confirmNew&&pendingUnit==-1&&!turnRunning;
-            if(GUI.Button(new Rect(1196,5,34,28),""))guide=true;DrawIcon(PixelArt.IconHelp,new Rect(1201,7,24,24));
-            if(GUI.Button(new Rect(1236,5,38,28),"")){pauseMenu=true;GUIUtility.ExitGUI();}DrawIcon(PixelArt.IconMenu,new Rect(1243,7,24,24));
+            if(GUI.Button(new Rect(1196+shift,5,34,28),""))guide=true;DrawIcon(PixelArt.IconHelp,new Rect(1201+shift,7,24,24));
+            if(GUI.Button(new Rect(1236+shift,5,38,28),"")){pauseMenu=true;GUIUtility.ExitGUI();}DrawIcon(PixelArt.IconMenu,new Rect(1243+shift,7,24,24));
             GUI.enabled=enabled;
         }
         void DrawRail()

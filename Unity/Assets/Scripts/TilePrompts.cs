@@ -16,7 +16,7 @@ public partial class RealmGame {
  }
  void DrawFoundPrompt(){
   var u=world.units.Find(a=>a.id==foundUnit);if(u==null||world.FoundReason(u)!=""){foundStage=0;return;}
-  GUI.enabled=true;Fill(new Rect(0,0,1280,800),new Color(0,0,0,.45f));var box=new Rect(420,280,440,foundStage==1?190:220);GUI.Box(box,"");
+  GUI.enabled=true;Fill(FullCanvas,new Color(0,0,0,.45f));var box=new Rect(420,280,440,foundStage==1?190:220);GUI.Box(box,"");
   GUILayout.BeginArea(new Rect(box.x+24,box.y+18,box.width-48,box.height-30));
   if(foundStage==1){
    GUILayout.Label("Are you sure you want to settle here?",heading);
@@ -45,7 +45,7 @@ public partial class RealmGame {
   if(c==null&&own.Count==0){tilePicker=false;return;}
   // Each kind with two or more here can be taken together as one stack (owner request).
   var kinds=own.Where(u=>!World.IsNaval(u.type)).GroupBy(u=>u.type).Where(g=>g.Count()>=2&&g.Count()<own.Count).Select(g=>g.First()).ToList();
-  GUI.enabled=true;int rows=(c!=null?1:0)+own.Count+kinds.Count;var box=new Rect(Mathf.Min(pickerAt.x+12,1280-270),Mathf.Min(pickerAt.y+12,800-(rows*34+44)),258,rows*34+44);
+  GUI.enabled=true;int rows=(c!=null?1:0)+own.Count+kinds.Count;var box=new Rect(Mathf.Min(pickerAt.x+12,MapW-270),Mathf.Min(pickerAt.y+12,800-(rows*34+44)),258,rows*34+44);
   var e=Event.current;
   // The second click of a double click lands here, because the first opened this chooser: it opens the city (owner request).
   if(e.type==EventType.MouseDown&&e.button==0&&c!=null&&(e.clickCount==2||Time.realtimeSinceStartup-pickerOpened<.6f)&&!box.Contains(e.mousePosition)){int tx,ty;if(MapTileAt(e.mousePosition,out tx,out ty)&&tx==pickerX&&ty==pickerY){tilePicker=false;e.Use();OpenCity(c);return;}}

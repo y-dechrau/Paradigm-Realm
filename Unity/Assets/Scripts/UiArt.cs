@@ -39,7 +39,7 @@ namespace ParadigmRealm
         static readonly string[] MedalTips={"Empire","Research","Civics","Chronicle","Victory","Diplomacy","Units: active and idle","Realms","Religion"};
         static readonly string[] MedalArt={"crown","research2","civics","chronicle","victory","diplomacy","military2","realms","faith"};
         const float MedalSize=46,MedalGap=50;
-        static Rect MedalBar{get{float w=MedalScreens.Length*MedalGap;return new Rect(739-w/2,750,w,MedalSize);}}
+        static Rect MedalBar{get{float w=MedalScreens.Length*MedalGap;return new Rect(739+MidShift-w/2,750,w,MedalSize);}}
         void DrawMedalBar()
         {
             var bar=MedalBar;var e=Event.current;string tip=null;

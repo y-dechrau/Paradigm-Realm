@@ -53,7 +53,7 @@ public partial class RealmGame {
   if(tutorialMinimised){var tab=TutorialRect();DrawGuideFrame(tab);if(guideFace!=null)GUI.DrawTexture(new Rect(tab.x+3,tab.y+3,50,50),guideFace,ScaleMode.ScaleAndCrop);if(GUI.Button(tab,"",GUIStyle.none))tutorialMinimised=false;GUI.enabled=was;return;}
   // The welcome is a large card with the whole picture; later steps are a compact panel under the top bar.
   if(tutorialStep==0){
-   Fill(new Rect(0,0,1280,800),new Color(0,0,0,.55f));var card=new Rect(240,90,800,610);DrawGuideFrame(card);
+   Fill(FullCanvas,new Color(0,0,0,.55f));var card=new Rect(240,90,800,610);DrawGuideFrame(card);
    // The picture is 4:3; the frame is wider, so show its top part (the halo, laurels and face), not the middle.
    if(guidePicture!=null){var pic=new Rect(card.x+12,card.y+12,card.width-24,420);float vh=Mathf.Min(1f,(4f/3f)/(pic.width/pic.height));GUI.DrawTextureWithTexCoords(pic,guidePicture,new Rect(0,1-vh,1,vh));}
    GUI.Label(new Rect(card.x+24,card.y+440,card.width-48,30),GuideName.ToUpperInvariant()+"  ·  "+TutorialTitles[0],heading);

@@ -22,7 +22,7 @@ public partial class RealmGame {
  // Only what the home world's civilisations have discovered shows here (owner request, 6 Nov 2026): a world once a gateway to it has
  // been found, a people as contact, friendship or agents reveal them.
  void DrawLegends(){
-  var panel=new Rect(60,60,1160,690);Fill(new Rect(0,0,1280,800),UiDim);GUI.Box(panel,"");
+  var panel=new Rect(60,60,1160,690);Fill(FullCanvas,UiDim);GUI.Box(panel,"");
   if(legendsPeople>=0){var who=world.NationOfPeople(legendsPeople);if(who<0||world.PeopleDetail(who)<1)legendsPeople=-1;else{DrawCivilisationLore(legendsPeople,world.PeopleDetail(who));return;}}
   GUI.Label(new Rect(84,74,800,34),"Legends of the sealed worlds",title);
   if(GUI.Button(new Rect(1020,76,176,32),"Close",button)){legendsOpen=false;GUIUtility.ExitGUI();}
@@ -61,7 +61,7 @@ public partial class RealmGame {
  }
  // A banner on the map while you look at a parallel world.
  void DrawRealmBanner(){
-  if(world==null||viewRealm==0)return;var r=new Rect(472,708-tileCardGrow,336,30);
+  if(world==null||viewRealm==0)return;var r=new Rect(472+MidShift,708-tileCardGrow,336,30);
   Fill(r,new Color(.18f,.06f,.2f,.92f));Fill(new Rect(r.x,r.y,r.width,2),UiAccent);
   GUI.Label(new Rect(r.x+8,r.y+4,200,22),"In the "+World.RealmNames[viewRealm],hudLabel);
   if(GUI.Button(new Rect(r.xMax-118,r.y+3,112,24),"Home world",button)){ShowRealm(0);}

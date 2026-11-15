@@ -34,30 +34,45 @@ namespace ParadigmRealm
         // Timers for the -frameProbe development run; nothing reads them in play.
         internal readonly System.Diagnostics.Stopwatch guiClock=new System.Diagnostics.Stopwatch(),mapClock=new System.Diagnostics.Stopwatch(),hudClock=new System.Diagnostics.Stopwatch();
         internal int guiPasses;
+        // The two frames the screen is drawn in: the full display (map and HUD) and a 1280-wide frame centred on it.
+        Matrix4x4 wideMatrix=Matrix4x4.identity,centredMatrix=Matrix4x4.identity;
+        void Wide(){GUI.matrix=wideMatrix;centredNow=false;}
+        void Centred(){GUI.matrix=centredMatrix;centredNow=true;}
         void OnGUI(){guiClock.Start();guiPasses++;try{DrawInterface();}finally{guiClock.Stop();mapClock.Stop();hudClock.Stop();}}
         void DrawInterface()
         {
             if(world!=null)world.EndVisibilityCache();compositeBudgetOn=false;
-            ApplyVisualSkin();Styles();HudStyles();float scale=Mathf.Min(Screen.width/1280f,Screen.height/800f);GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-1280*scale)/2,(Screen.height-800*scale)/2,0),Quaternion.identity,new Vector3(scale,scale,1));
+            ApplyVisualSkin();Styles();HudStyles();
+            // The whole display is used (owner request, 15 Nov 2026): wider than 16:10, the canvas widens instead of leaving bars at the
+            // sides. A narrower display keeps the 1280 x 800 canvas, fitted and centred as before.
+            float scale=Mathf.Min(Screen.width/1280f,Screen.height/800f),wideW=Screen.width/(Screen.height/800f);
+            if(wideW>1280.5f){scale=Screen.height/800f;MapW=Mathf.Floor(wideW);wideMatrix=Matrix4x4.TRS(Vector3.zero,Quaternion.identity,new Vector3(scale,scale,1));}
+            else{MapW=1280;wideMatrix=Matrix4x4.TRS(new Vector3((Screen.width-1280*scale)/2,(Screen.height-800*scale)/2,0),Quaternion.identity,new Vector3(scale,scale,1));}
+            centredMatrix=wideMatrix*Matrix4x4.Translate(new Vector3(MidShift,0,0));Wide();
             if(probeEvent!=null&&Event.current.type==EventType.Repaint){var injected=probeEvent;probeEvent=null;var at=injected.mousePosition;Event.current=injected;injected.mousePosition=at;}
-            GUI.DrawTexture(new Rect(0,0,1280,800),Texture2D.whiteTexture,ScaleMode.StretchToFill,false,0,UiBackground,0,0);
+            GUI.DrawTexture(FullCanvas,Texture2D.whiteTexture,ScaleMode.StretchToFill,false,0,UiBackground,0,0);
+            Centred();
             if(artGallery){DrawGallery();return;}
             if(nameSetup){DrawNameSetup();return;}
             if(loadScreen){DrawLoadScreen();return;}
             if(mainMenu){DrawMainMenu();return;}
+            Wide();
             HandleGlobalInput();
-            if(pauseMenu){GUI.enabled=false;DrawMap();GUI.enabled=true;DrawPauseMenu();DrawSaveToast();return;}
+            if(pauseMenu){GUI.enabled=false;DrawMap();GUI.enabled=true;Centred();DrawPauseMenu();DrawSaveToast();return;}
             MapKeyboardInput();
             BuildHudRects();
-            if(researchScreen){tutorialResearchSeen=true;DrawResearchScreen();DrawSaveToast();return;}
-            if(detailsScreen!=""){DrawTopBar();if(legendsOpen)DrawLegends();else DrawDetailsScreen();DrawSaveToast();return;}
-            if(cityScreen){DrawTopBar();DrawCityScreen();DrawSaveToast();return;}
+            if(researchScreen){tutorialResearchSeen=true;Centred();DrawResearchScreen();DrawSaveToast();return;}
+            if(detailsScreen!=""){DrawTopBar();Centred();if(legendsOpen)DrawLegends();else DrawDetailsScreen();DrawSaveToast();return;}
+            if(cityScreen){DrawTopBar();Centred();DrawCityScreen();DrawSaveToast();return;}
             NavigationInput();
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen()&&!turnRunning;
-            FollowGateArrival();mapClock.Start();DrawMap();mapClock.Stop();hudClock.Start();DrawHud();hudClock.Stop();DrawRealmBanner();if(!guide)DrawTutorial();
+            FollowGateArrival();mapClock.Start();DrawMap();mapClock.Stop();hudClock.Start();DrawHud();hudClock.Stop();DrawRealmBanner();
+            // Prompts, the tutorial and the guide keep their 1280 design, centred on the display.
+            if(tilePicker&&gateScene==null&&gatePanel==null&&foundStage<=0)DrawTilePicker();
+            Centred();if(!guide)DrawTutorial();
             if(guide)DrawGuide();if(confirmNew){GUI.Box(new Rect(420,270,440,190),"");GUILayout.BeginArea(new Rect(445,290,390,145));GUILayout.Label("Start a new world?",heading);GUILayout.Label("Save first if you want to keep your current game.",body);if(Button("Start new game")){confirmNew=false;nameSetup=true;GUIUtility.ExitGUI();}if(Button("Cancel"))confirmNew=false;GUILayout.EndArea();}
             if(pendingUnit!=-1){DrawWarPrompt();return;}
-            if(gateScene!=null)DrawGateScene();else if(gatePanel!=null)DrawGatePanel();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker)DrawTilePicker();else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();
+            if(gateScene!=null)DrawGateScene();else if(gatePanel!=null)DrawGatePanel();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker){}else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();
             DrawSaveToast();
         }
         // Meeting a civilisation opens Diplomacy with them straight away, one meeting at a time. This runs between frames, not
@@ -101,8 +116,8 @@ namespace ParadigmRealm
                 menuButton=new GUIStyle(button){fontSize=19,fontStyle=FontStyle.Bold};
             }
             // Original pixel landscape, drawn in integer-sized blocks.
-            var backdrop=Art("title-world");if(backdrop!=null)GUI.DrawTexture(new Rect(0,0,1280,800),backdrop,ScaleMode.ScaleAndCrop);
-            Fill(new Rect(0,0,1280,800),new Color(0,0,0,.18f));
+            var backdrop=Art("title-world");if(backdrop!=null)GUI.DrawTexture(FullCanvas,backdrop,ScaleMode.ScaleAndCrop);
+            Fill(FullCanvas,new Color(0,0,0,.18f));
             Fill(new Rect(390,85,500,637),new Color(UiPanel.r,UiPanel.g,UiPanel.b,.93f));
             Fill(new Rect(390,85,500,3),new Color(.68f,.57f,.35f));
             Fill(new Rect(390,719,500,3),new Color(.68f,.57f,.35f));
@@ -130,7 +145,7 @@ namespace ParadigmRealm
             GUI.Label(new Rect(390,735,500,30),"EARTH  |  PIXEL REALMS EDITION",menuSubtitle);
             if(guide)DrawGuide();
             if(confirmNew||confirmQuit){
-                Fill(new Rect(0,0,1280,800),UiDim);
+                Fill(FullCanvas,UiDim);
                 GUI.Box(new Rect(390,275,500,230),"");
                 GUI.Label(new Rect(420,295,440,35),confirmQuit?"Quit Paradigm Realm?":"Start a new civilisation?",heading);
                 GUI.Label(new Rect(420,340,440,55),"Unsaved progress will be lost. Cancel and use Save in the game to keep your progress.",body);
@@ -365,7 +380,7 @@ namespace ParadigmRealm
         }
         void DrawWarPrompt()
         {
-            Fill(new Rect(0,0,1280,800),UiDim);GUI.Box(new Rect(340,200,600,390),"");
+            Fill(FullCanvas,UiDim);GUI.Box(new Rect(340,200,600,390),"");
             GUILayout.BeginArea(new Rect(365,220,550,345));GUILayout.Label("Declare war?",heading);
             GUILayout.Label("This attack will declare war on "+string.Join(" and ",pendingWars.Select(i=>world.NationName(i)).ToArray())+". Proceed?",body);
             string blocked=string.Join(" ",pendingWars.Where(i=>!world.AtWar(0,i)).Select(i=>world.WarReason(0,i)).Where(r=>r!="").ToArray());
@@ -391,7 +406,7 @@ namespace ParadigmRealm
         }
         void DrawGuide()
         {
-            Fill(new Rect(0,0,1280,800),UiDim);GUI.Box(new Rect(330,150,620,485),"");GUILayout.BeginArea(new Rect(358,175,564,435));GUILayout.Label("Welcome to Paradigm Realm",title);
+            Fill(FullCanvas,UiDim);GUI.Box(new Rect(330,150,620,485),"");GUILayout.BeginArea(new Rect(358,175,564,435));GUILayout.Label("Welcome to Paradigm Realm",title);
             logScroll=GUILayout.BeginScrollView(logScroll);GUILayout.Label("1. Found a city with your Settler. Double-click your city to open its screen. Units and buildings have separate simultaneous production lines. Click once for a single project; Ctrl+left-click appends, Ctrl+right-click removes the last item from that line. Each building type may exist once per city.\n\n2. Drag units to destinations. Orders continue each turn. Peaceful borders and attacks require permission or a war confirmation. Six troops plus two civilians fit per tile, with any number of workers; your own cities shelter any number of civilians. Stack units with G to move them as one: a soldier stacked with a worker or settler is its escort.\n\n3. Workers build roads in 2 turns at home, 3 outside your borders (4 on hills). Farms, mines and forts take 3 worker-turns. Group workers on one tile to share construction; each contributes one work per turn. Research Agriculture for farms, Mining for mines, and The Wheel for roads. Connect improved resources to your capital by owned roads.\n\n4. Open Economy to set taxes and inspect upkeep. A city in disorder (more unhappy than content citizens) makes no production or gold and cannot grow. New projects have costs and locked-requirement explanations.\n\n5. Archers and catapults can fire at visible enemies using their panel. Infantry capture cities. Promotions and upgrades are available when eligible.\n\nWASD / middle drag pan. Mouse wheel zooms at the pointer. Zoom buttons also change scale. X cancels the selected unit or worker team activity / route. Escape opens the game menu; Ctrl+S quick saves. Research opens the technology tree from the top bar. Upgrades require an owned city. Arrows move the selected unit; Tab selects an idle unit. B founds a city. Enter (including keypad Enter) ends a turn. Space skips only the selected unit. F1 opens help. Manual saves keep a backup; three autosaves rotate.\n\nFoundation alpha: Earth, 3 civilisations, 124 technologies across 14 eras. The research screen distinguishes active effects from planned content. Naval units, aircraft and realms remain planned. See Design/MASTER-DESIGN.md for the full specification.",body);
             GUILayout.EndScrollView();GUILayout.FlexibleSpace();if(Button(mainMenu?"Back to menu":"Begin your story")){guide=false;GUIUtility.ExitGUI();}GUILayout.EndArea();
         }

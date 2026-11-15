@@ -19,7 +19,7 @@ public partial class RealmGame {
  // detail 3 shows everything; for peoples of other worlds it is what your civilisation has managed to learn.
  void DrawCivilisationLore(int civ,int detail=3){
   var e=CivLore.Of(civ);if(e==null){civLoreOpen=false;legendsPeople=-1;return;}
-  var panel=new Rect(60,60,1160,690);Fill(new Rect(0,0,1280,800),UiDim);GUI.Box(panel,"");
+  var panel=new Rect(60,60,1160,690);Fill(FullCanvas,UiDim);GUI.Box(panel,"");
   var face=Portrait(CivilisationCatalog.Portraits[civ]);if(face!=null)DrawPortrait(new Rect(84,84,300,400),face);
   GUI.Label(new Rect(84,494,300,30),CivilisationCatalog.Leaders[civ],heading);GUI.Label(new Rect(84,524,300,44),CivilisationCatalog.PortraitTitles[CivilisationCatalog.Portraits[civ]],small);
   GUILayout.BeginArea(new Rect(408,80,792,600));civLoreScroll=GUILayout.BeginScrollView(civLoreScroll);

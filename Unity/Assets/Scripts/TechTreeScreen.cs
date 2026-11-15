@@ -138,7 +138,7 @@ public partial class RealmGame {
   if(researchEra<0)researchEra=world.Era(0);ChronicleLayout();
   if(inspectedTech<0||TechnologyCatalog.Eras[inspectedTech]!=researchEra){inspectedTech=world.research>=0&&TechnologyCatalog.Eras[world.research]==researchEra?world.research:EraTechs(researchEra).First();}
   var available=world.AvailableTech();
-  Fill(new Rect(0,0,1280,800),new Color(.03f,.05f,.1f));
+  Fill(FullCanvas,new Color(.03f,.05f,.1f));
   // ---- Header ----
   GoldFrame(new Rect(-14,-14,1308,92));
   {var logo=UiTex("logo");if(logo!=null)GUI.DrawTexture(new Rect(46,4,56,56),logo,ScaleMode.ScaleToFit);}

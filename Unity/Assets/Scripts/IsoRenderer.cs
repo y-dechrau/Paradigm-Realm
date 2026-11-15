@@ -17,7 +17,7 @@ namespace ParadigmRealm
         float camI=20,camJ=15;
         int isoWidth=64;
         static readonly int[] IsoWidths={32,48,64,96,128};
-        const float IsoCentreX=MapW/2,IsoCentreY=MapH/2;
+        static float IsoCentreX{get{return MapW/2;}}const float IsoCentreY=MapH/2;
         readonly Dictionary<long,Texture2D> isoTiles=new Dictionary<long,Texture2D>();
         readonly Queue<long> isoTileOrder=new Queue<long>();
         readonly Dictionary<long,Texture2D> isoPictures=new Dictionary<long,Texture2D>();
