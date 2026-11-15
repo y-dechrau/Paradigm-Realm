@@ -117,8 +117,9 @@ public partial class RealmGame {
   GoldFrame(new Rect(-14,-14,1308,84));
   DrawDipIcon("compass",new Rect(30,10,44,44));GUI.Label(new Rect(82,12,260,26),"PARADIGM REALM",new GUIStyle(courtCaps){fontSize=17,normal={textColor=CourtCream}});
   Fill(new Rect(82,42,200,1),new Color(CourtGold.r,CourtGold.g,CourtGold.b,.6f));
-  GUI.Label(new Rect(340,2,600,40),titleText.ToUpperInvariant(),courtTitle);
-  GUI.Label(new Rect(340,38,600,26),subtitle,courtSub);
+  // Title and subtitle stay inside the banner's rails (owner request, 15 Nov 2026: all text fully visible).
+  GUI.Label(new Rect(340,0,600,36),titleText.ToUpperInvariant(),new GUIStyle(courtTitle){fontSize=27});
+  GUI.Label(new Rect(340,32,600,22),subtitle,new GUIStyle(courtSub){fontSize=15});
   {var lineInk=new Color(CourtGold.r,CourtGold.g,CourtGold.b,.6f);float tw=courtTitle.CalcSize(new GUIContent(titleText.ToUpperInvariant())).x;Fill(new Rect(640-tw/2-150,22,130,1),lineInk);Fill(new Rect(640+tw/2+20,22,130,1),lineInk);}
   var close=new Rect(1226,12,40,40);Fill(close,CourtNavy);Fill(new Rect(close.x,close.y,close.width,1),CourtGold);Fill(new Rect(close.x,close.yMax-1,close.width,1),CourtGold);Fill(new Rect(close.x,close.y,1,close.height),CourtGold);Fill(new Rect(close.xMax-1,close.y,1,close.height),CourtGold);
   GUI.Label(close,"✕",new GUIStyle(courtTitle){fontSize=22});
@@ -214,14 +215,16 @@ public partial class RealmGame {
   GUI.DrawTexture(fig,seated,ScaleMode.StretchToFill,true);
   int waiting=world.offers.Count(x=>x.to==0&&x.from==o&&x.status==0&&x.expires>world.turn);if(waiting>0){var b=new Rect(fig.xMax-26,fig.y+6,22,22);Fill(b,new Color(.75f,.18f,.14f));GUI.Label(b,waiting.ToString(),dipBadge);}
   // Name plate across the foot of the throne.
+  // The full name: one line if it fits at a readable size, otherwise two, and the plate grows to hold it.
+  float nameH;var nameStyle=FitName(world.NationName(o).ToUpperInvariant(),card.width*.94f-10,new GUIStyle(courtCaps){alignment=TextAnchor.MiddleCenter,normal={textColor=CourtCream}},15,11,9,out nameH);plateH=Mathf.Max(plateH,nameH+6);
   var plate=new Rect(card.center.x-card.width*.47f,card.yMax-plateH-badgeH+2,card.width*.94f,plateH);
   Fill(new Rect(plate.x-2,plate.y-2,plate.width+4,plate.height+4),new Color(.18f,.12f,.05f,.95f));Fill(plate,new Color(.05f,.08f,.15f,.97f));
   {var e=chosen?new Color(1f,.86f,.5f):CourtGold;Fill(new Rect(plate.x,plate.y,plate.width,1),e);Fill(new Rect(plate.x,plate.yMax-1,plate.width,1),e);Fill(new Rect(plate.x,plate.y,1,plate.height),e);Fill(new Rect(plate.xMax-1,plate.y,1,plate.height),e);}
-  FitLabel(new Rect(plate.x+6,plate.y,plate.width-12,plate.height),world.NationName(o).ToUpperInvariant(),new GUIStyle(courtCaps){fontSize=15,alignment=TextAnchor.MiddleCenter,normal={textColor=CourtCream}},8);
+  GUI.Label(new Rect(plate.x+5,plate.y,plate.width-10,plate.height),world.NationName(o).ToUpperInvariant(),nameStyle);
   // The attitude beneath, framed in its own colour.
-  Color ink;string mood=MoodText(o,out ink);var badge=new Rect(card.center.x-card.width*.38f,plate.yMax-1,card.width*.76f,badgeH);
+  Color ink;string mood=MoodText(o,out ink);float badgeW=card.width*.76f;{var probe=new GUIStyle(courtCaps){fontSize=10};float need=probe.CalcSize(new GUIContent(mood)).x+badgeH+14;badgeW=Mathf.Min(card.width,Mathf.Max(badgeW,need));}var badge=new Rect(card.center.x-badgeW/2,plate.yMax-1,badgeW,badgeH);
   Fill(badge,new Color(ink.r*.2f,ink.g*.2f,ink.b*.2f,.97f));{var e=new Color(ink.r,ink.g,ink.b,.85f);Fill(new Rect(badge.x,badge.y,badge.width,1),e);Fill(new Rect(badge.x,badge.yMax-1,badge.width,1),e);Fill(new Rect(badge.x,badge.y,1,badge.height),e);Fill(new Rect(badge.xMax-1,badge.y,1,badge.height),e);}
-  var ms=new GUIStyle(courtCaps){fontSize=13,alignment=TextAnchor.MiddleLeft};ms.normal.textColor=ink;float iconS=badge.height-6;while(ms.fontSize>8&&ms.CalcSize(new GUIContent(mood)).x>badge.width-iconS-14)ms.fontSize--;
+  var ms=new GUIStyle(courtCaps){fontSize=13,alignment=TextAnchor.MiddleLeft};ms.normal.textColor=ink;float iconS=badge.height-6;while(ms.fontSize>10&&ms.CalcSize(new GUIContent(mood)).x>badge.width-iconS-14)ms.fontSize--;
   float mw=ms.CalcSize(new GUIContent(mood)).x,mx=badge.center.x-(mw+iconS+6)/2;int g=CouncilGroup(o);DrawDipIcon(CouncilGroupIcons[g],new Rect(mx,badge.y+3,iconS,iconS),g==3?new Color(1f,.45f,.4f):(Color?)null);GUI.Label(new Rect(mx+iconS+6,badge.y,mw+6,badge.height),mood,ms);
  }
  // A banner on a gilded bar: the nation's colour, its flag at the top, a swallow-tail at the foot.
@@ -233,6 +236,30 @@ public partial class RealmGame {
   Fill(new Rect(r.x,body.y,2,body.height+tail),gold);Fill(new Rect(r.xMax-2,body.y,2,body.height+tail),gold);
   var flag=FlagTexture(o);if(flag!=null){float fw=r.width-10,fh=fw/1.5f;GUI.DrawTexture(new Rect(r.x+5,body.y+6,fw,fh),flag,ScaleMode.StretchToFill,true);}
  }
+ // A name at the largest size that shows it whole: one line down to minOne, otherwise two lines down to minTwo, never cut off
+ // (owner request, 15 Nov 2026). Returns the style and the height it needs at the given width.
+ GUIStyle FitName(string text,float width,GUIStyle look,int maxSize,int minOne,int minTwo,out float height){
+  var gc=new GUIContent(text);var s=new GUIStyle(look){fontSize=maxSize,wordWrap=false,clipping=TextClipping.Overflow};
+  while(s.fontSize>minOne&&s.CalcSize(gc).x>width)s.fontSize--;
+  if(s.CalcSize(gc).x<=width){height=s.CalcSize(gc).y;return s;}
+  s.wordWrap=true;s.fontSize=maxSize;var words=text.Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries);
+  while(s.fontSize>minTwo){var one=new GUIStyle(s){wordWrap=false};float widest=words.Length==0?0:words.Max(word=>one.CalcSize(new GUIContent(word)).x);float line=one.CalcSize(new GUIContent("Ag")).y;if(widest<=width&&s.CalcHeight(gc,width)<=line*2.2f)break;s.fontSize--;}
+  height=s.CalcHeight(gc,width);return s;}
+ // Portraits in a gold-ringed circle (owner request, 15 Nov 2026): a round copy of each picture, the top of it (the face), made once.
+ readonly Dictionary<Texture2D,Texture2D> roundPortraits=new Dictionary<Texture2D,Texture2D>();Texture2D discTexture;
+ Texture2D RoundCopy(Texture2D src){
+  if(src==null)return null;Texture2D made;if(roundPortraits.TryGetValue(src,out made))return made;
+  try{int side=Math.Min(src.width,src.height),x0=(src.width-side)/2,y0=src.height-side;var px=src.GetPixels32();var outPx=new Color32[side*side];float r=side/2f,edge=Mathf.Max(1.5f,side/160f);
+   for(int y=0;y<side;y++)for(int x=0;x<side;x++){var c=px[(y0+y)*src.width+x0+x];float d=Mathf.Sqrt((x+.5f-r)*(x+.5f-r)+(y+.5f-r)*(y+.5f-r));float a=Mathf.Clamp01((r-d)/edge);c.a=(byte)(c.a*a);outPx[y*side+x]=c;}
+   made=new Texture2D(side,side,TextureFormat.RGBA32,true);made.SetPixels32(outPx);made.Apply(true);made.filterMode=FilterMode.Trilinear;made.wrapMode=TextureWrapMode.Clamp;}
+  catch(Exception){made=src;}
+  roundPortraits[src]=made;return made;}
+ Texture2D Disc(){if(discTexture!=null)return discTexture;int n=128;var px=new Color32[n*n];float r=n/2f;for(int y=0;y<n;y++)for(int x=0;x<n;x++){float d=Mathf.Sqrt((x+.5f-r)*(x+.5f-r)+(y+.5f-r)*(y+.5f-r));px[y*n+x]=new Color32(255,255,255,(byte)(255*Mathf.Clamp01(r-d)));}
+  discTexture=new Texture2D(n,n,TextureFormat.RGBA32,true);discTexture.SetPixels32(px);discTexture.Apply(true);discTexture.filterMode=FilterMode.Bilinear;return discTexture;}
+ void DrawRoundPortrait(Rect r,Texture2D face){
+  var old=GUI.color;GUI.color=new Color(.18f,.12f,.05f);GUI.DrawTexture(new Rect(r.x-5,r.y-5,r.width+10,r.height+10),Disc());GUI.color=CourtGold;GUI.DrawTexture(new Rect(r.x-4,r.y-4,r.width+8,r.height+8),Disc());
+  GUI.color=new Color(.12f,.15f,.24f);GUI.DrawTexture(new Rect(r.x-1,r.y-1,r.width+2,r.height+2),Disc());GUI.color=old;
+  var round=RoundCopy(face);if(round!=null)GUI.DrawTexture(r,round,ScaleMode.StretchToFill,true);}
  void DrawCouncilPortraitCard(Rect card,int o,bool chosen){
   var pn=world.nations[o];var pic=new Rect(card.x,card.y,card.width,card.height-58);
   if(chosen){Fill(new Rect(card.x-6,card.y-6,card.width+12,card.height+12),new Color(1f,.82f,.4f,.18f));Fill(new Rect(card.x-3,card.y-3,card.width+6,card.height+6),new Color(1f,.82f,.4f,.35f));}
@@ -249,8 +276,8 @@ public partial class RealmGame {
  void DrawCouncilSide(Rect side,int o){
   GoldFrame(side);var pn=world.nations[o];float x=side.x+18,w=side.width-36,y=side.y+18;
   {var flag=FlagTexture(o);var fr=new Rect(x,y+2,60,40);Fill(new Rect(fr.x-2,fr.y-2,fr.width+4,fr.height+4),CourtGold);if(flag!=null)GUI.DrawTexture(fr,flag,ScaleMode.StretchToFill,true);}
-  FitLabel(new Rect(x+70,y,w-70,44),world.NationName(o).ToUpperInvariant(),new GUIStyle(courtCaps){fontSize=21,normal={textColor=CourtCream}},11);y+=50;
-  {var pr=new Rect(x,y,96,96);Fill(new Rect(pr.x-3,pr.y-3,pr.width+6,pr.height+6),CourtGold);Fill(pr,new Color(.12f,.15f,.24f));var face=Portrait(pn.portrait,world.Era(o));if(face!=null)DrawPortrait(pr,face);}
+  {float h;var st=FitName(world.NationName(o).ToUpperInvariant(),w-70,new GUIStyle(courtCaps){alignment=TextAnchor.MiddleLeft,normal={textColor=CourtCream}},21,15,12,out h);GUI.Label(new Rect(x+70,y,w-70,Mathf.Max(44,h)),world.NationName(o).ToUpperInvariant(),st);y+=Mathf.Max(50,h+6);}
+  DrawRoundPortrait(new Rect(x,y,96,96),Portrait(pn.portrait,world.Era(o)));
   {var it=new GUIStyle(courtItalic){fontSize=16,alignment=TextAnchor.UpperLeft};GUI.Label(new Rect(x+108,y,w-108,44),string.IsNullOrEmpty(pn.leader)?world.NationName(o):pn.leader,it);
    GUI.Label(new Rect(x+108,y+40,w-108,22),DiplomacyFlavours.PostureNames[world.Posture(o)],new GUIStyle(it){fontSize=14});MoodBadge(new Rect(x+108,y+66,w-108,28),o,14);}
   y+=108;
@@ -276,11 +303,13 @@ public partial class RealmGame {
   var face=Portrait(pn.portrait,world.Era(partner));if(face!=null){float h=inner.height-6,w2=Mathf.Min(inner.width-40,h*.9f);DrawPortrait(new Rect(inner.center.x-w2/2,inner.y+6,w2,h),face);}
   {var flag=FlagTexture(partner);if(flag!=null){var fr=new Rect(inner.x+12,inner.y+12,84,56);Fill(new Rect(fr.x-3,fr.y-3,fr.width+6,fr.height+6),new Color(.16f,.11f,.05f));Fill(new Rect(fr.x-2,fr.y-2,fr.width+4,fr.height+4),CourtGold);GUI.DrawTexture(fr,flag,ScaleMode.StretchToFill,true);}}
   // The name plate across the foot of the picture, laurels either side.
-  var plate=new Rect(inner.center.x-230,inner.yMax-78,460,70);Fill(new Rect(plate.x-4,plate.y-4,plate.width+8,plate.height+8),new Color(.16f,.11f,.05f,.9f));Fill(plate,new Color(.05f,.08f,.15f,.97f));
+  // The name plate across the foot of the picture, laurels either side; it grows upward when the leader's name needs two lines.
+  string who=(string.IsNullOrEmpty(pn.leader)?world.NationName(partner):pn.leader).ToUpperInvariant();float whoH;var whoStyle=FitName(who,460-132,new GUIStyle(courtCaps){alignment=TextAnchor.MiddleCenter,normal={textColor=CourtCream}},24,16,12,out whoH);float nameRow=Mathf.Max(38,whoH+4);
+  var plate=new Rect(inner.center.x-230,inner.yMax-78-(nameRow-38),460,70+(nameRow-38));Fill(new Rect(plate.x-4,plate.y-4,plate.width+8,plate.height+8),new Color(.16f,.11f,.05f,.9f));Fill(plate,new Color(.05f,.08f,.15f,.97f));
   var e=CourtGold;Fill(new Rect(plate.x,plate.y,plate.width,2),e);Fill(new Rect(plate.x,plate.yMax-2,plate.width,2),e);Fill(new Rect(plate.x,plate.y,2,plate.height),e);Fill(new Rect(plate.xMax-2,plate.y,2,plate.height),e);
-  DrawDipIcon("laurel",new Rect(plate.x+8,plate.y+9,52,52));DrawDipIcon("laurel",new Rect(plate.xMax-60,plate.y+9,52,52));
-  FitLabel(new Rect(plate.x+66,plate.y+4,plate.width-132,36),(string.IsNullOrEmpty(pn.leader)?world.NationName(partner):pn.leader).ToUpperInvariant(),new GUIStyle(courtCaps){fontSize=24,alignment=TextAnchor.MiddleCenter,normal={textColor=CourtCream}},12);
-  FitLabel(new Rect(plate.x+66,plate.y+38,plate.width-132,26),world.NationName(partner)+"  •  "+DiplomacyFlavours.PostureNames[world.Posture(partner)],new GUIStyle(courtText){fontSize=16,alignment=TextAnchor.MiddleCenter},10);
+  DrawDipIcon("laurel",new Rect(plate.x+8,plate.center.y-26,52,52));DrawDipIcon("laurel",new Rect(plate.xMax-60,plate.center.y-26,52,52));
+  GUI.Label(new Rect(plate.x+66,plate.y+2,plate.width-132,nameRow),who,whoStyle);
+  FitLabel(new Rect(plate.x+66,plate.y+nameRow,plate.width-132,26),world.NationName(partner)+"  •  "+DiplomacyFlavours.PostureNames[world.Posture(partner)],new GUIStyle(courtText){fontSize=16,alignment=TextAnchor.MiddleCenter},10);
  }
  void DrawCourtRelations(int partner,Rect box){
   GoldFrame(box);float x=box.x+24,w=box.width-48,y=box.y+16;
@@ -288,9 +317,9 @@ public partial class RealmGame {
   Tip(new Rect(x+150,y+1,170,28),Attitudes.Names[world.Attitude(partner,0)]+": "+Attitudes.Texts[world.Attitude(partner,0)]);y+=38;
   var lines=world.OpinionLines(partner,0);var fade=world.MemoryLines(partner,0).Where(m=>m.turnsLeft>0).GroupBy(m=>m.text).ToDictionary(g=>g.Key,g=>g.First().turnsLeft);
   int room=(int)((box.yMax-16-y)/22)-1,shown=Math.Max(0,Math.Min(room,lines.Count));
-  for(int k=0;k<shown;k++){var l=lines[k];int left;GUI.Label(new Rect(x+4,y,16,22),"•",courtText);GUI.Label(new Rect(x+20,y,w-90,22),l.Key+(fade.TryGetValue(l.Key,out left)?"  (fades in ~"+left+" turns)":""),new GUIStyle(courtText){fontSize=14});
+  for(int k=0;k<shown;k++){var l=lines[k];int left;GUI.Label(new Rect(x+4,y,16,22),"•",courtText);FitLabel(new Rect(x+20,y,w-90,22),l.Key+(fade.TryGetValue(l.Key,out left)?"  (fades in ~"+left+" turns)":""),new GUIStyle(courtText){fontSize=14},10);
    GUI.Label(new Rect(x+w-70,y,70,22),(l.Value>0?"+":"")+l.Value,new GUIStyle(courtText){fontSize=14,alignment=TextAnchor.MiddleRight,normal={textColor=l.Value>0?DipGood:DipBad}});y+=22;}
-  GUI.Label(new Rect(x+4,y,16,22),"•",courtText);GUI.Label(new Rect(x+20,y,w-20,22),Attitudes.Texts[world.Attitude(partner,0)]+(lines.Count>shown?"   (+"+(lines.Count-shown)+" more under More)":""),new GUIStyle(courtText){fontSize=14});
+  GUI.Label(new Rect(x+4,y,16,22),"•",courtText);FitLabel(new Rect(x+20,y,w-20,22),Attitudes.Texts[world.Attitude(partner,0)]+(lines.Count>shown?"   (+"+(lines.Count-shown)+" more under More)":""),new GUIStyle(courtText){fontSize=14},10);
  }
  void DrawDiplomacyScreen(){
   DiplomacyStyles();CourtStyles();
@@ -324,7 +353,7 @@ public partial class RealmGame {
   float y=side.y+22;float left=side.x+24,wide2=side.width-48;bool enabled=GUI.enabled;
   Color navy=CourtNavy,teal=new Color(.07f,.38f,.4f),blue=CourtNavy,red=CourtRed;
   {var theirFlag=FlagTexture(partner);var fr=new Rect(left,y,80,52);Fill(new Rect(fr.x-2,fr.y-2,fr.width+4,fr.height+4),CourtGold);if(theirFlag!=null)GUI.DrawTexture(fr,theirFlag,ScaleMode.StretchToFill,true);}
-  FitLabel(new Rect(left+96,y-4,wide2-96-180,38),world.NationName(partner).ToUpperInvariant(),new GUIStyle(courtCaps){fontSize=27,normal={textColor=CourtCream}},13);
+  {string nm=world.NationName(partner).ToUpperInvariant();float h;var st=FitName(nm,wide2-96-180,new GUIStyle(courtCaps){alignment=TextAnchor.MiddleLeft,normal={textColor=CourtCream}},27,17,13,out h);GUI.Label(new Rect(left+96,y-4,wide2-96-180,38),nm,st);}
   GUI.Label(new Rect(left+96,y+32,wide2-96,24),(string.IsNullOrEmpty(pn.leader)?"":pn.leader+" — ")+DiplomacyFlavours.PostureNames[world.Posture(partner)],new GUIStyle(courtItalic){fontSize=16,wordWrap=false});
   {var badge=new Rect(side.xMax-24-170,y+2,170,30);MoodBadge(badge,partner,15);Tip(badge,Attitudes.Names[world.Attitude(partner,0)]+": "+Attitudes.Texts[world.Attitude(partner,0)]);}
   y+=66;
