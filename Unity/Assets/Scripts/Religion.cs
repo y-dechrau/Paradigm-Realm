@@ -87,11 +87,13 @@ public partial class World {
  public bool SendMissionaries(int owner,City target){if(MissionReason(owner,target)!="")return false;var n=nations[owner];n.faith-=MissionPrice(owner);target.faithPressure[n.founded]+=150;UpdateMajority(target,owner==0);if(target.owner==0&&owner!=0)Note(NationName(owner)+" sent missionaries of "+FaithName(n.founded)+" to "+target.name+".");return true;}
  void UpdateMajority(City c,bool tell){if(c.faithPressure==null||c.faithPressure.Length!=ReligionCatalog.Count)c.faithPressure=Grow(c.faithPressure??new int[0],ReligionCatalog.Count);int best=-1,top=59;for(int r=0;r<ReligionCatalog.Count;r++)if(c.faithPressure[r]>top){top=c.faithPressure[r];best=r;}if(best!=c.religion){if(c.owner==0&&(tell||best>=0))Note(c.name+(best>=0?" now follows "+FaithName(best)+".":" no longer has a majority faith."));c.religion=best;c.religionSince=turn;if(best>=0)for(int o=0;o<civCount;o++)if(nations[o].founded==best&&!(nations[o].holyCity==c.id))AddEraScore(o,2,c.name+" converted to "+FaithName(best));}}
  // Once a turn: faith is gathered, rivals act, then every city presses its majority faith on cities within ten tiles.
- public void UpdateReligion(){
-  GatherCityFaith();FaithTurn();
-  for(int o=0;o<civCount;o++){nations[o].faith+=FaithPerTurn(o);AdvanceDoctrines(o);if(o>0){ReligionAI(o);FaithBuildingAI(o);}}
-  var adds=new Dictionary<City,int[]>();
-  foreach(var s in cities){if(s.religion<0)continue;int r=s.religion,power=(IsHolyCity(s)&&(nations.Any(n=>n.holyCity==s.id&&n.founded==r)||faithRecords!=null&&faithRecords.Any(f=>f.religion==r&&f.holyCity==s.id))?8:4)+(HasBuilding(s,36)?2:0);if(FaithTenet(r)==6)power=power*3/2;power=power*SendFactor(s,r)/100;int range=PressureRange(r);power=power*CivPressure(s.owner)/100;
+ public void UpdateReligion(){foreach(int part in UpdateReligionSteps()){}}
+ // In steps (owner report, 15 Nov 2026: the end of a turn stuttered): a few nations, then a few dozen cities, at a time.
+ public IEnumerable<int> UpdateReligionSteps(){
+  if(modernRules){int gathered=0;foreach(var c in cities){c.faith=Math.Min(CityFaithCap,Math.Max(0,c.faith)+FaithYield(c));if(++gathered%8==0)yield return 1;}}yield return 1;FaithTurn();yield return 2;
+  for(int o=0;o<civCount;o++){nations[o].faith+=FaithPerTurn(o);AdvanceDoctrines(o);if(o>0){ReligionAI(o);FaithBuildingAI(o);}if(o%8==7)yield return 3;}
+  yield return 4;var adds=new Dictionary<City,int[]>();int counted=0;
+  foreach(var s in cities.ToList()){if(++counted%8==0)yield return 5;if(s.religion<0)continue;int r=s.religion,power=(IsHolyCity(s)&&(nations.Any(n=>n.holyCity==s.id&&n.founded==r)||faithRecords!=null&&faithRecords.Any(f=>f.religion==r&&f.holyCity==s.id))?8:4)+(HasBuilding(s,36)?2:0);if(FaithTenet(r)==6)power=power*3/2;power=power*SendFactor(s,r)/100;int range=PressureRange(r);power=power*CivPressure(s.owner)/100;
    foreach(var t in cities){int d=Distance(s.x,s.y,t.x,t.y);if(d>range)continue;int gain=t==s?power:Math.Max(1,power*(range+1-d)/(range)*ReceiveFactor(s,t,r)/100);int[] a;if(!adds.TryGetValue(t,out a)){a=new int[ReligionCatalog.Count];adds[t]=a;}a[r]+=gain;}}
   foreach(var c in cities){if(c.faithPressure==null||c.faithPressure.Length!=ReligionCatalog.Count)c.faithPressure=Grow(c.faithPressure??new int[0],ReligionCatalog.Count);int[] a;adds.TryGetValue(c,out a);for(int r=0;r<ReligionCatalog.Count;r++){c.faithPressure[r]-=c.faithPressure[r]/50;if(a!=null)c.faithPressure[r]=Math.Min(3000,c.faithPressure[r]+a[r]);}UpdateMajority(c,false);}
  }
@@ -115,12 +117,14 @@ namespace ParadigmRealm {
 public partial class World {
  public int TerritoryRadius(City c){return Math.Max(Math.Min(4,2+c.age/25),WorkRadius(c));}
  public int CityInfluence(City c){return 2+c.pop/2+(HasBuilding(c,36)?2:0)+(HasBuilding(c,42)?1:0)+c.buildings.Count(IsWonder)*2+FaithYield(c)+(c.religion>=0&&c.religion==nations[c.owner].founded?1:0)+CivInfluence(c);}
- public void SpreadInfluence(){
-  int n=tiles.Length;var own=new float[n];var near=new bool[n];var rivals=new Dictionary<int,Dictionary<int,float>>();
-  foreach(var c in cities){float s=CityInfluence(c);int radius=TerritoryRadius(c);
+ public void SpreadInfluence(){foreach(int part in SpreadInfluenceSteps()){}}
+ // In pieces (owner report, 15 Nov 2026): a dozen cities at a time, then the border tiles.
+ public IEnumerable<int> SpreadInfluenceSteps(){
+  int n=tiles.Length;var own=new float[n];var near=new bool[n];var rivals=new Dictionary<int,Dictionary<int,float>>();int spread=0;
+  foreach(var c in cities.ToList()){if(++spread%12==0)yield return 1;float s=CityInfluence(c);int radius=TerritoryRadius(c);
    for(int dy=-radius;dy<=radius;dy++)for(int dx=-radius;dx<=radius;dx++){var t=StepIn(c.x,c.y,dx,dy,radius);if(t==null)continue;int d=Distance(t.x,t.y,c.x,c.y);if(d>radius)continue;int i=t.y*Width+t.x;if(d<=1){near[i]=true;continue;}float p=s/(1+d);
     if(t.owner==c.owner)own[i]+=p;else{Dictionary<int,float> m;if(!rivals.TryGetValue(i,out m)){m=new Dictionary<int,float>();rivals[i]=m;}float was;m.TryGetValue(c.owner,out was);m[c.owner]=was+p;}}}
-  bool changed=false;int lost=0,gained=0;string taker="";
+  yield return 2;bool changed=false;int lost=0,gained=0;string taker="";
   for(int i=0;i<n;i++){var t=tiles[i];Dictionary<int,float> m;if(t.owner<0||near[i]||!rivals.TryGetValue(i,out m)){if(t.sway>0){t.sway=Math.Max(0,t.sway-3);if(t.sway==0)t.swayCiv=-1;}continue;}
    var best=m.OrderByDescending(kv=>kv.Value).First();float pa=own[i],pb=best.Value;
    if(pb>pa){if(t.swayCiv!=best.Key){t.swayCiv=best.Key;t.sway=0;}t.sway=Math.Min(100,t.sway+Math.Max(2,Math.Min(6,(int)Math.Round(12*(pb-pa)/(pb+pa)))));

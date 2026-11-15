@@ -140,10 +140,13 @@ public partial class World {
  // ---------- the rivals' diplomacy ----------
  // The city of b that a would claim first: the nearest one it knows to any city of its own.
  City ClaimTarget(int a,int b){City best=null;int bestD=int.MaxValue;var mine=cities.Where(c=>c.owner==a).ToList();if(mine.Count==0)return null;foreach(var c in cities){if(c.owner!=b||HasClaim(a,c.id)||!KnowsCity(a,c))continue;int d=mine.Min(m=>Distance(m.x,m.y,c.x,c.y));if(d<bestD||d==bestD&&best!=null&&c.id<best.id){bestD=d;best=c;}}return best;}
- public void DiplomacyAI(){
+ public void DiplomacyAI(){foreach(int part in DiplomacyAISteps()){}}
+ // In steps (owner report, 15 Nov 2026: the end of a turn stuttered): the contact check, then each leader in turn.
+ public System.Collections.Generic.IEnumerable<int> DiplomacyAISteps(){
   // Each pair looks for the other one turn in three, through lists sorted by owner: with sixty peoples this was a tenth of a turn.
   {var unitsOf=new List<Unit>[civCount];var citiesOf=new List<City>[civCount];for(int o=0;o<civCount;o++){unitsOf[o]=new List<Unit>();citiesOf[o]=new List<City>();}foreach(var u in units)if(u.owner>=0&&u.owner<civCount)unitsOf[u.owner].Add(u);foreach(var c in cities)citiesOf[c.owner].Add(c);
-   foreach(var pair in diplomacy){if(pair.a==0||pair.contact||(pair.a+pair.b+turn)%3!=0||SealedApart(pair.a,pair.b))continue;bool seen=false;foreach(var u in unitsOf[pair.b])if(VisibleTo(pair.a,u.x,u.y)){seen=true;break;}if(!seen)foreach(var c in citiesOf[pair.b])if(VisibleTo(pair.a,c.x,c.y)){seen=true;break;}if(!seen)foreach(var u in unitsOf[pair.a])if(VisibleTo(pair.b,u.x,u.y)){seen=true;break;}if(seen)pair.contact=true;}}
+   int scanned=0;foreach(var pair in diplomacy){if(++scanned%120==0)yield return 1;if(pair.a==0||pair.contact||(pair.a+pair.b+turn)%3!=0||SealedApart(pair.a,pair.b))continue;bool seen=false;foreach(var u in unitsOf[pair.b])if(VisibleTo(pair.a,u.x,u.y)){seen=true;break;}if(!seen)foreach(var c in citiesOf[pair.b])if(VisibleTo(pair.a,c.x,c.y)){seen=true;break;}if(!seen)foreach(var u in unitsOf[pair.a])if(VisibleTo(pair.b,u.x,u.y)){seen=true;break;}if(seen)pair.contact=true;}}
+  yield return 1;
   for(int a=1;a<civCount;a++){if(turn%5!=a%5||!cities.Any(c=>c.owner==a))continue;
    for(int b=0;b<civCount;b++){if(!HasContact(a,b)||offers.Any(o=>o.status==0&&SamePair(o.from,o.to,a,b)))continue;var p=Relation(a,b);DiplomaticOffer offer=null;
     if(AtWar(a,b)){if(RivalWantsPeace(a,b))offer=AIPeaceOffer(a,b);}
@@ -167,7 +170,7 @@ public partial class World {
     if(offer!=null&&OfferProblem(offer)==""&&(offer.to==0||OfferWillingness(offer)>=0))Propose(offer);
    }
    EnvoyAI(a);
-   RequestsAI(a);
+   RequestsAI(a);yield return 2;
   }
  }
  // Envoys go where they do most good: to calm a power that fears this one, then to a leader nearly ready to sign.

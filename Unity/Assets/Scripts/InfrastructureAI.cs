@@ -19,6 +19,12 @@ namespace ParadigmRealm {
    // Rivals favour keystones (they advance the era); minor technologies count as three times their cost.
    return available.OrderBy(t=>ResearchCost(t,owner)*(TechnologyCatalog.IsKeystone(t)?1.0:3.0)/(1.0+ (ActiveTechBenefits(t).Length>0?1:0)+wanted.Count(target=>LeadsTo(t,target))*4)).ThenBy(t=>t).First();
   }
+  // Tiles beside a people's road network, worked out once per network (it is rebuilt whenever roads change) instead of
+  // scanning the whole network for every tile a worker considers (owner report, 15 Nov 2026: a worker's choice took 30 ms).
+  HashSet<int> aiNetFor,aiNetNear;static readonly int[] WorkerJobs={1,2,3,5};
+  HashSet<int> NearNetwork(int owner){var net=Network(owner);if(ReferenceEquals(net,aiNetFor)&&aiNetNear!=null)return aiNetNear;var near=new HashSet<int>();
+   foreach(int cell in net){int nx=cell%Width,ny=cell/Width;for(int dy=-1;dy<=1;dy++)for(int dx=-2;dx<=2;dx++){var t=Step(nx,ny,dx,dy);if(t!=null&&Distance(nx,ny,t.x,t.y)==1)near.Add(t.y*Width+t.x);}}
+   aiNetFor=net;aiNetNear=near;return near;}
   int aiWorkOwner=-1,aiWorkTurn=-1;bool aiHunger;HashSet<Tile> aiWorked;HashSet<int> aiPortRoads;List<Tile> aiOwnTiles;
   // One walk over the map each turn sorts the tiles by owner, instead of one walk for every civilisation with a worker.
   [NonSerialized] Dictionary<int,List<Tile>> ownedTiles;[NonSerialized] int ownedTilesTurn=-1;
@@ -35,7 +41,7 @@ namespace ParadigmRealm {
    var worked=aiWorked;
    // Tiles another of this people's workers has taken, and whether any enemy is in play at all, are worked out once.
    var taken=new HashSet<int>();foreach(var a in units)if(a.owner==u.owner&&a.type==1&&a.id!=u.id){if(a.job>0)taken.Add(a.y*Width+a.x);if(a.hasOrder)taken.Add(a.destinationY*Width+a.destinationX);}
-   bool enemies=AtWarWithAnyone(u.owner);
+   bool enemies=AtWarWithAnyone(u.owner);var threats=enemies?units.Where(a=>AtWar(u.owner,a.owner)&&VisibleTo(u.owner,a.x,a.y)).ToList():null;var nearNet=NearNetwork(u.owner);
    bool hunger=aiHunger;
    Tile target=null;int chosenJob=0,best=int.MinValue;var portRoads=aiPortRoads;
    // Your auto-developing workers never stand idle while anything in your territory can still be improved (owner request, 9 Nov 2026):
@@ -43,10 +49,10 @@ namespace ParadigmRealm {
    for(int pass=0;pass<(u.owner==0?2:1)&&target==null;pass++)
    foreach(var tile in aiOwnTiles){
     if(taken.Contains(tile.y*Width+tile.x))continue;
-    if(enemies&&units.Any(a=>AtWar(u.owner,a.owner)&&VisibleTo(u.owner,a.x,a.y)&&Distance(tile.x,tile.y,a.x,a.y)<=2))continue;
+    if(enemies&&threats.Any(a=>Distance(tile.x,tile.y,a.x,a.y)<=2))continue;
     var probe=new Unit{owner=u.owner,type=1,x=tile.x,y=tile.y,moves=u.moves};
-    foreach(int job in new[]{1,2,3,5}){
-     if(JobReason(probe,job)!="")continue;
+    // Each job is scored first; the costly check that it is allowed is made only for one that would beat the best so far.
+    foreach(int job in WorkerJobs){
      // Roads cost upkeep, so they are built only where they pay: to a port or an improved resource, while the treasury can bear it.
      if(pass==0&&job==1&&!aiRoadOk&&!portRoads.Contains(tile.y*Width+tile.x)&&!((tile.farm||tile.mine)&&tile.resource>0))continue;
      // Clearing woodland is worth a little less than the farm it makes room for.
@@ -58,9 +64,10 @@ namespace ParadigmRealm {
      // A port only works while a road joins it to its city.
      if(job==1&&portRoads.Contains(tile.y*Width+tile.x))value+=60;
      // Grow the existing road network rather than scattering isolated road tiles.
-     if(job==1&&Network(u.owner).Any(n=>Distance(n%Width,n/Width,tile.x,tile.y)==1))value+=10;
+     if(job==1&&nearNet.Contains(tile.y*Width+tile.x))value+=10;
      value-=Distance(u.x,u.y,tile.x,tile.y)*2;
-     if(value>best){best=value;target=tile;chosenJob=job;}
+     if(value<=best||JobReason(probe,job)!="")continue;
+     best=value;target=tile;chosenJob=job;
     }
    }
    if(target==null)return;
