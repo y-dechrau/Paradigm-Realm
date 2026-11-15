@@ -174,7 +174,8 @@ public partial class RealmGame {
    // The cards grow fewer per row only while they still fit: one row up to five, two up to twelve, then three, so the hall
    // fills as more civilisations are met.
    int rows=shown.Length<=5?1:shown.Length<=12?2:3,cols=(shown.Length+rows-1)/rows;float gap=12;
-   float ch=Mathf.Min(rows==1?400:270,(area.height-(rows-1)*gap)/rows),pw=Mathf.Min((area.width-(cols-1)*gap)/cols,(ch-58)*.86f),cw=pw;
+   // A card holds a seated leader on its throne (wider than a portrait), so it may be up to about as wide as it is tall.
+   float ch=Mathf.Min(rows==1?430:300,(area.height-(rows-1)*gap)/rows),cw=Mathf.Min((area.width-(cols-1)*gap)/cols,ch*.92f);
    for(int k=0;k<shown.Length;k++){int o=shown[k];int row=k/cols,inRow=Math.Min(cols,shown.Length-row*cols);float x0=area.center.x-(inRow*cw+(inRow-1)*gap)/2,y0=area.center.y-(rows*ch+(rows-1)*gap)/2;
     var card=new Rect(x0+(k%cols)*(cw+gap),y0+row*(ch+gap),cw,ch);DrawCouncilCard(card,o,o==councilPick);
     if(GUI.Button(card,"",GUIStyle.none)){if(councilPick==o&&Event.current.clickCount>=2){OpenCourt(o);GUIUtility.ExitGUI();}councilPick=o;}}}
@@ -192,7 +193,47 @@ public partial class RealmGame {
   DrawTip(new Rect(956,124,316,620));
  }
  void OpenCourt(int o){diplomacyPartner=o;diplomacyChooser=false;ResetDiplomacyUI();}
+ // The seated leaders (owner's art, 15 Nov 2026; Resources/Leaders/Seated/seated-NNN by civilisation number): each sits on its
+ // throne in the hall, as in the owner's blueprint, its banner hanging behind, a gold name plate across the foot of the throne
+ // and its attitude beneath. The chosen leader glows gold. A civilisation without a seated picture (a custom one) keeps its card.
+ readonly Dictionary<int,Texture2D> seatedArt=new Dictionary<int,Texture2D>();
+ Texture2D SeatedLeader(int o){int civ=world.nations[o].civ;if(civ<0)return null;Texture2D t;if(!seatedArt.TryGetValue(civ,out t)){t=Resources.Load<Texture2D>("Leaders/Seated/seated-"+civ.ToString("000"));if(t!=null)t.filterMode=FilterMode.Trilinear;seatedArt[civ]=t;}return t;}
  void DrawCouncilCard(Rect card,int o,bool chosen){
+  var seated=SeatedLeader(o);if(seated==null){DrawCouncilPortraitCard(card,o,chosen);return;}
+  float plateH=Mathf.Clamp(card.height*.1f,20,30),badgeH=Mathf.Clamp(card.height*.09f,18,26);
+  // The figure stands on the plates' line, as large as the card allows without cropping crown, feet or seat.
+  var box=new Rect(card.x,card.y+card.height*.13f,card.width,card.height*.87f-badgeH*.7f);
+  float aspect=seated.width/(float)seated.height,fh=box.height,fw=fh*aspect;if(fw>box.width){fw=box.width;fh=fw/aspect;}
+  var fig=new Rect(card.center.x-fw/2,box.yMax-fh,fw,fh);
+  DrawCouncilBanner(new Rect(card.center.x-fw*.16f,card.y,fw*.32f,Mathf.Max(fh*.42f,card.height*.3f)),o);
+  var old=GUI.color;
+  if(chosen){
+   // A pool of light on the floor, then the leader's own outline traced in gold, widest and faintest first.
+   GUI.color=new Color(1f,.8f,.35f,.35f);GUI.DrawTexture(new Rect(fig.center.x-fig.width*.6f,fig.yMax-fig.height*.16f,fig.width*1.2f,fig.height*.24f),IsoPicture(4,8,0),ScaleMode.StretchToFill,true);
+   var glow=new Color(1f,.84f,.42f);foreach(float grow in new[]{14f,9f,5f,2f}){float a=grow>12?.28f:grow>8?.42f:grow>4?.62f:.9f;GUI.color=new Color(glow.r,glow.g,glow.b,a);GUI.DrawTexture(new Rect(fig.x-grow,fig.y-grow,fig.width+grow*2,fig.height+grow*2),seated,ScaleMode.StretchToFill,true);}GUI.color=old;}
+  GUI.DrawTexture(fig,seated,ScaleMode.StretchToFill,true);
+  int waiting=world.offers.Count(x=>x.to==0&&x.from==o&&x.status==0&&x.expires>world.turn);if(waiting>0){var b=new Rect(fig.xMax-26,fig.y+6,22,22);Fill(b,new Color(.75f,.18f,.14f));GUI.Label(b,waiting.ToString(),dipBadge);}
+  // Name plate across the foot of the throne.
+  var plate=new Rect(card.center.x-card.width*.47f,card.yMax-plateH-badgeH+2,card.width*.94f,plateH);
+  Fill(new Rect(plate.x-2,plate.y-2,plate.width+4,plate.height+4),new Color(.18f,.12f,.05f,.95f));Fill(plate,new Color(.05f,.08f,.15f,.97f));
+  {var e=chosen?new Color(1f,.86f,.5f):CourtGold;Fill(new Rect(plate.x,plate.y,plate.width,1),e);Fill(new Rect(plate.x,plate.yMax-1,plate.width,1),e);Fill(new Rect(plate.x,plate.y,1,plate.height),e);Fill(new Rect(plate.xMax-1,plate.y,1,plate.height),e);}
+  FitLabel(new Rect(plate.x+6,plate.y,plate.width-12,plate.height),world.NationName(o).ToUpperInvariant(),new GUIStyle(courtCaps){fontSize=15,alignment=TextAnchor.MiddleCenter,normal={textColor=CourtCream}},8);
+  // The attitude beneath, framed in its own colour.
+  Color ink;string mood=MoodText(o,out ink);var badge=new Rect(card.center.x-card.width*.38f,plate.yMax-1,card.width*.76f,badgeH);
+  Fill(badge,new Color(ink.r*.2f,ink.g*.2f,ink.b*.2f,.97f));{var e=new Color(ink.r,ink.g,ink.b,.85f);Fill(new Rect(badge.x,badge.y,badge.width,1),e);Fill(new Rect(badge.x,badge.yMax-1,badge.width,1),e);Fill(new Rect(badge.x,badge.y,1,badge.height),e);Fill(new Rect(badge.xMax-1,badge.y,1,badge.height),e);}
+  var ms=new GUIStyle(courtCaps){fontSize=13,alignment=TextAnchor.MiddleLeft};ms.normal.textColor=ink;float iconS=badge.height-6;while(ms.fontSize>8&&ms.CalcSize(new GUIContent(mood)).x>badge.width-iconS-14)ms.fontSize--;
+  float mw=ms.CalcSize(new GUIContent(mood)).x,mx=badge.center.x-(mw+iconS+6)/2;int g=CouncilGroup(o);DrawDipIcon(CouncilGroupIcons[g],new Rect(mx,badge.y+3,iconS,iconS),g==3?new Color(1f,.45f,.4f):(Color?)null);GUI.Label(new Rect(mx+iconS+6,badge.y,mw+6,badge.height),mood,ms);
+ }
+ // A banner on a gilded bar: the nation's colour, its flag at the top, a swallow-tail at the foot.
+ void DrawCouncilBanner(Rect r,int o){
+  var gold=CourtGold;Fill(new Rect(r.x-r.width*.18f,r.y,r.width*1.36f,Mathf.Max(3,r.height*.03f)),gold);
+  float tail=Mathf.Max(6,r.height*.1f);var cloth=nations[o];cloth=new Color(cloth.r*.55f,cloth.g*.55f,cloth.b*.55f,1);
+  var body=new Rect(r.x,r.y+3,r.width,r.height-tail-3);Fill(body,cloth);
+  Fill(new Rect(r.x,body.yMax,r.width*.42f,tail),cloth);Fill(new Rect(r.xMax-r.width*.42f,body.yMax,r.width*.42f,tail),cloth);
+  Fill(new Rect(r.x,body.y,2,body.height+tail),gold);Fill(new Rect(r.xMax-2,body.y,2,body.height+tail),gold);
+  var flag=FlagTexture(o);if(flag!=null){float fw=r.width-10,fh=fw/1.5f;GUI.DrawTexture(new Rect(r.x+5,body.y+6,fw,fh),flag,ScaleMode.StretchToFill,true);}
+ }
+ void DrawCouncilPortraitCard(Rect card,int o,bool chosen){
   var pn=world.nations[o];var pic=new Rect(card.x,card.y,card.width,card.height-58);
   if(chosen){Fill(new Rect(card.x-6,card.y-6,card.width+12,card.height+12),new Color(1f,.82f,.4f,.18f));Fill(new Rect(card.x-3,card.y-3,card.width+6,card.height+6),new Color(1f,.82f,.4f,.35f));}
   Fill(new Rect(pic.x-2,pic.y-2,pic.width+4,pic.height+4),chosen?new Color(1f,.86f,.5f):CourtGold);

@@ -41,8 +41,10 @@ namespace ParadigmRealm { public partial class RealmGame {
    yield return new WaitForSecondsRealtime(1f);yield return Shot(folder,"hud-guard-held.bmp");
    foreach(var s in soldiers)world.units.Remove(s);
   }
-  for(int o=1;o<world.civCount;o++){if(world.IsNativeNation(o))continue;world.met[o]=true;}world.newContacts.Clear();
-  detailsScreen="Diplomacy";diplomacyChooser=true;yield return Frames(20);yield return Shot(folder,"hud-council.bmp");
+  for(int o=1;o<world.civCount&&o<=8;o++)world.met[o]=true;world.newContacts.Clear();
+  detailsScreen="Diplomacy";diplomacyChooser=true;councilPick=-1;yield return Frames(20);yield return Shot(folder,"hud-council.bmp");
+  for(int o=1;o<world.civCount&&o<=16;o++)world.met[o]=true;yield return Frames(20);yield return Shot(folder,"hud-council-16.bmp");
+  for(int o=9;o<world.civCount;o++)world.met[o]=false;
   diplomacyPartner=Enumerable.Range(1,world.civCount-1).First(o=>world.met[o]);diplomacyChooser=false;ResetDiplomacyUI();yield return Frames(20);yield return Shot(folder,"hud-court.bmp");
   detailsScreen="";
   Application.Quit();
