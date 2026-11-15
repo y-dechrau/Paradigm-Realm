@@ -31,6 +31,7 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-dimShot");if(i>=0&&i+1<args.Length)StartCoroutine(DimShot(args[i+1]));
             i=Array.IndexOf(args,"-speciesShot");if(i>=0&&i+1<args.Length)StartCoroutine(SpeciesShot(args[i+1]));
             i=Array.IndexOf(args,"-hudShot");if(i>=0&&i+1<args.Length)StartCoroutine(HudShot(args[i+1]));
+            i=Array.IndexOf(args,"-listCivs");if(i>=0&&i+1<args.Length)StartCoroutine(ListCivs(args[i+1]));
         }
         // Development aid: "-mapShot <folder>" starts a fixed game with the whole home world found and saves close views of a river
         // mouth, a farm and a fort on a river, hills, a volcano with a unit on it, sealed and open gateways, resources on land
