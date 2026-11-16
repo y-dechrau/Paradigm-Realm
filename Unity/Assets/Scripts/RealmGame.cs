@@ -52,6 +52,7 @@ namespace ParadigmRealm
             if(probeEvent!=null&&Event.current.type==EventType.Repaint){var injected=probeEvent;probeEvent=null;var at=injected.mousePosition;Event.current=injected;injected.mousePosition=at;}
             GUI.DrawTexture(FullCanvas,Texture2D.whiteTexture,ScaleMode.StretchToFill,false,0,UiBackground,0,0);
             Centred();
+            if(galleryGround!=null&&world!=null){DrawResourceGallery();return;}
             if(artGallery){DrawGallery();return;}
             if(nameSetup){DrawNameSetup();return;}
             if(loadScreen){DrawLoadScreen();return;}
@@ -235,14 +236,23 @@ namespace ParadigmRealm
             Fill(new Rect(cx-2,cy-2,4,4),sand);
             GUI.color=old;
         }
+        // A resource's miniature in a tile's ground box, at its registry scale (Sprites/res-NN; ResourceRegistry.Scale). Also used by
+        // the resource gallery (-resourceGallery). False when the picture is missing.
+        bool DrawResourceArt(int r,Rect rect,int spot)
+        {
+            var mini=SpriteSlot("res-"+r.ToString("00"));if(mini==null)return false;
+            float k=rect.width/61f,ms=22*k*(r>0&&r<ResourceRegistry.Count?ResourceRegistry.Scale[r]:1f);float ox=((spot%3)-1)*9*k,oy=((spot/3%2))*4*k;
+            GUI.DrawTexture(new Rect(rect.x+36*k-ms/2+ox,rect.y+61*k-15*k-ms+6*k+oy,ms,ms),mini,ScaleMode.ScaleToFit,true);return true;
+        }
         static readonly string[] ResourceArtNames={"resource-00","resource-01","resource-02","resource-03","resource-04","resource-05"};
         void DrawResource(Tile t,Rect rect)
         {
             if(t.resource<=0||!world.ResourceKnown(0,t.resource))return;
             // Miniature sprites (owner request, 9 Nov 2026): no badge; each sits at its own spot on the tile, front half, so it reads
-            // as part of the land. The old icons are the fallback.
-            {var mini=SpriteSlot("res-"+t.resource.ToString("00"));if(mini!=null){float k=rect.width/61f,ms=22*k;int h=(t.x*73+t.y*151)&0x7fffffff;float ox=((h%3)-1)*9*k,oy=((h/3%2))*4*k;
-             GUI.DrawTexture(new Rect(rect.x+36*k-ms/2+ox,rect.y+61*k-15*k-ms+6*k+oy,ms,ms),mini,ScaleMode.ScaleToFit,true);return;}}
+            // as part of the land. The old icons are the fallback for the first resources; a catalogue resource without its picture
+            // is simply not drawn (never a wrong icon or an error).
+            if(DrawResourceArt(t.resource,rect,(t.x*73+t.y*151)&0x7fffffff))return;
+            if(t.resource>19)return;
             float size=rect.width*.36f;var badge=new Rect(rect.xMax-size,rect.yMax-size,size,size);
             Fill(badge,new Color(1,1,1,.5f));
             if(World.IsSeaResource(t.resource)){var icon=IsoPicture(5,t.resource,0);if(icon!=null)GUI.DrawTexture(badge,icon);}

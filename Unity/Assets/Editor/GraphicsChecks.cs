@@ -11,6 +11,12 @@ public static class GraphicsChecks {
   for(int i=0;i<16;i++)for(int f=0;f<6;f++){string p="Visuals/Movement/unit-"+i.ToString("00")+"-move-"+f.ToString("00");Check(p,true,ref count);var t=Resources.Load<Texture2D>(p);if(t.width!=256||t.height!=256)throw new Exception("Walking frame is not 256 x 256: "+p);}
   for(int era=0;era<4;era++)for(int style=0;style<5;style++)Check("Visuals/city-"+era+"-"+style,true,ref count);
   for(int i=1;i<=5;i++)Check("Visuals/resource-"+i.ToString("00"),true,ref count);
+  // Map resource miniatures (owner's resource pack, 16 Nov 2026): every resource with usable art has its square sprite, and every
+  // resource that can be placed has art (ResourceRegistry; resources awaiting redrawn art are never placed).
+  foreach(var d in ParadigmRealm.ResourceRegistry.All){
+   if(d.Spawns&&!ParadigmRealm.ResourceRegistry.HasArt[d.number])throw new Exception("Resource placed without art: "+d.id);
+   if(!ParadigmRealm.ResourceRegistry.HasArt[d.number])continue;string p="Sprites/res-"+d.number.ToString("00");var art=Resources.Load<Texture2D>(p);
+   if(art==null)throw new Exception("Missing resource sprite: "+p+" ("+d.id+")");if(art.width!=art.height||art.width<48)throw new Exception("Resource sprite not square or too small: "+p+" "+art.width+"x"+art.height);count++;}
   foreach(var name in new[]{"trees","pines","mountain","farm","mine","fort","village","palms"})Check("Visuals/"+name,true,ref count);
   for(int i=0;i<21;i++)Check("Terrain/terrain-"+i.ToString("00"),false,ref count);
   Check("Visuals/title-world",false,ref count);

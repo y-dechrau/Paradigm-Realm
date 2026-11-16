@@ -8,7 +8,7 @@ namespace ParadigmRealm {
 // losing a unit or a colony. It is run with an early civilisation and an advanced one.
 public static class DimensionChecks {
  static void Check(bool ok,string what){if(!ok)throw new Exception("Dimensions: "+what);}
- static World Fresh(){var w=World.New(306,"Keys",0,1,1,0,1,2,4,hex:true,rations:true);w.Found(w.units.First(u=>u.owner==0&&u.type==0));var other=w.units.FirstOrDefault(u=>u.owner==1&&u.type==0);if(other!=null)w.Found(other);w.EnableDimensions();return w;}
+ static World Fresh(){var w=World.New(306,"Keys",0,1,1,0,1,2,4,hex:true,rations:true);/* the scenarios were laid out on parallel worlds without the catalogue's dimensional resources (16 Nov 2026), which move colony sites */foreach(var t in w.tiles)if(t.realm>0&&t.resource>=20)t.resource=0;w.Found(w.units.First(u=>u.owner==0&&u.type==0));var other=w.units.FirstOrDefault(u=>u.owner==1&&u.type==0);if(other!=null)w.Found(other);w.EnableDimensions();return w;}
  static void Learn(World w,int owner,params string[] ids){foreach(string id in ids){int k=TechnologyCatalog.Index(id);if(k>=0)w.nations[owner].tech[k]=true;}if(owner==0)w.tech=w.nations[0].tech;}
  static void Rich(World w,int owner){w.nations[owner].gold=2000;if(owner==0)w.gold=2000;w.nations[owner].faith=500;w.nations[owner].influence=300;}
  static Tile Gate(World w,int condition,int family=-1){return w.HomeGates().FirstOrDefault(g=>w.ConditionOf(g)==condition&&(family<0||DimensionFamily.OfRealm(w.GateRealm(g))==family));}

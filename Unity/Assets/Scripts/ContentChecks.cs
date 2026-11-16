@@ -32,6 +32,7 @@ public static void Run(){
     GateExpeditionChecks();
     DimensionChecks.Run();
     SpeciesChecks();
+    ResourceCatalogueChecks();
     SiegeChecks();
     var cold=World.New(3);var settler=cold.units.First(u=>u.owner==0&&u.type==0);cold.At(settler.x,settler.y).terrain=8;cold.tech[K("fire")]=false;Check(cold.Found(settler)==null,"cold settlement needs Fire");cold.tech[K("fire")]=true;Check(cold.Found(settler)!=null,"Fire (Stone Tools) permits cold settlement");
     var terrainTypes=new HashSet<int>();for(int seed=0;seed<6;seed++){var map=World.New(seed);Check(map.Valid(),"biome map validates");foreach(var tile in map.tiles){terrainTypes.Add(tile.terrain);Check(map.TileYield(tile).Length==3,"all terrain has yields");}}
@@ -49,7 +50,7 @@ public static void Run(){
       Check(clash==0,"no desert beside ice or jungle beside tundra on "+World.LandTypeNames[m]+" ("+clash+" clashes)");}
      Check(share[2]>share[0]&&share[4]<share[0],"archipelago is mostly sea; lakes type has the most land");}
     // Sea resources: ten of them, on water only, with real yields.
-    {int sea=0;for(int s=0;s<3;s++){var sw=World.New(310+s,"Seas",0,1,1,0,1,1);foreach(var t in sw.tiles.Where(t=>t.resource>=6)){Check(World.IsSeaResource(t.resource)&&(t.terrain==4||t.terrain==6||t.terrain==12),"sea resource "+World.ResourceNames[t.resource]+" sits on water");sea++;}}
+    {int sea=0;for(int s=0;s<3;s++){var sw=World.New(310+s,"Seas",0,1,1,0,1,1);foreach(var t in sw.tiles.Where(t=>World.IsSeaResource(t.resource))){Check(t.terrain==4||t.terrain==6||t.terrain==12,"sea resource "+World.ResourceNames[t.resource]+" sits on water");sea++;}foreach(var t in sw.tiles.Where(t=>t.resource>0&&!World.IsSeaResource(t.resource)))Check(!(t.terrain==4||t.terrain==6||t.terrain==12),"land resource "+World.ResourceNames[t.resource]+" sits on land");}
      Check(sea>0&&Enumerable.Range(6,9).All(r=>World.ResourceFood[r]+World.ResourceShields[r]+World.ResourceTrade[r]>0),"sea resources placed and each yields something (offshore oil needs Refining)");}
     movement.At(x,y).terrain=11;unit.moves=4;Check(movement.Move(unit,x,y)&&unit.moves==1,"jungle movement cost");
     var road=World.New(7);var worker=road.units.First(u=>u.owner==0&&u.type==1);Check(!road.StartJob(worker,1),"road gated by Wheel");road.tech[K("wheel")]=true;Check(road.StartJob(worker,1),"Wheel enables road");
@@ -674,7 +675,35 @@ static void CityResourceChecks(){
     w.modernRules=false;Check(w.CityResources(city).inUse.Count==0&&w.ResourceGrowth(city)==0&&w.ResourceContent(city)==0,"old rules keep resources as they were");w.modernRules=true;
     Check(World.ResourceKind.Length==World.ResourceNames.Length&&World.ResourceSiteValue(2)>World.ResourceSiteValue(0),"every resource has a kind and the adviser values them");
 }
-// Owner requests of 8 Nov 2026.
+// The owner's resource pack (16 Nov 2026): the registry, placement, revealing, development and saving.
+static void ResourceCatalogueChecks(){
+    var problems=ResourceRegistry.Problems();Check(problems.Count==0,"resource registry: "+string.Join("; ",problems.ToArray()));
+    Check(ResourceRegistry.Count==128&&World.ResourceNames.Length==128&&World.ResourceKind.Length==128&&World.ResourceTech.Length==128&&World.ResourceFood.Length==128,"127 resources and none, every table the same length");
+    // The first nineteen keep their numbers and rules exactly.
+    Check(World.ResourceFood.Take(20).SequenceEqual(new[]{0,2,0,0,0,0,2,1,0,1,1,1,1,2,0,0,1,2,2,0})&&World.ResourceShields.Take(20).SequenceEqual(new[]{0,0,2,0,0,0,0,1,0,0,1,0,1,0,0,0,0,1,0,1})&&World.ResourceTrade.Take(20).SequenceEqual(new[]{0,0,0,2,0,0,0,1,3,1,0,2,0,1,2,0,1,0,0,1}),"resources 1-19 yield as before");
+    Check(World.ResourceKind.Take(20).SequenceEqual(new[]{-1,0,2,1,2,1,0,1,1,0,0,1,0,0,1,2,0,0,0,2})&&Enumerable.Range(6,10).All(World.IsSeaResource)&&!World.IsSeaResource(1)&&!World.IsSeaResource(16),"kinds and sea resources 1-19 as before");
+    Check(ResourceRegistry.Number("wheat")==1&&ResourceRegistry.Number("camels")==19&&ResourceRegistry.Number("copper")>19&&ResourceRegistry.Number("no_such")==0,"stable ids map to the saved numbers");
+    int copper=ResourceRegistry.Number("copper"),timber=ResourceRegistry.Number("timber"),oil=ResourceRegistry.Number("oil"),clams=ResourceRegistry.Number("clams");
+    // Placement: several seeds, every catalogue resource on its own terrain (or water, or a parallel world), art present.
+    int placed=0;var kinds=new HashSet<int>();
+    for(int seed=0;seed<6;seed++){var map=World.New(seed);Check(map.Valid(),"a new world with catalogue resources validates");
+     foreach(var t in map.tiles){if(t.resource<20)continue;var d=ResourceRegistry.Of(t.resource);Check(d!=null&&d.Spawns,"only placeable resources are placed ("+t.resource+")");placed++;kinds.Add(t.resource);
+      if(d.place==ResourceRegistry.Place.Realm)Check(t.realm>0,d.id+" only beyond the gateways");else Check(t.realm==0,d.id+" only on the home world");
+      if(d.place==ResourceRegistry.Place.Sea)Check(PixelArt.IsWater(t.terrain),d.id+" at sea");else Check(!PixelArt.IsWater(t.terrain)&&(d.place==ResourceRegistry.Place.Realm||d.terrains.Contains(t.terrain)),d.id+" on one of its terrains, not "+World.TerrainNames[t.terrain]);}}
+    Check(placed>0&&kinds.Count>=25,"new worlds hold catalogue resources of many kinds ("+placed+" of "+kinds.Count+" kinds)");
+    var again=World.New(4);var once=World.New(4);Check(again.tiles.Select(t=>t.resource).SequenceEqual(once.tiles.Select(t=>t.resource)),"placement repeats from the seed");
+    // Revealing, mines and development.
+    var w=World.New(11);w.modernRules=true;var city=w.Found(w.units.First(u=>u.owner==0&&u.type==0));Check(city!=null,"a city to test resources");
+    w.nations[0].tech[TechnologyCatalog.Index("bronze")]=false;w.tech=w.nations[0].tech;Check(!w.ResourceKnown(0,copper)&&w.ResourceKnown(0,clams)==w.HasTech(0,"sailing"),"copper hidden until Bronze Working");
+    w.nations[0].tech[TechnologyCatalog.Index("bronze")]=true;w.tech=w.nations[0].tech;Check(w.ResourceKnown(0,copper),"Bronze Working reveals copper");
+    var ring=w.Workable(city).Where(t=>!PixelArt.IsWater(t.terrain)&&t.terrain!=2&&!World.Wooded(t)).ToList();Check(ring.Count>0,"open land near the city");var site=ring[0];
+    site.resource=oil;site.mine=false;site.farm=false;site.owner=0;var worker=w.Add(0,1,site.x,site.y);worker.moves=4;
+    bool oilKnown=w.ResourceKnown(0,oil);Check(oilKnown==(w.JobReason(worker,3)==""||w.JobReason(worker,3).StartsWith("Requires Mining")),"a known mineral deposit allows a mine off the hills, an unknown one does not");
+    site.mine=true;Check(w.ResourceDeveloped(city,site),"a mine develops a mineral");site.mine=false;Check(!w.ResourceDeveloped(city,site),"undeveloped without it");
+    site.resource=timber;site.terrain=1;site.cleared=false;site.road=false;Check(!w.ResourceDeveloped(city,site),"timber waits for its road");site.road=true;Check(w.ResourceDeveloped(city,site),"a road develops a woodland resource without clearing it");
+    // Saving: any registry number is valid; beyond the registry is not.
+    site.resource=ResourceRegistry.Count-1;site.rememberedResource=ResourceRegistry.Count-1;Check(w.Valid(),"the last resource number saves");site.resource=ResourceRegistry.Count;Check(!w.Valid(),"a number beyond the registry is rejected");site.resource=0;site.rememberedResource=0;
+}// Owner requests of 8 Nov 2026.
 static void EighthNovemberChecks(){
     Check(World.MapSizeNames.Last()=="Colossal"&&World.MapWidths.Last()*World.MapHeights.Last()>World.MapWidths[5]*World.MapHeights[5]&&World.SphereWidths.Last()*World.SphereHeights.Last()>World.SphereWidths[5]*World.SphereHeights[5],"Colossal maps are larger than Massive");
     {int across=World.HexColumns(World.HexTiles(World.SphereWidths[6]*World.SphereHeights[6]));Check(across<=400&&World.HexTiles(World.SphereWidths[6]*World.SphereHeights[6])/across<=400,"a Colossal hex globe fits the save limits");}
@@ -845,7 +874,7 @@ static void ThirdRequestChecks(){
     {var old=World.New(233,natives:false);old.version=29;old.UpgradeSave();Check(old.version==World.SaveVersion&&old.foodRations&&old.Valid(),"older saves start feeding their units");}
     {var off=World.New(234,natives:false);var c=off.Found(off.units.First(u=>u.owner==0&&u.type==0));for(int k=0;k<30;k++)off.Add(0,2,c.x,c.y);off.EndTurn();Check(off.UnfedUnits(0)==0,"the checks of older rules run without rations");}
     // The turn run in steps is the same turn.
-    {var a=World.New(235,"Steps",0,1,1,0,0,1,4,hex:true,wild:true,rations:true);var b=World.New(235,"Steps",0,1,1,0,0,1,4,hex:true,wild:true,rations:true);a.Found(a.units.First(u=>u.owner==0&&u.type==0));b.Found(b.units.First(u=>u.owner==0&&u.type==0));for(int t=0;t<12;t++){a.EndTurn();bool live=b.result=="";int steps=0;foreach(int s in b.TurnSteps())if(s<b.civCount)steps++;Check(!live||steps==b.civCount-1,"one step for each rival");}Check(a.turn==b.turn&&a.units.Count==b.units.Count&&a.cities.Count==b.cities.Count&&a.units.Select(u=>u.x*100000+u.y).SequenceEqual(b.units.Select(u=>u.x*100000+u.y)),"a stepped turn matches a whole one");}
+    {var a=World.New(235,"Steps",0,1,1,0,0,1,4,hex:true,wild:true,rations:true);var b=World.New(235,"Steps",0,1,1,0,0,1,4,hex:true,wild:true,rations:true);a.Found(a.units.First(u=>u.owner==0&&u.type==0));b.Found(b.units.First(u=>u.owner==0&&u.type==0));for(int t=0;t<12;t++){a.EndTurn();bool live=b.result=="";var rivalsStepped=new HashSet<int>();foreach(int s in b.TurnSteps()){int who=s%10000;if(who>0&&who<b.civCount)rivalsStepped.Add(who);}Check(!live||rivalsStepped.Count==b.civCount-1,"every rival takes its turn in the steps (each now in small pieces, 15 Nov 2026)");}Check(a.turn==b.turn&&a.units.Count==b.units.Count&&a.cities.Count==b.cities.Count&&a.units.Select(u=>u.x*100000+u.y).SequenceEqual(b.units.Select(u=>u.x*100000+u.y)),"a stepped turn matches a whole one");}
     // More wild animals.
     {var g=World.New(236,"Wild",0,1,1,0,1,2,4,hex:true,natives:false,wild:true);int land=g.tiles.Count(t=>t.realm==0&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&t.gateLink==0);Check(g.AnimalLimit()>=land/40*World.WildMultiple*DifficultyTable.Animals[g.difficultyLevel]/100-World.WildMultiple,"one animal per forty tiles of land, three times that early ("+g.AnimalLimit()+")");for(int k=0;k<20;k++)g.TickAnimalsForChecks(true);Check(g.animals.Count>=20,"they come quickly ("+g.animals.Count+")");}
     // Sharper art.

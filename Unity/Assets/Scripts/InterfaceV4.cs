@@ -62,7 +62,7 @@ namespace ParadigmRealm
                 if(empireTab==1)DrawIdentityPage();else{
                 var b=world.Budget(0);GUILayout.Label("Income +"+b[0]+" | Upkeep -"+b[1]+" | Net "+b[2],heading);
                 DrawEmpireBalance();
-                for(int r=2;r<World.ResourceNames.Length;r++)GUILayout.Label(World.ResourceNames[r]+": "+(world.HasResource(0,r)?"connected":"not connected"),body);
+                for(int r=2;r<World.ResourceNames.Length;r++){if(r>19&&!world.HasResource(0,r))continue;/* the catalogue's resources appear once connected */GUILayout.Label(World.ResourceNames[r]+": "+(world.HasResource(0,r)?"connected":"not connected"),body);}
             GUILayout.Label(world.AgeLine(0),body);
             DrawEmpireEconomy();}
             }else if(detailsScreen=="Civics"){DrawCivics();

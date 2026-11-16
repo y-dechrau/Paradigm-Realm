@@ -58,7 +58,7 @@ namespace ParadigmRealm {
      // Clearing woodland is worth a little less than the farm it makes room for.
      int value=job==1?4:job==5?(worked.Contains(tile)?18:6):worked.Contains(tile)?24:10;
      if(job==2&&hunger)value+=20;
-     bool improvement=tile.resource>0&&(tile.resource==2||tile.resource==3?job==3:job==2);
+     bool improvement=tile.resource>0&&tile.resource<ResourceRegistry.Count&&ResourceKnown(u.owner,tile.resource)&&(ResourceRegistry.Mined[tile.resource]?job==3:Wooded(tile)?job==1:job==2);
      if(improvement)value+=24;
      if(job==1&&(tile.farm||tile.mine)&&tile.resource>0)value+=30;
      // A port only works while a road joins it to its city.

@@ -14,9 +14,9 @@ namespace ParadigmRealm {
   public const int ResourceFoodKind=0,ResourceLuxuryKind=1,ResourceStrategicKind=2;
   // Index by resource id: None, Wheat, Iron, Gold, Horses, Spices, Fish, Whales, Pearls, Crabs, Kelp, Oysters, Seals, Tuna, Sponges, Offshore oil.
   // ... then Sheep, Cattle, Pigs (food) and Camels (strategic, +10% shields like Horses).
-  public static readonly int[] ResourceKind={-1,0,2,1,2,1,0,1,1,0,0,1,0,0,1,2,0,0,0,2};
+  public static readonly int[] ResourceKind=ResourceRegistry.Kind;
   public static readonly string[] ResourceKindNames={"food","luxury","strategic"};
-  static readonly int[] StrategicPercent={0,0,20,0,10,0,0,0,0,0,0,0,0,0,0,25,0,0,0,10};
+  static readonly int[] StrategicPercent=ResourceRegistry.StrategicPercent;
   public sealed class CityResourceReport {
    public List<Tile> inUse=new List<Tile>(),idle=new List<Tile>();
    public int growth,content,productionPercent,goldPercent,variety;
@@ -27,7 +27,8 @@ namespace ParadigmRealm {
   public bool ResourceDeveloped(City c,Tile t){
    if(t==null||t.resource<=0)return false;
    if(IsSeaResource(t.resource))return HasBuilding(c,43)||c.portLinked;
-   return t.resource==2||t.resource==3?t.mine:t.farm;
+   // Minerals need a mine; others a farm or pasture, or, on wooded land, a road (a plantation or hunting track: the woods stay).
+   if(t.resource>=ResourceRegistry.Count)return false;return ResourceRegistry.Mined[t.resource]?t.mine:t.farm||Wooded(t)&&t.road;
   }
   // The extra yield a worked resource gives (added to EffectiveTileYield so the Governor favours resource tiles).
   void ResourceTileBonus(City c,Tile t,int[] v){

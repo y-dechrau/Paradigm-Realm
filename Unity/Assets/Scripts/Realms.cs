@@ -87,7 +87,7 @@ public partial class World {
    {double roll=rnd.NextDouble();if(roll<.035)t.ruin=true;else if(roll<.08)t.resource=r==3||r==7?(rnd.Next(2)==0?2:3):r==1||r==6?(rnd.Next(2)==0?5:1):r==2?3:r==4?5:1;}
    if(r==5)foreach(var t in RealmTiles(r).Where(t=>t.terrain==4&&rnd.NextDouble()<.03))t.resource=6+rnd.Next(10);
   }
-  PlaceGateways(rnd);EnsureDimensionData();
+  PlaceGateways(rnd);for(int r=1;r<=RealmCount;r++)PlaceRealmResources(r);EnsureDimensionData();
  }
  IEnumerable<Tile> RealmTiles(int r){if(r>RealmsHere)yield break;for(int y=RealmTop(r);y<RealmBottom(r);y++)for(int x=0;x<Width;x++)yield return tiles[y*Width+x];}
  // Terrain of each world from smooth noise; the top and bottom rows of each world fade to its edge terrain.
