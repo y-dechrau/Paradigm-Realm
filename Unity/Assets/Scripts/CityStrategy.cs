@@ -43,7 +43,8 @@ namespace ParadigmRealm {
    result.Sort((p,q)=>(p.y*Width+p.x).CompareTo(q.y*Width+q.x));
    return result;
   }
-  static int FocusScore(int focus,int[] v){return focus==1?v[0]*4+v[1]+v[2]:focus==2?v[1]*4+v[0]+v[2]:focus==4?v[2]*6+v[0]+v[1]:v[0]*2+v[1]+v[2];}
+  // Science and Commerce both seek trade (owner report, 16 Nov 2026: Science chose tiles exactly like Balanced).
+  static int FocusScore(int focus,int[] v){return focus==1?v[0]*4+v[1]+v[2]:focus==2?v[1]*4+v[0]+v[2]:focus==4||focus==3?v[2]*6+v[0]+v[1]:v[0]*2+v[1]+v[2];}
   // Which tiles a city works is asked for hundreds of times a turn; while a turn is running the answer is kept (no player can change it).
   [NonSerialized] Dictionary<int,KeyValuePair<long,List<Tile>>> workedMemo;
   public List<Tile> Worked(City c){

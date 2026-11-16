@@ -67,7 +67,7 @@ public partial class RealmGame {
   value=Math.Max(0,Math.Min(names.Length-1,value));
   Fill(r,new Color(.08f,.12f,.22f));var edge=new Color(.78f,.62f,.32f);Fill(new Rect(r.x,r.y,r.width,1),edge);Fill(new Rect(r.x,r.yMax-1,r.width,1),edge);Fill(new Rect(r.x,r.y,1,r.height),edge);Fill(new Rect(r.xMax-1,r.y,1,r.height),edge);
   GUI.Label(new Rect(r.x+8,r.y,r.width-30,r.height),names[value],new GUIStyle(dipRow){fontSize=13,alignment=TextAnchor.MiddleLeft});GUI.Label(new Rect(r.xMax-22,r.y,18,r.height),dropOpen==id?"▲":"▼",new GUIStyle(dipRow){fontSize=11,alignment=TextAnchor.MiddleCenter});
-  if(dropOpen==null&&GUI.Button(r,"",GUIStyle.none)){dropOpen=id;dropNames=names;dropBox=r;float h=Math.Min(names.Length*24,24*9);dropList=r.yMax+h>790?new Rect(r.x,r.y-h,r.width,h):new Rect(r.x,r.yMax,r.width,h);}
+  if(dropOpen==null&&GUI.Button(r,"",GUIStyle.none)){var ra=new Rect(r.x,r.y-dropShiftY,r.width,r.height);dropOpen=id;dropNames=names;dropBox=ra;float h=Math.Min(names.Length*24,24*9);dropList=ra.yMax+h>790?new Rect(ra.x,ra.y-h,ra.width,h):new Rect(ra.x,ra.yMax,ra.width,h);}
   return value;}
  void DropdownClicks(){
   var e=Event.current;if(dropOpen==null||e.type!=EventType.MouseDown)return;
@@ -121,12 +121,14 @@ public partial class RealmGame {
   GUI.Label(new Rect(340,0,600,36),titleText.ToUpperInvariant(),new GUIStyle(courtTitle){fontSize=27});
   GUI.Label(new Rect(340,32,600,22),subtitle,new GUIStyle(courtSub){fontSize=15});
   {var lineInk=new Color(CourtGold.r,CourtGold.g,CourtGold.b,.6f);float tw=courtTitle.CalcSize(new GUIContent(titleText.ToUpperInvariant())).x;Fill(new Rect(640-tw/2-150,22,130,1),lineInk);Fill(new Rect(640+tw/2+20,22,130,1),lineInk);}
-  var close=new Rect(1226,12,40,40);Fill(close,CourtNavy);Fill(new Rect(close.x,close.y,close.width,1),CourtGold);Fill(new Rect(close.x,close.yMax-1,close.width,1),CourtGold);Fill(new Rect(close.x,close.y,1,close.height),CourtGold);Fill(new Rect(close.xMax-1,close.y,1,close.height),CourtGold);
-  GUI.Label(close,"✕",new GUIStyle(courtTitle){fontSize=22});
+  // An engraved gold plaque with crossed blades (owner request, 16 Nov 2026), brighter under the pointer; the plain cross is the fallback.
+  var close=new Rect(1220,8,48,48);var plaque=DipIcon("close");
+  if(plaque!=null){var keep=GUI.color;if(!close.Contains(Event.current.mousePosition))GUI.color=new Color(.9f,.9f,.9f);GUI.DrawTexture(close,plaque,ScaleMode.ScaleToFit,true);GUI.color=keep;}
+  else{Fill(close,CourtNavy);Fill(new Rect(close.x,close.y,close.width,1),CourtGold);Fill(new Rect(close.x,close.yMax-1,close.width,1),CourtGold);Fill(new Rect(close.x,close.y,1,close.height),CourtGold);Fill(new Rect(close.xMax-1,close.y,1,close.height),CourtGold);GUI.Label(close,"✕",new GUIStyle(courtTitle){fontSize=22});}
   return GUI.Button(close,"",GUIStyle.none);
  }
  void CourtFooter(Rect bar){GoldFrame(bar);}
- void FooterFigure(float cx,string icon,string text,string extra){var s=new GUIStyle(courtText){fontSize=16,alignment=TextAnchor.MiddleLeft};var it=new GUIStyle(courtItalic){fontSize=14,wordWrap=false,alignment=TextAnchor.MiddleLeft};
+ void FooterFigure(float cx,string icon,string text,string extra){var s=new GUIStyle(courtText){fontSize=16,alignment=TextAnchor.MiddleLeft};var it=new GUIStyle(courtText){fontSize=14,wordWrap=false,alignment=TextAnchor.MiddleLeft};
   float w=s.CalcSize(new GUIContent(text)).x+(extra==""?0:8+it.CalcSize(new GUIContent(extra)).x)+34,x=cx-w/2;DrawDipIcon(icon,new Rect(x,763,26,26));GUI.Label(new Rect(x+34,760,w,30),text,s);if(extra!="")GUI.Label(new Rect(x+40+s.CalcSize(new GUIContent(text)).x,761,200,30),extra,it);}
  void FooterRule(float x){Fill(new Rect(x,762,1,28),new Color(CourtGold.r,CourtGold.g,CourtGold.b,.5f));}
  // A court button: a face colour, a gold edge, an optional icon at the left, the caption, an optional italic note and arrow.
@@ -298,14 +300,15 @@ public partial class RealmGame {
  // ---- The Court: one leader ----
  static readonly string[] PactIcons={"handshake","dove","coins","book","shield","gateway"};
  void DrawCourtScene(int partner,Rect scene){
-  var pn=world.nations[partner];GoldFrame(scene);var inner=new Rect(scene.x+16,scene.y+16,scene.width-32,scene.height-32);
+  // The picture sits inside the trim, clear of the corner scrolls (owner report, 16 Nov 2026: it covered them).
+  var pn=world.nations[partner];GoldFrame(scene);var inner=new Rect(scene.x+46,scene.y+46,scene.width-92,scene.height-92);
   var backdrop=Art("diplomacy-backdrop");if(backdrop!=null)DrawCropped(inner,backdrop,BackdropAspect);else Fill(inner,new Color(.3f,.28f,.36f));
   var face=Portrait(pn.portrait,world.Era(partner));if(face!=null){float h=inner.height-6,w2=Mathf.Min(inner.width-40,h*.9f);DrawPortrait(new Rect(inner.center.x-w2/2,inner.y+6,w2,h),face);}
-  {var flag=FlagTexture(partner);if(flag!=null){var fr=new Rect(inner.x+12,inner.y+12,84,56);Fill(new Rect(fr.x-3,fr.y-3,fr.width+6,fr.height+6),new Color(.16f,.11f,.05f));Fill(new Rect(fr.x-2,fr.y-2,fr.width+4,fr.height+4),CourtGold);GUI.DrawTexture(fr,flag,ScaleMode.StretchToFill,true);}}
+  {var flag=FlagTexture(partner);if(flag!=null){var fr=new Rect(inner.x+10,inner.y+10,84,56);Fill(new Rect(fr.x-3,fr.y-3,fr.width+6,fr.height+6),new Color(.16f,.11f,.05f));Fill(new Rect(fr.x-2,fr.y-2,fr.width+4,fr.height+4),CourtGold);GUI.DrawTexture(fr,flag,ScaleMode.StretchToFill,true);}}
   // The name plate across the foot of the picture, laurels either side.
   // The name plate across the foot of the picture, laurels either side; it grows upward when the leader's name needs two lines.
   string who=(string.IsNullOrEmpty(pn.leader)?world.NationName(partner):pn.leader).ToUpperInvariant();float whoH;var whoStyle=FitName(who,460-132,new GUIStyle(courtCaps){alignment=TextAnchor.MiddleCenter,normal={textColor=CourtCream}},24,16,12,out whoH);float nameRow=Mathf.Max(38,whoH+4);
-  var plate=new Rect(inner.center.x-230,inner.yMax-78-(nameRow-38),460,70+(nameRow-38));Fill(new Rect(plate.x-4,plate.y-4,plate.width+8,plate.height+8),new Color(.16f,.11f,.05f,.9f));Fill(plate,new Color(.05f,.08f,.15f,.97f));
+  var plate=new Rect(inner.center.x-230,inner.yMax-74-(nameRow-38),460,70+(nameRow-38));Fill(new Rect(plate.x-4,plate.y-4,plate.width+8,plate.height+8),new Color(.16f,.11f,.05f,.9f));Fill(plate,new Color(.05f,.08f,.15f,.97f));
   var e=CourtGold;Fill(new Rect(plate.x,plate.y,plate.width,2),e);Fill(new Rect(plate.x,plate.yMax-2,plate.width,2),e);Fill(new Rect(plate.x,plate.y,2,plate.height),e);Fill(new Rect(plate.xMax-2,plate.y,2,plate.height),e);
   DrawDipIcon("laurel",new Rect(plate.x+8,plate.center.y-26,52,52));DrawDipIcon("laurel",new Rect(plate.xMax-60,plate.center.y-26,52,52));
   GUI.Label(new Rect(plate.x+66,plate.y+2,plate.width-132,nameRow),who,whoStyle);
@@ -350,12 +353,13 @@ public partial class RealmGame {
   DrawCourtRelations(partner,new Rect(8,578,644,166));
   // ---- Right: everything that can be done with them ----
   var side=new Rect(660,72,612,672);GoldFrame(side);
-  float y=side.y+22;float left=side.x+24,wide2=side.width-48;bool enabled=GUI.enabled;
+  // Content keeps clear of the corner scrolls (owner report, 16 Nov 2026), and everything between the header and the buttons scrolls.
+  float y=side.y+36;float left=side.x+40,wide2=side.width-80;bool enabled=GUI.enabled;
   Color navy=CourtNavy,teal=new Color(.07f,.38f,.4f),blue=CourtNavy,red=CourtRed;
   {var theirFlag=FlagTexture(partner);var fr=new Rect(left,y,80,52);Fill(new Rect(fr.x-2,fr.y-2,fr.width+4,fr.height+4),CourtGold);if(theirFlag!=null)GUI.DrawTexture(fr,theirFlag,ScaleMode.StretchToFill,true);}
   {string nm=world.NationName(partner).ToUpperInvariant();float h;var st=FitName(nm,wide2-96-180,new GUIStyle(courtCaps){alignment=TextAnchor.MiddleLeft,normal={textColor=CourtCream}},27,17,13,out h);GUI.Label(new Rect(left+96,y-4,wide2-96-180,38),nm,st);}
   GUI.Label(new Rect(left+96,y+32,wide2-96,24),(string.IsNullOrEmpty(pn.leader)?"":pn.leader+" — ")+DiplomacyFlavours.PostureNames[world.Posture(partner)],new GUIStyle(courtItalic){fontSize=16,wordWrap=false});
-  {var badge=new Rect(side.xMax-24-170,y+2,170,30);MoodBadge(badge,partner,15);Tip(badge,Attitudes.Names[world.Attitude(partner,0)]+": "+Attitudes.Texts[world.Attitude(partner,0)]);}
+  {var badge=new Rect(side.xMax-40-170,y+2,170,30);MoodBadge(badge,partner,15);Tip(badge,Attitudes.Names[world.Attitude(partner,0)]+": "+Attitudes.Texts[world.Attitude(partner,0)]);}
   y+=66;
   {var quote=new Rect(left,y,wide2,58);Fill(quote,new Color(.03f,.05f,.1f,.92f));Fill(new Rect(quote.x,quote.y,quote.width,1),CourtGold);Fill(new Rect(quote.x,quote.yMax-1,quote.width,1),CourtGold);Fill(new Rect(quote.x,quote.y,1,quote.height),CourtGold);Fill(new Rect(quote.xMax-1,quote.y,1,quote.height),CourtGold);
    string said=dipReplyPartner==partner&&!string.IsNullOrEmpty(dipReply)?dipReply:"“"+world.Greeting(partner)+"”";var qs=new GUIStyle(courtItalic){fontSize=17,alignment=TextAnchor.MiddleCenter};var qr=new Rect(quote.x+14,quote.y+3,quote.width-28,quote.height-6);while(qs.fontSize>11&&qs.CalcHeight(new GUIContent(said),qr.width)>qr.height)qs.fontSize--;GUI.Label(qr,said,qs);}
@@ -366,6 +370,10 @@ public partial class RealmGame {
    Tip(new Rect(left,y,wide2,26),"Strength is what you can see of their army and cities beside your own. Trust grows by 1 every second turn while agreements stand, up to the ceiling of the strongest one (an envoy alone allows 20); each 2 trust is 1 opinion. Fear comes from conquest and war without cause; at 50 they become Threatened.");y+=32;}
   var pending=world.offers.Where(o=>o.to==0&&o.status==0&&o.expires>world.turn).ToList();int asked=world.requests.Count(r=>r.to==0&&r.status==RequestStatus.Pending);
   if(pending.Count+asked>0){var strip=new Rect(left,y,wide2,28);Fill(strip,new Color(.5f,.38f,.12f,.9f));GUI.Label(new Rect(strip.x+10,strip.y,strip.width-110,28),(pending.Count+asked)+" proposal"+(pending.Count+asked==1?"":"s")+" and request"+(pending.Count+asked==1?"":"s")+" await your answer",dipRow);if(GUI.Button(new Rect(strip.xMax-96,strip.y+2,90,24),"Review")){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}y+=34;}
+  float by=side.yMax-84;var body=new Rect(side.x+26,y,side.width-52,by-8-y);float bodyTop=y;
+  if(Event.current.type==EventType.ScrollWheel&&body.Contains(Event.current.mousePosition)){courtScroll.y+=Event.current.delta.y*18;Event.current.Use();}
+  courtScroll.y=Mathf.Clamp(courtScroll.y,0,Mathf.Max(0,courtContentH-body.height));string tipBefore=tipTitle;
+  courtScroll=GUI.BeginScrollView(body,courtScroll,new Rect(body.x,body.y,body.width-16,Mathf.Max(body.height,courtContentH)),false,false,GUIStyle.none,GUIStyle.none);dropShiftY=courtScroll.y;
   if(claimsView||requestsView||customDeal){
   if(claimsView){
    // ---- Claims on their cities ----
@@ -383,7 +391,7 @@ public partial class RealmGame {
    var onMe=world.ClaimsOn(partner,0);if(onMe.Count>0){GUI.Label(new Rect(left,y+4,wide2,22),"They claim: "+string.Join(", ",onMe.Select(c=>c.name).ToArray()),new GUIStyle(dipRow){fontSize=13,normal={textColor=DipBad}});y+=28;}
   }else if(requestsView){
    // ---- Requests and guarantees (DiplomacyRequestsUI.cs) ----
-   DrawRequestsPanel(partner,side,y);
+   DrawRequestsPanel(partner,side,y);y=by;
   }else if(customDeal){
    // ---- A trade deal, or the terms of a peace ----
    if(DipButton(new Rect(left,y,wide2,26),"◂ Back",navy))customDeal=false;y+=32;
@@ -435,13 +443,19 @@ public partial class RealmGame {
       GUI.enabled=enabled;Tip(row,Pacts.Names[k]+": "+Pacts.Effects[k],null,held!=""?held:"Ending it is remembered as a broken word (opinion and trust fall)."+(k==Pacts.NonAggression||k==Pacts.Defensive?" Neither side may declare war for "+Pacts.Notice+" turns afterwards.":""));
      }else{
       var o=new DiplomaticOffer{from=0,to=partner,kind=Pacts.Kind[k]};string problem=world.OfferProblem(o);int will=problem==""?world.OfferWillingness(o):-1;
+      // They have already offered this one (owner request, 16 Nov 2026): say so, and the row opens their proposal.
+      bool offered=world.offers.Any(x=>x.from==partner&&x.to==0&&x.status==0&&x.expires>world.turn&&x.kind==Pacts.Kind[k]);if(offered)problem="";
       var keep=GUI.color;if(problem!="")GUI.color=new Color(1,1,1,.55f);DrawDipIcon(PactIcons[k],new Rect(row.x+8,row.y+2,25,25));GUI.Label(new Rect(row.x+44,row.y,240,row.height),Pacts.Names[k],nameStyle);GUI.color=keep;
       if(problem!=""){DrawDipIcon("lock",new Rect(cell.x,cell.y+5,19,19),new Color(.85f,.85f,.88f));FitLabel(new Rect(cell.x+26,cell.y,cell.width-26,cell.height),problem,new GUIStyle(courtText){fontSize=14,alignment=TextAnchor.MiddleLeft,normal={textColor=new Color(.75f,.75f,.78f)}},9);}
+      else if(offered){GUI.Label(new Rect(cell.x,cell.y,24,cell.height),"✓",new GUIStyle(courtText){fontSize=18,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter,normal={textColor=new Color(1f,.84f,.42f)}});
+       GUI.Label(new Rect(cell.x+28,cell.y,cell.width-28,cell.height),"Under proposal",new GUIStyle(courtText){fontSize=15,alignment=TextAnchor.MiddleLeft,normal={textColor=new Color(1f,.84f,.42f)}});
+       if(row.Contains(Event.current.mousePosition)&&GUI.enabled)Fill(new Rect(row.x+1,row.y+1,row.width-2,row.height-2),new Color(1,1,1,.06f));
+       if(GUI.Button(row,"",GUIStyle.none)&&GUI.enabled){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}}
       else{var ink=will>=0?DipGood:DipPlain;GUI.Label(new Rect(cell.x,cell.y,24,cell.height),will>=0?"✓":"~",new GUIStyle(courtText){fontSize=18,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter,normal={textColor=ink}});
        GUI.Label(new Rect(cell.x+28,cell.y,cell.width-28,cell.height),will>=0?"Would sign (+"+will+")":"Would refuse ("+will+")",new GUIStyle(courtText){fontSize=15,alignment=TextAnchor.MiddleLeft,normal={textColor=ink}});
        if(row.Contains(Event.current.mousePosition)&&GUI.enabled)Fill(new Rect(row.x+1,row.y+1,row.width-2,row.height-2),new Color(1,1,1,.06f));
        if(GUI.Button(row,"",GUIStyle.none)&&GUI.enabled){var sent=world.Propose(o);status=sent.answer;dipReply=world.LeaderReply(partner,sent,sent.status==1);dipReplyPartner=partner;}}
-      Tip(row,Pacts.Names[k]+": "+Pacts.Effects[k]+" It lasts until one side ends it. Click to propose it.",problem==""?world.AcceptanceLines(o):null,problem);
+      Tip(row,Pacts.Names[k]+": "+Pacts.Effects[k]+(offered?" "+(string.IsNullOrEmpty(pn.leader)?world.NationName(partner):pn.leader)+" has proposed this. Click to review the offer.":" It lasts until one side ends it. Click to propose it."),problem==""&&!offered?world.AcceptanceLines(o):null,offered?"":problem);
      }
      y+=32;}
     y+=4;
@@ -462,15 +476,32 @@ public partial class RealmGame {
    {int open=world.requests.Count(x=>(x.from==0&&x.to==partner||x.to==0&&x.from==partner)&&(x.status==RequestStatus.Active||x.status==RequestStatus.Pending));
     if(CourtAction(new Rect(left,y,wide2,34),"scroll","Requests & Guarantees"+(open>0?"  ("+open+" open)":""),"","Ask them to stop a war, keep troops from your cities, join a war, guard your gateway or send aid: with a deadline, a payment on completion and, if you like, a threat. See every commitment between you.",navy,"",true)){requestsView=true;customDeal=false;claimsView=false;}y+=38;}
    // Their leader's agenda and how it judges you.
-   {string agenda=world.AgendaReason(partner,0);if(agenda!=""&&y<side.yMax-92){var s=new GUIStyle(courtItalic){fontSize=14,alignment=TextAnchor.MiddleCenter};GUI.Label(new Rect(left,y,wide2,side.yMax-70-y),agenda,s);}}
+   {string agenda=world.AgendaReason(partner,0);if(agenda!=""){var s=new GUIStyle(courtItalic){fontSize=14,alignment=TextAnchor.MiddleCenter};float ah=s.CalcHeight(new GUIContent(agenda),wide2);GUI.Label(new Rect(left,y+4,wide2,ah),agenda,s);y+=ah+8;}}
   }
-  float bw=(wide2-20)/3,by=side.yMax-62;
+  courtContentH=y-bodyTop+6;GUI.EndScrollView();dropShiftY=0;
+  if(tipTitle!=tipBefore)tipY-=courtScroll.y;
+  if(courtContentH>body.height+1)GoldScroll(new Rect(body.xMax-12,body.y,12,body.height),ref courtScroll.y,body.height,courtContentH);
+  float bw=(wide2-20)/3;
   if(CourtButton(new Rect(left,by,bw,42),"book","More",navy)){diplomacyDiscuss=true;detailsScroll=Vector2.zero;}
   if(CourtButton(new Rect(left+bw+10,by,bw,42),"gateway","Leave",navy)){diplomacyChooser=true;diplomacyDiscuss=false;claimsView=false;customDeal=false;requestsView=false;}
   {string warReason=world.WarReason(0,partner);string cause=world.CasusBelli(0,partner);var wr=new Rect(left+2*bw+20,by,bw,42);
    if(CourtAction(wr,"swords","Declare War",warReason,warReason!=""?"War is not possible now.":cause!=""?"You have a just cause: "+cause+". Only they will hold it against you.":"You have no just cause. "+(world.CausePending(0,partner)!=""?world.CausePending(0,partner)+" ":"Name them a rival or claim a city, then wait "+Pacts.CauseDelay+" turns. ")+"War without cause makes every civilisation that knows you fear and dislike you.",red)){pendingUnit=-2;pendingWars=new[]{partner};detailsScreen="";cityScreen=false;GUIUtility.ExitGUI();}}
   DrawTip(side);
   DrawOpenDropdown();
+ }
+ Vector2 courtScroll;float courtContentH,dropShiftY;bool scrollDrag;float scrollGrab;
+ // A scroll bar in the trim's style: a navy channel ruled in gold, and a gold grip with a dark jewel. Drag the grip or click the channel.
+ void GoldScroll(Rect track,ref float scroll,float view,float content){
+  float max=Mathf.Max(0,content-view);if(max<=0)return;var e=Event.current;
+  Fill(track,new Color(.03f,.05f,.1f,.95f));Fill(new Rect(track.x,track.y,1,track.height),CourtGold);Fill(new Rect(track.xMax-1,track.y,1,track.height),CourtGold);
+  Fill(new Rect(track.x-2,track.y-2,track.width+4,2),CourtGold);Fill(new Rect(track.x-2,track.yMax,track.width+4,2),CourtGold);
+  float gripH=Mathf.Max(28,track.height*view/content),gripY=track.y+(track.height-gripH)*scroll/max;var grip=new Rect(track.x+1,gripY,track.width-2,gripH);
+  if(e.type==EventType.MouseDown&&e.button==0&&track.Contains(e.mousePosition)){scrollDrag=true;scrollGrab=grip.Contains(e.mousePosition)?e.mousePosition.y-gripY:gripH/2;e.Use();}
+  if(scrollDrag&&(e.type==EventType.MouseDrag||e.type==EventType.MouseDown)){scroll=Mathf.Clamp((e.mousePosition.y-scrollGrab-track.y)/(track.height-gripH)*max,0,max);e.Use();}
+  if(e.type==EventType.MouseUp)scrollDrag=false;
+  gripY=track.y+(track.height-gripH)*scroll/max;grip=new Rect(track.x+1,gripY,track.width-2,gripH);
+  Fill(grip,new Color(.62f,.47f,.2f));Fill(new Rect(grip.x,grip.y,grip.width,2),new Color(1f,.88f,.55f));Fill(new Rect(grip.x,grip.yMax-2,grip.width,2),new Color(.35f,.25f,.1f));
+  float cy=grip.center.y;Fill(new Rect(grip.center.x-3,cy-3,6,6),new Color(.12f,.08f,.04f));Fill(new Rect(grip.center.x-1,cy-1,2,2),new Color(.9f,.4f,.3f));
  }
 }
 }

@@ -94,6 +94,7 @@ namespace ParadigmRealm
         // middle, totals, growth, happiness and citizens; right, the build queue. The Governor sits along the bottom.
         bool cityBuildingTab;
         static readonly string[] FocusNames={"Balanced","Growth (food)","Build (shields)","Science","Commerce (gold)"};
+        static readonly string[] FocusHelp={"Works tiles for a mix, food first.","Works the best food tiles: faster growth.","Works the best shield tiles: faster building.","Works trade tiles and turns all of the city's trade into science.","Works trade tiles and turns all of the city's trade into gold."};
         void DrawCityScreen()
         {
             var c=world.cities.Find(a=>a.owner==0&&a.id==cityId);if(c==null){cityScreen=false;return;}
@@ -112,7 +113,16 @@ namespace ParadigmRealm
             if(GUI.Button(new Rect(1060,158,165,28),(cityBuildingTab?"● ":"")+"Buildings",button))cityBuildingTab=true;
             DrawProductionLine(c,cityBuildingTab,new Rect(880,190,355,480));
             GUI.Label(new Rect(40,682,110,30),"Focus",heading);
-            {bool was=GUI.enabled;GUI.enabled=was&&!c.autoManage;c.focus=GUI.SelectionGrid(new Rect(150,678,885,34),c.focus,FocusNames,5);GUI.enabled=was;}
+            {bool was=GUI.enabled;GUI.enabled=was&&!c.autoManage;c.focus=GUI.SelectionGrid(new Rect(150,678,885,34),c.focus,FocusNames,5);GUI.enabled=was;
+             // Hovering a focus shows what the city would make with it (owner report, 16 Nov 2026: the choice seemed to change nothing).
+             var mouse=Event.current.mousePosition;var bar=new Rect(150,678,885,34);
+             if(bar.Contains(mouse)){int hovered=Mathf.Clamp((int)((mouse.x-bar.x)/(bar.width/5)),0,4);int keep=c.focus;
+              c.focus=keep;var now=world.Yield(c);int sNow=world.ScienceShare(c),gNow=world.GoldShare(c);c.focus=hovered;var then=world.Yield(c);int sThen=world.ScienceShare(c),gThen=world.GoldShare(c);c.focus=keep;
+              Func<int,int,string> d=(a,b)=>b+(b==a?"":" ("+(b>a?"+":"")+(b-a)+")");
+              string tip=FocusNames[hovered]+": food "+d(now[0],then[0])+", shields "+d(now[1],then[1])+", science "+d(sNow,sThen)+", gold "+d(gNow,gThen)+".  "+FocusHelp[hovered];
+              var ts=new GUIStyle(small){wordWrap=true};float th=ts.CalcHeight(new GUIContent(tip),560)+10;var box=new Rect(Mathf.Clamp(mouse.x-280,20,700),bar.y-th-8,580,th);
+              Fill(box,new Color(.05f,.08f,.16f,.97f));Fill(new Rect(box.x,box.yMax-1,box.width,1),UiGold);GUI.Label(new Rect(box.x+10,box.y+5,box.width-20,th-10),tip,ts);}
+             if(world.nations[0].priority>0&&!c.autoManage)GUI.Label(new Rect(150,712,885,18),"The imperial priority (Empire screen) sets every city's focus at the end of each turn.",new GUIStyle(small){fontSize=11,normal={textColor=new Color(1f,.8f,.45f)}});}
             if(GUI.Button(new Rect(1045,678,190,34),c.autoManage?"● Auto-manage on":"Auto-manage off",button)){world.SetAutoManage(c,!c.autoManage);status=c.autoManage?c.name+" now manages itself: focus, order, buildings, and units only when gold and food stay at zero or above.":c.name+" is back under your control.";}
             GUI.Label(new Rect(24,744,1232,42),status,body);
         }

@@ -25,7 +25,8 @@ public partial class World {
  // Shields this city's military share adds per turn, whether or not it is training anything.
  // A share of Trade at a priority, rounded to the nearest point.
  public static int ShareOf(int trade,int rate){return Math.Max(0,(trade*rate+50)/100);}
- public int ScienceShare(City c){return ShareOf(Trade(c),nations[c.owner].scienceRate);}
+ // A Science focus puts all the city's trade into science, a Commerce focus all into gold (16 Nov 2026); otherwise the empire's rate.
+ public int ScienceShare(City c){return c.focus==3?Trade(c):c.focus==4?0:ShareOf(Trade(c),nations[c.owner].scienceRate);}
  public int ArmyBudget(City c){int rate=nations[c.owner].militaryRate;if(rate<=0||Disorder(c))return 0;int trade=Trade(c),shields=Math.Min(trade-ScienceShare(c),ShareOf(trade,rate));return c.occupation>0?shields/2:shields;}
  // Gold from Trade: what science takes is gone, and the military share only while the city trains a combat unit.
  public int GoldShare(City c){int trade=Trade(c),s=ScienceShare(c);return trade-s-(IsCombatBuild(c.build)?Math.Min(trade-s,ShareOf(trade,nations[c.owner].militaryRate)):0);}

@@ -9,7 +9,7 @@ public static void Run(){
     var w=World.New(137);Check(w.tech[TechnologyCatalog.Start]&&w.nations.All(n=>n.tech[TechnologyCatalog.Start]),"every civilisation starts with Stone Tools");
     Check(w.AvailableTech().Where(TechnologyCatalog.IsKeystone).OrderBy(i=>i).SequenceEqual(new[]{K("agriculture"),K("archery"),K("bronze")}.OrderBy(i=>i)),"Stone Tools opens Agriculture, Archery and Bronze Working (and Dawn minors)");
     var researched=new HashSet<int>{TechnologyCatalog.Start};while(researched.Count<TechnologyCatalog.ActiveCount){var available=w.AvailableTech();Check(available.Count>0,"no cycle or unreachable research");foreach(int i in available){Check(World.Requirements[i].All(p=>researched.Contains(p)),"prerequisites already complete");researched.Add(i);w.tech[i]=true;}}
-    Check(researched.Count==99&&TechnologyCatalog.ActiveCount==99&&Enumerable.Range(0,6).All(e=>Enumerable.Range(0,180).Count(t=>TechnologyCatalog.Active[t]&&TechnologyCatalog.Eras[t]==e)==TechnologyCatalog.EraSize[e])&&TechnologyCatalog.KeystoneCount==36&&TechnologyCatalog.EraNames.Length==6&&Enumerable.Range(0,6).All(e=>Enumerable.Range(0,180).Count(t=>TechnologyCatalog.Eras[t]==e)==30),"180 technologies, 36 keystones, 30 per era");
+    Check(researched.Count==100&&TechnologyCatalog.ActiveCount==100&&TechnologyCatalog.IsActive(TechnologyCatalog.Index("m_herding"))&&Enumerable.Range(0,6).All(e=>Enumerable.Range(0,180).Count(t=>TechnologyCatalog.Active[t]&&TechnologyCatalog.Eras[t]==e)==TechnologyCatalog.EraSize[e])&&TechnologyCatalog.KeystoneCount==36&&TechnologyCatalog.EraNames.Length==6&&Enumerable.Range(0,6).All(e=>Enumerable.Range(0,180).Count(t=>TechnologyCatalog.Eras[t]==e)==30),"180 technologies, 36 keystones, 30 per era");
     Check(Enumerable.Range(36,144).All(t=>World.Requirements[t].Length>0&&World.Requirements[t].All(p=>TechnologyCatalog.Eras[p]==TechnologyCatalog.Eras[t])&&World.ActiveTechBenefits(t).Length==1),"each minor technology needs only its own era and has one listed effect");w.CheckVictory();Check(w.result=="","researching every keystone no longer wins by itself (Stage 6: Transcendence is a project)");
     StageFive();
     PlayerRequestChecks();
@@ -283,7 +283,7 @@ static void PlayerRequestChecks(){
 // The living world: people, memory, materials and the map (owner request, 7 Nov 2026).
 // Owner requests of 7 Nov 2026, latest: tree size, speed, opening budget, animals and population.
 static void PacingAndPopulationChecks(){
-    Check(TechnologyCatalog.EraSize.SequenceEqual(new[]{10,14,15,20,25,15}),"10, 14, 15, 20, 25 and 15 technologies by age");
+    Check(TechnologyCatalog.EraSize.SequenceEqual(new[]{11,14,15,20,25,15}),"11, 14, 15, 20, 25 and 15 technologies by age (Animal Husbandry in the Dawn Age)");
     for(int i=0;i<TechnologyCatalog.Count;i++)if(TechnologyCatalog.Active[i])Check(World.Requirements[i].All(TechnologyCatalog.IsActive),"every prerequisite is itself researchable: "+TechnologyCatalog.Names[i]);
     // Long now costs what Standard used to; Standard two thirds and Quick one third.
     {var q=World.New(261,"Pace",0,0,1,0,1,2,4,hex:true,natives:false,rations:true);var s=World.New(261,"Pace",0,1,1,0,1,2,4,hex:true,natives:false,rations:true);var l=World.New(261,"Pace",0,2,1,0,1,2,4,hex:true,natives:false,rations:true);int t=K("agriculture");int old=World.TechCosts[t]*World.ResearchPace[0]/100;
@@ -689,6 +689,7 @@ static void ResourceCatalogueChecks(){
     for(int seed=0;seed<6;seed++){var map=World.New(seed);Check(map.Valid(),"a new world with catalogue resources validates");
      foreach(var t in map.tiles){if(t.resource<20)continue;var d=ResourceRegistry.Of(t.resource);Check(d!=null&&d.Spawns,"only placeable resources are placed ("+t.resource+")");placed++;kinds.Add(t.resource);
       if(d.place==ResourceRegistry.Place.Realm)Check(t.realm>0,d.id+" only beyond the gateways");else Check(t.realm==0,d.id+" only on the home world");
+      if(d.place!=ResourceRegistry.Place.Realm){double lat=Math.Min(1,Math.Abs(t.y-(map.MainHeight-1)/2.0)/(map.MainHeight/2.0));Check(lat>=d.latMin-1e-6&&lat<=d.latMax+1e-6,d.id+" inside its real-world latitude band ("+lat.ToString("0.00")+")");}
       if(d.place==ResourceRegistry.Place.Sea)Check(PixelArt.IsWater(t.terrain),d.id+" at sea");else Check(!PixelArt.IsWater(t.terrain)&&(d.place==ResourceRegistry.Place.Realm||d.terrains.Contains(t.terrain)),d.id+" on one of its terrains, not "+World.TerrainNames[t.terrain]);}}
     Check(placed>0&&kinds.Count>=25,"new worlds hold catalogue resources of many kinds ("+placed+" of "+kinds.Count+" kinds)");
     var again=World.New(4);var once=World.New(4);Check(again.tiles.Select(t=>t.resource).SequenceEqual(once.tiles.Select(t=>t.resource)),"placement repeats from the seed");

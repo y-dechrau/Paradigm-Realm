@@ -40,9 +40,10 @@ public partial class RealmGame {
  }
  Rect GuidePanel(string line,float height,out float y,float textHeight=62){
   var box=new Rect(370,Mathf.Max(60,170-Mathf.Max(0,height-430)/2),540,height);Fill(FullCanvas,new Color(0,0,0,.35f));DrawGuideFrame(box);
-  var face=GuideFace();if(face!=null)GUI.DrawTexture(new Rect(box.x+14,box.y+14,84,84),face,ScaleMode.ScaleAndCrop);
-  {var toast=CheersFrame();if(toast!=null){var pic=new Rect(box.x-312,box.y,300,225);DrawGuideFrame(new Rect(pic.x-6,pic.y-6,pic.width+12,pic.height+12));GUI.DrawTexture(pic,toast,ScaleMode.StretchToFill);}}
-  float tx=box.x+112,tw=box.width-126;GUI.Label(new Rect(tx,box.y+10,tw,24),GuideName,hudTitle);
+  // The large toasting picture beside the panel is enough (owner request, 16 Nov 2026); the small face shows only without it.
+  var toast=CheersFrame();if(toast!=null){var pic=new Rect(box.x-312,box.y,300,225);DrawGuideFrame(new Rect(pic.x-6,pic.y-6,pic.width+12,pic.height+12));GUI.DrawTexture(pic,toast,ScaleMode.StretchToFill);}
+  var face=toast==null?GuideFace():null;if(face!=null)GUI.DrawTexture(new Rect(box.x+14,box.y+14,84,84),face,ScaleMode.ScaleAndCrop);
+  float tx=face!=null?box.x+112:box.x+20,tw=face!=null?box.width-126:box.width-40;GUI.Label(new Rect(tx,box.y+10,tw,24),GuideName,hudTitle);
   GUI.Label(new Rect(tx,box.y+36,tw,textHeight),line,new GUIStyle(body){wordWrap=true});y=box.y+44+textHeight;return box;
  }
  void DrawGuidePrompt(){

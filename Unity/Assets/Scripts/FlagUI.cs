@@ -47,7 +47,7 @@ public partial class RealmGame {
  void DrawIdentityPage(){
                 GUI.SetNextControlName("rename");renameText=GUILayout.TextField(renameText,32);if(Button("Apply civilisation name"))world.civilisationName=World.CleanName(renameText);
                 DrawFlagDesigner();
-                {var me=world.nations[0];var face=Portrait(me.portrait);if(face!=null)DrawPortrait(GUILayoutUtility.GetRect(150,200),face);if(!string.IsNullOrEmpty(me.leader))GUILayout.Label("Led by "+me.leader,heading);GUILayout.Label(me.traits!=null&&me.traits.Any(t=>t>=0)?CivilisationCatalog.TraitLine(me.traits):"No traits.",body);}
+                {var me=world.nations[0];/* no portrait here (owner request, 16 Nov 2026) */if(!string.IsNullOrEmpty(me.leader))GUILayout.Label("Led by "+me.leader,heading);GUILayout.Label(me.traits!=null&&me.traits.Any(t=>t>=0)?CivilisationCatalog.TraitLine(me.traits):"No traits.",body);}
                 GUILayout.Label("Difficulty: "+DifficultyTable.Names[Mathf.Clamp(world.difficultyLevel,0,DifficultyTable.Names.Length-1)],heading);GUILayout.Label(DifficultyTable.Describe(Mathf.Clamp(world.difficultyLevel,0,DifficultyTable.Names.Length-1)),small);
                 DrawOwnCivilisationLore();
  }

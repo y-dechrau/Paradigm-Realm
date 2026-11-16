@@ -83,15 +83,25 @@ public partial class RealmGame {
  // the rails are a single column or row of plain rail stretched along their length (identical all the way, so nothing
  // smears), and only the even navy middle is stretched.
  const int FrameCorner=46,FrameRail=16,FrameJewelLong=44,FrameJewelDeep=24,FrameSideLong=56;
- void GoldFrame(Rect r){
-  var t=UiTex("frame");if(t==null){GUI.Box(r,"");return;}
+ // A sharper copy of the frame (owner report, 16 Nov 2026: the trim looked blurred): each picture pixel made 3 x 3, then
+ // smoothed only across the new pixels' edges, so the gold stays crisp at any screen size. Made once.
+ Texture2D crispFrame;
+ Texture2D CrispFrame(Texture2D src){
+  if(crispFrame!=null)return crispFrame;if(src==null)return null;const int k=3;
+  var rt=RenderTexture.GetTemporary(src.width*k,src.height*k,0,RenderTextureFormat.ARGB32,RenderTextureReadWrite.sRGB);var was=src.filterMode;src.filterMode=FilterMode.Point;var prev=RenderTexture.active;
+  Graphics.Blit(src,rt);RenderTexture.active=rt;var big=new Texture2D(rt.width,rt.height,TextureFormat.RGBA32,false){filterMode=FilterMode.Bilinear,wrapMode=TextureWrapMode.Clamp};
+  big.ReadPixels(new Rect(0,0,rt.width,rt.height),0,0);big.Apply(false);RenderTexture.active=prev;RenderTexture.ReleaseTemporary(rt);src.filterMode=was;crispFrame=big;return big;
+ }
+ // edgesOnly: just the rails, corners and jewels, drawn again over a picture so nothing covers the trim.
+ void GoldFrame(Rect r,bool edgesOnly=false){
+  var src=UiTex("frame");if(src==null){if(!edgesOnly)GUI.Box(r,"");return;}var t=CrispFrame(src)??src;
   if(Event.current.type!=EventType.Repaint)return;
-  float W=t.width,H=t.height;
+  float W=src.width,H=src.height;// picture units of the original; the crisp copy has the same proportions
   Func<float,float,float,float,Rect> px=(x,y,w,h)=>new Rect(x/W,1-(y+h)/H,w/W,h/H);
   float c=Mathf.Min(FrameCorner,Mathf.Floor(r.width/2),Mathf.Floor(r.height/2)),rail=Mathf.Min(FrameRail,c);
   // Pieces overlap by a couple of units: at the screen's fractional scale, edges that only meet left hairline gaps.
   const float lap=2;
-  GUI.DrawTextureWithTexCoords(new Rect(r.x+rail-lap,r.y+rail-lap,r.width-2*rail+2*lap,r.height-2*rail+2*lap),t,px(FrameCorner,FrameCorner,W-2*FrameCorner,H-2*FrameCorner));
+  if(!edgesOnly)GUI.DrawTextureWithTexCoords(new Rect(r.x+rail-lap,r.y+rail-lap,r.width-2*rail+2*lap,r.height-2*rail+2*lap),t,px(FrameCorner,FrameCorner,W-2*FrameCorner,H-2*FrameCorner));
   float run=r.width-2*c,rise=r.height-2*c;
   if(run>0){
    GUI.DrawTextureWithTexCoords(new Rect(r.x+c-lap,r.y,run+2*lap,rail),t,px(128,0,1,rail));

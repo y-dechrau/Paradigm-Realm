@@ -41,6 +41,8 @@ public partial class RealmGame {
  // 4 tiles a second (6 before the walking frames), at most twice that on long walks, so the legs can be seen moving.
  const float StepsPerSecond=4f,MaxGlideSpeedUp=2f;
  bool Gliding(int unitId){return unitGlides.ContainsKey(unitId);}
+ // Units whose last step on screen went leftwards, so they are drawn mirrored (not saved; everyone faces right after loading).
+ readonly HashSet<int> unitFacingLeft=new HashSet<int>();
  bool AnimalGliding(int animalId){return animalGlides.ContainsKey(animalId);}
  // Called once per repaint before the map is drawn: takes in new steps and moves every glide on.
  void UpdateGlides(){
@@ -91,6 +93,8 @@ public partial class RealmGame {
   if(unitGlides.Count==0&&animalGlides.Count==0)return;
   glideUnits.Clear();foreach(var u in world.units)if(unitGlides.ContainsKey(u.id))glideUnits[u.id]=u;
   foreach(var kv in unitGlides){Unit u;if(!glideUnits.TryGetValue(kv.Key,out u))continue;Vector2 at;if(!GlidePoint(kv.Value,tw,s,out at))continue;
+   // Turn toward the step being taken; a step straight up or down keeps the facing it had.
+   {var g=kv.Value;if(g.path.Count>=2){float dx=TileScreen(g.path[1].x,g.path[1].y,tw).x-TileScreen(g.path[0].x,g.path[0].y,tw).x;if(dx<-1&&Mathf.Abs(dx)<tw*3)unitFacingLeft.Add(u.id);else if(dx>1&&Mathf.Abs(dx)<tw*3)unitFacingLeft.Remove(u.id);}}
    DrawUnitArt(u,new Rect(at.x-20*s,at.y-36*s,40*s,40*s),1,SpeciesSprite(u)!=null?null:WalkFrame(u.type,kv.Value.walk));}
   if(world.animals!=null)foreach(var a in world.animals){Glide g;if(!animalGlides.TryGetValue(a.id,out g))continue;Vector2 at;if(!GlidePoint(g,tw,s,out at))continue;
    bool painted=SpriteSlot("animal-"+a.kind)!=null;float size=painted?(AnimalCatalog.Carnivore[a.kind]?40:48):64;

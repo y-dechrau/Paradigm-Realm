@@ -23,6 +23,10 @@ public partial class World {
   foreach(var d in options){roll-=d.weight;if(roll<0)return d;}return options[options.Count-1];
  }
  bool BesideWater(Tile t){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n!=null&&n!=t&&IsWater(n.terrain))return true;}return false;}
+ // Absolute latitude on the home world, 0 at the equator to 1 at the poles.
+ double Latitude(Tile t){double h=Math.Max(2,MainHeight);return Math.Min(1,Math.Abs(t.y-(h-1)/2.0)/(h/2.0));}
+ bool BesideSea(Tile t){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n!=null&&n!=t&&(n.terrain==4||n.terrain==12))return true;}return false;}
+ bool BesideFreshWater(Tile t){if(t.terrain==7||t.terrain==6)return true;for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n!=null&&n!=t&&(n.terrain==7||n.terrain==6))return true;}return false;}
  bool BesideLand(Tile t){for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){var n=Step(t.x,t.y,dx,dy);if(n!=null&&n!=t&&!IsWater(n.terrain))return true;}return false;}
  // The home world's land and seas.
  public void PlaceCatalogueResources(){if(Environment.GetCommandLineArgs().Contains("-noCatalogue"))return;
@@ -31,10 +35,13 @@ public partial class World {
    if(t.realm!=0||t.resource!=0||t.gateLink>0)continue;
    if(IsWater(t.terrain)){
     if(r.NextDouble()>=CatalogueSeaShare||!BesideLand(t))continue;List<ResourceRegistry.Def> sea;if(!seaPicks.TryGetValue(t.terrain,out sea))continue;
-    var pick=Weighted(sea,r);if(pick!=null)t.resource=pick.number;continue;}
+    double sl=Latitude(t);var seaFit=sea.Where(d=>sl>=d.latMin&&sl<=d.latMax).ToList();if(seaFit.Count==0)continue;
+    var pick=Weighted(seaFit,r);if(pick!=null)t.resource=pick.number;continue;}
    if(Barren(t.terrain)||IsImpassable(t.terrain))continue;
    if(r.NextDouble()>=CatalogueLandShare)continue;List<ResourceRegistry.Def> land;if(!landPicks.TryGetValue(t.terrain,out land))continue;
-   bool coast=BesideWater(t);var fit=land.Where(d=>d.place!=ResourceRegistry.Place.Coast||coast).ToList();if(fit.Count==0)continue;
+   // Only what grows, lives or lies there on Earth: its terrain, its latitude band, and fresh water or the sea beside it if it needs them.
+   bool coast=BesideSea(t),fresh=BesideFreshWater(t);double lat=Latitude(t);
+   var fit=land.Where(d=>(d.place!=ResourceRegistry.Place.Coast||coast)&&lat>=d.latMin&&lat<=d.latMax&&(d.need!=ResourceRegistry.Need.Coast||coast)&&(d.need!=ResourceRegistry.Need.FreshWater||fresh)).ToList();if(fit.Count==0)continue;
    var chosen=Weighted(fit,r);if(chosen!=null)t.resource=chosen.number;
   }
  }

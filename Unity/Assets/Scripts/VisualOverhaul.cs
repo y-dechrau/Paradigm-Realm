@@ -214,16 +214,18 @@ namespace ParadigmRealm {
   // whole), standing on a soft ground shadow inside a ring in its owner's colour.
   void DrawUnitArt(Unit u,Rect r,int count,Texture2D pose=null){
    // A unit striking plays its attack clip, lunging toward what it struck and facing it (CombatMotion.cs).
-   Strike strike=null;Texture2D strikeArt=pose==null?StrikePose(u,out strike):null;bool flip=false;
+   // Units face the way they last walked (owner request, 16 Nov 2026; MotionUI keeps unitFacingLeft); the pictures face right.
+   Strike strike=null;Texture2D strikeArt=pose==null?StrikePose(u,out strike):null;bool flip=unitFacingLeft.Contains(u.id);
    if(strikeArt!=null){Vector2 dir;float len;if(StrikeVector(strike,out dir,out len)){float lunge=Mathf.Sin(Mathf.Clamp01(strike.t)*Mathf.PI)*r.width*(World.IsRanged(u.type)?.06f:.38f);r=new Rect(r.x+dir.x*lunge,r.y+dir.y*lunge,r.width,r.height);flip=dir.x<-.05f;}}
    float size=r.width*1.6f;var feet=new Vector2(r.center.x,r.yMax);
    var baseRect=new Rect(feet.x-size*.3f,feet.y-size*.09f,size*.6f,size*.225f);
    GUI.DrawTexture(baseRect,IsoPicture(4,8,0));var old=GUI.color;GUI.color=nations[u.owner];GUI.DrawTexture(baseRect,IsoPicture(4,7,0));GUI.color=old;
    var art=pose!=null?pose:strikeArt??GuardPose(u)??WorkPose(u)??UnitPicture(u);// pose: a walking frame while the unit glides (MotionUI)
    // Armies carry a banner in their owner's colour behind them, as in the owner's mockup.
-   if(World.Power[u.type]>0&&!World.IsNaval(u.type)){float px=feet.x+size*.26f,top=feet.y-size*1.02f,pole=Mathf.Max(1,size*.025f);
+   if(World.Power[u.type]>0&&!World.IsNaval(u.type)){float pole=Mathf.Max(1,size*.025f),px=flip?feet.x-size*.26f-pole:feet.x+size*.26f,top=feet.y-size*1.02f;
     Fill(new Rect(px,top,pole,size*.9f),new Color(.32f,.22f,.12f));var ink=nations[u.owner];var flag=new Rect(px+pole,top+size*.02f,size*.2f,size*.24f);
-    var flagArt=FlagTexture(u.owner);if(flagArt!=null){flag.width=flag.height*1.5f;GUI.DrawTexture(flag,flagArt,ScaleMode.StretchToFill,true);}else Fill(flag,ink*.75f+new Color(0,0,0,.25f));}
+    var flagArt=FlagTexture(u.owner);if(flagArt!=null){flag.width=flag.height*1.5f;}if(flip)flag.x=px-flag.width;
+    if(flagArt!=null)GUI.DrawTexture(flag,flagArt,ScaleMode.StretchToFill,true);else Fill(flag,ink*.75f+new Color(0,0,0,.25f));}
    {var figure=new Rect(feet.x-size/2,feet.y-size*62f/64f,size,size);if(flip)GUI.DrawTextureWithTexCoords(figure,art,new Rect(1,0,-1,1));else GUI.DrawTexture(figure,art,ScaleMode.ScaleToFit,true);}
    if(strikeArt!=null&&World.IsRanged(u.type)&&u.type==4)DrawArrowFlight(strike,feet,size);
    // A unit without food shows it: a small red mark at its feet.
