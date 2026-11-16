@@ -32,7 +32,7 @@ namespace ParadigmRealm { public partial class RealmGame {
    var field=world.tiles.Where(t=>t.realm==0&&world.Distance(t.x,t.y,home.x,home.y)>=2&&world.Distance(t.x,t.y,home.x,home.y)<=4&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)).Take(5).ToList();
    int[] types={2,7,4,8,5};var soldiers=new System.Collections.Generic.List<Unit>();
    for(int k=0;k<field.Count;k++){var s=world.Add(0,types[k],field[k].x,field[k].y);soldiers.Add(s);}
-   selected=-1;isoWidth=128;FocusTile(home.x,home.y);yield return Frames(10);
+   selected=-1;isoWidth=128;FocusTile(home.x,home.y);yield return Frames(10);yield return Shot(folder,"hud-soldiers-still.bmp");
    if(world.strikeLog==null)world.strikeLog=new System.Collections.Generic.List<int[]>();
    foreach(var s in soldiers){var to=world.Step(s.x,s.y,1,0)??world.Step(s.x,s.y,-1,0);if(to!=null)world.strikeLog.Add(new[]{s.id,to.x,to.y});}
    yield return new WaitForSecondsRealtime(.45f);yield return Shot(folder,"hud-strike-mid.bmp",0);

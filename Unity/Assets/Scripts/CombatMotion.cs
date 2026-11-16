@@ -17,9 +17,34 @@ public partial class RealmGame {
  const float StrikeSeconds=.85f,GuardSeconds=.8f;
  Texture2D[] CombatFrames(int type,string clip){
   string key=type.ToString("00")+"-"+clip;Texture2D[] set;if(combatFrames.TryGetValue(key,out set))return set;
-  var list=new List<Texture2D>();for(int k=0;k<16;k++){var f=Resources.Load<Texture2D>("Visuals/Combat/unit-"+key+"-"+k.ToString("00"));if(f==null)break;f.filterMode=FilterMode.Bilinear;list.Add(f);}
-  set=list.ToArray();combatFrames[key]=set;return set;
+  var raw=new List<Texture2D>();for(int k=0;k<16;k++){var f=Resources.Load<Texture2D>("Visuals/Combat/unit-"+key+"-"+k.ToString("00"));if(f==null)break;raw.Add(f);}
+  set=MatchStanding(type,raw);combatFrames[key]=set;return set;
  }
+ // Clip frames drawn the way the standing picture is (owner report, 16 Nov 2026: the guard looked larger and softer than the
+ // unit at rest). The clips come at another size, and their figure fills more of the frame, so each frame is first rescaled
+ // until the figure in frame 0 stands exactly as tall, as wide-centred and on the same foot row as the figure in the unit's
+ // own picture; then it goes through the same finishing as that picture (UnitSprite: contrast, rim light, outline; SoftTexture).
+ Texture2D[] MatchStanding(int type,List<Texture2D> raw){
+  var made=new Texture2D[raw.Count];if(raw.Count==0)return made;
+  Texture2D still=people!=null&&type>=0&&type<people.Length?people[type]:null;
+  try{
+   int S=still!=null?still.width:128;int sx0,sy0,sx1,sy1;
+   if(still==null||!Box(ReadArtPixels(still),still.width,still.height,out sx0,out sy0,out sx1,out sy1)){sx0=0;sy0=0;sx1=S-1;sy1=S-1;}
+   int W0=raw[0].width,H0=raw[0].height;var first=ReadArtPixels(raw[0]);int fx0,fy0,fx1,fy1;if(!Box(first,W0,H0,out fx0,out fy0,out fx1,out fy1)){fx0=0;fy0=0;fx1=W0-1;fy1=H0-1;}
+   float k=(sy1-sy0+1)/(float)(fy1-fy0+1);float cxS=(sx0+sx1)/2f,cxF=(fx0+fx1)/2f;
+   for(int f=0;f<raw.Count;f++){
+    int W=raw[f].width,H=raw[f].height;var src=f==0?first:ReadArtPixels(raw[f]);var canvas=new uint[S*S];
+    // Each canvas pixel samples the frame where it sits once frame 0's figure is laid over the standing figure.
+    for(int y=0;y<S;y++)for(int x=0;x<S;x++){float u=cxF+(x+.5f-cxS)/k,v=fy1+(y+.5f-sy1-1)/k;int ix=(int)Mathf.Floor(u),iy=(int)Mathf.Floor(v);if(ix<0||iy<0||ix>=W||iy>=H)continue;canvas[y*S+x]=src[iy*W+ix];}
+    made[f]=SoftTexture(PixelArt.UnitSprite(canvas,S,S,128));themeTextures.Add(made[f]);
+   }
+  }catch(System.Exception){for(int f=0;f<raw.Count;f++){raw[f].filterMode=FilterMode.Bilinear;made[f]=raw[f];}}
+  return made;
+ }
+ // The box round a picture's solid pixels (alpha over 100). False when there are none.
+ static bool Box(uint[] px,int w,int h,out int x0,out int y0,out int x1,out int y1){
+  x0=w;y0=h;x1=-1;y1=-1;for(int y=0;y<h;y++)for(int x=0;x<w;x++){if((px[y*w+x]>>24)<=100)continue;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+  return x1>=0;}
  bool GuardStance(Unit u){return u.fortified&&!u.hasOrder&&u.job<=0&&World.Power[u.type]>0&&!World.IsNaval(u.type);}
  // Called with the glides once per repaint: new blows start clips, fortifying starts the guard clip, clips move on.
  void UpdateStrikes(float dt){
