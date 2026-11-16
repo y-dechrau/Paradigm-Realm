@@ -53,6 +53,7 @@ namespace ParadigmRealm
             GUI.DrawTexture(FullCanvas,Texture2D.whiteTexture,ScaleMode.StretchToFill,false,0,UiBackground,0,0);
             Centred();
             if(galleryGround!=null&&world!=null){DrawResourceGallery();return;}
+            if(spriteCompare&&world!=null){DrawSpriteCompare();return;}
             if(artGallery){DrawGallery();return;}
             if(nameSetup){DrawNameSetup();return;}
             if(loadScreen){DrawLoadScreen();return;}

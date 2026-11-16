@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 namespace ParadigmRealm {
 // Animated movement (owner request, 9 Nov 2026). Units glide from tile to tile along the steps they really took (World.moveLog),
@@ -24,17 +25,13 @@ public partial class RealmGame {
    walkTried[type]=true;set=LoadWalkFrames(type);walkFrames[type]=set;if(set==null)return null;}
   return set[(int)(walk*WalkFramesPerTile)%set.Length];
  }
+ // Matched to the standing picture's size and footing like every other clip (MatchStanding; owner request, 16 Nov 2026).
  Texture2D[] LoadWalkFrames(int type){
-  var set=new Texture2D[WalkFrameCount];
-  for(int f=0;f<WalkFrameCount;f++){
-   var raw=Resources.Load<Texture2D>("Visuals/Movement/unit-"+type.ToString("00")+"-move-"+f.ToString("00"));
-   if(raw==null){Release(set);return null;}
-   try{set[f]=SoftTexture(PixelArt.UnitSprite(ReadArtPixels(raw),raw.width,raw.height,raw.width>=96?128:64));themeTextures.Add(set[f]);}
-   catch(Exception){set[f]=null;}
-   Resources.UnloadAsset(raw);
-   if(set[f]==null){Release(set);return null;}
-  }
-  return set;
+  var raw=new List<Texture2D>();
+  for(int f=0;f<WalkFrameCount;f++){var t=Resources.Load<Texture2D>("Visuals/Movement/unit-"+type.ToString("00")+"-move-"+f.ToString("00"));if(t==null){foreach(var r in raw)Resources.UnloadAsset(r);return null;}raw.Add(t);}
+  var set=MatchStanding(type,raw);
+  for(int f=0;f<raw.Count;f++)if(set[f]!=raw[f])Resources.UnloadAsset(raw[f]);
+  return set.Any(t=>t==null)?null:set;
  }
  void Release(Texture2D[] set){foreach(var t in set)if(t!=null){themeTextures.Remove(t);Destroy(t);}}
  readonly Dictionary<int,Glide> unitGlides=new Dictionary<int,Glide>(),animalGlides=new Dictionary<int,Glide>();
