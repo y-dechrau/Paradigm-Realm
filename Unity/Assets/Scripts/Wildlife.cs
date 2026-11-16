@@ -24,7 +24,7 @@ public partial class World {
  public Animal AnimalAt(int x,int y){if(animals==null)return null;foreach(var a in animals)if(a.x==x&&a.y==y)return a;return null;}
  bool AnimalGround(Tile t){return t!=null&&t.realm==0&&!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&t.gateLink==0&&!CityCentres().Contains(t.y*Width+t.x);}
  // Animals never step onto land inside any civilisation's borders (owner request, 7 Nov 2026).
- bool OpenToAnimal(Tile t){return AnimalGround(t)&&t.owner<0&&AnimalAt(t.x,t.y)==null&&!(preyCells!=null?preyCells.Contains(t.y*Width+t.x):units.Any(u=>u.x==t.x&&u.y==t.y));}
+ bool OpenToAnimal(Tile t){return AnimalGround(t)&&t.owner<0&&AnimalAt(t.x,t.y)==null&&(!barbarians||RaiderAt(t.x,t.y)==null&&CampAt(t.x,t.y)==null)&&!(preyCells!=null?preyCells.Contains(t.y*Width+t.x):units.Any(u=>u.x==t.x&&u.y==t.y));}
  // Units sorted into blocks of 8 x 8 tiles for the animals' turn, so a beast looks only at what is near it.
  [NonSerialized] Dictionary<int,List<Unit>> preyGrid;[NonSerialized] HashSet<int> preyCells;
  void IndexPrey(){preyGrid=new Dictionary<int,List<Unit>>();preyCells=new HashSet<int>();foreach(var u in units){int key=(u.y/8)*100000+u.x/8;List<Unit> list;if(!preyGrid.TryGetValue(key,out list)){list=new List<Unit>();preyGrid[key]=list;}list.Add(u);preyCells.Add(u.y*Width+u.x);}}
@@ -79,6 +79,12 @@ public partial class World {
      // The first turns give every people the chance to settle before the hunters find them. Hunters also stalk grazers, whichever
      // quarry is nearer.
      var prey=turn<HuntersFrom?null:NearestPrey(a,AnimalCatalog.Sense);var meal=NearestGrazer(a,AnimalCatalog.Sense);
+     // Barbarians are prey like anyone else (owner request, 16 Nov 2026): a raider nearer than any other quarry is hunted.
+     var savage=turn<HuntersFrom?null:RaiderNearAnimal(a,AnimalCatalog.Sense);
+     if(savage!=null&&(prey==null||Distance(a.x,a.y,savage.x,savage.y)<Distance(a.x,a.y,prey.x,prey.y))&&(meal==null||Distance(a.x,a.y,savage.x,savage.y)<Distance(a.x,a.y,meal.x,meal.y))){
+      if(Distance(a.x,a.y,savage.x,savage.y)==1){AnimalAttacksRaider(a,savage);break;}
+      Tile near=null;int nd=Distance(a.x,a.y,savage.x,savage.y);for(int k=0;k<6;k++){var n=Step(a.x,a.y,HexOr(k,true),HexOr(k,false));if(!OpenToAnimal(n)||RivalHunterNear(a,n.x,n.y))continue;int d=Distance(n.x,n.y,savage.x,savage.y);if(d<nd){nd=d;near=n;}}
+      if(near==null)break;a.x=near.x;a.y=near.y;continue;}
      if(prey==null&&meal==null){AnimalWander(a,r,false);continue;}
      bool unit=prey!=null&&(meal==null||Distance(a.x,a.y,prey.x,prey.y)<=Distance(a.x,a.y,meal.x,meal.y));int tx=unit?prey.x:meal.x,ty=unit?prey.y:meal.y;
      if(Distance(a.x,a.y,tx,ty)==1){if(unit)AnimalAttacks(a,prey);else HuntGrazer(a,meal);break;}
@@ -87,7 +93,7 @@ public partial class World {
     }
     if(a.hp>0)HuntersClash(a);
    }else{
-    var close=NearestPrey(a,1);if(close!=null)AnimalAttacks(a,close);
+    var close=NearestPrey(a,1);var brute=close==null?RaiderNearAnimal(a,1):null;if(close!=null)AnimalAttacks(a,close);else if(brute!=null)AnimalAttacksRaider(a,brute);
     else if(r.Next(2)==0)for(int step=0;step<AnimalSteps(a);step++)AnimalWander(a,r,true);
    }
   }

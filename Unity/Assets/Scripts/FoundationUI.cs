@@ -73,7 +73,7 @@ namespace ParadigmRealm
             if(saveError!="")GUILayout.Label(saveError,small);GUILayout.EndArea();
         }
         string renameText="Verdant Union",seedText="";
-        int setupClimate,setupAnimals=3,setupMap,setupSpeed=1,setupTrait,setupSize=1,setupShape=1,setupCivs=3;
+        bool setupBarbarians=true;int setupClimate,setupAnimals=3,setupMap,setupSpeed=1,setupTrait,setupSize=1,setupShape=1,setupCivs=3;
         
         void AtomicSave(string path)
         {
@@ -123,6 +123,7 @@ namespace ParadigmRealm
             setupCivs=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupCivs,2,maxCivs));
             GUILayout.Space(6);GUILayout.Label("Peoples in each sealed world: "+setupPeoples+(setupPeoples>4?" (slower turns on large maps)":""),body);setupPeoples=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupPeoples,1,10));
             GUILayout.Space(10);GUILayout.Label("Wild animals: "+World.AnimalChoices[setupAnimals],body);setupAnimals=GUILayout.SelectionGrid(setupAnimals,World.AnimalChoices,5);GUILayout.Label(setupAnimals==0?"No wild animals at all.":"Three times as many until a civilisation passes the Medieval Age.",small);
+            GUILayout.Space(10);setupBarbarians=GUILayout.Toggle(setupBarbarians," Barbarians");GUILayout.Label(setupBarbarians?"War camps appear in unclaimed land from turn "+BarbarianRules.CampsFrom+" and send out raiders. Burn a camp for gold.":"No barbarians.",small);
             GUILayout.Space(10);tutorialOn=GUILayout.Toggle(tutorialOn," Play with the tutorial");GUILayout.Label(GuideName+" talks you through the first turns.",small);
             GUILayout.EndArea();
         }

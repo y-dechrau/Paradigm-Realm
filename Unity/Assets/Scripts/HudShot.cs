@@ -28,6 +28,10 @@ namespace ParadigmRealm { public partial class RealmGame {
    selected=-1;cityId=home.id;isoWidth=160;FocusTile(home.x,home.y);yield return Frames(30);yield return Shot(folder,"hud-map-city.bmp");
    yield return Frames(3);yield return Shot(folder,"hud-workers-b.bmp");
    cityScreen=true;cityMapScroll=Vector2.zero;yield return Frames(20);yield return Shot(folder,"hud-city-screen.bmp");cityScreen=false;
+   // Barbarians: a camp and two raiders (one hurt) beside the city on the map.
+   {var barbSpots=world.tiles.Where(t=>t.realm==0&&world.Distance(t.x,t.y,home.x,home.y)>=2&&world.Distance(t.x,t.y,home.x,home.y)<=3&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!world.units.Any(u=>u.x==t.x&&u.y==t.y)&&world.Visible(t.x,t.y)).Take(3).ToList();
+    if(barbSpots.Count==3){bool was=world.barbarians;world.barbarians=true;world.camps.Add(new BarbarianCamp{id=99101,x=barbSpots[0].x,y=barbSpots[0].y,seen=true});world.raiders.Add(new Raider{id=99102,x=barbSpots[1].x,y=barbSpots[1].y});world.raiders.Add(new Raider{id=99103,x=barbSpots[2].x,y=barbSpots[2].y,hp=6,mounted=1});
+     selected=-1;isoWidth=192;FocusTile(barbSpots[0].x,barbSpots[0].y);yield return Frames(30);yield return Shot(folder,"hud-barbarians.bmp");world.camps.Clear();world.raiders.Clear();world.barbarians=was;}}
    // Soldiers: each type strikes the tile beside it (mid-blow), then takes guard (mid-clip, then held).
    var field=world.tiles.Where(t=>t.realm==0&&world.Distance(t.x,t.y,home.x,home.y)>=2&&world.Distance(t.x,t.y,home.x,home.y)<=4&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)).Take(5).ToList();
    int[] types={2,7,4,8,5};var soldiers=new System.Collections.Generic.List<Unit>();

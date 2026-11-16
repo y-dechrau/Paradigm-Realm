@@ -371,7 +371,7 @@ namespace ParadigmRealm
             if(t==null||!t.seen){GUI.Box(TileCard,"");GUI.Label(new Rect(TileCard.x,TileCard.y+15,TileCard.width,22),t==null?"Point at the map to inspect a tile":"Unexplored",hudCentre);return;}
             var v=world.TileYield(t);bool known=t.resource>0&&world.ResourceKnown(0,t.resource);if(t.resource>0&&!known){v[0]-=World.ResourceFood[t.resource];v[1]-=World.ResourceShields[t.resource];v[2]-=World.ResourceTrade[t.resource];}
             var features=new List<string>{World.TerrainNames[t.terrain]+(World.TerrainDefence(t.terrain)>0?" (defence +"+World.TerrainDefence(t.terrain)+")":"")};if(t.road)features.Add(World.Forested(t.terrain)?"Trail":"Road");if(t.farm)features.Add("Farm");if(t.mine)features.Add("Mine");if(t.fort)features.Add("Fort");if(known)features.Add(World.ResourceNames[t.resource]);
-            {var beast=world.wildlife&&world.Visible(t.x,t.y)?world.AnimalAt(t.x,t.y):null;if(beast!=null)features.Add(world.AnimalLabel(beast));}
+            {var beast=world.wildlife&&world.Visible(t.x,t.y)?world.AnimalAt(t.x,t.y):null;if(beast!=null)features.Add(world.AnimalLabel(beast));}if(world.barbarians){var raider=world.Visible(t.x,t.y)?world.RaiderAt(t.x,t.y):null;if(raider!=null)features.Add(world.RaiderLabel(raider));var camp=world.CampAt(t.x,t.y);if(camp!=null&&(camp.seen||world.Visible(t.x,t.y)))features.Add(world.CampLabel(camp));}
             // Tribal villages (owner request): named on the card, with the civilisation they joined if any.
             {var ruinTile=world.At(t.x,t.y);if(ruinTile!=null&&ruinTile.ruin)features.Add(ruinTile.realm>0?"Relic site":"Ancient ruins");}
             // Ancient gateways name their world once you have been there.

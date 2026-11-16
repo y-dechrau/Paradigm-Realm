@@ -292,7 +292,7 @@ namespace ParadigmRealm
             foreach(var unit in world.units){List<Unit> stackAt;int cell=unit.y*width+unit.x;if(!viewStacks.TryGetValue(cell,out stackAt)){stackAt=new List<Unit>(2);viewStacks[cell]=stackAt;}stackAt.Add(unit);}
             viewCities.Clear();foreach(var city in world.cities)viewCities[city.y*width+city.x]=city;
             viewColonies.Clear();if(world.colonies!=null)foreach(var colony in world.colonies)viewColonies[colony.y*width+colony.x]=colony;
-            viewAnimals.Clear();if(world.animals!=null)foreach(var a in world.animals)viewAnimals[a.y*width+a.x]=a;
+            viewAnimals.Clear();barbarianBars.Clear();if(world.animals!=null)foreach(var a in world.animals)viewAnimals[a.y*width+a.x]=a;
             if(Event.current.type==EventType.Repaint)UpdateGlides();
             if(Event.current.type==EventType.Repaint)BuildSuburbs();
             // Diagonal view: tiles go back to front by diagonal (i + j), so raised scenery overlaps the tiles behind it.
@@ -339,6 +339,7 @@ namespace ParadigmRealm
                     if(beast.hp<10||AnimalNearPlayer(beast)){float bh=Mathf.Max(3,2.8f*s),bw=34*s,by=gy-(AnimalCatalog.Carnivore[beast.kind]?38:46)*s;bool hunter=AnimalCatalog.Carnivore[beast.kind];
                         Fill(new Rect(sx-bw/2-1,by-1,bw+2,bh+2),hunter?new Color(.45f,.08f,.06f,.9f):new Color(.08f,.1f,.12f,.85f));
                         Fill(new Rect(sx-bw/2,by,bw*Mathf.Clamp01(beast.hp/10f),bh),beast.hp>5?new Color(.37f,.8f,.47f):beast.hp>2?new Color(.95f,.75f,.3f):new Color(.9f,.3f,.25f));}}}
+                if(world.barbarians)DrawBarbarianArt(source.x,source.y,sx,gy,s,visible);
                 if(shown!=null){var unitRect=new Rect(sx-20*s,gy-36*s,40*s,40*s);DrawUnitArt(shown,unitRect,count);isoUnitDraws.Add(new KeyValuePair<Unit,Rect>(shown,unitRect));isoUnitCounts.Add(count);}
             }
             // Fog of war as dark mist (owner request): a thin drifting veil over land seen before but not watched now, and
@@ -354,7 +355,7 @@ namespace ParadigmRealm
             // A found gateway stands clear of the mist, so it stays on the map however far the fog closes in.
             for(int gi=0;gi<isoGates.Count;gi++){var g=isoGates[gi];if(gi<isoGateStyles.Count&&DrawGateArt(isoGateStyles[gi],false,g.x,g.y,s,gi<isoGateLand.Count?isoGateLand[gi]:0,gi<isoGateFit.Count?isoGateFit[gi]:1f))continue;Texture2D gateTex;if(!gateTextures.TryGetValue(PixelArt.SealedGate,out gateTex)){gateTex=PixelTexture(PixelArt.GatewaySprite(PixelArt.SealedGate));gateTextures[PixelArt.SealedGate]=gateTex;}GUI.DrawTexture(new Rect(g.x-PixelArt.AX*s,g.y-PixelArt.AY*s,64*s,64*s),gateTex);}isoGates.Clear();isoGateStyles.Clear();isoGateLand.Clear();isoGateFit.Clear();
             // Units stand in front of the cloud banks of unexplored land next to them (owner request): drawn again over the mist.
-            for(int n=0;n<isoUnitDraws.Count;n++)DrawUnitArt(isoUnitDraws[n].Key,isoUnitDraws[n].Value,isoUnitCounts[n]);
+            DrawBarbarianBars();for(int n=0;n<isoUnitDraws.Count;n++)DrawUnitArt(isoUnitDraws[n].Key,isoUnitDraws[n].Value,isoUnitCounts[n]);
             // Resource badges go on after every tile so the tiles in front can never cover them.
             // A resource on land that is remembered but not watched now is shadowed like the land under it (owner request, 10 Nov 2026).
             // (Resources are drawn with their tiles now, so trees in front cover them and animals stand before them.)

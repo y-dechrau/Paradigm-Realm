@@ -75,7 +75,7 @@ namespace ParadigmRealm {
    if(r.resources.Count>0)bits.Add(string.Join(", ",r.resources.Select(i=>ResourceNames[i])));
    bits.Add("food "+(r.food>=0?"+":"")+r.food+", shields "+r.production);return string.Join(" • ",bits);
   }
-  bool SettlementThreat(int owner,int x,int y){return AnimalThreat(owner,x,y)||units.Any(u=>Power[u.type]>0&&AtWar(owner,u.owner)&&VisibleTo(owner,u.x,u.y)&&Distance(u.x,u.y,x,y)<=3);}
+  bool SettlementThreat(int owner,int x,int y){return AnimalThreat(owner,x,y)||BarbarianNear(owner,x,y,3)||units.Any(u=>Power[u.type]>0&&AtWar(owner,u.owner)&&VisibleTo(owner,u.x,u.y)&&Distance(u.x,u.y,x,y)<=3);}
   bool SafeSettlerPath(Unit u,List<Tile> route){return route.All(t=>!SettlementThreat(u.owner,t.x,t.y));}
   public List<SettlementReport> SettlementOptions(Unit u,int limit=5){
    if(u==null||u.type!=0||!units.Contains(u))return new List<SettlementReport>();
