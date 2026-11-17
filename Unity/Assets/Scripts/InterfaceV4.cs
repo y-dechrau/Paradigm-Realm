@@ -105,13 +105,9 @@ namespace ParadigmRealm
              if(GUI.Button(new Rect(822,110,38,34),"▶",button)){OpenCityKeepOrigin(mine[(at+1)%mine.Count]);}
              GUI.enabled=was;}
             if(GUI.Button(new Rect(1055,110,180,34),"Back to map",button)){cityScreen=false;moodPanel=false;resourcePanel=false;GUI.FocusControl(null);var origin=world.cities.Find(a=>a.owner==0&&a.id==cityOrigin);if(origin!=null)FocusTile(origin.x,origin.y);cityOrigin=-1;GUIUtility.ExitGUI();}
-            DrawCityTiles(c,new Rect(40,150,440,520));
+            BeginCityFrame(c);DrawCityTiles(c,new Rect(40,150,440,520));
             if(moodPanel)DrawMoodPanel(c,new Rect(40,150,440,520));else if(resourcePanel)DrawResourcePanel(c,new Rect(40,150,440,520));
-            DrawCityTotals(c,new Rect(495,150,370,520));
-            GUI.Box(new Rect(880,150,355,520),"");
-            if(GUI.Button(new Rect(890,158,165,28),(cityBuildingTab?"":"● ")+"Units",button))cityBuildingTab=false;
-            if(GUI.Button(new Rect(1060,158,165,28),(cityBuildingTab?"● ":"")+"Buildings",button))cityBuildingTab=true;
-            DrawProductionLine(c,cityBuildingTab,new Rect(880,190,355,480));
+            DrawCityOverview(c,new Rect(495,150,370,520));DrawCityProduction(c,new Rect(880,150,355,520));
             GUI.Label(new Rect(40,682,110,30),"Focus",heading);
             {bool was=GUI.enabled;GUI.enabled=was&&!c.autoManage;c.focus=GUI.SelectionGrid(new Rect(150,678,885,34),c.focus,FocusNames,5);GUI.enabled=was;
              // Hovering a focus shows what the city would make with it (owner report, 16 Nov 2026: the choice seemed to change nothing).
@@ -125,13 +121,14 @@ namespace ParadigmRealm
              if(world.nations[0].priority>0&&!c.autoManage)GUI.Label(new Rect(150,712,885,18),"The imperial priority (Empire screen) sets every city's focus at the end of each turn.",new GUIStyle(small){fontSize=11,normal={textColor=new Color(1f,.8f,.45f)}});}
             if(GUI.Button(new Rect(1045,678,190,34),c.autoManage?"● Auto-manage on":"Auto-manage off",button)){world.SetAutoManage(c,!c.autoManage);status=c.autoManage?c.name+" now manages itself: focus, order, buildings, and units only when gold and food stay at zero or above.":c.name+" is back under your control.";}
             GUI.Label(new Rect(24,744,1232,42),status,body);
+            EndCityFrame(c);
         }
         // The land around the city as one continuous piece of the pixel-art map (owner request: organic, no rigid cells with
         // text). Worked tiles carry small pips (green food, orange shields, gold trade); locked tiles a blue marker. Hover shows
         // a soft outline and a one-line description; click locks or releases a citizen. Land beyond the city's reach is dimmed.
         void DrawCityTiles(City c,Rect area)
         {
-            GUI.Box(area,"");GUI.Label(new Rect(area.x+12,area.y+6,area.width-24,26),"The land around "+c.name,heading);
+            cityHoverTile=null;GUI.Box(area,"");GUI.Label(new Rect(area.x+12,area.y+6,area.width-24,26),"The land around "+c.name,heading);
             var view=new Rect(area.x+8,area.y+36,area.width-16,374);
             // The tiles stay one size (fitted to a new city's land). As the city's influence spreads past the window, scroll bars
             // appear; the wheel (with Shift for sideways) and dragging with the right or middle button also move it (owner request).
@@ -178,11 +175,13 @@ namespace ParadigmRealm
                 bool centre=dx==0&&dy==0;
                 // Tiles in reach that another of your cities works can be taken over by locking them here (owner request).
                 bool reachable=centre||world.InReach(c,t);if(!reachable||!mine)continue;
+                // Tiles the building hovered in the production list would improve are lit in gold (city screen redesign, 16 Nov 2026).
+                if(cityHighlight.Contains(t)){var lit=GUI.color;GUI.color=new Color(1f,.82f,.3f,.95f);GUI.DrawTexture(r,SelectionPicture());GUI.DrawTexture(new Rect(r.x+2,r.y+2,r.width-4,r.height-4),SelectionPicture());GUI.color=lit;}
                 int[] v=centre?world.CityCentreYield(c):world.EffectiveTileYield(c,t);bool active=centre||worked.Contains(t),locked=world.IsLocked(c,t);
                 if(active)DrawYieldPips(new Rect(sx-tw/2+5,sy+th/2-14,tw-10,10),v);
                 if(locked){Fill(new Rect(sx+tw/2-16,sy-th/2+5,11,11),new Color(.08f,.16f,.3f,.9f));Fill(new Rect(sx+tw/2-14,sy-th/2+7,7,7),UiAccent);}
                 if((world.Hex?PixelArt.InHex(e.mousePosition.x-sx,e.mousePosition.y-sy,tw):Mathf.Abs(e.mousePosition.x-sx)/(tw/2)+Mathf.Abs(e.mousePosition.y-sy)/(th/2)<=1)&&viewLocal.Contains(e.mousePosition)){
-                    hoverRect=r;hover=World.TerrainNames[known.terrain]+(known.resource>0?" with "+World.ResourceNames[known.resource]:"")+": "+v[0]+" food, "+v[1]+" shields, "+v[2]+" trade — "+(centre?"city centre":locked?"locked citizen (click to release)":active?"worked (click to lock)":"not worked (click to lock a citizen here)")+(!centre&&known.resource>0&&world.modernRules&&world.ResourceKnown(0,known.resource)?" — "+World.ResourceKindNames[World.ResourceKind[known.resource]]+" resource"+(world.ResourceDeveloped(c,t)?", developed":", develop it for its full effect"):"");
+                    hoverRect=r;if(!centre)cityHoverTile=t;hover=World.TerrainNames[known.terrain]+(known.resource>0?" with "+World.ResourceNames[known.resource]:"")+": "+v[0]+" food, "+v[1]+" shields, "+v[2]+" trade — "+(centre?"city centre":locked?"locked citizen (click to release)":active?"worked (click to lock)":"not worked (click to lock a citizen here)")+(!centre&&known.resource>0&&world.modernRules&&world.ResourceKnown(0,known.resource)?" — "+World.ResourceKindNames[World.ResourceKind[known.resource]]+" resource"+(world.ResourceDeveloped(c,t)?", developed":", develop it for its full effect"):"");
                     if(!ring&&!centre){var ctl=world.TileController(t,c.owner);if(ctl!=null&&ctl!=c)hover+=" — worked by "+ctl.name+"; click to take it over";}
                     if(!centre&&e.type==EventType.MouseDown&&e.button==0&&GUI.enabled){bool ok=world.ToggleLock(c,t);status=ok?(world.IsLocked(c,t)?"Citizen locked on "+World.TerrainNames[known.terrain]+".":"Tile released to the city."):"Cannot lock: every working citizen is already locked here.";e.Use();}
                 }

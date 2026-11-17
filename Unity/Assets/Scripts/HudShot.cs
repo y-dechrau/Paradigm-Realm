@@ -27,7 +27,11 @@ namespace ParadigmRealm { public partial class RealmGame {
    var spots=ring.Skip(1).Take(3).ToList();int[] jobs={5,3,2};for(int k=0;k<spots.Count;k++){var w=world.Add(0,1,spots[k].x,spots[k].y);w.job=jobs[k];w.hasOrder=false;}
    selected=-1;cityId=home.id;isoWidth=160;FocusTile(home.x,home.y);yield return Frames(30);yield return Shot(folder,"hud-map-city.bmp");
    yield return Frames(3);yield return Shot(folder,"hud-workers-b.bmp");
-   cityScreen=true;cityMapScroll=Vector2.zero;yield return Frames(20);yield return Shot(folder,"hud-city-screen.bmp");cityScreen=false;
+   // The redesigned city screen: a size 4 city with a scientist, both lines busy with queues, then a building hovered.
+   {int popWas=home.pop;home.pop=4;home.scientists=1;home.food=9;world.gold=200;world.nations[0].gold=200;world.ChooseProject(home,World.UnitBuild(2),false);world.ChooseProject(home,World.UnitBuild(1),true);world.ChooseProject(home,World.UnitBuild(0),true);world.ChooseProject(home,7,false);world.ChooseProject(home,8,true);home.production=6;home.buildingProduction=12;
+   cityScreen=true;cityBuildingTab=false;cityMapScroll=Vector2.zero;yield return Frames(20);yield return Shot(folder,"hud-city-screen.bmp");
+   cityBuildingTab=true;cityShotHover=world.Workable(home).Any(t=>t.terrain==4||t.terrain==6||t.terrain==12)?43:31;yield return Frames(20);yield return Shot(folder,"hud-city-hover.bmp");cityShotHover=-1;cityBuildingTab=false;cityScreen=false;
+   home.pop=popWas;home.scientists=0;home.queue.Clear();home.buildingQueue.Clear();home.build=-1;home.buildingProject=-1;home.production=0;home.buildingProduction=0;}
    // Barbarians: a camp and two raiders (one hurt) beside the city on the map.
    {var barbSpots=world.tiles.Where(t=>t.realm==0&&world.Distance(t.x,t.y,home.x,home.y)>=2&&world.Distance(t.x,t.y,home.x,home.y)<=3&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!world.units.Any(u=>u.x==t.x&&u.y==t.y)&&world.Visible(t.x,t.y)).Take(3).ToList();
     if(barbSpots.Count==3){bool was=world.barbarians;world.barbarians=true;world.camps.Add(new BarbarianCamp{id=99101,x=barbSpots[0].x,y=barbSpots[0].y,seen=true});world.raiders.Add(new Raider{id=99102,x=barbSpots[1].x,y=barbSpots[1].y});world.raiders.Add(new Raider{id=99103,x=barbSpots[2].x,y=barbSpots[2].y,hp=6,mounted=1});
