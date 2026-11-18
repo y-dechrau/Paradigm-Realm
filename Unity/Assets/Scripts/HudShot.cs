@@ -7,6 +7,9 @@ namespace ParadigmRealm { public partial class RealmGame {
  // suggestion box above the unit panel, the selection outline behind the unit), then quits.
  IEnumerator HudShot(string folder){
   Directory.CreateDirectory(folder);yield return Frames(5);
+  // New Game with the Zarevan Crown chosen among the Fantasy Kingdoms, and its lore page (18 Nov 2026).
+  mainMenu=false;nameSetup=true;setupPage=0;civGroupReal=false;setupCiv=FantasyKingdoms.First;proposedName=CivilisationCatalog.Names[setupCiv];yield return Frames(15);yield return Shot(folder,"hud-newgame-zarevan.bmp");
+  civLoreOpen=true;yield return Frames(10);yield return Shot(folder,"hud-lore-zarevan.bmp");civLoreOpen=false;setupCiv=0;
   seedText="421";mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;
   yield return Frames(10);
   world.Note("A Megatherium attacked your Warrior; it is getting away and will explore on.");world.Note("Azurehold grew to population 6.");
@@ -56,6 +59,10 @@ namespace ParadigmRealm { public partial class RealmGame {
   for(int o=1;o<world.civCount&&o<=16;o++)world.met[o]=true;
   councilPick=Enumerable.Range(1,System.Math.Min(16,world.civCount-1)).OrderByDescending(o=>world.NationName(o).Length).First();
   yield return Frames(20);yield return Shot(folder,"hud-council-16.bmp");
+  // The Zarevan Crown (18 Nov 2026): the first rival wears it for two pictures, the Council and its Court, then goes back.
+  {var zn=world.nations[1];int zc=zn.civ,zp=zn.portrait;string zname=zn.name,zl=zn.leader;int z=FantasyKingdoms.First;zn.civ=z;zn.name=CivilisationCatalog.Names[z];zn.leader=CivilisationCatalog.Leaders[z];zn.portrait=CivilisationCatalog.Portraits[z];
+   councilPick=1;yield return Frames(20);yield return Shot(folder,"hud-council-zarevan.bmp");diplomacyPartner=1;diplomacyChooser=false;ResetDiplomacyUI();yield return Frames(20);yield return Shot(folder,"hud-court-zarevan.bmp");
+   diplomacyChooser=true;councilPick=-1;zn.civ=zc;zn.portrait=zp;zn.name=zname;zn.leader=zl;}
   diplomacyPartner=councilPick;diplomacyChooser=false;ResetDiplomacyUI();yield return Frames(20);yield return Shot(folder,"hud-court-long.bmp");diplomacyChooser=true;councilPick=-1;
   for(int o=9;o<world.civCount;o++)world.met[o]=false;
   diplomacyPartner=Enumerable.Range(1,world.civCount-1).First(o=>world.met[o]);diplomacyChooser=false;ResetDiplomacyUI();yield return Frames(20);yield return Shot(folder,"hud-court.bmp");
