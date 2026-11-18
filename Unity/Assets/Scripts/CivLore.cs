@@ -290,6 +290,7 @@ public static class CivLore {
    Weakness="Slow to Stir",WeaknessText="-1 production in every city.",Agenda=6};
   for(int i=0;i<SealedPeoples.People.Count;i++)entries[SealedPeoples.First+i]=SealedPeoples.People[i].Lore;
   for(int i=0;i<SpeciesPeoples.People.Count&&SpeciesPeoples.First+i<entries.Length;i++)entries[SpeciesPeoples.First+i]=SpeciesPeoples.People[i].Lore;
+  for(int i=0;i<FantasyKingdoms.People.Count&&FantasyKingdoms.First+i<entries.Length;i++)entries[FantasyKingdoms.First+i]=FantasyKingdoms.People[i].Lore;
  }
 }
 // The rules behind the civilisations above. Each is a small hook into the yield, content, faith, combat, movement, growth,

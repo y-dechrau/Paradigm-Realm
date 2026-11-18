@@ -35,6 +35,7 @@ public static void Run(){
     ResourceCatalogueChecks();
     BarbarianChecks.Run();
     CityScreenChecks.Run();
+    FantasyKingdomChecks.Run();
     SiegeChecks();
     var cold=World.New(3);var settler=cold.units.First(u=>u.owner==0&&u.type==0);cold.At(settler.x,settler.y).terrain=8;cold.tech[K("fire")]=false;Check(cold.Found(settler)==null,"cold settlement needs Fire");cold.tech[K("fire")]=true;Check(cold.Found(settler)!=null,"Fire (Stone Tools) permits cold settlement");
     var terrainTypes=new HashSet<int>();for(int seed=0;seed<6;seed++){var map=World.New(seed);Check(map.Valid(),"biome map validates");foreach(var tile in map.tiles){terrainTypes.Add(tile.terrain);Check(map.TileYield(tile).Length==3,"all terrain has yields");}}
@@ -160,7 +161,7 @@ static void ReligionChecks(){
 }
 // Owner requests 31 Oct, fifth batch: civilisations in full, real civilisations, priests, era score and ages (save version 26).
 static void CivilisationAndAgeChecks(){
-    int full=Enumerable.Range(0,CivilisationCatalog.Count).Count(CivLore.Full);Check(full==152,"152 civilisations with full lore (10 premade, 12 real, 55 earlier peoples of the other worlds, 75 species civilisations), found "+full);
+    int full=Enumerable.Range(0,CivilisationCatalog.Count).Count(CivLore.Full);Check(full==153,"153 civilisations with full lore (10 premade, 12 real, 55 earlier peoples of the other worlds, 75 species civilisations, the Zarevan Crown), found "+full);
     foreach(int civ in Enumerable.Range(0,CivilisationCatalog.Count).Where(CivLore.Full)){var e=CivLore.Of(civ);Check(e.Background.Length>100&&e.History.Length>200&&e.Strengths!=""&&e.Weaknesses!=""&&e.Ability!=""&&e.Unit!=""&&e.Building!=""&&e.Weakness!=""&&e.UnitBase>=0&&e.UnitBase<World.UnitNames.Length&&Array.IndexOf(World.BuildingIds,e.BuildingBase)>=0&&e.Agenda>=0&&e.Agenda<CivLore.AgendaNames.Length&&e.Faiths.All(f=>f>=0&&f<ReligionCatalog.Count),CivilisationCatalog.Names[civ]+" is complete");}
     Check(CivilisationCatalog.Names[17]=="China"&&CivilisationCatalog.Leaders[26]=="Cyrus the Great"&&CivilisationCatalog.Enabled[23],"real civilisations offered (China ... Persia, Maya)");
     // Steppe Horde: Keshig name and +2 movement for mounted units; Egypt: river cities +1 food and production.
@@ -421,7 +422,7 @@ static void SpeciesChecks(){
      // A town whose walls stand on the edge keeps its outline.
      var walled=(uint[])px.Clone();for(int y=0;y<n;y++)for(int x=0;x<n;x++){double dd=Math.Abs(x-31.5)/32+Math.Abs(y-47.5)/16;if(dd<=1&&dd>.78)walled[y*n+x]=0xFFD2D2DAu;}
      var kept=SceneryArt.Prepare("city-2-3-walled",walled,n,n);Check((kept[47*n+8]>>24)>0&&(kept[56*n+31]>>24)>0,"a walled town keeps its walls");}
-    Check(SpeciesPeoples.People.Count==75&&CivilisationCatalog.Count==SpeciesPeoples.First+75,"seventy-five species civilisations ("+SpeciesPeoples.People.Count+")");
+    Check(SpeciesPeoples.People.Count==75&&CivilisationCatalog.Count==SpeciesPeoples.First+75+FantasyKingdoms.People.Count,"seventy-five species civilisations ("+SpeciesPeoples.People.Count+")");
     int[] expect={0,10,10,10,10,10,15,10};string[] arts={"","elf","orc","demon-","treefolk","minotaur","insect-","dwarf"};var allCities=new HashSet<string>();var artSeen=new HashSet<string>();
     for(int r=1;r<=World.RealmCount;r++){
         var mine=SpeciesPeoples.People.Where(p=>p.World==r).ToList();Check(mine.Count==expect[r],World.RealmNames[r]+" has "+expect[r]+" "+SpeciesPeoples.SpeciesNames[r].ToLower()+" civilisations ("+mine.Count+")");

@@ -41,7 +41,7 @@ public static partial class SealedPeoples {
  static SealedPeoples(){
   adding=1;AddFaeWilds();adding=2;AddAshenWaste();adding=3;AddInfernalDepths();adding=4;AddPlagueMarshes();adding=5;AddDrownedDeep();adding=6;AddHiveExpanse();
  }
- public static SealedPerson Of(int civ){if(civ>=SpeciesPeoples.First)return SpeciesPeoples.Of(civ);int i=civ-First;return i>=0&&i<People.Count?People[i]:null;}
+ public static SealedPerson Of(int civ){if(civ>=FantasyKingdoms.First)return FantasyKingdoms.Of(civ);if(civ>=SpeciesPeoples.First)return SpeciesPeoples.Of(civ);int i=civ-First;return i>=0&&i<People.Count?People[i]:null;}
  // bust: the portrait's shape. 0 elf, 1 avian, 2 machine, 3 dwarf, 4 demon, 5 orc, 6 ratkin, 7 mushroom folk, 8 merfolk, 9 lizardfolk,
  // 10 robed human, 11 skeleton, 12 masked spirit, 13 giant, 14 radiant winged. hue: 0-7, colours its robes.
  // unitBase: World.UnitNames index; buildingBase: World.BuildingIds value.

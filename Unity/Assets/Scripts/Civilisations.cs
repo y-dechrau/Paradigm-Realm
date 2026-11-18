@@ -11,13 +11,15 @@ public static class CivilisationCatalog {
  // portrait art (leader-15.png, leader-16.png); RealmGame enables them once the picture is found. Hidden or waiting
  // civilisations are never offered or used as rivals, and their indices stay fixed so saves keep working.
  // 159 since 12 Nov 2026: the seventy-five species civilisations of SpeciesPeoples follow the first eighty-four.
- public const int Count=159,TraitCount=12,PortraitCount=159;
+ // 160 since 18 Nov 2026: the Zarevan Crown (FantasyKingdoms, 159) follows them, a fantasy kingdom numbered last so nothing moves.
+ public const int Count=160,TraitCount=12,PortraitCount=160;
  // The forty later peoples of the sealed worlds (SealedPeoples) follow the first thirty-nine in every table.
  static CivilisationCatalog(){
-  var more=SealedPeoples.People.Concat(SpeciesPeoples.People).ToList();int sealedCount=SealedPeoples.People.Count;
+  var more=SealedPeoples.People.Concat(SpeciesPeoples.People).Concat(FantasyKingdoms.People).ToList();int sealedCount=SealedPeoples.People.Count;
   Names=Names.Concat(more.Select(p=>p.Name)).ToArray();Leaders=Leaders.Concat(more.Select(p=>p.Leader)).ToArray();
   Portraits=Portraits.Concat(Enumerable.Range(SealedPeoples.First,more.Count)).ToArray();Traits=Traits.Concat(more.Select(p=>p.Traits)).ToArray();
-  Enabled=Enabled.Concat(more.Select(p=>false)).ToArray();AwaitingArt=AwaitingArt.Concat(more.Select(p=>false)).ToArray();
+  // A fantasy kingdom waits for its painted portrait (EnableCivilisationsWithArt), like the Jade Dynasty once did.
+  Enabled=Enabled.Concat(more.Select(p=>false)).ToArray();AwaitingArt=AwaitingArt.Concat(more.Select(p=>FantasyKingdoms.People.Contains(p))).ToArray();
   PortraitTitles=PortraitTitles.Concat(more.Select(p=>p.LeaderTitle)).ToArray();Greetings=Greetings.Concat(more.Select(p=>p.Greeting)).ToArray();
   var order=new List<int>(NativeOrder);for(int j=0;j<SealedPeoples.PerWorld;j++)foreach(int r in new[]{1,3,2,4,5,6}){int civ=SealedPeoples.First+(r-1)*SealedPeoples.PerWorld+j;if(civ<SealedPeoples.First+sealedCount&&(r<6||j<SealedPeoples.HivePeoples))order.Add(civ);}NativeOrder=order.ToArray();
  }
@@ -52,7 +54,7 @@ public static class CivilisationCatalog {
  public const int FirstReal=17;
  public const int FirstNative=29;
  public static bool IsReal(int civ){return civ>=FirstReal&&civ<FirstNative;}
- public static bool IsNative(int civ){return civ>=FirstNative&&civ<Count;}
+ public static bool IsNative(int civ){return civ>=FirstNative&&civ<FantasyKingdoms.First;}
  public static bool RealPortrait(int portrait){return portrait>=FirstReal&&portrait<FirstNative;}
  // Which parallel world each native people lives in (1 Fae Wilds ... 5 Drowned Deep), and the order they are placed in so that
  // every world gets one people before any gets a second.
