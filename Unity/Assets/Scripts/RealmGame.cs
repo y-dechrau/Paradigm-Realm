@@ -63,7 +63,7 @@ namespace ParadigmRealm
             if(pauseMenu){GUI.enabled=false;DrawMap();GUI.enabled=true;Centred();DrawPauseMenu();DrawSaveToast();return;}
             MapKeyboardInput();
             BuildHudRects();
-            if(researchScreen){tutorialResearchSeen=true;Centred();DrawResearchScreen();DrawSaveToast();return;}
+            if(researchScreen){tutorialResearchSeen=true;Wide();DrawResearchScreen();DrawSaveToast();return;}
             if(detailsScreen!=""){DrawTopBar();Centred();if(legendsOpen)DrawLegends();else DrawDetailsScreen();DrawSaveToast();return;}
             if(cityScreen){DrawTopBar();Centred();DrawCityScreen();DrawSaveToast();return;}
             NavigationInput();

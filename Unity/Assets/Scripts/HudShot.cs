@@ -12,6 +12,8 @@ namespace ParadigmRealm { public partial class RealmGame {
   world.Note("A Megatherium attacked your Warrior; it is getting away and will explore on.");world.Note("Azurehold grew to population 6.");
   var settler=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);
   if(settler!=null){selected=settler.id;cityId=-1;FocusTile(settler.x,settler.y);}
+  // The Chronicle of Discovery fills the display with every border inside it (18 Nov 2026).
+  researchScreen=true;inspectedTech=-1;researchEra=-1;researchScroll=Vector2.zero;yield return Frames(20);yield return Shot(folder,"hud-research.bmp");researchScreen=false;
   yield return Frames(30);yield return Shot(folder,"hud-settler.bmp");
   moreActions=true;yield return Frames(10);yield return Shot(folder,"hud-settler-more.bmp");moreActions=false;
   var guard=world.units.FirstOrDefault(u=>u.owner==0&&u.type!=0);

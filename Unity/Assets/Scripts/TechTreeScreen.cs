@@ -148,27 +148,30 @@ public partial class RealmGame {
   if(researchEra<0)researchEra=world.Era(0);ChronicleLayout();
   if(inspectedTech<0||TechnologyCatalog.Eras[inspectedTech]!=researchEra){inspectedTech=world.research>=0&&TechnologyCatalog.Eras[world.research]==researchEra?world.research:EraTechs(researchEra).First();}
   var available=world.AvailableTech();
+  // The screen fills the whole display, every border inside it (owner request, 18 Nov 2026): W is the canvas width (1280 at
+  // 16:10, wider on wider displays); the tree takes the extra width and the header centres on it.
+  float W=MapW,hdrMid=W/2-640;
   Fill(FullCanvas,new Color(.03f,.05f,.1f));
   // ---- Header ----
-  GoldFrame(new Rect(-14,-14,1308,92));
-  {var logo=UiTex("logo");if(logo!=null)GUI.DrawTexture(new Rect(46,4,56,56),logo,ScaleMode.ScaleToFit);}
-  GUI.Label(new Rect(110,12,260,26),"PARADIGM REALM",chBrand);GoldRule(110,42,190);
-  ShadowLabel(new Rect(340,0,600,36),"THE CHRONICLE OF DISCOVERY",chTitle);GUI.Label(new Rect(340,31,600,24),"Technology & Civilisation",chSub);
-  Fill(new Rect(370,43,110,1),NavyEdge);Fill(new Rect(800,43,110,1),NavyEdge);GUI.DrawTexture(new Rect(364,38,11,11),Diamond());GUI.DrawTexture(new Rect(905,38,11,11),Diamond());
-  {var close=new Rect(1222,12,40,40);GUI.DrawTexture(close,RoundBox("navy",256,48,6,false));GUI.Label(close,"X",new GUIStyle(chTitle){fontSize=20});if(GUI.Button(close,GUIContent.none,GUIStyle.none)){researchScreen=false;techUnlocksView=false;GUIUtility.ExitGUI();}}
+  GoldFrame(new Rect(6,6,W-12,86));
+  {var logo=UiTex("logo");if(logo!=null)GUI.DrawTexture(new Rect(46,14,56,56),logo,ScaleMode.ScaleToFit);}
+  GUI.Label(new Rect(110,20,260,26),"PARADIGM REALM",chBrand);GoldRule(110,50,190);
+  ShadowLabel(new Rect(340+hdrMid,17,600,36),"THE CHRONICLE OF DISCOVERY",chTitle);GUI.Label(new Rect(340+hdrMid,47,600,24),"Technology & Civilisation",chSub);
+  Fill(new Rect(370+hdrMid,59,110,1),NavyEdge);Fill(new Rect(800+hdrMid,59,110,1),NavyEdge);GUI.DrawTexture(new Rect(364+hdrMid,54,11,11),Diamond());GUI.DrawTexture(new Rect(905+hdrMid,54,11,11),Diamond());
+  {var close=new Rect(W-70,26,40,40);GUI.DrawTexture(close,RoundBox("navy",256,48,6,false));GUI.Label(close,"X",new GUIStyle(chTitle){fontSize=20});if(GUI.Button(close,GUIContent.none,GUIStyle.none)){researchScreen=false;techUnlocksView=false;GUIUtility.ExitGUI();}}
   // ---- Age tabs ----
   for(int e=0;e<TechnologyCatalog.EraNames.Length;e++){
-   var tab=new Rect(40+e*152,79,142,38);bool open=EraViewable(e),chosen=e==researchEra;
+   var tab=new Rect(40+e*152,98,142,38);bool open=EraViewable(e),chosen=e==researchEra;
    GUI.DrawTexture(tab,TabArt(chosen));var st=new GUIStyle(chTab);st.normal.textColor=chosen?new Color(.22f,.12f,.03f):open?new Color(.96f,.92f,.82f):new Color(.6f,.6f,.62f);
    GUI.Label(tab,e==0?TechnologyCatalog.EraNames[e]:TechnologyCatalog.EraNames[e].Replace(" Age",""),st);
    if(e<TechnologyCatalog.EraNames.Length-1)GUI.DrawTexture(new Rect(tab.xMax+2,tab.center.y-4,8,8),Diamond());
    if(open&&!chosen&&GUI.Button(tab,GUIContent.none,GUIStyle.none)){researchEra=e;techLayoutEra=-2;ChronicleLayout();inspectedTech=-1;researchScroll=Vector2.zero;techUnlocksView=false;GUIUtility.ExitGUI();}
    if(!open&&tab.Contains(Event.current.mousePosition))GUI.Label(new Rect(tab.x,tab.yMax,240,18),"Opens once a known technology leads into it",new GUIStyle(chItalic){alignment=TextAnchor.MiddleLeft,fontSize=12});
   }
-  GUI.DrawTexture(new Rect(14,91,14,14),Diamond());GUI.DrawTexture(new Rect(946,91,14,14),Diamond());
-  Fill(new Rect(0,121,958,1),new Color(.78f,.62f,.32f,.6f));
+  GUI.DrawTexture(new Rect(18,110,14,14),Diamond());GUI.DrawTexture(new Rect(W-356,110,14,14),Diamond());
+  Fill(new Rect(14,140,W-354,1),new Color(.78f,.62f,.32f,.6f));
   // ---- The tree ----
-  var view=new Rect(0,124,958,578);GUI.DrawTexture(view,StarFieldCached(),ScaleMode.ScaleAndCrop);
+  var view=new Rect(14,143,W-354,557);GUI.DrawTexture(view,StarFieldCached(),ScaleMode.ScaleAndCrop);
   {int pending=world.PendingEdict(0);if(pending>=0){var strip=new Rect(view.x+16,view.y+8,view.width-32,30);if(GoldButton(strip,TechnologyCatalog.EraNames[pending]+" complete: choose an edict ▸")){techUnlocksView=true;techUnlockScroll=Vector2.zero;}view=new Rect(view.x,view.y+44,view.width,view.height-44);}}
   var wheel=Event.current;var size=TreeSize();
   if(wheel.type==EventType.ScrollWheel&&wheel.control&&view.Contains(wheel.mousePosition)){float was=techZoom;techZoom=Mathf.Clamp(techZoom*(wheel.delta.y<0?1.12f:1/1.12f),.35f,1.6f);var at=wheel.mousePosition-view.position;researchScroll=new Vector2(Math.Max(0,(researchScroll.x+at.x)*techZoom/was-at.x),Math.Max(0,(researchScroll.y+at.y)*techZoom/was-at.y));wheel.Use();}
@@ -187,9 +190,9 @@ public partial class RealmGame {
   foreach(int i in shown)DrawChronicleCard(i,Z(ExpandedTechRect(i)),z,available,sName,sPill,sBullet,sItalic,sButton,sBar);
   GUI.EndScrollView();
   // ---- The chosen technology ----
-  DrawChronicleDetail(new Rect(962,74,312,628),available);
+  DrawChronicleDetail(new Rect(W-330,94,318,606),available);
   // ---- Queue and zoom ----
-  DrawChronicleQueue(new Rect(-8,700,1296,108));
+  DrawChronicleQueue(new Rect(6,704,W-12,90));
  }
  void Line(Vector2 a,Vector2 b,Color ink,float th,bool dashed){
   if(Mathf.Abs(a.y-b.y)<.5f){float x0=Math.Min(a.x,b.x),x1=Math.Max(a.x,b.x);if(!dashed){Fill(new Rect(x0,a.y-th/2,x1-x0,th),ink);return;}for(float x=x0;x<x1;x+=10)Fill(new Rect(x,a.y-th/2,Math.Min(6,x1-x),th),ink);}
@@ -267,7 +270,7 @@ public partial class RealmGame {
   foreach(string unlock in TechnologyCatalog.Unlocks[i])GUILayout.Label("• "+unlock.Substring(2),text);
   GUILayout.EndScrollView();GUILayout.EndArea();}
  void DrawChronicleQueue(Rect bar){
-  GoldFrame(bar);float y=bar.y+20;
+  GoldFrame(bar);float y=bar.y+19;
   {var books=UiTex("icon-chronicle")??UiTex("icon-research");if(books!=null)GUI.DrawTexture(new Rect(44,y+6,40,40),books,ScaleMode.ScaleToFit);}
   GUI.Label(new Rect(94,y+6,180,40),"Research queue",new GUIStyle(chName){fontSize=22,font=garamond});
   Fill(new Rect(282,y+8,1,36),new Color(.78f,.62f,.32f,.6f));
@@ -285,10 +288,10 @@ public partial class RealmGame {
    if(NavyButton(add,"+  Add technology",why=="")){int n=world.QueueTechnology(inspectedTech);status=n>1?"Queued "+World.TechNames[inspectedTech]+" with "+(n-1)+" prerequisite"+(n==2?"":"s")+" before it.":"Queued "+World.TechNames[inspectedTech]+".";}
    if(why!=""&&add.Contains(Event.current.mousePosition))GUI.Label(new Rect(add.x,add.y-22,320,20),why,new GUIStyle(chItalic){alignment=TextAnchor.MiddleLeft,fontSize=13});}
   // Zoom.
-  Fill(new Rect(1100,y+8,1,36),new Color(.78f,.62f,.32f,.6f));
-  if(NavyButton(new Rect(1116,y+10,36,34),"−")){techZoom=Mathf.Clamp(techZoom/1.12f,.35f,1.6f);}
-  GUI.Label(new Rect(1154,y+10,64,34),Mathf.RoundToInt(techZoom*100)+"%",new GUIStyle(chBody){alignment=TextAnchor.MiddleCenter,fontSize=18});
-  if(NavyButton(new Rect(1220,y+10,36,34),"+")){techZoom=Mathf.Clamp(techZoom*1.12f,.35f,1.6f);}
+  Fill(new Rect(bar.xMax-176,y+8,1,36),new Color(.78f,.62f,.32f,.6f));
+  if(NavyButton(new Rect(bar.xMax-160,y+10,36,34),"−")){techZoom=Mathf.Clamp(techZoom/1.12f,.35f,1.6f);}
+  GUI.Label(new Rect(bar.xMax-122,y+10,64,34),Mathf.RoundToInt(techZoom*100)+"%",new GUIStyle(chBody){alignment=TextAnchor.MiddleCenter,fontSize=18});
+  if(NavyButton(new Rect(bar.xMax-56,y+10,36,34),"+")){techZoom=Mathf.Clamp(techZoom*1.12f,.35f,1.6f);}
   if(!string.IsNullOrEmpty(GUI.tooltip)){var tip=new Rect(Event.current.mousePosition.x+12,Event.current.mousePosition.y-26,220,22);GUI.Label(tip,GUI.tooltip,new GUIStyle(chItalic){alignment=TextAnchor.MiddleLeft});}
  }
 }

@@ -142,8 +142,9 @@ namespace ParadigmRealm {
    if(t!=null&&SceneryArt.IsScenery(name)){try{var cv=new PixelCanvas(t.width,t.height);Array.Copy(SceneryArt.Prepare(name,ReadArtPixels(t),t.width,t.height),cv.p,cv.p.Length);t=SoftTexture(cv);}catch(Exception){}}
    spriteSlots[name]=t;}return t;}
   void DrawCityArt(City c,Rect r){GUI.DrawTexture(r,SettlementTexture(CityVisualEra(c.owner),c.pop,SettlementFlags(c),c.id),ScaleMode.ScaleToFit,true);}
-  // Outlying farmsteads: from size 5, one neighbouring land tile of the city's own territory per two citizens (up to 8)
-  // gets a few houses, chosen in a fixed order per city so they do not jump about.
+  // Outlying farmsteads: from size 5, one neighbouring farm of the city's own territory per two citizens (up to 8); only real farms
+  // get one (owner report, 18 Nov 2026: houses on plain savanna looked like farms but did nothing),
+  // and those get a few houses, chosen in a fixed order per city so they do not jump about.
   readonly Dictionary<int,City> suburbCells=new Dictionary<int,City>();
   static readonly int[] SuburbDx={-1,0,1,1,1,0,-1,-1},SuburbDy={-1,-1,-1,0,1,1,1,0};
   readonly Dictionary<int,City> portCells=new Dictionary<int,City>();
@@ -154,7 +155,7 @@ namespace ParadigmRealm {
     int want=Math.Min(8,Math.Max(0,(c.pop-3)/2));if(want==0)continue;
     var order=Enumerable.Range(0,8).OrderBy(k=>(k*7+c.id*3)%8).ToList();
     foreach(int k in order){if(want==0)break;var t=world.Step(c.x,c.y,SuburbDx[k],SuburbDy[k]);if(t==null)continue;int cell=t.y*world.Width+t.x;
-     if(t.owner!=c.owner||suburbCells.ContainsKey(cell)||portCells.ContainsKey(cell)||World.Barren(t.terrain)||t.terrain==1||t.terrain==11||t.terrain==13||t.terrain==17||t.terrain==19||world.cities.Any(o=>o.x==t.x&&o.y==t.y))continue;
+     if(!t.farm||t.owner!=c.owner||suburbCells.ContainsKey(cell)||portCells.ContainsKey(cell)||World.Barren(t.terrain)||t.terrain==1||t.terrain==11||t.terrain==13||t.terrain==17||t.terrain==19||world.cities.Any(o=>o.x==t.x&&o.y==t.y))continue;
      suburbCells[cell]=c;want--;}
    }
   }
