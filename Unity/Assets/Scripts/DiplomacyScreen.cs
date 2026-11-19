@@ -290,7 +290,7 @@ public partial class RealmGame {
   {var held=Enumerable.Range(0,Pacts.Count).Where(k=>world.Pact(0,o,k)).Select(k=>Pacts.Names[k]).ToList();DrawDipIcon("book",new Rect(x+4,y+2,22,22));
    GUI.Label(new Rect(x+34,y,w-34,44),held.Count==0?"No active agreements.":string.Join(", ",held.ToArray())+".",new GUIStyle(courtItalic){fontSize=14});y+=40;}
   CourtHeading(new Rect(x,y,w,22),"Latest Contact");y+=26;
-  {string said=world.Greeting(o);var qs=new GUIStyle(courtItalic){fontSize=14,alignment=TextAnchor.UpperCenter};var qr=new Rect(x,y,w,side.yMax-16-4*38-6-y);while(qs.fontSize>10&&qs.CalcHeight(new GUIContent("“"+said+"”"),qr.width)>qr.height)qs.fontSize--;GUI.Label(qr,"“"+said+"”",qs);y+=66;}
+  {string said=CurlQuotes(world.Greeting(o));var qs=new GUIStyle(courtItalic){fontSize=14,alignment=TextAnchor.UpperCenter};var qr=new Rect(x,y,w,side.yMax-16-4*38-6-y);while(qs.fontSize>10&&qs.CalcHeight(new GUIContent(said),qr.width)>qr.height)qs.fontSize--;GUI.Label(qr,said,qs);y+=66;}
   float by=side.yMax-16-4*38;bool war=world.AtWar(0,o);
   if(CourtButton(new Rect(x,by,w,34),"handshake","Open Diplomacy",CourtGoldFace)){OpenCourt(o);GUIUtility.ExitGUI();}
   if(CourtAction(new Rect(x,by+38,w,34),"coins",war?"Offer Peace Terms":"Propose Trade",!war&&world.Rivals(0,o)?"No dealings between rivals.":"",war?"Offer peace with gold and resources.":"Exchange gold, payments and resources.",CourtNavy)){OpenCourt(o);customDeal=true;GUIUtility.ExitGUI();}
@@ -362,7 +362,7 @@ public partial class RealmGame {
   {var badge=new Rect(side.xMax-40-170,y+2,170,30);MoodBadge(badge,partner,15);Tip(badge,Attitudes.Names[world.Attitude(partner,0)]+": "+Attitudes.Texts[world.Attitude(partner,0)]);}
   y+=66;
   {var quote=new Rect(left,y,wide2,58);Fill(quote,new Color(.03f,.05f,.1f,.92f));Fill(new Rect(quote.x,quote.y,quote.width,1),CourtGold);Fill(new Rect(quote.x,quote.yMax-1,quote.width,1),CourtGold);Fill(new Rect(quote.x,quote.y,1,quote.height),CourtGold);Fill(new Rect(quote.xMax-1,quote.y,1,quote.height),CourtGold);
-   string said=dipReplyPartner==partner&&!string.IsNullOrEmpty(dipReply)?dipReply:"“"+world.Greeting(partner)+"”";var qs=new GUIStyle(courtItalic){fontSize=17,alignment=TextAnchor.MiddleCenter};var qr=new Rect(quote.x+14,quote.y+3,quote.width-28,quote.height-6);while(qs.fontSize>11&&qs.CalcHeight(new GUIContent(said),qr.width)>qr.height)qs.fontSize--;GUI.Label(qr,said,qs);}
+   string said=dipReplyPartner==partner&&!string.IsNullOrEmpty(dipReply)?dipReply:CurlQuotes(world.Greeting(partner));var qs=new GUIStyle(courtItalic){fontSize=17,alignment=TextAnchor.MiddleCenter};var qr=new Rect(quote.x+14,quote.y+3,quote.width-28,quote.height-6);while(qs.fontSize>11&&qs.CalcHeight(new GUIContent(said),qr.width)>qr.height)qs.fontSize--;GUI.Label(qr,said,qs);}
   y+=66;
   // Their strength beside yours, their trust in you, their fear of you.
   {float third=wide2/3;string[] icons={"crown","handshake","mask"};string[] text={"Strength: "+Attitudes.Power[world.PowerLevel(0,partner)],"Trust: "+world.Trust(partner,0),"Fear: "+world.Threat(partner,0)};
@@ -502,6 +502,18 @@ public partial class RealmGame {
   gripY=track.y+(track.height-gripH)*scroll/max;grip=new Rect(track.x+1,gripY,track.width-2,gripH);
   Fill(grip,new Color(.62f,.47f,.2f));Fill(new Rect(grip.x,grip.y,grip.width,2),new Color(1f,.88f,.55f));Fill(new Rect(grip.x,grip.yMax-2,grip.width,2),new Color(.35f,.25f,.1f));
   float cy=grip.center.y;Fill(new Rect(grip.center.x-3,cy-3,6,6),new Color(.12f,.08f,.04f));Fill(new Rect(grip.center.x-1,cy-1,2,2),new Color(.9f,.4f,.3f));
+ }
+}
+}
+namespace ParadigmRealm {
+public partial class RealmGame {
+ // A leader's line is 'Leader of the Kingdom: "words"'. It is shown with the words' own quote marks curled, instead of a second
+ // pair round the whole line, which ended every greeting in two closing marks (owner report, 19 Nov 2026). A line with no
+ // quote marks of its own is wrapped in a pair.
+ static string CurlQuotes(string line){
+  if(string.IsNullOrEmpty(line))return line;int a=line.IndexOf('"'),b=line.LastIndexOf('"');
+  if(a<0||b<=a)return "“"+line+"”";
+  return line.Substring(0,a)+"“"+line.Substring(a+1,b-a-1)+"”"+line.Substring(b+1);
  }
 }
 }
