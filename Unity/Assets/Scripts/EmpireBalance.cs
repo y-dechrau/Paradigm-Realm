@@ -29,7 +29,7 @@ public partial class World {
  public int ScienceShare(City c){return c.focus==3?Trade(c):c.focus==4?0:ShareOf(Trade(c),nations[c.owner].scienceRate);}
  public int ArmyBudget(City c){int rate=nations[c.owner].militaryRate;if(rate<=0||Disorder(c))return 0;int trade=Trade(c),shields=Math.Min(trade-ScienceShare(c),ShareOf(trade,rate));return c.occupation>0?shields/2:shields;}
  // Gold from Trade: what science takes is gone, and the military share only while the city trains a combat unit.
- public int GoldShare(City c){int trade=Trade(c),s=ScienceShare(c);return trade-s-(IsCombatBuild(c.build)?Math.Min(trade-s,ShareOf(trade,nations[c.owner].militaryRate)):0);}
+ public int GoldShare(City c){int trade=Trade(c),s=ScienceShare(c);return trade-s-(MilitaryShareOn(c)?Math.Min(trade-s,ShareOf(trade,nations[c.owner].militaryRate)):0);}
  public static bool IsCombatBuild(int project){int u=BuildUnit(project);return u>=0&&Power[u]>0;}
  public int ArmyShields(City c,int project){return IsCombatBuild(project)?ArmyBudget(c):0;}
  // Shields per turn on the line that holds this project.
@@ -239,7 +239,7 @@ public partial class World {
  // Choosing a different technology after a discovery takes the left-over science with it.
  public void ChooseNextResearch(int t){int spare=researchOverflow;researchOverflow=0;if(research>=0){int take=Math.Min(spare,science);science-=take;nations[0].progress[research]=science;spare=take;}else spare=0;SelectResearch(t);if(research==t){science+=spare;nations[0].progress[t]=science;}}
  // What the budget is made of; Budget is its totals.
- public sealed class BudgetLines {public int cityGold,cityBonus,ports,routes,treaties,tribute,cityUpkeep,buildingUpkeep,army,civilians,luxury,treatyCost,roads,expansion,cutOff,foraging;public int Income{get{return cityGold+cityBonus+ports+routes+treaties+tribute+foraging;}}public int Expense{get{return cityUpkeep+buildingUpkeep+army+civilians+luxury+treatyCost+roads+expansion+cutOff;}}public int Net{get{return Income-Expense;}}}
+ public sealed class BudgetLines {public int cityGold,cityBonus,ports,routes,treaties,tribute,cityUpkeep,buildingUpkeep,army,civilians,luxury,treatyCost,roads,expansion,cutOff,foraging,forceShortfall;public int Income{get{return cityGold+cityBonus+ports+routes+treaties+tribute+foraging;}}public int Expense{get{return cityUpkeep+buildingUpkeep+army+civilians+luxury+treatyCost+roads+expansion+cutOff+forceShortfall;}}public int Net{get{return Income-Expense;}}}
  public static int SupportCost(int type){return Upkeep[type];}
  public BudgetLines BudgetDetail(int owner){
   var b=new BudgetLines();var own=cities.Where(c=>c.owner==owner).OrderBy(c=>c.id).ToList();
@@ -252,7 +252,7 @@ public partial class World {
   else foreach(var u in units)if(u.owner==owner){if(Power[u.type]>0){b.army+=Upkeep[u.type];soldiers++;}else free+=Upkeep[u.type];}
   // A big standing army costs more than the sum of its soldiers (as unit maintenance climbs in Civilization V): +1 gold for every three
   // soldiers beyond two per city.
-  b.army+=Math.Max(0,soldiers-2*own.Count)/3;b.roads=RoadUpkeep(owner);
+  b.army+=Math.Max(0,soldiers-2*own.Count)/3;b.forceShortfall=ServiceShortfall(owner)*ForcesRules.ShortfallGold;b.roads=RoadUpkeep(owner);
   if(modernRules){b.expansion=ExpansionCost(own.Count);foreach(var c in own)if(CutOff(c))b.cutOff+=CutOffGold;}
   b.civilians=Math.Max(0,free-FreeUnitsPerCity*own.Count-GovernmentSupport(owner));b.luxury=own.Count*nations[owner].luxury;
   b.routes=TradeIncome(owner);b.treaties=DiplomaticIncome(owner);b.tribute=VillageTribute(owner)+ReligionTithe(owner);b.treatyCost=DiplomaticExpense(owner);return b;

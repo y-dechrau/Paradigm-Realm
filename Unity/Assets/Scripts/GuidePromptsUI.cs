@@ -99,8 +99,8 @@ public partial class RealmGame {
  void DrawEmpireBalance(){
   var n=world.nations[0];int[] rates={n.scienceRate,n.militaryRate,world.FinanceRate(0)};
   var own=world.cities.Where(c=>c.owner==0).ToList();int trade=own.Sum(c=>world.Trade(c));
-  bool training=own.Any(c=>World.IsCombatBuild(c.build));
-  int[] flow={own.Sum(c=>world.ScienceShare(c)),own.Where(c=>World.IsCombatBuild(c.build)).Sum(c=>world.ArmyBudget(c)),own.Sum(c=>world.GoldShare(c))};
+  bool training=own.Any(c=>world.MilitaryShareOn(c));
+  int[] flow={own.Sum(c=>world.ScienceShare(c)),own.Where(c=>world.MilitaryShareOn(c)).Sum(c=>world.ArmyBudget(c)),own.Sum(c=>world.GoldShare(c))};
   string[] unit={" science"," shields"," gold"};
   GUILayout.Label("Empire priorities",heading);
   for(int axis=0;axis<3;axis++){

@@ -37,6 +37,10 @@ namespace ParadigmRealm { public partial class RealmGame {
    cityScreen=true;cityBuildingTab=false;cityMapScroll=Vector2.zero;yield return Frames(20);yield return Shot(folder,"hud-city-screen.bmp");
    cityBuildingTab=true;cityShotHover=world.Workable(home).Any(t=>t.terrain==4||t.terrain==6||t.terrain==12)?43:31;yield return Frames(20);yield return Shot(folder,"hud-city-hover.bmp");cityShotHover=-1;cityBuildingTab=false;cityScreen=false;
    home.pop=popWas;home.scientists=0;home.queue.Clear();home.buildingQueue.Clear();home.build=-1;home.buildingProject=-1;home.production=0;home.buildingProduction=0;}
+   // Empire > Forces (20 Nov 2026): a Spearman ordered, the Warrior picked, then the mobilisation preview.
+   {bool wasForces=world.nationalForces;int popKeep=home.pop;world.nationalForces=true;world.nations[0].tech[TechnologyCatalog.Index("bronze")]=true;home.pop=6;world.Raise(0,7,home);world.Raise(0,2,home);var firstGuard=world.units.FirstOrDefault(u=>u.owner==0&&u.type==2);if(firstGuard!=null)forcesPick=firstGuard.id;
+    detailsScreen="Economy";empireTab=2;yield return Frames(20);yield return Shot(folder,"hud-forces.bmp");AskMobilise(true);yield return Frames(10);yield return Shot(folder,"hud-forces-mobilise.bmp");forcesConfirm=null;forcesConfirmDo=null;
+    detailsScreen="";empireTab=0;foreach(var o in world.ForceOrders(0).ToList())world.CancelForceOrder(0,o.id);home.pop=popKeep;world.nationalForces=wasForces;}
    // Barbarians: a camp and two raiders (one hurt) beside the city on the map.
    {var barbSpots=world.tiles.Where(t=>t.realm==0&&world.Distance(t.x,t.y,home.x,home.y)>=2&&world.Distance(t.x,t.y,home.x,home.y)<=3&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!world.units.Any(u=>u.x==t.x&&u.y==t.y)&&world.Visible(t.x,t.y)).Take(3).ToList();
     if(barbSpots.Count==3){bool was=world.barbarians;world.barbarians=true;world.camps.Add(new BarbarianCamp{id=99101,x=barbSpots[0].x,y=barbSpots[0].y,seen=true});world.raiders.Add(new Raider{id=99102,x=barbSpots[1].x,y=barbSpots[1].y});world.raiders.Add(new Raider{id=99103,x=barbSpots[2].x,y=barbSpots[2].y,hp=6,mounted=1});

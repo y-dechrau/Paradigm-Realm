@@ -113,7 +113,7 @@ public partial class RealmGame {
   int across=Mathf.Max(1,(int)(w/36));int at=0;
   foreach(int b in built.Concat(holy)){var r=new Rect(x+(at%across)*36,y+(at/across)*36,32,32);if(r.yMax>area.yMax-4)break;Fill(r,CityCell);
    bool faith=World.FaithBuildingIds.Contains(b)&&!World.BuildingIds.Contains(b);if(faith)DrawIcon(PixelArt.IconFaith,new Rect(r.x+3,r.y+3,26,26));else DrawIcon(new Rect(r.x+3,r.y+3,26,26),12+Array.IndexOf(World.BuildingIds,b));
-   if(r.Contains(m))SetCityTip(faith?World.FaithBuildingName(b):World.BuildName(b)+(faith?"":"\n"+World.BuildingEffect(b)));at++;}
+   if(r.Contains(m))SetCityTip(faith?World.FaithBuildingName(b):World.BuildName(b)+"\n"+World.BuildingEffect(b)+(world.nationalForces&&(b==30||b==40||b==32)?"\nNational arms output: +"+(b==30?ForcesRules.WorkshopArms:b==40?ForcesRules.FactoryArms:ForcesRules.BarracksArms)+" a turn from this building.":""));at++;}
  }
  string TotalTip(City c,int k,int total){
   if(k==4)return "Faith "+total+" a turn. "+(world.modernRules?FaithShareText(c):c.religion>=0?"Follows "+world.FaithName(c.religion):"No majority faith")+". Shrines, temples and holy sites add faith.";
@@ -131,8 +131,9 @@ public partial class RealmGame {
   float half=(w-6)/2;
   if(GUI.Button(new Rect(x,y,half,26),(cityBuildingTab?"":"● ")+"Units",button)){cityBuildingTab=false;cityPickScroll=Vector2.zero;}
   if(GUI.Button(new Rect(x+half+6,y,half,26),(cityBuildingTab?"● ":"")+"Buildings",button)){cityBuildingTab=true;cityPickScroll=Vector2.zero;}y+=30;
+  if(!cityBuildingTab&&world.nationalForces){GUI.Label(new Rect(x,y,w-110,24),"Soldiers and warships are raised by the nation.",cityTiny);if(GUI.Button(new Rect(x+w-104,y,104,22),"Forces ▸",button)){cityScreen=false;detailsScreen="Economy";empireTab=2;GUIUtility.ExitGUI();}y+=26;}
   bool building=cityBuildingTab;int current=building?c.buildingProject:c.build;var queue=building?c.buildingQueue:c.queue;int output=Math.Max(1,world.LineShare(c,building));
-  int[] options=(building?World.BuildingIds:Enumerable.Range(0,World.UnitNames.Length).Select(World.UnitBuild).ToArray()).Where(p=>world.TechAllows(c,p)).ToArray();
+  int[] options=(building?World.BuildingIds:Enumerable.Range(0,World.UnitNames.Length).Select(World.UnitBuild).ToArray()).Where(p=>world.TechAllows(c,p)&&!(world.nationalForces&&!building&&ForcesRules.Formation(World.BuildUnit(p)))).ToArray();
   int[] holy=building&&world.modernRules?World.FaithBuildingIds.Where(b=>world.FaithAllows(c,b)).ToArray():new int[0];
   const float Row=44;var list=new Rect(x-2,y,w+4,area.yMax-y-6);float inner=options.Length*Row+(holy.Length>0?28+holy.Length*Row:0);
   bool inList=list.Contains(m);
@@ -161,7 +162,7 @@ public partial class RealmGame {
  string UnitLine(int p){int u=World.BuildUnit(p);return u<0?"":World.Power[u]>0?"Strength "+World.Power[u]:"Civilian";}
  string PickTip(City c,int p,bool building,string reason,bool ordered,int cost,int turns){
   var lines=new List<string>{world.BuildNameFor(c.owner,p)+" — "+cost+" shields, about "+turns+(turns==1?" turn":" turns")+" on this line"+(building&&world.BuildingGold(p)>0?" + "+world.BuildingGold(p)+" gold":"")+"."};
-  if(building){lines.Add(World.BuildingEffect(p));
+  if(building){lines.Add(World.BuildingEffect(p));{int armsThen=world.ArmsWith(c,p);if(armsThen>=0)lines.Add("National arms output: "+world.ArmsOutput(c.owner)+" → "+armsThen+" a turn.");}
    if(cityPreview!=null&&cityHoverProject==p){var d=cityPreview;var gain=new List<string>();string[] n={"food","shields","science","gold","faith"};for(int k=0;k<5;k++)if(d[k]!=0)gain.Add((d[k]>0?"+":"")+d[k]+" "+n[k]);
     lines.Add(gain.Count>0?"Here, now: "+string.Join(", ",gain.ToArray())+" a turn.":"No change to this city's totals today.");if(cityHighlight.Count>0)lines.Add("Improves the "+cityHighlight.Count+" lit tile"+(cityHighlight.Count==1?"":"s")+" on the land.");}}
   if(ordered)lines.Add("Already ordered. Right-click to cancel it.");else if(reason!="")lines.Add(reason);else lines.Add("Click to add it to the "+(building?"buildings":"units")+" line.");

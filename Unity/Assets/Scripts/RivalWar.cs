@@ -32,6 +32,8 @@ public partial class World {
  }
  // An outdated soldier upgrades in a city when the treasury can spare it, walking to one close by first.
  internal bool AIUpgrade(Unit u){
+  // Under national forces refits are chosen once a turn by ForcesAI, not unit by unit here.
+  if(nationalForces)return false;
   if(!ActiveRival(u.owner)||Power[u.type]==0||IsNaval(u.type)||u.moves<=0)return false;int t=UpgradeTarget(u);
   if(t<0||!nations[u.owner].tech[UnitTech[t]]||!HasResource(u.owner,UnitResource[t]))return false;
   int price=(UnitCosts[t]-UnitCosts[u.type])*2;if(nations[u.owner].gold<price+20)return false;
