@@ -10,11 +10,12 @@ public partial class RealmGame {
  void BuildMiniTexture(){
   int W=world.Width,H=ViewRows,top=ViewTop;int scale=Mathf.Clamp(560/Math.Max(1,W),3,8);int tw=W*scale,th=H*scale;
   if(miniTexture==null||miniTexture.width!=tw||miniTexture.height!=th){if(miniTexture!=null)Destroy(miniTexture);miniTexture=new Texture2D(tw,th,TextureFormat.RGBA32,true){filterMode=FilterMode.Trilinear,wrapMode=TextureWrapMode.Clamp,anisoLevel=2};miniPixels=new Color32[tw*th];}
-  var dark=new Color32(6,10,16,255);
+  var dark=new Color32(6,10,16,255);PrepareMiniLayer();
   for(int y=0;y<H;y++)for(int x=0;x<W;x++){
    var source=world.tiles[(y+top)*W+x];var t=world.KnownTile(source);
    Color c;bool seen=t.seen;
    if(!seen)c=new Color(.025f,.04f,.06f,1);else{c=AtlasColour(t.terrain);if(t.owner>=0){var n=nations[t.owner];c=Color.Lerp(c,new Color(n.r,n.g,n.b,1),.32f);}}
+   if(seen&&MiniLayer!=0)c=MiniLayerColour((y+top)*W+x,t,c);
    bool water=seen&&PixelArt.IsWater(t.terrain),river=seen&&t.terrain==7;
    // Neighbours for coasts and borders (north, east, south, west in grid steps).
    int ownN=OwnerAt(x,y-1,top),ownE=OwnerAt(x+1,y,top),ownS=OwnerAt(x,y+1,top),ownW=OwnerAt(x-1,y,top);
@@ -27,7 +28,7 @@ public partial class RealmGame {
      // Shallows: water pixels next to land are lighter.
      if(water&&!river){bool near=(py==0&&landN)||(py==scale-1&&landS)||(px==0&&landW)||(px==scale-1&&landE);if(near)p=Color.Lerp(p,new Color(.45f,.7f,.8f,1),.45f);}
      // Rivers: a blue thread through the middle of the tile on a land-coloured bank.
-     if(river){p=AtlasColour(0);int mid=scale/2;if(Math.Abs(px-mid)<=Math.Max(0,scale/4)||Math.Abs(py-mid)<=Math.Max(0,scale/4))p=new Color(.2f,.45f,.75f,1);}
+     if(river&&MiniLayer==0){p=AtlasColour(0);int mid=scale/2;if(Math.Abs(px-mid)<=Math.Max(0,scale/4)||Math.Abs(py-mid)<=Math.Max(0,scale/4))p=new Color(.2f,.45f,.75f,1);}
      // Borders: a bright edge in the owner's colour where the owner changes.
      if(t.owner>=0){var ink=nations[t.owner];bool edge=(py==0&&ownN!=t.owner)||(py==scale-1&&ownS!=t.owner)||(px==0&&ownW!=t.owner)||(px==scale-1&&ownE!=t.owner);if(edge)p=Color.Lerp(new Color(ink.r,ink.g,ink.b,1),Color.white,.25f);}
     }
@@ -42,7 +43,8 @@ public partial class RealmGame {
   // Found sealed gateways stay marked in gold.
   if(viewRealm==0&&world.gatesFound!=null)foreach(int cell in world.gatesFound){var g=world.tiles[cell];int cx=g.x*scale+scale/2,cy=(H-1-(g.y-top))*scale+scale/2,r=Math.Max(2,scale);
    for(int dy=-r;dy<=r;dy++)for(int dx=-r;dx<=r;dx++){if(Math.Abs(dx)+Math.Abs(dy)>r)continue;int qx=cx+dx,qy=cy+dy;if(qx<0||qy<0||qx>=tw||qy>=th)continue;miniPixels[qy*tw+qx]=new Color32(255,210,64,255);}}
-  miniTexture.SetPixels32(miniPixels);miniTexture.Apply(true);miniWorld=world;miniBuilt=Time.realtimeSinceStartup;miniRealm=viewRealm;
+  PaintMiniOverlay(tw,th,scale,top);
+  miniTexture.SetPixels32(miniPixels);miniTexture.Apply(true);miniWorld=world;miniBuilt=Time.realtimeSinceStartup;miniRealm=viewRealm;miniLayerBuilt=MiniLayer;
  }
  int OwnerAt(int x,int y,int top){if(y<0||y>=ViewRows)return -2;x=((x%world.Width)+world.Width)%world.Width;var t=world.KnownTile(world.tiles[(y+top)*world.Width+x]);return t.seen?t.owner:-2;}
  bool LandAt(int x,int y,int top){if(y<0||y>=ViewRows)return false;x=((x%world.Width)+world.Width)%world.Width;var t=world.KnownTile(world.tiles[(y+top)*world.Width+x]);return t.seen&&!PixelArt.IsWater(t.terrain);}

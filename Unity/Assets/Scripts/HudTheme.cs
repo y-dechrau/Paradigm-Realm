@@ -62,7 +62,7 @@ namespace ParadigmRealm
         void BuildHudRects()
         {
             hudRects.Clear();if(world==null)return;
-            hudRects.Add(TopBar);hudRects.Add(RailRect);hudRects.Add(ResearchCard);hudRects.Add(MiniMap);hudRects.Add(MiniButtons);hudRects.Add(EndTurnRect);hudRects.Add(TileCard);hudRects.Add(MedalBar);
+            hudRects.Add(TopBar);hudRects.Add(RailRect);hudRects.Add(ResearchCard);hudRects.Add(MiniMap);hudRects.Add(MiniButtons);hudRects.Add(MiniLayerTab);if(miniLayerOpen)hudRects.Add(MiniLayerList);hudRects.Add(EndTurnRect);hudRects.Add(TileCard);hudRects.Add(MedalBar);
             if(CardShown())hudRects.Add(UnitCard);if(moreActions&&CardShown())hudRects.Add(MorePanel);
             for(int i=0;i<MetRivals().Count;i++)hudRects.Add(LeaderRect(i));
             for(int i=0;i<RecentNotes().Count;i++)hudRects.Add(NoteRect(i));
@@ -224,7 +224,7 @@ namespace ParadigmRealm
             if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>3f)BuildAtlasTexture();
             // Staggered rows are a quarter of a tile width apart (16 of 64 pixels), so a row is a quarter as tall as a column is wide.
             float aspect=world.Width/(world.Hex?ViewRows*PixelArt.HR/(float)PixelArt.HW:world.Staggered?ViewRows*.25f:(float)ViewRows),w=inner.width,h=w/aspect;if(h>inner.height){h=inner.height;w=h*aspect;}
-            var drawn=new Rect(inner.center.x-w/2,inner.center.y-h/2,w,h);Fill(inner,UiTrough);if(miniTexture==null||miniWorld!=world||miniRealm!=viewRealm||Time.realtimeSinceStartup-miniBuilt>3f)BuildMiniTexture();GUI.DrawTexture(drawn,miniTexture??atlasTexture,ScaleMode.StretchToFill);
+            var drawn=new Rect(inner.center.x-w/2,inner.center.y-h/2,w,h);Fill(inner,UiTrough);if(miniTexture==null||miniWorld!=world||miniRealm!=viewRealm||miniLayerBuilt!=MiniLayer||Time.realtimeSinceStartup-miniBuilt>3f)BuildMiniTexture();GUI.DrawTexture(drawn,miniTexture??atlasTexture,ScaleMode.StretchToFill);
             float vx,vy,vw,vh;
             if(diamondView&&world.Rows){float tw=isoWidth,rowH=RowPixels(tw);vx=camI-MapW/2/tw;vw=MapW/tw;vy=camJ-MapH/2/rowH;vh=MapH/rowH;}
             else if(diamondView){// The diagonal view covers a turned square of the grid; outline the grid rectangle around it.
@@ -232,6 +232,7 @@ namespace ParadigmRealm
                 vx=lo;vy=top;vw=hi-lo;vh=bottom-top;}
             else{vx=mapScroll.x/tilePixels;vy=mapScroll.y/ClassicRowHeight();vw=MapW/tilePixels;vh=MapH/ClassicRowHeight();}
             vy-=ViewTop;float sx=w/world.Width,sy=h/ViewRows;var view=new Rect(drawn.x+vx*sx,drawn.y+vy*sy,vw*sx,vh*sy);
+            DrawMiniLayerControls(drawn,sx,sy);
             GUI.BeginGroup(drawn);var local=new Rect(view.x-drawn.x,view.y-drawn.y,view.width,view.height);var edge=new Color(1,1,1,.9f);
             Fill(new Rect(local.x,local.y,local.width,1),edge);Fill(new Rect(local.x,local.yMax-1,local.width,1),edge);Fill(new Rect(local.x,local.y,1,local.height),edge);Fill(new Rect(local.xMax-1,local.y,1,local.height),edge);
             GUI.EndGroup();

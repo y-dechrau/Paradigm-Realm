@@ -70,6 +70,10 @@ namespace ParadigmRealm { public partial class RealmGame {
   world.offers.Add(new DiplomaticOffer{id=99001,from=diplomacyPartner,to=0,kind=Pacts.Kind[Pacts.Commercial],created=world.turn,expires=world.turn+5,status=0});
   yield return Frames(20);yield return Shot(folder,"hud-court-proposal.bmp");world.offers.RemoveAll(o=>o.id==99001);
   detailsScreen="";
+  // Minimap layers (20 Nov 2026): the home world explored, ten turns played, then each layer with its key.
+  {for(int k=0;k<60&&world.result=="";k++)world.EndTurn();world.LearnHomeWorldForShots();for(int o=1;o<world.civCount;o++)world.met[o]=true;world.Reveal();world.buildNotices.Clear();world.nations[0].faith=0;selected=-1;cityId=-1;miniKeyAlways=true;int keep=MiniLayer;for(int k=0;k<40;k++){gateScene=null;world.newContacts.Clear();world.researchPrompts.Clear();world.buildPrompts.Clear();yield return null;}
+   for(int k=0;k<MiniLayerNames.Length;k++){MiniLayer=k;miniBuilt=-99;yield return Frames(4);gateScene=null;yield return CleanShot(folder,"hud-minimap-"+k+".bmp");}
+   miniLayerOpen=true;yield return Frames(3);gateScene=null;yield return CleanShot(folder,"hud-minimap-list.bmp");miniLayerOpen=false;miniKeyAlways=false;MiniLayer=keep;}
   Application.Quit();
  }
 }}

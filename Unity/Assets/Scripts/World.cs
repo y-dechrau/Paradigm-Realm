@@ -331,7 +331,9 @@ namespace ParadigmRealm
         // view makes first contact, and the talks open, as when one of its units or cities comes into view.
         void FirstContacts(int mover=-1){
             bool[] bordersSeen=null;
-            for(int i=1;i<civCount;i++)if((mover<=0||mover==i)&&!met[i]&&!(gatesLocked&&IsNativeNation(i))){bordersSeen=new bool[civCount];foreach(var t in tiles)if(t.owner>0&&t.owner<civCount&&!met[t.owner]&&!bordersSeen[t.owner]&&Visible(t.x,t.y))bordersSeen[t.owner]=true;break;}
+            // A rival moving its own unit cannot change which of its borders you see, so only your moves and the turn's full sight
+            // update look for borders (owner report, 20 Nov 2026: this scan of every tile on every rival step made End Turn take seconds).
+            if(mover<=0)for(int i=1;i<civCount;i++)if(!met[i]&&!(gatesLocked&&IsNativeNation(i))){bordersSeen=new bool[civCount];foreach(var t in tiles)if(t.owner>0&&t.owner<civCount&&!met[t.owner]&&!bordersSeen[t.owner]&&Visible(t.x,t.y))bordersSeen[t.owner]=true;break;}
             for(int i=1;i<civCount;i++)if((mover<=0||mover==i)&&!met[i]&&!(gatesLocked&&IsNativeNation(i))&&(bordersSeen!=null&&bordersSeen[i]||units.Any(u=>u.owner==i&&Visible(u.x,u.y))||cities.Any(c=>c.owner==i&&Visible(c.x,c.y)))){met[i]=true;Note("First contact: "+NationName(i)+".");AddEraScore(0,1,"first contact with "+NationName(i));AddEraScore(i,1,"first contact");if(newContacts==null)newContacts=new List<int>();newContacts.Add(i);}}
         public bool AtWar(int a,int b){return a>=0&&b>=0&&a<civCount&&b<civCount&&a!=b&&(a!=0&&b!=0?RivalWar(a,b):war[a==0?b:a]);}
         bool RivalWar(int a,int b){var p=Relation(a,b);return p!=null&&p.atWar;}
@@ -737,20 +739,20 @@ namespace ParadigmRealm
         void AI(int owner){foreach(int part in AISteps(owner)){}}
         // A rival's plan, handed back a piece at a time: its empire, then each city, then a handful of units at a time.
         System.Collections.Generic.IEnumerable<int> AISteps(int owner){EmpireAI(owner);AdjustScienceRate(owner);yield return 1;aiBalance=Budget(owner)[2];aiBalanceFor=owner;var r=new Random(seed+turn*997+owner);foreach(var c in cities.Where(a=>a.owner==owner).ToList()){if(!cities.Contains(c)||c.owner!=owner)continue;aiBalanceFor=owner;ManageCityAI(c);var own=units.Where(a=>a.owner==owner).ToList();if(c.build>=0&&IsCombatBuild(c.build)&&cities.Count(a=>a.owner==owner)<2&&ShouldTrainSettler(c))c.build=UnitBuild(0);if(c.build<0){var choices=Choices(c);int naval=AINavalBuild(c);int desired=ShouldTrainSettler(c)?0:own.Count(u=>u.type==1)<cities.Count(a=>a.owner==owner)?1:naval>=0&&!(Budget(owner)[2]<0&&nations[owner].gold<15)?naval:Budget(owner)[2]<0&&nations[owner].gold<15?-1:AIMilitaryBuild(c,choices.ToList(),own);c.build=nations[owner].rationShort>0&&desired>=0&&BuildUnit(desired)>=0?-1:desired;}if(c.buildingProject<0){int building=PreferredBuilding(c);if(BuildingIds.Contains(building))ChooseProject(c,building,false);}AIRush(c);aiBalanceFor=-1;yield return 2;}
-            aiBalanceFor=-1;yield return 3;int lastType=-1;foreach(var u in units.Where(a=>a.owner==owner).ToList()){yield return lastType<0?4:100+lastType;lastType=u.type;if(!units.Contains(u)||result!=""||u.job>0)continue;if(u.type==11){AICaravan(u);continue;}if(u.type==PriestUnit){PriestAI(u);continue;}if(IsNaval(u.type)){NavalUnitAI(u);continue;}if(u.type==0){PlanAISettlement(u);continue;}if(AtSea(u)){if(!units.Any(g=>g.owner==owner&&g.type==GalleyUnit&&g.x==u.x&&g.y==u.y))GoAshore(u);continue;}
-                if(u.type==1){if(u.flee!=0){if(u.hasOrder)ContinueOrder(u);}else ImproveAI(u);continue;}
-                if(AIUpgrade(u))continue;
-                if(DutyErrand(u))continue;
-                if(GateErrand(u))continue;
-                if(BeyondErrand(u))continue;
+            aiBalanceFor=-1;yield return 3;int lastType=-1;foreach(var u in units.Where(a=>a.owner==owner).ToList()){yield return lastType<0?4:100+lastType;lastType=u.type;if(!units.Contains(u)||result!=""||u.job>0)continue;if(u.type==11){AICaravan(u);continue;}if(u.type==PriestUnit){PriestAI(u);continue;}if(IsNaval(u.type)){P("ships",()=>NavalUnitAI(u));continue;}if(u.type==0){P("settlers",()=>PlanAISettlement(u));continue;}if(AtSea(u)){if(!units.Any(g=>g.owner==owner&&g.type==GalleyUnit&&g.x==u.x&&g.y==u.y))GoAshore(u);continue;}
+                if(u.type==1){if(u.flee!=0){if(u.hasOrder)ContinueOrder(u);}else P("workers",()=>ImproveAI(u));continue;}
+                if(P("upgrades",()=>AIUpgrade(u)))continue;
+                if(P("duty errands",()=>DutyErrand(u)))continue;
+                if(P("gateway errands",()=>GateErrand(u)))continue;
+                if(P("errands beyond gates",()=>BeyondErrand(u)))continue;
                 if(Power[u.type]>0&&cities.Any(c=>c.owner==owner&&c.x==u.x&&c.y==u.y)&&!units.Any(a=>a.id!=u.id&&a.owner==owner&&Power[a.type]>0&&a.x==u.x&&a.y==u.y)){u.fortified=true;continue;}
                 if((u.type==4||u.type==9)&&RangedTargets(u).Count>0&&Ranged(u,RangedTargets(u)[0].id))continue;
                 // Sealed peoples at peace rouse their idle troops only now and then: nobody can see them, and it saves most of a crowded turn.
                 if(gatesLocked&&IsNativeNation(owner)&&(turn+u.id)%4!=0&&!AtWarWithAnyone(owner))continue;
-                if(JoinInvasion(u))continue;
-                if(WarUnitAI(u))continue;
-                if(HuntAnimalAI(u))continue;
-                if(HuntBarbarianAI(u))continue;
+                if(P("invasions",()=>JoinInvasion(u)))continue;
+                if(P("war moves",()=>WarUnitAI(u)))continue;
+                if(P("hunting animals",()=>HuntAnimalAI(u)))continue;
+                if(P("hunting barbarians",()=>HuntBarbarianAI(u)))continue;
                 for(int attempt=0;attempt<8;attempt++){int x=u.x+r.Next(-1,2),y=u.y+r.Next(-1,2);var step=At(x,y);if(step==null||IsWater(step.terrain))continue;if(Move(u,x,y))break;}
             }
         }
