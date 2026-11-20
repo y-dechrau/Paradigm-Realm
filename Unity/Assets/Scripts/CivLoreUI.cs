@@ -13,7 +13,7 @@ public partial class RealmGame {
   GUI.Label(new Rect(68,440,880,30),CivilisationCatalog.Names[civ]+" — led by "+CivilisationCatalog.Leaders[civ]+(e!=null?"  ·  "+e.Epithet:""),heading);
   if(e!=null&&GUI.Button(new Rect(960,440,252,32),"History and lore",button)){civLoreOpen=true;civLoreScroll=Vector2.zero;GUIUtility.ExitGUI();}
   for(int k=0;k<2;k++)GUI.Label(new Rect(68,474+k*22,1144,22),"Trait — "+CivilisationCatalog.TraitNames[traits[k]]+": "+CivilisationCatalog.TraitTexts[traits[k]],small);
-  if(e!=null){GUI.Label(new Rect(68,522,1144,92),CivRules(e),small);GUI.Label(new Rect(68,616,1144,40),"Strengths: "+e.Strengths+"   Weaknesses: "+e.Weaknesses+"\nAs a rival, "+CivilisationCatalog.Leaders[civ]+" is a "+CivLore.AgendaNames[e.Agenda]+": "+CivLore.AgendaTexts[e.Agenda],small);}
+  if(e!=null){GUI.Label(new Rect(68,522,1144,92),CivRules(e),small);GUI.Label(new Rect(68,604,1144,84),"Strengths: "+e.Strengths+"   Weaknesses: "+e.Weaknesses+"\nAs a rival, "+CivilisationCatalog.Leaders[civ]+" is a "+CivLore.AgendaNames[e.Agenda]+": "+CivLore.AgendaTexts[e.Agenda],small);}
   else GUI.Label(new Rect(68,522,1144,24),"Rivals are drawn from the other civilisations, each with its own leader and traits.",small);
  }
  // detail 3 shows everything; for peoples of other worlds it is what your civilisation has managed to learn.
