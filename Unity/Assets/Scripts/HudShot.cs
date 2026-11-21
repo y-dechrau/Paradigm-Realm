@@ -69,7 +69,7 @@ namespace ParadigmRealm { public partial class RealmGame {
    diplomacyChooser=true;councilPick=-1;zn.civ=zc;zn.portrait=zp;zn.name=zname;zn.leader=zl;}
   diplomacyPartner=councilPick;diplomacyChooser=false;ResetDiplomacyUI();yield return Frames(20);yield return Shot(folder,"hud-court-long.bmp");diplomacyChooser=true;councilPick=-1;
   for(int o=9;o<world.civCount;o++)world.met[o]=false;
-  diplomacyPartner=Enumerable.Range(1,world.civCount-1).First(o=>world.met[o]);diplomacyChooser=false;ResetDiplomacyUI();yield return Frames(20);yield return Shot(folder,"hud-court.bmp");
+  diplomacyPartner=Enumerable.Range(1,world.civCount-1).First(o=>world.met[o]);diplomacyChooser=false;ResetDiplomacyUI();yield return Frames(20);yield return Shot(folder,"hud-court.bmp");customDeal=true;yield return Frames(15);yield return Shot(folder,"hud-court-trade.bmp");customDeal=false;
   // With a proposal waiting from them (the "Under proposal" row and the scrolling panel).
   world.offers.Add(new DiplomaticOffer{id=99001,from=diplomacyPartner,to=0,kind=Pacts.Kind[Pacts.Commercial],created=world.turn,expires=world.turn+5,status=0});
   yield return Frames(20);yield return Shot(folder,"hud-court-proposal.bmp");world.offers.RemoveAll(o=>o.id==99001);

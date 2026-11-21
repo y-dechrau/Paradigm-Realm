@@ -397,7 +397,8 @@ public partial class RealmGame {
    if(DipButton(new Rect(left,y,wide2,26),"◂ Back",navy))customDeal=false;y+=32;
    DipHeading(new Rect(left,y,wide2,22),war?"Peace terms":"Trade deal");y+=28;
    GUI.Label(new Rect(left,y+3,150,22),"Payments run for",new GUIStyle(dipRow){fontSize=13});diplomacyDuration=Dropdown(new Rect(left+150,y,150,26),"length",diplomacyDuration,new[]{"10 turns","15 turns","30 turns"});y+=32;
-   float colW=(side.width-44)/2;
+   // Both columns fit the content width (owner report, 21 Nov 2026: THEY GIVE ran past the panel and lost its + buttons).
+   float colW=(wide2-12)/2;
    for(int s=0;s<2;s++){
     var col=new Rect(left+s*(colW+12),y,colW,150);DipPanel(col,.9f);GUI.Label(new Rect(col.x,col.y+4,col.width,20),s==0?"YOU GIVE":"THEY GIVE",dipCaps);
     DrawIcon(PixelArt.IconGold,new Rect(col.x+8,col.y+32,22,22));GUI.Label(new Rect(col.x+32,col.y+30,60,24),"Gold",dipRow);

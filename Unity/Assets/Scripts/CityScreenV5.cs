@@ -140,14 +140,14 @@ public partial class RealmGame {
   cityPickScroll=GUI.BeginScrollView(list,cityPickScroll,new Rect(0,0,list.width-18,inner));var lm=Event.current.mousePosition;float rw=list.width-20;
   for(int i=0;i<options.Length;i++){
    int p=options[i];var r=new Rect(0,i*Row,rw,Row-3);string reason=world.BuildReason(c,p);bool ordered=building&&(current==p||queue.Contains(p));bool was=GUI.enabled;
-   if(ordered&&e.type==EventType.MouseDown&&e.button==1&&r.Contains(lm)&&world.result==""){world.CancelProject(c,p);status="Cancelled "+world.BuildNameFor(c.owner,p)+".";e.Use();GUIUtility.ExitGUI();}
-   GUI.enabled=was&&reason==""&&world.result==""&&!ordered;
-   if(GUI.Button(r,"",button)){bool ok=world.ChooseProject(c,p,current>=0);status=ok?(current>=0?world.BuildNameFor(c.owner,p)+" added to the "+(building?"buildings":"units")+" line.":"Now making "+world.BuildNameFor(c.owner,p)+"."):"That line is full (eight items).";GUIUtility.ExitGUI();}
+   if(ordered&&e.type==EventType.MouseDown&&e.button==1&&r.Contains(lm)&&world.result==""){world.CancelProject(c,p);world.SettleBuilding(c);status="Cancelled "+world.BuildNameFor(c.owner,p)+".";e.Use();GUIUtility.ExitGUI();}
+   string payWhy=building&&current<0?world.PayReason(c,p):"";if(reason==""&&payWhy!="")reason=payWhy;GUI.enabled=was&&reason==""&&world.result==""&&!ordered;
+   if(GUI.Button(r,"",button)){bool ok=world.ChooseProject(c,p,current>=0);if(ok&&building)world.SettleBuilding(c);status=ok?(current>=0?world.BuildNameFor(c.owner,p)+" added to the "+(building?"buildings":"units")+" line.":"Now making "+world.BuildNameFor(c.owner,p)+"."):"That line is full (eight items).";GUIUtility.ExitGUI();}
    GUI.enabled=was;var keep=GUI.color;if(reason!=""||ordered)GUI.color=new Color(1,1,1,.55f);
    if(building)DrawIcon(new Rect(r.x+6,r.y+5,27,27),12+Array.IndexOf(World.BuildingIds,p));else GUI.DrawTexture(new Rect(r.x+4,r.y+3,31,31),people[World.BuildUnit(p)],ScaleMode.ScaleToFit,true);
    int cost=world.CostFor(c,p),t=Math.Max(1,(cost+output-1)/output);
    GUI.Label(new Rect(r.x+40,r.y+2,r.width-120,20),world.BuildNameFor(c.owner,p),new GUIStyle(body){wordWrap=false,clipping=TextClipping.Clip});
-   GUI.Label(new Rect(r.x+40,r.y+20,r.width-44,19),ordered?"Ordered":reason!=""?reason:building?World.BuildingEffect(p):UnitLine(p),new GUIStyle(cityTiny){wordWrap=false,clipping=TextClipping.Clip});
+   GUI.Label(new Rect(r.x+40,r.y+20,r.width-44,19),ordered?"Ordered":reason!=""?reason:building?(world.buildingMaterials&&world.BuildingPriceText(p)!=""?world.BuildingPriceText(p)+" · ":"")+World.BuildingEffect(p):UnitLine(p),new GUIStyle(cityTiny){wordWrap=false,clipping=TextClipping.Clip});
    GUI.Label(new Rect(r.xMax-82,r.y+2,76,20),cost+" • "+t+"t",cityRight);GUI.color=keep;
    if(r.Contains(lm)&&inList){if(building)cityHoverProjectNext=p;SetCityTip(PickTip(c,p,building,reason,ordered,cost,t));}
   }
@@ -162,7 +162,7 @@ public partial class RealmGame {
  string UnitLine(int p){int u=World.BuildUnit(p);return u<0?"":World.Power[u]>0?"Strength "+World.Power[u]:"Civilian";}
  string PickTip(City c,int p,bool building,string reason,bool ordered,int cost,int turns){
   var lines=new List<string>{world.BuildNameFor(c.owner,p)+" — "+cost+" shields, about "+turns+(turns==1?" turn":" turns")+" on this line"+(building&&world.BuildingGold(p)>0?" + "+world.BuildingGold(p)+" gold":"")+"."};
-  if(building){lines.Add(World.BuildingEffect(p));{int armsThen=world.ArmsWith(c,p);if(armsThen>=0)lines.Add("National arms output: "+world.ArmsOutput(c.owner)+" → "+armsThen+" a turn.");}
+  if(building){lines.Add(World.BuildingEffect(p));if(world.buildingMaterials&&world.BuildingPriceText(p)!=""){var nat=world.nations[c.owner];lines.Add("Paid when it starts: "+world.BuildingPriceText(p)+" (you have "+nat.gold+" gold, "+nat.timber+" timber, "+nat.stone+" stone). Cancelling refunds it.");}{int armsThen=world.ArmsWith(c,p);if(armsThen>=0)lines.Add("National arms output: "+world.ArmsOutput(c.owner)+" → "+armsThen+" a turn.");}
    if(cityPreview!=null&&cityHoverProject==p){var d=cityPreview;var gain=new List<string>();string[] n={"food","shields","science","gold","faith"};for(int k=0;k<5;k++)if(d[k]!=0)gain.Add((d[k]>0?"+":"")+d[k]+" "+n[k]);
     lines.Add(gain.Count>0?"Here, now: "+string.Join(", ",gain.ToArray())+" a turn.":"No change to this city's totals today.");if(cityHighlight.Count>0)lines.Add("Improves the "+cityHighlight.Count+" lit tile"+(cityHighlight.Count==1?"":"s")+" on the land.");}}
   if(ordered)lines.Add("Already ordered. Right-click to cancel it.");else if(reason!="")lines.Add(reason);else lines.Add("Click to add it to the "+(building?"buildings":"units")+" line.");
@@ -176,7 +176,7 @@ public partial class RealmGame {
   GUI.Label(new Rect(x,y,w,16),(building?"BUILDINGS":"UNITS")+"   +"+world.LineShare(c,building)+" shields a turn",new GUIStyle(cityTiny){normal={textColor=UiGold}});y+=18;
   if(current<0){GUI.Label(new Rect(x,y+6,w,36),"Nothing chosen. Pick one from the "+(building?"Buildings":"Units")+" list below.",cityTiny);return card.yMax;}
   if(building)DrawIcon(new Rect(x,y+2,30,30),12+Array.IndexOf(World.BuildingIds,current));else GUI.DrawTexture(new Rect(x-2,y,34,34),people[World.BuildUnit(current)],ScaleMode.ScaleToFit,true);
-  int cost=world.CostFor(c,current),price=world.RushPrice(c,building);string reason=world.BuildReason(c,current);
+  int cost=world.CostFor(c,current),price=world.RushPrice(c,building);string reason=world.BuildReason(c,current);if(reason==""&&building&&world.buildingMaterials&&c.paidFor!=current)reason=world.PayReason(c,current);
   GUI.Label(new Rect(x+38,y,w-130,20),world.BuildNameFor(c.owner,current),new GUIStyle(body){wordWrap=false,clipping=TextClipping.Clip});
   DrawBar(new Rect(x+38,y+21,w-130,8),progress/(float)Math.Max(1,cost),building?new Color(.55f,.62f,.85f):new Color(.9f,.6f,.3f));
   GUI.Label(new Rect(x+38,y+29,w-130,16),reason!=""?"Paused: "+reason:progress+" / "+cost+"  •  "+(turns.Count>0?turns[0]:0)+(turns.Count>0&&turns[0]==1?" turn":" turns"),new GUIStyle(cityTiny){wordWrap=false,clipping=TextClipping.Clip});
@@ -190,7 +190,7 @@ public partial class RealmGame {
    GUI.Label(new Rect(r.xMax-140,r.y,80,19),(turns.Count>i+1?turns[i+1]:0)+" turns",new GUIStyle(cityTiny){alignment=TextAnchor.MiddleRight,wordWrap=false});
    bool was=GUI.enabled;GUI.enabled=was&&i>0;if(GlyphButton(new Rect(r.xMax-56,r.y,18,18),0)){world.MoveQueued(c,building,i,-1);GUIUtility.ExitGUI();}
    GUI.enabled=was&&i<queue.Count-1;if(GlyphButton(new Rect(r.xMax-37,r.y,18,18),1)){world.MoveQueued(c,building,i,1);GUIUtility.ExitGUI();}
-   GUI.enabled=was;if(GlyphButton(new Rect(r.xMax-18,r.y,18,18),2)){world.RemoveQueued(c,building,i);status="Removed from the line.";GUIUtility.ExitGUI();}}
+   GUI.enabled=was;if(GlyphButton(new Rect(r.xMax-18,r.y,18,18),2)){world.RemoveQueued(c,building,i);world.SettleBuilding(c);status="Removed from the line.";GUIUtility.ExitGUI();}}
   if(queue.Count>2)GUI.Label(new Rect(x,y+40,w,16),"and "+(queue.Count-2)+" more: "+string.Join(", ",queue.Skip(2).Select(b=>world.BuildNameFor(c.owner,b)).ToArray()),new GUIStyle(cityTiny){wordWrap=false,clipping=TextClipping.Clip});
   else if(queue.Count==0)GUI.Label(new Rect(x,y,w,18),"Nothing queued after it. Clicking the list adds to this line.",cityTiny);
   return card.yMax;
