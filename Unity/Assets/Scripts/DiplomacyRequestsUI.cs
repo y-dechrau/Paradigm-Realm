@@ -12,7 +12,8 @@ public partial class RealmGame {
  static readonly int[] RequestDurations={5,10,20};
  // ---- Requests (right panel) ----
  void DrawRequestsPanel(int partner,Rect side,float y){
-  float left=side.x+16,wide=side.width-32;bool enabled=GUI.enabled;var pn=world.nations[partner];
+  // The same margins as the rest of the Court's right panel (owner report, 21 Nov 2026: the left of every line was cut off).
+  float left=side.x+40,wide=side.width-80;bool enabled=GUI.enabled;var pn=world.nations[partner];
   Color navy=new Color(.1f,.16f,.3f),teal=new Color(.07f,.38f,.4f);
   if(DipButton(new Rect(left,y,wide,26),"◂ Back",navy))requestsView=false;y+=32;
   DipHeading(new Rect(left,y,wide,22),"Ask "+world.NationName(partner));y+=26;
@@ -49,7 +50,7 @@ public partial class RealmGame {
  }
  // ---- Peace terms (inside the deal panel during war) ----
  float DrawPeaceTerms(int partner,Rect side,float y,DiplomaticOffer offer){
-  float left=side.x+16,wide=side.width-32;
+  float left=side.x+40,wide=side.width-80;
   var theirs=world.cities.Where(c=>c.owner==partner&&world.At(c.x,c.y).seen&&world.nations[partner].capital!=c.id).OrderByDescending(c=>c.pop).Take(8).ToList();
   var mine=world.cities.Where(c=>c.owner==0&&world.nations[0].capital!=c.id).OrderBy(c=>c.pop).Take(8).ToList();
   GUI.Label(new Rect(left,y+3,120,22),"They hand over",new GUIStyle(dipRow){fontSize=13});peaceAskCity=Mathf.Clamp(Dropdown(new Rect(left+124,y,wide-124,26),"peaceask",peaceAskCity,new[]{"No city"}.Concat(theirs.Select(c=>c.name+" (size "+c.pop+")")).ToArray()),0,theirs.Count);offer.askCity=peaceAskCity>0?theirs[peaceAskCity-1].id:-1;y+=30;

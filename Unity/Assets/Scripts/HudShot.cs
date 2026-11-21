@@ -31,6 +31,7 @@ namespace ParadigmRealm { public partial class RealmGame {
    // Three workers beside the city, one at each tool.
    var spots=ring.Skip(1).Take(3).ToList();int[] jobs={5,3,2};for(int k=0;k<spots.Count;k++){var w=world.Add(0,1,spots[k].x,spots[k].y);w.job=jobs[k];w.hasOrder=false;}
    selected=-1;cityId=home.id;isoWidth=160;FocusTile(home.x,home.y);yield return Frames(30);yield return Shot(folder,"hud-map-city.bmp");
+   world.NoticeForShot(home,8);yield return Frames(10);yield return Shot(folder,"hud-notice.bmp");world.buildNotices.Clear();
    yield return Frames(3);yield return Shot(folder,"hud-workers-b.bmp");
    // The redesigned city screen: a size 4 city with a scientist, both lines busy with queues, then a building hovered.
    {int popWas=home.pop;home.pop=4;home.scientists=1;home.food=9;world.gold=200;world.nations[0].gold=200;world.ChooseProject(home,World.UnitBuild(2),false);world.ChooseProject(home,World.UnitBuild(1),true);world.ChooseProject(home,World.UnitBuild(0),true);world.ChooseProject(home,7,false);world.ChooseProject(home,8,true);home.production=6;home.buildingProduction=12;
@@ -69,7 +70,7 @@ namespace ParadigmRealm { public partial class RealmGame {
    diplomacyChooser=true;councilPick=-1;zn.civ=zc;zn.portrait=zp;zn.name=zname;zn.leader=zl;}
   diplomacyPartner=councilPick;diplomacyChooser=false;ResetDiplomacyUI();yield return Frames(20);yield return Shot(folder,"hud-court-long.bmp");diplomacyChooser=true;councilPick=-1;
   for(int o=9;o<world.civCount;o++)world.met[o]=false;
-  diplomacyPartner=Enumerable.Range(1,world.civCount-1).First(o=>world.met[o]);diplomacyChooser=false;ResetDiplomacyUI();yield return Frames(20);yield return Shot(folder,"hud-court.bmp");customDeal=true;yield return Frames(15);yield return Shot(folder,"hud-court-trade.bmp");customDeal=false;
+  diplomacyPartner=Enumerable.Range(1,world.civCount-1).First(o=>world.met[o]);diplomacyChooser=false;ResetDiplomacyUI();yield return Frames(20);yield return Shot(folder,"hud-court.bmp");customDeal=true;yield return Frames(15);yield return Shot(folder,"hud-court-trade.bmp");customDeal=false;requestsView=true;yield return Frames(15);yield return Shot(folder,"hud-court-request.bmp");requestsView=false;
   // With a proposal waiting from them (the "Under proposal" row and the scrolling panel).
   world.offers.Add(new DiplomaticOffer{id=99001,from=diplomacyPartner,to=0,kind=Pacts.Kind[Pacts.Commercial],created=world.turn,expires=world.turn+5,status=0});
   yield return Frames(20);yield return Shot(folder,"hud-court-proposal.bmp");world.offers.RemoveAll(o=>o.id==99001);

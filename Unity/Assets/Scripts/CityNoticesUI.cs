@@ -15,9 +15,11 @@ public partial class RealmGame {
   string line=current>=0?"Now making "+world.BuildNameFor(0,current)+". Open the city to change it.":next>=0?"Next: "+world.BuildNameFor(0,next)+"? "+why:other>=0?"Still making "+world.BuildNameFor(0,other)+". Open the city to add more.":"Nothing is queued on this line. Open the city to choose.";
   GUI.Label(new Rect(r.x+12,r.y+32,r.width-24,40),line,wrap);
   float y=r.yMax-36;
-  if(next>=0&&GUI.Button(new Rect(r.x+10,y,150,28),"Make "+world.BuildNameFor(0,next),button)){world.ChooseProject(c,next,false);status=c.name+" will make "+world.BuildNameFor(0,next)+".";world.buildNotices.RemoveAt(0);GUIUtility.ExitGUI();}
-  if(GUI.Button(new Rect(r.x+166,y,110,28),"Open city",button)){world.buildNotices.RemoveAt(0);OpenCity(c);GUIUtility.ExitGUI();}
-  if(GUI.Button(new Rect(r.x+282,y,88,28),"OK",button)){world.buildNotices.RemoveAt(0);GUIUtility.ExitGUI();}
+  // The buttons share the panel width and the first one's text shrinks to fit (owner report, 21 Nov 2026: it wrapped and was cut).
+  float okW=80,openW=104,makeW=r.width-20-okW-openW-12;
+  if(next>=0&&FitButton(new Rect(r.x+10,y,makeW,28),"Make "+world.BuildNameFor(0,next))){world.ChooseProject(c,next,false);world.SettleBuilding(c);status=c.name+" will make "+world.BuildNameFor(0,next)+".";world.buildNotices.RemoveAt(0);GUIUtility.ExitGUI();}
+  if(FitButton(new Rect(r.xMax-10-okW-6-openW,y,openW,28),"Open city")){world.buildNotices.RemoveAt(0);OpenCity(c);GUIUtility.ExitGUI();}
+  if(FitButton(new Rect(r.xMax-10-okW,y,okW,28),"OK")){world.buildNotices.RemoveAt(0);GUIUtility.ExitGUI();}
  }
  // Another leader calling: the portrait, what they want, and the way to answer.
  static Rect CallRect{get{return new Rect(452+MidShift,170,380,76);}}
@@ -40,4 +42,23 @@ public partial class RealmGame {
   }
  }
 }
+}
+namespace ParadigmRealm {
+public partial class RealmGame {
+ // A button whose label is never cut (owner request, 21 Nov 2026: all text must be visible): the font shrinks, down to 10, until
+ // the label fits on one line; only then does it wrap onto two smaller lines.
+ readonly System.Collections.Generic.Dictionary<string,GUIStyle> fitButtonStyles=new System.Collections.Generic.Dictionary<string,GUIStyle>();
+ bool FitButton(Rect r,string text,GUIStyle style=null){
+  style=style??button;string key=style.GetHashCode()+"|"+(int)r.width+"|"+(int)r.height+"|"+text;GUIStyle s;
+  if(!fitButtonStyles.TryGetValue(key,out s)){s=new GUIStyle(style){wordWrap=false,clipping=TextClipping.Overflow};var content=new GUIContent(text);
+   while(s.fontSize==0?false:s.fontSize>10&&s.CalcSize(content).x>r.width-12)s.fontSize--;
+   if(s.fontSize==0){s.fontSize=style.font!=null?style.font.fontSize:14;while(s.fontSize>10&&s.CalcSize(content).x>r.width-12)s.fontSize--;}
+   if(s.CalcSize(content).x>r.width-12){s.wordWrap=true;while(s.fontSize>9&&s.CalcHeight(content,r.width-12)>r.height-2)s.fontSize--;}
+   if(fitButtonStyles.Count>400)fitButtonStyles.Clear();fitButtonStyles[key]=s;}
+  return GUI.Button(r,text,s);
+ }
+}
+}
+namespace ParadigmRealm {
+public partial class World {internal void NoticeForShot(City c,int b){AddBuildNotice(c,b,true,"built");}}
 }

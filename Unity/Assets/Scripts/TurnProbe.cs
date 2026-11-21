@@ -30,7 +30,9 @@ public partial class RealmGame {
   {long tilesBytes=JsonUtility.ToJson(new TileProbeHolder{tiles=world.tiles}).Length,unitsBytes=JsonUtility.ToJson(new UnitProbeHolder{units=world.units}).Length;long nationsBytes=0;foreach(var n in world.nations)nationsBytes+=JsonUtility.ToJson(n).Length;
    log.AppendLine("save make-up: tiles "+(tilesBytes/1048576.0).ToString("0.0")+" MB, units "+(unitsBytes/1048576.0).ToString("0.0")+" MB, nations "+(nationsBytes/1048576.0).ToString("0.0")+" MB (largest nation "+(world.nations.Max(n=>JsonUtility.ToJson(n).Length)/1048576.0).ToString("0.00")+" MB)");}
   World.decisionTimes=new System.Collections.Generic.Dictionary<string,double>();
-  for(int run=0;run<9;run++){
+  int runs=3;{var ra=Environment.GetCommandLineArgs();int ri=Array.IndexOf(ra,"-probeRuns");if(ri>=0&&ri+1<ra.Length)runs=int.Parse(ra[ri+1]);}
+  File.WriteAllText(Path.Combine(folder,"turns.txt"),log.ToString());
+  for(int run=0;run<runs;run++){
    world.researchPrompts.Clear();world.buildPrompts.Clear();if(world.newContacts!=null)world.newContacts.Clear();if(world.rivalCalls!=null)world.rivalCalls.Clear();gateScene=null;detailsScreen="";cityScreen=false;
    turnStepLog=new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<string,double>>();clock.Restart();EndTurn();
    var one=new Stopwatch();one.Start();var frames=new System.Collections.Generic.List<double>();int glides=0;
@@ -46,7 +48,7 @@ public partial class RealmGame {
     log.AppendLine("   slowest peoples: "+string.Join("; ",per.Select(p=>world.NationName(p.o)+" (world "+CivilisationCatalog.NativeRealm(world.nations[p.o].civ)+(world.Dormant(p.o)?", dormant":"")+", "+world.cities.Count(c=>c.owner==p.o)+" cities, "+world.units.Count(u=>u.owner==p.o)+" units) "+p.ms.ToString("0")+" ms").ToArray()));}
    log.AppendLine("   decisions: "+string.Join(", ",World.decisionTimes.OrderByDescending(p=>p.Value).Take(6).Select(p=>p.Key+" "+p.Value.ToString("0")+" ms").ToArray()));World.decisionTimes.Clear();
    log.AppendLine("   slowest single steps: "+string.Join("; ",turnStepLog.OrderByDescending(s=>s.Value).Take(8).Select(s=>s.Key.Replace("step after ","")+" "+s.Value.ToString("0")+" ms").ToArray()));
-   turnStepLog=null;
+   turnStepLog=null;File.WriteAllText(Path.Combine(folder,"turns.txt"),log.ToString());
   }
   File.WriteAllText(Path.Combine(folder,"turns.txt"),log.ToString());try{File.Delete(Path.Combine(folder,"probe-save.tmp"));}catch{}Application.Quit();
  }

@@ -114,15 +114,16 @@ public partial class RealmGame {
   {var painting=Art("title-world");if(painting!=null){GUI.DrawTexture(full,painting,ScaleMode.ScaleAndCrop);Fill(full,new Color(.03f,.05f,.11f,.86f));}}
   // A sprinkling of faint stars over the navy, fixed so it does not shimmer.
   for(int k=0;k<70;k++){int h=(k*7919+13)%100003;float sx=h%1280,sy=(h/1280*37)%800;Fill(new Rect(sx,sy,1,1),new Color(1,1,1,.12f+(k%3)*.06f));}
-  GoldFrame(new Rect(-14,-14,1308,84));
-  DrawDipIcon("compass",new Rect(30,10,44,44));GUI.Label(new Rect(82,12,260,26),"PARADIGM REALM",new GUIStyle(courtCaps){fontSize=17,normal={textColor=CourtCream}});
-  Fill(new Rect(82,42,200,1),new Color(CourtGold.r,CourtGold.g,CourtGold.b,.6f));
+  // Every border inside the screen (owner report, 21 Nov 2026: the top and bottom frames were cut off).
+  GoldFrame(new Rect(4,2,1272,68));
+  DrawDipIcon("compass",new Rect(32,13,40,40));GUI.Label(new Rect(82,14,260,26),"PARADIGM REALM",new GUIStyle(courtCaps){fontSize=17,normal={textColor=CourtCream}});
+  Fill(new Rect(82,44,200,1),new Color(CourtGold.r,CourtGold.g,CourtGold.b,.6f));
   // Title and subtitle stay inside the banner's rails (owner request, 15 Nov 2026: all text fully visible).
-  GUI.Label(new Rect(340,0,600,36),titleText.ToUpperInvariant(),new GUIStyle(courtTitle){fontSize=27});
-  GUI.Label(new Rect(340,32,600,22),subtitle,new GUIStyle(courtSub){fontSize=15});
-  {var lineInk=new Color(CourtGold.r,CourtGold.g,CourtGold.b,.6f);float tw=courtTitle.CalcSize(new GUIContent(titleText.ToUpperInvariant())).x;Fill(new Rect(640-tw/2-150,22,130,1),lineInk);Fill(new Rect(640+tw/2+20,22,130,1),lineInk);}
+  GUI.Label(new Rect(340,7,600,34),titleText.ToUpperInvariant(),new GUIStyle(courtTitle){fontSize=26});
+  GUI.Label(new Rect(340,38,600,22),subtitle,new GUIStyle(courtSub){fontSize=15});
+  {var lineInk=new Color(CourtGold.r,CourtGold.g,CourtGold.b,.6f);float tw=courtTitle.CalcSize(new GUIContent(titleText.ToUpperInvariant())).x;Fill(new Rect(640-tw/2-150,26,130,1),lineInk);Fill(new Rect(640+tw/2+20,26,130,1),lineInk);}
   // An engraved gold plaque with crossed blades (owner request, 16 Nov 2026), brighter under the pointer; the plain cross is the fallback.
-  var close=new Rect(1220,8,48,48);var plaque=DipIcon("close");
+  var close=new Rect(1218,14,42,42);var plaque=DipIcon("close");
   if(plaque!=null){var keep=GUI.color;if(!close.Contains(Event.current.mousePosition))GUI.color=new Color(.9f,.9f,.9f);GUI.DrawTexture(close,plaque,ScaleMode.ScaleToFit,true);GUI.color=keep;}
   else{Fill(close,CourtNavy);Fill(new Rect(close.x,close.y,close.width,1),CourtGold);Fill(new Rect(close.x,close.yMax-1,close.width,1),CourtGold);Fill(new Rect(close.x,close.y,1,close.height),CourtGold);Fill(new Rect(close.xMax-1,close.y,1,close.height),CourtGold);GUI.Label(close,"✕",new GUIStyle(courtTitle){fontSize=22});}
   return GUI.Button(close,"",GUIStyle.none);
@@ -188,7 +189,7 @@ public partial class RealmGame {
   // ---- The chosen leader ----
   DrawCouncilSide(new Rect(956,124,316,620),councilPick);
   // ---- Figures along the bottom ----
-  CourtFooter(new Rect(-14,748,1308,66));
+  CourtFooter(new Rect(4,746,1272,52));
   FooterFigure(150,"people",known.Length+" known civilisation"+(known.Length==1?"":"s"),"");FooterRule(330);
   FooterFigure(520,"compass","Influence "+world.nations[0].influence,"(+"+world.InfluencePerTurn(0)+" / turn)");FooterRule(720);
   FooterFigure(860,"people","Envoys "+world.EnvoysOut(0)+" / "+world.EnvoyLimit(0),"");FooterRule(990);
@@ -337,7 +338,7 @@ public partial class RealmGame {
   if(diplomacyChooser){DrawCouncil(known);DrawOpenDropdown();return;}
   if(!known.Contains(diplomacyPartner))diplomacyPartner=known[0];int partner=diplomacyPartner;var pn=world.nations[partner];bool war=world.AtWar(0,partner);
   if(CourtChrome("The Imperial Court","Diplomacy & Agreements")){detailsScreen="";diplomacyDiscuss=false;claimsView=false;customDeal=false;requestsView=false;GUIUtility.ExitGUI();}
-  CourtFooter(new Rect(-14,748,1308,66));
+  CourtFooter(new Rect(4,746,1272,52));
   FooterFigure(260,"compass","Influence "+world.nations[0].influence,"(+"+world.InfluencePerTurn(0)+" / turn)");FooterRule(470);
   FooterFigure(640,"people","Envoys "+world.EnvoysOut(0)+" / "+world.EnvoyLimit(0),"");FooterRule(820);
   FooterFigure(1010,"swords","Rivals "+world.RivalCount(0)+" / "+Pacts.MaxRivals,"");

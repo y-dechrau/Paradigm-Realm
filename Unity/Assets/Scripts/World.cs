@@ -5,7 +5,7 @@ using System.Linq;
 namespace ParadigmRealm
 {
     [Serializable] public class Tile { public int x,y,terrain,resource,owner=-1; public int woods; public bool seen,road,farm,mine,fort,village,ruin,cleared; public int villageOwner=-1; public int realm,gateLink; public int swayCiv=-1,sway; public int rememberedTerrain,rememberedResource,rememberedOwner=-1; public bool rememberedRoad,rememberedFarm,rememberedMine,rememberedFort; public string rememberedCity=""; }
-    [Serializable] public class Unit { public int gear=1,wear; public int flee,fleeX,fleeY,fleeJob,fleeJobTurns,fleeDX,fleeDY;public bool fleeOrder,fleeRoad,fleeAuto,fleeEnemy; public int stack,autoJob; public List<int> roadPath=new List<int>(); public bool unfed,refitting; public int homeCity; public bool exploring,sentry,recover; public int id,owner,x,y,type,hp=10,moves=4,experience,promotion,job,jobTurns,workerGroup; public int victories; public int faith=-1,charges,plague; public bool hasOrder,fortified; public int destinationX,destinationY;
+    [Serializable] public class Unit { public int gear=1,wear; public int flee,fleeX,fleeY,fleeJob,fleeJobTurns,fleeDX,fleeDY;public bool fleeOrder,fleeRoad,fleeAuto,fleeEnemy; public int stack,autoJob; public List<int> roadPath=new List<int>(); public bool unfed,refitting; public int nextJob; public int homeCity; public bool exploring,sentry,recover; public int id,owner,x,y,type,hp=10,moves=4,experience,promotion,job,jobTurns,workerGroup; public int victories; public int faith=-1,charges,plague; public bool hasOrder,fortified; public int destinationX,destinationY;
         // Save version 21: workers that develop land on their own, and road routes (build a road on every tile to roadX, roadY).
         public bool autoWork,roadOrder; public int roadX,roadY; }
     [Serializable] public class City {
@@ -330,16 +330,24 @@ namespace ParadigmRealm
                 if(developed)foreach(var t in tiles)if(t.owner==owner&&Developed(owner,t)&&done.Add(t.y*Width+t.x))LearnTile(owner,t);
         }
         // After one unit moves only its owner can see more; the player also learns of any civilisation that just came into view.
-        void RevealAfterMove(int owner){RevealOne(owner,false);if(owner!=0)RevealOne(0,false);FirstContacts(owner);}
-        public void Reveal(){for(int owner=0;owner<civCount;owner++)if(!DormantSkips(owner))RevealOne(owner,true);FirstContacts();}
+        void RevealAfterMove(int owner,int x=-1,int y=-1){RevealOne(owner,false);if(owner!=0)RevealOne(0,false);FirstContacts(owner,x,y);}
+        System.Collections.Generic.IEnumerable<Tile> TilesAround(int x,int y,int r){for(int dy=-r;dy<=r;dy++)for(int dx=-r;dx<=r;dx++){var t=StepIn(x,y,dx,dy,r);if(t!=null)yield return t;}}
+        // The land of civilisations you have not met: only there can a border you have not seen yet be (21 Nov 2026: scanning all
+        // 100,000 tiles for it at the end of every turn cost about 115 ms).
+        System.Collections.Generic.IEnumerable<Tile> UnmetTerritory(){foreach(var c in cities){if(c.owner<=0||c.owner>=civCount||met[c.owner]||gatesLocked&&IsNativeNation(c.owner))continue;int r=TerritoryRadius(c)+1;for(int dy=-r;dy<=r;dy++)for(int dx=-r;dx<=r;dx++){var t=StepIn(c.x,c.y,dx,dy,r);if(t!=null&&t.owner==c.owner)yield return t;}}}
+        // Peoples behind sealed gates refresh their whole view every third turn; their own moves update it in between (21 Nov 2026).
+        public void Reveal(){for(int owner=0;owner<civCount;owner++){if(DormantSkips(owner))continue;if(processing&&gatesLocked&&IsNativeNation(owner)&&(turn+owner)%3!=0)continue;int o=owner;P(o==0?"sight: you":IsNativeNation(o)?"sight: parallel peoples":"sight: home rivals",()=>RevealOne(o,true));}P("sight: first contacts",()=>FirstContacts());}
         // The player's move can reveal anyone; a rival's move can reveal only that rival. -1 checks everyone.
         // Seeing a civilisation's borders is a meeting too (owner request, 14 Nov 2026): a unit that brings any of its territory into
         // view makes first contact, and the talks open, as when one of its units or cities comes into view.
-        void FirstContacts(int mover=-1){
+        // After one of your units steps, only borders near it can have come into view: the scan covers ContactReach tiles around it
+        // (owner report, 21 Nov 2026: a scan of the whole map after every step of every explorer cost 130 ms a turn).
+        const int ContactReach=8;
+        void FirstContacts(int mover=-1,int nearX=-1,int nearY=-1){
             bool[] bordersSeen=null;
             // A rival moving its own unit cannot change which of its borders you see, so only your moves and the turn's full sight
             // update look for borders (owner report, 20 Nov 2026: this scan of every tile on every rival step made End Turn take seconds).
-            if(mover<=0)for(int i=1;i<civCount;i++)if(!met[i]&&!(gatesLocked&&IsNativeNation(i))){bordersSeen=new bool[civCount];foreach(var t in tiles)if(t.owner>0&&t.owner<civCount&&!met[t.owner]&&!bordersSeen[t.owner]&&Visible(t.x,t.y))bordersSeen[t.owner]=true;break;}
+            if(mover<=0)for(int i=1;i<civCount;i++)if(!met[i]&&!(gatesLocked&&IsNativeNation(i))){bordersSeen=new bool[civCount];foreach(var t in nearX>=0?TilesAround(nearX,nearY,ContactReach):UnmetTerritory())if(t.owner>0&&t.owner<civCount&&!met[t.owner]&&!bordersSeen[t.owner]&&Visible(t.x,t.y))bordersSeen[t.owner]=true;break;}
             for(int i=1;i<civCount;i++)if((mover<=0||mover==i)&&!met[i]&&!(gatesLocked&&IsNativeNation(i))&&(bordersSeen!=null&&bordersSeen[i]||units.Any(u=>u.owner==i&&Visible(u.x,u.y))||cities.Any(c=>c.owner==i&&Visible(c.x,c.y)))){met[i]=true;Note("First contact: "+NationName(i)+".");AddEraScore(0,1,"first contact with "+NationName(i));AddEraScore(i,1,"first contact");if(newContacts==null)newContacts=new List<int>();newContacts.Add(i);}}
         public bool AtWar(int a,int b){return a>=0&&b>=0&&a<civCount&&b<civCount&&a!=b&&(a!=0&&b!=0?RivalWar(a,b):war[a==0?b:a]);}
         bool RivalWar(int a,int b){var p=Relation(a,b);return p!=null&&p.atWar;}
@@ -477,7 +485,7 @@ namespace ParadigmRealm
         public static readonly int[] ResearchPace={500,800,1300,1900,2200,2400};
         public int ResearchCost(int t,int owner=0){int cost=TechCosts[t]*ResearchPace[TechnologyCatalog.Eras[t]]/100*(speed==0?1:speed==2?3:2)/(modernRules?3:2);if(owner>=0&&owner<civCount&&Enumerable.Range(0,civCount).Count(o=>o!=owner&&HasContact(owner,o)&&nations[o].tech[t])>=2)cost-=cost/5;return DifficultyResearch(owner,cost);}
         public void SelectResearch(int t){if(!AvailableTech().Contains(t))return;nations[0].progress[research<0?0:research]=science;research=t;nations[0].research=t;science=nations[0].progress[t];}
-        public void CancelOrder(Unit u){if(u==null)return;u.exploring=false;u.recover=false;u.sentry=false;u.hasOrder=false;u.job=0;u.jobTurns=0;}
+        public void CancelOrder(Unit u){if(u==null)return;u.exploring=false;u.recover=false;u.sentry=false;u.hasOrder=false;u.job=0;u.jobTurns=0;u.nextJob=0;}
         public int[] PeaceOwners(Unit u,int x,int y){if(u==null||!VisibleTo(u.owner,x,y))return new int[0];var owners=units.Where(a=>a.x==x&&a.y==y).Select(a=>a.owner).Concat(cities.Where(a=>a.x==x&&a.y==y).Select(a=>a.owner));var t=At(x,y);if(t!=null&&t.owner>=0&&!CanEnter(u.owner,t))owners=owners.Concat(new[]{t.owner});return owners.Where(a=>a!=u.owner&&!AtWar(u.owner,a)).Distinct().ToArray();}
         // Horsemen ignore the forest slowdown (design); Scouts already move freely.
         // Ice sheets and glaciers can be crossed, but each step takes a unit's whole move.
@@ -659,7 +667,7 @@ namespace ParadigmRealm
             if(gatesLocked&&IsNativeNation(u.owner)){if(networks!=null&&u.owner<networks.Length)networks[u.owner]=null;RevealOne(u.owner,false);return true;}
             // A rival's plain march changes only what that unit sees and its own roads; the rest is refreshed each turn, or when a fight or capture changes it.
             if(u.owner!=0&&enemies.Count==0&&c==null){if(networks!=null&&u.owner<networks.Length)networks[u.owner]=null;SeeAround(u,t2=>LearnTile(u.owner,t2));FirstContacts(u.owner);return true;}
-            networks=null;UpdatePortLinks();RevealAfterMove(u.owner);CheckVictory();return true;}
+            networks=null;UpdatePortLinks();RevealAfterMove(u.owner,x,y);CheckVictory();return true;}
         public List<Unit> RangedTargets(Unit u){return units.Where(e=>e.owner!=u.owner&&AtWar(u.owner,e.owner)&&Distance(u.x,u.y,e.x,e.y)<=2&&VisibleTo(u.owner,e.x,e.y)).ToList();}
         public bool Ranged(Unit u,int targetId){if(u==null||result!=""||u.moves<=0||(u.type!=4&&u.type!=9))return false;var picked=RangedTargets(u).Find(a=>a.id==targetId);if(picked==null)return false;var e=BestDefender(u,picked.x,picked.y);int dx=Math.Sign(DeltaX(u.x,e.x)),dy=Math.Sign(e.y-u.y);var mid=hexGrid?StepToward(u.x,u.y,e.x,e.y):Step(u.x,u.y,dx,dy);if(Distance(u.x,u.y,e.x,e.y)>1&&mid!=null&&(Wooded(mid.terrain)||mid.terrain==5))return false;var city=cities.Find(c=>c.x==e.x&&c.y==e.y&&c.owner==e.owner);if(u.type==9&&city!=null&&city.walls){city.walls=false;Note("City walls breached.");}else{int dealt,taken;Exchange(u,e,out dealt,out taken);LogStrike(u,e.x,e.y);e.hp-=dealt;}u.moves=0;if(e.hp<=0){Victory(u);WarLosses(u.owner,e.owner,0,1);}units.RemoveAll(a=>a.hp<=0);CheckVictory();return true;}
         // Healing (CORE-DESIGN-16BIT.md): 1 a turn in the open, 2 fortified, 3 in your own city, full with a Barracks there.
@@ -692,7 +700,9 @@ namespace ParadigmRealm
         public bool GroupWorkers(Unit u){if(u==null||u.type!=1)return false;var team=units.Where(a=>a.type==1&&a.owner==u.owner&&a.x==u.x&&a.y==u.y).ToList();if(team.Count<2)return false;foreach(var a in team){CancelOrder(a);a.fortified=false;a.workerGroup=u.id;}return true;}
         public void UngroupWorkers(Unit u){if(u==null||u.workerGroup==0)return;int group=u.workerGroup;foreach(var a in units.Where(a=>a.owner==u.owner&&a.workerGroup==group)){CancelOrder(a);a.workerGroup=0;}}
         public void CancelActivity(Unit u){foreach(var a in WorkerTeam(u)){CancelOrder(a);a.fortified=false;a.autoWork=false;a.roadOrder=false;a.flee=0;}}
-        public bool StartJob(Unit u,int job){var team=WorkerTeam(u);if(team.Count==0||team.Any(a=>JobReason(a,job)!=""))return false;int work=JobWork(u,job);foreach(var a in team){CancelOrder(a);a.fortified=false;a.job=job;a.jobTurns=work;a.moves=0;}return true;}
+        // A farm or mine ordered where trees stand first clears them, then builds what was asked (owner request, 21 Nov 2026).
+        public bool ClearsFirst(Unit u,int job){if(job==5||job==1||u==null)return false;var team=WorkerTeam(u);return team.Count>0&&team.All(a=>JobReason(a,job).StartsWith("Clear the"))&&team.All(a=>JobReason(a,5)=="");}
+        public bool StartJob(Unit u,int job){var team=WorkerTeam(u);if(ClearsFirst(u,job)){if(!StartJob(u,5))return false;foreach(var a in team)a.nextJob=job;return true;}if(team.Count==0||team.Any(a=>JobReason(a,job)!=""))return false;int work=JobWork(u,job);foreach(var a in team){CancelOrder(a);a.fortified=false;a.job=job;a.jobTurns=work;a.moves=0;}return true;}
         public int JobTurnsRemaining(Unit u){if(u==null||u.job==0)return 0;int count=WorkerTeam(u).Count(a=>a.job==u.job);return (u.jobTurns+Math.Max(1,count)-1)/Math.Max(1,count);}
         static readonly string[] AutoJobs={"look for work","build a road","build a farm","build a mine","build a fort","clear the trees"};
         public string Activity(Unit u){if(u.unfed)return "No food: cannot act";if(u.flee==1)return u.fleeEnemy?"Fleeing from enemy soldiers":"Fleeing from wild animals";if(u.flee==2)return "Going back to work";if(u.roadOrder&&u.job==0)return "Road to "+u.roadX+", "+u.roadY;if(u.autoWork&&u.job>0)return "Auto-developing: "+new[]{"","building a road","building a farm","building a mine","building a fort","clearing the trees"}[u.job];if(u.autoWork)return u.hasOrder?"Auto-developing: on the way to "+AutoJobs[u.autoJob]:"Auto-developing: looking for work";if(u.exploring)return "Auto-exploring";if(u.sentry)return "Sentry: watching for enemies";if(u.job>0)return new[]{"","Building road","Building farm / pasture","Building mine","Building fort","Clearing forest"}[u.job];if(u.hasOrder)return "Travelling to "+u.destinationX+", "+u.destinationY;if(u.fortified)return "Fortifying / healing";return u.moves==0?"Waiting for next turn":"Idle";}
@@ -708,7 +718,10 @@ namespace ParadigmRealm
                 var t=At(u.x,u.y);if(IsImpassable(t.terrain)||(u.job==1?!CanEnter(owner,t):t.owner!=owner)){foreach(var a in team)CancelOrder(a);continue;}
                 int job=u.job,remaining=Math.Max(0,team.Min(a=>a.jobTurns)-team.Count);
                 foreach(var a in team)a.jobTurns=remaining;
-                if(remaining==0){if(job==1)t.road=true;if(job==2)t.farm=true;if(job==3)t.mine=true;if(job==4)t.fort=true;if(job==5&&Wooded(t)){if(Forested(t.terrain))t.terrain=Cleared(t.terrain);else t.cleared=true;t.farm=false;}foreach(var a in team)a.job=0;networks=null;if(owner==0)Note(job==5?"Workers cleared the trees.":"Workers completed an improvement.");}
+                if(remaining==0){if(job==1)t.road=true;if(job==2)t.farm=true;if(job==3)t.mine=true;if(job==4)t.fort=true;if(job==5&&Wooded(t)){if(Forested(t.terrain))t.terrain=Cleared(t.terrain);else t.cleared=true;t.farm=false;}foreach(var a in team)a.job=0;networks=null;
+                    // A clearing ordered on the way to a farm or mine goes straight on to it.
+                    int then=job==5?team.Max(a=>a.nextJob):0;if(then>0){foreach(var a in team){a.nextJob=0;a.moves=1;}bool ok=team.All(a=>JobReason(a,then)=="");foreach(var a in team)a.moves=0;if(ok){int work=JobWork(u,then);foreach(var a in team){a.job=then;a.jobTurns=work;}}}
+                    if(owner==0)Note(job==5?(then>0&&u.job==then?"Workers cleared the trees and are starting the "+JobNames[then].ToLower()+".":"Workers cleared the trees."):"Workers completed an improvement.");}
             }
         }
         public bool Pillage(Unit u){if(u==null||Power[u.type]==0||u.moves<=0)return false;var t=At(u.x,u.y);if(t.owner<0||!AtWar(u.owner,t.owner)||!(t.road||t.farm||t.mine||t.fort))return false;Grieve(t.owner,u.owner,6);t.road=t.farm=t.mine=t.fort=false;u.moves=0;networks=null;return true;}
@@ -730,7 +743,7 @@ namespace ParadigmRealm
         System.Collections.Generic.IEnumerable<int> ProcessNationSteps(int owner){UpdatePortLinks();yield return 1;if(owner==0)AutoManageCities();var n=nations[owner];var budget=Budget(owner);int catchup=Catchup(owner);int balance=n.gold+(budget[2]-DiplomaticNet(owner))*catchup;n.gold=Math.Max(0,balance);n.arrears=balance<0?n.arrears+1:0;DebtConsequences(owner);if(owner==0&&balance<0)Note("Treasury empty: unpaid upkeep reduces combat strength. Reduce expenses or raise taxes.");int sciencePool=0;var feeding=cities.Where(a=>a.owner==owner).ToList();var fed=new int[feeding.Count][];for(int k=0;k<feeding.Count;k++){NormaliseSpecialists(feeding[k]);AutoEntertainers(feeding[k]);fed[k]=Yield(feeding[k]);if(k%3==2)yield return 2;}FeedUnits(owner,feeding,fed);for(int k=0;k<feeding.Count;k++){var c=feeding[k];var v=fed[k];c.age+=catchup;ProcessCityFood(c,(v[0]-c.ration)*catchup);if(c.occupation>0)c.occupation--;Produce(c,v[1]*catchup);sciencePool+=v[2]*catchup;if(k%3==2)yield return 3;}ForcesTurn(owner);MaterialsTurn(owner,catchup);if(n.research>=0&&sciencePool>0&&ResearchOpen(owner,n.research))n.progress[n.research]+=Math.Min(sciencePool,ResearchCap(n.research,owner));KeepPace(owner);
             if(n.research>=0&&AvailableTech(owner).Contains(n.research)&&n.progress[n.research]>=ResearchCost(n.research,owner)){int eraBefore=Era(owner),found=n.research;if(owner==0)BeginDiscovery();int spare=n.progress[n.research]-ResearchCost(n.research,owner);n.progress[n.research]=0;n.tech[n.research]=true;MakeArtifact(owner,n.research);if(owner==0)Note(TechNames[n.research]+" discovered.");AnnounceEra(owner,eraBefore);TechEraScore(owner,n.research,eraBefore);n.research=owner==0?NextPlayerResearch():PreferredResearch(owner);if(n.research>=0)n.progress[n.research]+=spare;if(owner==0)EndDiscovery(found,spare);}
             foreach(var u in units.Where(a=>a.owner==owner).ToList()){var on=At(u.x,u.y);if(on.terrain==14||on.terrain==15)u.hp=Math.Max(1,u.hp-1);else if(on.terrain==17&&!IsNaval(u.type))VolcanoBurn(u,false);else if(!u.unfed&&(u.moves==MaxMoves(u)||u.fortified))u.hp=Math.Min(10,u.hp+HealAmount(u));u.moves=u.unfed?0:MaxMoves(u);}
-            yield return 4;LivingTurn(owner);yield return 5;ProcessJobs(owner);yield return 6;ProcessEmpireOrders(owner);PriestHealing(owner);AgeTurn(owner);RealmTurn(owner);DimensionsTurn(owner);ExpelTrespassers(owner);if(n.revolution>0)n.revolution--;
+            yield return 4;P("living world",()=>LivingTurn(owner));yield return 5;P("worker jobs",()=>ProcessJobs(owner));yield return 6;P("end: empire orders",()=>ProcessEmpireOrders(owner));P("end: priests",()=>PriestHealing(owner));P("end: ages",()=>AgeTurn(owner));P("end: worlds",()=>RealmTurn(owner));P("end: dimensions",()=>DimensionsTurn(owner));P("end: trespassers",()=>ExpelTrespassers(owner));if(n.revolution>0)n.revolution--;
         }
         // The turn in steps, one after each civilisation, so the game can keep drawing between them; EndTurn runs them all at once.
         public void EndTurn(){foreach(int step in TurnSteps()){}}

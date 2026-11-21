@@ -77,14 +77,17 @@ public int GrowthLimit(City c){return ResourceGrowth(c)+(HasBuilding(c,41)?20+(H
     // unit follows a proper route there, so it no longer gets stuck in dead ends (owner request).
     void ExploreStep(Unit u){
         if(u.recover&&!Recover(u))return;
-        for(int guard=0;guard<12&&u.exploring&&u.moves>0&&units.Contains(u);guard++){
+        // The route to the target is plotted once and walked step by step; it is re-plotted only when a step is blocked or the
+        // target is reached (owner report, 21 Nov 2026: re-plotting it before every step made explorers 140 ms of each turn).
+        for(int guard=0;guard<4&&u.exploring&&u.moves>0&&units.Contains(u);guard++){
             if(VisibleThreat(u)){u.exploring=false;if(u.owner==0)Note(UnitNames[u.type]+" stopped exploring: enemy nearby.");return;}
             // Nearest land tile beside undiscovered ground (owner request); one the unit cannot reach is skipped, not a reason to stop.
             var skip=new HashSet<int>();Tile target=null;List<Tile> path=null;var beasts=u.type==3?AnimalsInSight(u):null;
-            for(int tries=0;tries<6;tries++){target=ExploreTarget(u,skip,beasts);if(target==null)break;path=Route(u,target.x,target.y);if(path.Count>0&&(beasts==null||!path.Take(4).Any(p=>NearBeast(p,beasts)))){exploreClaims[u.id]=target.y*Width+target.x;break;}skip.Add(target.y*Width+target.x);target=null;}
+            for(int tries=0;tries<6;tries++){long tT=System.Diagnostics.Stopwatch.GetTimestamp();target=ExploreTarget(u,skip,beasts);if(decisionTimes!=null)AddProfile("explore: find target",tT);if(target==null)break;long tR=System.Diagnostics.Stopwatch.GetTimestamp();path=Route(u,target.x,target.y);if(decisionTimes!=null)AddProfile(path.Count>0?"explore: route found":"explore: route failed",tR);if(path.Count>0&&(beasts==null||!path.Take(4).Any(p=>NearBeast(p,beasts)))){exploreClaims[u.id]=target.y*Width+target.x;break;}skip.Add(target.y*Width+target.x);target=null;}
             if(target==null){if(beasts!=null&&beasts.Count>0)return;u.exploring=false;if(u.owner==0)Note(UnitNames[u.type]+" has explored everything it can reach.");return;}
-            var t=path[0];if(u.moves<StepCost(u,u.x,u.y,t))return;
-            if(!Move(u,t.x,t.y))return;
+            bool blocked=false;foreach(var t in path){if(!u.exploring||!units.Contains(u))return;if(VisibleThreat(u)){u.exploring=false;if(u.owner==0)Note(UnitNames[u.type]+" stopped exploring: enemy nearby.");return;}if(u.moves<StepCost(u,u.x,u.y,t))return;if(!Move(u,t.x,t.y)){blocked=true;break;}}
+            if(!blocked)continue;
+            return;
         }
     }
     // Scouts keep two clear tiles from any wild animal they can see (owner request, 6 Nov 2026).
@@ -141,7 +144,7 @@ public int GrowthLimit(City c){return ResourceGrowth(c)+(HasBuilding(c,41)?20+(H
         }
         return best;
     }    bool VisibleThreat(Unit u){return units.Any(e=>AtWar(u.owner,e.owner)&&VisibleTo(u.owner,e.x,e.y)&&Distance(u.x,u.y,e.x,e.y)<=4);}
-    void ProcessEmpireOrders(int owner){WorkersFlee(owner);foreach(var u in units.Where(a=>a.owner==owner).ToList()){if(u.flee!=0)continue;if(u.roadOrder)RoadStep(u);else if(u.autoWork&&u.job==0&&!u.hasOrder&&u.moves>0)ImproveAI(u);if(u.sentry&&VisibleThreat(u)){u.sentry=false;if(owner==0)Note(UnitNames[u.type]+" sentry spotted an enemy.");}if(u.exploring)ExploreStep(u);}}
+    void ProcessEmpireOrders(int owner){P("orders: fleeing",()=>WorkersFlee(owner));foreach(var u in units.Where(a=>a.owner==owner).ToList()){if(u.flee!=0)continue;if(u.roadOrder)P("orders: roads",()=>RoadStep(u));else if(u.autoWork&&u.job==0&&!u.hasOrder&&u.moves>0)P("orders: auto workers",()=>ImproveAI(u));if(u.sentry&&VisibleThreat(u)){u.sentry=false;if(owner==0)Note(UnitNames[u.type]+" sentry spotted an enemy.");}if(u.exploring)P("orders: explorers (owner "+owner+")",()=>ExploreStep(u));}}
     void EmpireAI(int owner){var n=nations[owner];AIChooseEdicts(owner);if(n.government==0&&HasTech(owner,"laws"))ChangeGovernment(owner,1);n.luxury=cities.Any(c=>c.owner==owner&&Happiness(c)<0)&&n.gold>20?1:0;foreach(var c in cities.Where(c=>c.owner==owner)){if(c.build<0&&HasTech(owner,"currency")&&cities.Count(a=>a.owner==owner)>1&&units.Count(u=>u.owner==owner&&u.type==11)==0&&tradeRoutes.Count(r=>r.originOwner==owner)<2)ChooseProject(c,UnitBuild(11),false);}}
     void UpgradeEmpireSave(){if(tradeRoutes==null)tradeRoutes=new List<TradeRoute>();if(cities!=null)foreach(var c in cities)if(c!=null)NormaliseSpecialists(c);}
     bool EmpireValid(){if(tradeRoutes==null||nations==null||cities==null)return false;if(nations.Any(n=>n!=null&&(n.government<0||n.government>=Governments.Length||n.revolution<0||n.revolution>2||n.luxury<0||n.luxury>2)))return false;if(cities.Any(c=>c!=null&&(c.scientists<0||c.merchants<0||c.entertainers<0||c.scientists+c.merchants+c.entertainers>c.pop)))return false;return tradeRoutes.All(r=>r!=null&&r.origin!=r.destination&&r.originOwner>=0&&r.originOwner<civCount&&r.destinationOwner>=0&&r.destinationOwner<civCount&&cities.Any(c=>c.id==r.origin)&&cities.Any(c=>c.id==r.destination));}
