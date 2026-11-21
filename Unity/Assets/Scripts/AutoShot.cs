@@ -21,6 +21,7 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-frameProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FrameProbe(args[i+1],i+2<args.Length?int.Parse(args[i+2]):4,i+3<args.Length?int.Parse(args[i+3]):120));
             i=Array.IndexOf(args,"-unitProbe");if(i>=0&&i+2<args.Length)StartCoroutine(UnitProbe(args[i+1],args[i+2]));
             i=Array.IndexOf(args,"-routeProbe");if(i>=0&&i+1<args.Length)StartCoroutine(RouteProbe(args[i+1]));
+            i=Array.IndexOf(args,"-turnProbe");if(i>=0&&i+2<args.Length){probeFolder=autoSaveFolder=args[i+2];Directory.CreateDirectory(probeFolder);StartCoroutine(TurnProbe(args[i+1],args[i+2]));}
             i=Array.IndexOf(args,"-inputProbe");if(i>=0&&i+1<args.Length)StartCoroutine(InputProbeRun(args[i+1]));
             i=Array.IndexOf(args,"-flickerProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FlickerProbe(args[i+1]));
             i=Array.IndexOf(args,"-walkProbe");if(i>=0&&i+1<args.Length)StartCoroutine(WalkProbe(args[i+1]));

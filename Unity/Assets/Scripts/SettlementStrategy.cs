@@ -107,23 +107,35 @@ namespace ParadigmRealm {
    if(ColonySettlerWanted(c))return true;
    int owner=c.owner;return c.pop>=2&&Yield(c)[0]>0&&BuildReason(c,0)==""&&cities.Count(a=>a.owner==owner)<RivalTargetCities(owner)&&!units.Any(u=>u.owner==owner&&u.type==0)&&nations[owner].gold>=(cities.Count(a=>a.owner==owner)<2?5:Math.Max(15,12-Budget(owner)[2]*3));
   }
+  // A settler that found no site and no frontier rests before searching again (owner report, 21 Nov 2026: stuck settlers of the
+  // parallel-world peoples searched the whole map every turn, about 100 ms each). Not saved; a loaded game simply searches once.
+  [NonSerialized] Dictionary<int,int> settlerRestUntil;
   void PlanAISettlement(Unit u){
+   if(settlerRestUntil!=null&&!u.hasOrder){int until;if(settlerRestUntil.TryGetValue(u.id,out until)&&turn<until)return;}
+   long tStart=System.Diagnostics.Stopwatch.GetTimestamp();try{PlanSettler(u);}finally{if(decisionTimes!=null)AddProfile(u.hasOrder?"settler (ordered)":"settler (searching or resting)",tStart);}
+  }
+  void PlanSettler(Unit u){
    if(u.moves<=0)return;
    if(AtSea(u))return; // aboard a galley: the galley decides where it lands
    if(ColonyErrand(u))return; // a colony beyond a gateway (DimensionAI.cs)
+   long tKeep=System.Diagnostics.Stopwatch.GetTimestamp();bool hadOrder=u.hasOrder;
    if(u.hasOrder){
-    var r=AssessSettlement(u.owner,u.destinationX,u.destinationY,u.x,u.y);
-    if(r.Suitable&&!r.threat&&r.diplomacyWarning==""&&SafeSettlerPath(u,Route(u,u.destinationX,u.destinationY))){ContinueOrder(u);if(u.x==r.x&&u.y==r.y)Found(u);if(u.hasOrder||!units.Contains(u))return;}
+    long tOrder=System.Diagnostics.Stopwatch.GetTimestamp();var r=AssessSettlement(u.owner,u.destinationX,u.destinationY,u.x,u.y);if(decisionTimes!=null)AddProfile("settler: assess destination",tOrder);
+    if(r.Suitable&&!r.threat&&r.diplomacyWarning==""&&((turn+u.id)%3!=0||SafeSettlerPath(u,Route(u,u.destinationX,u.destinationY)))){ContinueOrder(u);if(u.x==r.x&&u.y==r.y)Found(u);if(u.hasOrder||!units.Contains(u))return;}
     // Scouting for land with no site known yet: the order's end is only a lookout, so keep walking rather than turn back each turn.
-    else if(!r.threat&&r.diplomacyWarning==""&&SettlementOptions(u,1).Count==0&&SafeSettlerPath(u,Route(u,u.destinationX,u.destinationY))){ContinueOrder(u);if(u.hasOrder||!units.Contains(u))return;}
+    else if(!r.threat&&r.diplomacyWarning==""&&SettlementOptions(u,1).Count==0&&SafeSettlerPath(u,Route(u,u.destinationX,u.destinationY))){ContinueOrder(u);if(decisionTimes!=null)AddProfile("settler: keep scouting",tKeep);if(u.hasOrder||!units.Contains(u))return;}
     else CancelOrder(u);
+    if(decisionTimes!=null)AddProfile("settler: keep or drop its order",tKeep);
    }
-   var options=SettlementOptions(u,1);if(options.Count>0){
+   long tOpt=System.Diagnostics.Stopwatch.GetTimestamp();var options=SettlementOptions(u,1);if(decisionTimes!=null)AddProfile("settler: site search",tOpt);if(options.Count>0){
     FerryWanted.Remove(u.owner);var r=options[0];if(r.x==u.x&&r.y==u.y){Found(u);return;}
-    Order(u,r.x,r.y);if(u.x==r.x&&u.y==r.y)Found(u);return;
+    long tWalk=System.Diagnostics.Stopwatch.GetTimestamp();Order(u,r.x,r.y);if(decisionTimes!=null)AddProfile("settler: order to a site",tWalk);
+    // A site it cannot reach (across water, behind a border) would be tried, and fail, again next turn: rest instead.
+    if(!u.hasOrder&&!(u.x==r.x&&u.y==r.y)){if(settlerRestUntil==null)settlerRestUntil=new Dictionary<int,int>();settlerRestUntil[u.id]=turn+(IsNativeNation(u.owner)?8:4);}
+    if(u.x==r.x&&u.y==r.y)Found(u);return;
    }
    // No known legal site: explore a safe, reachable local frontier rather than stall.
-   var frontierTiles=new List<Tile>();var frontierSeen=new HashSet<int>();
+   long tFront=System.Diagnostics.Stopwatch.GetTimestamp();var frontierTiles=new List<Tile>();var frontierSeen=new HashSet<int>();
    for(int fy=-4;fy<=4;fy++)for(int fx=-4;fx<=4;fx++){
     var ft=StepIn(u.x,u.y,fx,fy,4);if(ft==null||!frontierSeen.Add(ft.y*Width+ft.x))continue;
     int fd=Distance(u.x,u.y,ft.x,ft.y);
@@ -131,9 +143,18 @@ namespace ParadigmRealm {
    }
    var frontier=frontierTiles.Select(t=>new{Tile=t,Unknown=UnknownAround(u.owner,t)}).Where(a=>a.Unknown>0)
     .OrderByDescending(a=>a.Unknown).ThenBy(a=>Distance(u.x,u.y,a.Tile.x,a.Tile.y)).ThenBy(a=>a.Tile.y*Width+a.Tile.x);
-   foreach(var candidate in frontier.Take(8)){var route=Route(u,candidate.Tile.x,candidate.Tile.y);if(route.Count>0&&SafeSettlerPath(u,route)){Order(u,candidate.Tile.x,candidate.Tile.y);return;}}
-   // Nowhere left to settle or explore on foot: wait on the shore for a galley.
+   // One search per candidate, handed to the order (Order would search again, twice when a route fails), at most two candidates.
+   foreach(var candidate in frontier.Take(2)){var route=Route(u,candidate.Tile.x,candidate.Tile.y);if(route.Count>0&&SafeSettlerPath(u,route)){OrderAlong(u,candidate.Tile,route);if(decisionTimes!=null)AddProfile("settler: frontier routes",tFront);return;}}
+   if(decisionTimes!=null)AddProfile("settler: frontier routes",tFront);
+   // Nowhere left to settle or explore on foot: wait on the shore for a galley, and do not search again for a few turns.
+   if(settlerRestUntil==null)settlerRestUntil=new Dictionary<int,int>();settlerRestUntil[u.id]=turn+(IsNativeNation(u.owner)?8:4);
    SettlerAwaitsFerry(u);
   }
  }
+}
+namespace ParadigmRealm {
+public partial class World {
+ // An order along a route the caller has already found (rival settlers, 21 Nov 2026), so the path is searched once, not again.
+ void OrderAlong(Unit u,Tile goal,List<Tile> route){CancelOrder(u);u.fortified=false;orderPlan=route;orderPlanX=goal.x;orderPlanY=goal.y;u.destinationX=goal.x;u.destinationY=goal.y;u.hasOrder=true;ContinueOrder(u);}
+}
 }

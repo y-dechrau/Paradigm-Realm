@@ -43,7 +43,7 @@ public partial class RealmGame {
   // Found sealed gateways stay marked in gold.
   if(viewRealm==0&&world.gatesFound!=null)foreach(int cell in world.gatesFound){var g=world.tiles[cell];int cx=g.x*scale+scale/2,cy=(H-1-(g.y-top))*scale+scale/2,r=Math.Max(2,scale);
    for(int dy=-r;dy<=r;dy++)for(int dx=-r;dx<=r;dx++){if(Math.Abs(dx)+Math.Abs(dy)>r)continue;int qx=cx+dx,qy=cy+dy;if(qx<0||qy<0||qx>=tw||qy>=th)continue;miniPixels[qy*tw+qx]=new Color32(255,210,64,255);}}
-  PaintMiniOverlay(tw,th,scale,top);
+  PaintMiniOverlay(tw,th,scale,top);miniSig=MiniSignature();miniRepaints++;
   miniTexture.SetPixels32(miniPixels);miniTexture.Apply(true);miniWorld=world;miniBuilt=Time.realtimeSinceStartup;miniRealm=viewRealm;miniLayerBuilt=MiniLayer;
  }
  int OwnerAt(int x,int y,int top){if(y<0||y>=ViewRows)return -2;x=((x%world.Width)+world.Width)%world.Width;var t=world.KnownTile(world.tiles[(y+top)*world.Width+x]);return t.seen?t.owner:-2;}
@@ -52,5 +52,14 @@ public partial class RealmGame {
  string goldTip="";float goldTipAt=-9;
  string GoldTooltipDetail(){if(Time.realtimeSinceStartup-goldTipAt<.5f)return goldTip;goldTipAt=Time.realtimeSinceStartup;var b=world.BudgetDetail(0);return goldTip=" (income "+b.Income+"; units "+(b.army+b.civilians)+", buildings "+(b.cityUpkeep+b.buildingUpkeep)+", roads "+b.roads+" for "+world.RoadTiles(0)+" road tiles)";}
  static float Hash01(int x,int y){unchecked{int h=x*374761393+y*668265263;h=(h^(h>>13))*1274126177;return ((h^(h>>16))&1023)/1023f;}}
+}
+}
+namespace ParadigmRealm {
+public partial class RealmGame {
+ // The minimap is repainted only when something it shows can have changed (owner report, 21 Nov 2026: a 154 ms repaint every
+ // three seconds on a large map was a steady stutter): a new turn, a city founded or lost, or one of your units moving (which
+ // explores and changes what you see). The Military layer also follows other units, which only move during a turn.
+ long miniSig;int miniRepaints;
+ long MiniSignature(){unchecked{long h=world.turn*1000003L+world.cities.Count*7919L+viewRealm*131L;foreach(var u in world.units)if(u.owner==0)h=h*31+u.x*977+u.y*13+u.id;return h;}}
 }
 }

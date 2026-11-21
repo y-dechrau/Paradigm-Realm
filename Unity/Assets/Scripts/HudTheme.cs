@@ -225,7 +225,7 @@ namespace ParadigmRealm
             if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>3f)BuildAtlasTexture();
             // Staggered rows are a quarter of a tile width apart (16 of 64 pixels), so a row is a quarter as tall as a column is wide.
             float aspect=world.Width/(world.Hex?ViewRows*PixelArt.HR/(float)PixelArt.HW:world.Staggered?ViewRows*.25f:(float)ViewRows),w=inner.width,h=w/aspect;if(h>inner.height){h=inner.height;w=h*aspect;}
-            var drawn=new Rect(inner.center.x-w/2,inner.center.y-h/2,w,h);Fill(inner,UiTrough);if(miniTexture==null||miniWorld!=world||miniRealm!=viewRealm||miniLayerBuilt!=MiniLayer||Time.realtimeSinceStartup-miniBuilt>3f)BuildMiniTexture();GUI.DrawTexture(drawn,miniTexture??atlasTexture,ScaleMode.StretchToFill);
+            var drawn=new Rect(inner.center.x-w/2,inner.center.y-h/2,w,h);Fill(inner,UiTrough);if(miniTexture==null||miniWorld!=world||miniRealm!=viewRealm||miniLayerBuilt!=MiniLayer||miniBuilt<0||!turnRunning&&Time.realtimeSinceStartup-miniBuilt>1f&&MiniSignature()!=miniSig)BuildMiniTexture();GUI.DrawTexture(drawn,miniTexture??atlasTexture,ScaleMode.StretchToFill);
             float vx,vy,vw,vh;
             if(diamondView&&world.Rows){float tw=isoWidth,rowH=RowPixels(tw);vx=camI-MapW/2/tw;vw=MapW/tw;vy=camJ-MapH/2/rowH;vh=MapH/rowH;}
             else if(diamondView){// The diagonal view covers a turned square of the grid; outline the grid rectangle around it.

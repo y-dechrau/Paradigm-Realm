@@ -12,10 +12,11 @@ namespace ParadigmRealm {
 // diplomacy, animals, sight). Run: Unity -batchmode -executeMethod ParadigmRealm.RealmProbe.Run -probeOut <file>
 // [-probeTurns 250]. Writes a table per map size every 50 turns.
 public static class RealmProbe {
+ static int openAt;
  static string Arg(string[] a,string key,string fallback){int i=Array.IndexOf(a,key);return i>=0&&i+1<a.Length?a[i+1]:fallback;}
  static readonly string[] Shared={"","territory","your economy","religion","influence","diplomacy","victory checks","gateways and projects","animals and barbarians","sickness","sight","rival diplomacy"};
  public static void Run(){
-  var args=Environment.GetCommandLineArgs();string outPath=Arg(args,"-probeOut","realm-probe.txt");int turns=int.Parse(Arg(args,"-probeTurns","250"));
+  var args=Environment.GetCommandLineArgs();string outPath=Arg(args,"-probeOut","realm-probe.txt");int turns=int.Parse(Arg(args,"-probeTurns","250"));openAt=int.Parse(Arg(args,"-probeOpen","0"));
   var sb=new StringBuilder();
   try{
    bool big=Arg(args,"-probeLarge","0")=="1";World.decisionTimes=new Dictionary<string,double>();
@@ -31,6 +32,8 @@ public static class RealmProbe {
   sb.AppendLine("=== "+World.MapSizeNames[size]+" map: "+w.tiles.Length+" tiles, you + "+home+" home rivals + "+native+" parallel-world peoples ===");
   var homeParts=new Dictionary<string,double>();double bHome=0,bNative=0,bShared=0,bAll=0;var shared=new double[Shared.Length+1];int bTurns=0;var clock=new Stopwatch();
   for(int t=1;t<=turns&&w.result=="";t++){
+   // -probeOpen N: at turn N the first gateway opens and you meet the peoples beyond it, as when you discover a world.
+   if(t==openAt){var gate=w.tiles.FirstOrDefault(x=>x.realm==0&&x.gateLink>0);if(gate!=null){w.OpenGate(gate,"Probe:");int far=w.GateTwin(gate).realm;for(int o=1;o<w.civCount;o++)if(w.IsNativeNation(o)&&CivilisationCatalog.NativeRealm(w.nations[o].civ)==far)w.met[o]=true;sb.AppendLine("-- turn "+t+": gateway to world "+far+" opened, its peoples met --");}}
    if(w.research<0||!w.AvailableTech(0).Contains(w.research))w.SelectResearch(w.AvailableTech(0).DefaultIfEmpty(0).First());
    w.researchPrompts.Clear();w.buildPrompts.Clear();w.buildNotices.Clear();w.rivalCalls.Clear();w.newContacts.Clear();
    var it=w.TurnSteps().GetEnumerator();
