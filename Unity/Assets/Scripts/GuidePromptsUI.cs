@@ -55,9 +55,11 @@ public partial class RealmGame {
  // Enough faith has gathered: the player must name a god (owner request, 6 Nov 2026). There is no putting it off.
  const string PantheonPlea="Your people are leaving offerings at every shrine in sight, but each village prays to a different power and they squabble over whose feast comes first. *hic* All that devotion, going to waste, like good wine left out in the sun. Pick ONE god as patron of your whole civilisation: its priests put your cities on one calendar of rites, and its blessing reaches every one of them. It's forever, mind, so choose what your people really need. Not just the one with the best parties.";
  void DrawPantheonPrompt(){
-  float y;var names=ReligionCatalog.PantheonNames;var box=GuidePanel(PantheonPlea,44+156+names.Length*40+14,out y,156);
+  float y;var names=ReligionCatalog.PantheonNames;var box=GuidePanel(PantheonPlea,44+156+names.Length*40+14+26,out y,156);
   var text=new GUIStyle(hudSmall){wordWrap=true,alignment=TextAnchor.MiddleLeft};text.normal.textColor=UiText;
-  for(int p=0;p<names.Length;p++){if(GUI.Button(new Rect(box.x+14,y,box.width-28,36),"",button)){world.ChoosePantheon(0,p);status="Your people now follow the "+names[p]+".";GUIUtility.ExitGUI();}GUI.Label(new Rect(box.x+24,y,150,36),names[p],new GUIStyle(hudCaption){alignment=TextAnchor.MiddleLeft});GUI.Label(new Rect(box.x+176,y,box.width-200,36),ReligionCatalog.PantheonText[p],text);y+=40;}
+  for(int p=0;p<names.Length;p++){if(GUI.Button(new Rect(box.x+14,y,box.width-28,36),"",button)){world.ChoosePantheon(0,p);status="Your people now follow the "+names[p]+": "+World.PantheonCost+" faith was offered up to adopt them.";GUIUtility.ExitGUI();}GUI.Label(new Rect(box.x+24,y,150,36),names[p],new GUIStyle(hudCaption){alignment=TextAnchor.MiddleLeft});GUI.Label(new Rect(box.x+176,y,box.width-200,36),ReligionCatalog.PantheonText[p],text);y+=40;}
+  // The pantheon is bought with the faith gathered so far (owner report, 21 Nov 2026: the drop to nothing was a surprise).
+  GUI.Label(new Rect(box.x+24,y+2,box.width-48,22),"Adopting a pantheon offers up "+World.PantheonCost+" of your "+world.nations[0].faith+" faith; its blessing begins next turn.",text);
  }
  void DrawResearchPrompt(){
   int found=world.researchPrompts[0];var choices=world.AvailableTech(0).OrderBy(t=>world.ResearchCost(t,0)).ToList();

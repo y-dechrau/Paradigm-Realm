@@ -131,7 +131,7 @@ public partial class RealmGame {
   float half=(w-6)/2;
   if(GUI.Button(new Rect(x,y,half,26),(cityBuildingTab?"":"● ")+"Units",button)){cityBuildingTab=false;cityPickScroll=Vector2.zero;}
   if(GUI.Button(new Rect(x+half+6,y,half,26),(cityBuildingTab?"● ":"")+"Buildings",button)){cityBuildingTab=true;cityPickScroll=Vector2.zero;}y+=30;
-  if(!cityBuildingTab&&world.nationalForces){GUI.Label(new Rect(x,y,w-110,24),"Soldiers and warships are raised by the nation.",cityTiny);if(GUI.Button(new Rect(x+w-104,y,104,22),"Forces ▸",button)){cityScreen=false;detailsScreen="Economy";empireTab=2;GUIUtility.ExitGUI();}y+=26;}
+  if(!cityBuildingTab&&world.nationalForces){GUI.Label(new Rect(x,y,w-110,24),"Soldiers and warships are raised by the nation.",cityTiny);if(GUI.Button(new Rect(x+w-104,y,104,22),"Forces ▸",button)){cityScreen=false;detailsScreen="Military";militaryTab=0;GUIUtility.ExitGUI();}y+=26;}
   bool building=cityBuildingTab;int current=building?c.buildingProject:c.build;var queue=building?c.buildingQueue:c.queue;int output=Math.Max(1,world.LineShare(c,building));
   int[] options=(building?World.BuildingIds:Enumerable.Range(0,World.UnitNames.Length).Select(World.UnitBuild).ToArray()).Where(p=>world.TechAllows(c,p)&&!(world.nationalForces&&!building&&ForcesRules.Formation(World.BuildUnit(p)))).ToArray();
   int[] holy=building&&world.modernRules?World.FaithBuildingIds.Where(b=>world.FaithAllows(c,b)).ToArray():new int[0];

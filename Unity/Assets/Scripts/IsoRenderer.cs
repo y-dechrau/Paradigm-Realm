@@ -417,7 +417,8 @@ namespace ParadigmRealm
                     // No two hills are the same size or sit in quite the same place on their tile, so a range does not line up in rows
                     // (owner report, 10 Nov 2026).
                     float hillX=dry.x,hillY=dry.y;if(t.terrain==7)treeScale*=Mathf.Max(.8f,dryScale);if(t.terrain==2&&!hamlet&&portOf==null){int hv=(t.x*92821+t.y*68917)&0x7fffffff;treeScale=.9f+(hv%19)/100f;hillX=((hv/19%9)-4)*.9f*s;hillY=((hv/171%7)-3)*.7f*s;}
-                    GUI.DrawTexture(new Rect(sx-PixelArt.AX*s*treeScale+hillX,gy-PixelArt.AY*s*treeScale+hillY,64*s*treeScale,64*s*treeScale),sprite);}
+                    GUI.DrawTexture(new Rect(sx-PixelArt.AX*s*treeScale+hillX,gy-PixelArt.AY*s*treeScale+hillY,64*s*treeScale,64*s*treeScale),sprite);
+                    if(t.terrain==2&&!hamlet&&portOf==null&&t.seen)DrawHillWoods(source,sx+hillX,gy+hillY,s);}
                 if(portOf!=null&&!portOf.portLinked&&portOf.owner==0){var warn=new Rect(sx+8*s,gy-22*s,9*s,9*s);Fill(warn,new Color(.85f,.2f,.15f,.92f));GUI.Label(warn,"!",small);}
                 var improvement=new Rect(sx-18*s,gy-22*s,36*s,36*s);
                 // Mines and forts are drawn at the map's angle and sized to their tile (owner request, 9 Nov 2026); the old upright pictures are the fallback.

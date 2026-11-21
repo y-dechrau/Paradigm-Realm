@@ -39,7 +39,7 @@ namespace ParadigmRealm { public partial class RealmGame {
    home.pop=popWas;home.scientists=0;home.queue.Clear();home.buildingQueue.Clear();home.build=-1;home.buildingProject=-1;home.production=0;home.buildingProduction=0;}
    // Empire > Forces (20 Nov 2026): a Spearman ordered, the Warrior picked, then the mobilisation preview.
    {bool wasForces=world.nationalForces;int popKeep=home.pop;world.nationalForces=true;world.nations[0].tech[TechnologyCatalog.Index("bronze")]=true;home.pop=6;world.Raise(0,7,home);world.Raise(0,2,home);var firstGuard=world.units.FirstOrDefault(u=>u.owner==0&&u.type==2);if(firstGuard!=null)forcesPick=firstGuard.id;
-    detailsScreen="Economy";empireTab=2;yield return Frames(20);yield return Shot(folder,"hud-forces.bmp");AskMobilise(true);yield return Frames(10);yield return Shot(folder,"hud-forces-mobilise.bmp");forcesConfirm=null;forcesConfirmDo=null;
+    detailsScreen="Military";militaryTab=0;yield return Frames(20);yield return Shot(folder,"hud-forces.bmp");AskMobilise(true);yield return Frames(10);yield return Shot(folder,"hud-forces-mobilise.bmp");forcesConfirm=null;forcesConfirmDo=null;
     detailsScreen="";empireTab=0;foreach(var o in world.ForceOrders(0).ToList())world.CancelForceOrder(0,o.id);home.pop=popKeep;world.nationalForces=wasForces;}
    // Barbarians: a camp and two raiders (one hurt) beside the city on the map.
    {var barbSpots=world.tiles.Where(t=>t.realm==0&&world.Distance(t.x,t.y,home.x,home.y)>=2&&world.Distance(t.x,t.y,home.x,home.y)<=3&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!world.units.Any(u=>u.x==t.x&&u.y==t.y)&&world.Visible(t.x,t.y)).Take(3).ToList();
@@ -78,6 +78,8 @@ namespace ParadigmRealm { public partial class RealmGame {
   {for(int k=0;k<60&&world.result=="";k++)world.EndTurn();world.LearnHomeWorldForShots();for(int o=1;o<world.civCount;o++)world.met[o]=true;world.Reveal();world.buildNotices.Clear();world.nations[0].faith=0;selected=-1;cityId=-1;miniKeyAlways=true;int keep=MiniLayer;for(int k=0;k<40;k++){gateScene=null;world.newContacts.Clear();world.researchPrompts.Clear();world.buildPrompts.Clear();yield return null;}
    for(int k=0;k<MiniLayerNames.Length;k++){MiniLayer=k;miniBuilt=-99;yield return Frames(4);gateScene=null;yield return CleanShot(folder,"hud-minimap-"+k+".bmp");}
    miniLayerOpen=true;yield return Frames(3);gateScene=null;yield return CleanShot(folder,"hud-minimap-list.bmp");miniLayerOpen=false;miniKeyAlways=false;MiniLayer=keep;}
+   {var woodHill=world.tiles.FirstOrDefault(t=>t.realm==0&&World.HillWoods(t)&&t.seen);if(woodHill!=null){isoWidth=192;FocusTile(woodHill.x,woodHill.y);yield return Frames(10);yield return CleanShot(folder,"hud-hill-woods.bmp");}}
+   detailsScreen="Military";militaryTab=1;yield return Frames(10);yield return Shot(folder,"hud-military-units.bmp");detailsScreen="";militaryTab=0;
   Application.Quit();
  }
 }}

@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 namespace ParadigmRealm {
-// Empire > Forces (owner brief, 20 Nov 2026). Answers four questions at a glance:
+// Military > Forces (owner brief, 20 Nov 2026; moved from the Empire screen to its own Military screen on 21 Nov). Answers four questions at a glance:
 //  1. what forces you have and what they cost each turn (the meters and the Formations column);
 //  2. what you can raise now and exactly what stops the rest (the Raise column; every blocked card says why);
 //  3. what military industry is working on and when it finishes (the Programme column, top priority first);
 //  4. what mobilisation or a refit would change (the policy preview and each formation's refit line).
 public partial class RealmGame {
+ int militaryTab;// Military screen: 0 Forces, 1 Units (the old units list)
  int forcesPick=-1;Vector2 forcesUnitScroll,forcesRaiseScroll,forcesOrderScroll;string forcesConfirm;Action forcesConfirmDo;string forcesTip;
  static readonly Color ForceCell=new Color(.06f,.09f,.17f,.9f),ForceBad=new Color(1f,.6f,.45f),ForceGood=new Color(.55f,.88f,.6f);
  GUIStyle fSmall,fTiny,fBig,fHead;
@@ -17,11 +18,10 @@ public partial class RealmGame {
  void ForcesFrame(Rect r){Fill(r,ForceCell);Fill(new Rect(r.x,r.y,r.width,1),new Color(UiGold.r,UiGold.g,UiGold.b,.7f));}
  void DrawForcesScreen(){
   ForcesStyles();forcesTip=null;var e=Event.current;var m=e.mousePosition;
-  GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(50,115,800,40),"Empire",title);
+  GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(50,115,800,40),"Military",title);
   if(GUI.Button(new Rect(1040,115,190,34),"Back",button)){detailsScreen="";GUIUtility.ExitGUI();}
-  if(GUI.Button(new Rect(55,158,220,30),"Overview",button)){empireTab=0;GUIUtility.ExitGUI();}
-  if(GUI.Button(new Rect(281,158,220,30),"Flag and identity",button)){empireTab=1;flagUndo=null;GUIUtility.ExitGUI();}
-  GUI.Button(new Rect(507,158,220,30),"▸ Forces",button);
+  GUI.Button(new Rect(55,158,220,30),"▸ Forces",button);
+  if(GUI.Button(new Rect(281,158,220,30),"Units",button)){militaryTab=1;detailsScroll=Vector2.zero;GUIUtility.ExitGUI();}
   if(!world.nationalForces){GUI.Label(new Rect(60,210,1100,60),"This game began before national forces: soldiers are trained in cities. Start a new game to raise them nationally.",body);return;}
   bool modal=forcesConfirm!=null;bool was=GUI.enabled;if(modal)GUI.enabled=false;
   // ---- meters ----

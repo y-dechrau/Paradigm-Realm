@@ -28,9 +28,10 @@ namespace ParadigmRealm
         static Rect MiniMap{get{return new Rect(1004+RightShift,590,234,138);}}
         static Rect MiniButtons{get{return new Rect(1242+RightShift,590,32,138);}}
         static Rect EndTurnRect{get{return new Rect(1060+RightShift,738,214,54);}}
-        static readonly string[] RailScreens={"Economy","Civics","Research","Diplomacy","Religion","Cities","Military","Atlas","Victory","Chronicle"};
-        static readonly string[] RailLabels={"Empire","Civics","Research","Diplomacy","Religion","Cities","Units","Realms","Victory","Chronicle"};
-        static readonly int[] RailIcons={PixelArt.IconEmpire,PixelArt.IconCivics,PixelArt.IconResearch,PixelArt.IconDiplomacy,PixelArt.IconFaith,PixelArt.IconCities,PixelArt.IconMilitary,PixelArt.IconRealms,PixelArt.IconVictory,PixelArt.IconChronicle,PixelArt.IconIdentity};
+        static readonly string[] RailScreens={"Economy","Civics","Military","Research","Diplomacy","Religion","Cities","Atlas","Victory","Chronicle"};
+        // Military sits below Civics and holds Forces and the old Units screen (owner request, 21 Nov 2026).
+        static readonly string[] RailLabels={"Empire","Civics","Military","Research","Diplomacy","Religion","Cities","Realms","Victory","Chronicle"};
+        static readonly int[] RailIcons={PixelArt.IconEmpire,PixelArt.IconCivics,PixelArt.IconMilitary,PixelArt.IconResearch,PixelArt.IconDiplomacy,PixelArt.IconFaith,PixelArt.IconCities,PixelArt.IconRealms,PixelArt.IconVictory,PixelArt.IconChronicle,PixelArt.IconIdentity};
         const float RailItem=44;
         static Rect RailRect{get{return new Rect(0,44,166,RailScreens.Length*RailItem+8);}}
         readonly List<Rect> hudRects=new List<Rect>();
@@ -371,7 +372,7 @@ namespace ParadigmRealm
             int unitLines=Math.Min(3,present.Count)+(present.Count>3?1:0);
             if(t==null||!t.seen){GUI.Box(TileCard,"");GUI.Label(new Rect(TileCard.x,TileCard.y+15,TileCard.width,22),t==null?"Point at the map to inspect a tile":"Unexplored",hudCentre);return;}
             var v=world.TileYield(t);bool known=t.resource>0&&world.ResourceKnown(0,t.resource);if(t.resource>0&&!known){v[0]-=World.ResourceFood[t.resource];v[1]-=World.ResourceShields[t.resource];v[2]-=World.ResourceTrade[t.resource];}
-            var features=new List<string>{World.TerrainNames[t.terrain]+(World.TerrainDefence(t.terrain)>0?" (defence +"+World.TerrainDefence(t.terrain)+")":"")};if(t.road)features.Add(World.Forested(t.terrain)?"Trail":"Road");if(t.farm)features.Add("Farm");if(t.mine)features.Add("Mine");if(t.fort)features.Add("Fort");if(known)features.Add(World.ResourceNames[t.resource]);
+            var features=new List<string>{World.TerrainNames[t.terrain]+(World.HillWoods(world.At(t.x,t.y))?(world.At(t.x,t.y).woods==2?" with jungle (+1 shield; clear before farming or mining)":" with woods (+1 shield; clear before farming or mining)"):"")+(World.TerrainDefence(t.terrain)>0?" (defence +"+World.TerrainDefence(t.terrain)+")":"")};if(t.road)features.Add(World.Forested(t.terrain)?"Trail":"Road");if(t.farm)features.Add("Farm");if(t.mine)features.Add("Mine");if(t.fort)features.Add("Fort");if(known)features.Add(World.ResourceNames[t.resource]);
             {var beast=world.wildlife&&world.Visible(t.x,t.y)?world.AnimalAt(t.x,t.y):null;if(beast!=null)features.Add(world.AnimalLabel(beast));}if(world.barbarians){var raider=world.Visible(t.x,t.y)?world.RaiderAt(t.x,t.y):null;if(raider!=null)features.Add(world.RaiderLabel(raider));var camp=world.CampAt(t.x,t.y);if(camp!=null&&(camp.seen||world.Visible(t.x,t.y)))features.Add(world.CampLabel(camp));}
             // Tribal villages (owner request): named on the card, with the civilisation they joined if any.
             {var ruinTile=world.At(t.x,t.y);if(ruinTile!=null&&ruinTile.ruin)features.Add(ruinTile.realm>0?"Relic site":"Ancient ruins");}
