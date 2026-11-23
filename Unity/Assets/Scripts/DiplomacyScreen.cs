@@ -168,12 +168,13 @@ public partial class RealmGame {
    if(string.IsNullOrEmpty(councilSearch)&&GUI.GetNameOfFocusedControl()!="councilSearch")GUI.Label(new Rect(box.x+34,box.y,box.width-40,box.height),"Search contacts...",new GUIStyle(courtItalic){fontSize=15,wordWrap=false,alignment=TextAnchor.MiddleLeft,normal={textColor=new Color(.7f,.66f,.58f)}});}
   string q=(councilSearch??"").Trim().ToLowerInvariant();
   var shown=known.Where(o=>(councilFilter==0||CouncilGroup(o)==councilFilter-1)&&(q==""||world.NationName(o).ToLowerInvariant().Contains(q)||(world.nations[o].leader??"").ToLowerInvariant().Contains(q))).ToArray();
-  if(councilPick<0||!known.Contains(councilPick))councilPick=shown.Length>0?shown[0]:known[0];
+  if(councilPick<0||!known.Contains(councilPick))councilPick=shown.Length>0?shown[0]:known[0];councilHover=null;bool councilModal=councilConfirm!=null;if(councilModal)GUI.enabled=false;
   // ---- The hall ----
   var hall=new Rect(8,124,940,620);GoldFrame(hall);var inner=new Rect(hall.x+14,hall.y+14,hall.width-28,hall.height-28);
   {var art=Art("council-hall");if(art!=null)DrawCropped(inner,art,art.width/(float)art.height);else Fill(inner,new Color(.2f,.18f,.16f));Fill(new Rect(inner.x,inner.yMax-34,inner.width,34),new Color(.03f,.05f,.1f,.82f));}
   var area=new Rect(inner.x+10,inner.y+12,inner.width-20,inner.height-58);
-  if(shown.Length==0)GUI.Label(area,"No known civilisation in this group.",new GUIStyle(courtTitle){fontSize=20});
+  if(councilView==1)DrawContactList(area,shown);else if(councilView==2)DrawCouncilAgreements(area,known);else if(councilView==3)DrawCouncilHistory(area);
+  else if(shown.Length==0)GUI.Label(area,"No known civilisation in this group.",new GUIStyle(courtTitle){fontSize=20});
   else{
    // The cards grow fewer per row only while they still fit: one row up to five, two up to twelve, then three, so the hall
    // fills as more civilisations are met.
@@ -183,7 +184,7 @@ public partial class RealmGame {
    for(int k=0;k<shown.Length;k++){int o=shown[k];int row=k/cols,inRow=Math.Min(cols,shown.Length-row*cols);float x0=area.center.x-(inRow*cw+(inRow-1)*gap)/2,y0=area.center.y-(rows*ch+(rows-1)*gap)/2;
     var card=new Rect(x0+(k%cols)*(cw+gap),y0+row*(ch+gap),cw,ch);DrawCouncilCard(card,o,o==councilPick);
     if(GUI.Button(card,"",GUIStyle.none)){if(councilPick==o&&Event.current.clickCount>=2){OpenCourt(o);GUIUtility.ExitGUI();}councilPick=o;}}}
-  {var lg=new Rect(inner.x+12,inner.yMax-32,inner.width-24,30);GUI.Label(lg,"Select a leader, then Open Diplomacy (or double-click)",new GUIStyle(courtItalic){fontSize=14,wordWrap=false,alignment=TextAnchor.MiddleLeft});
+  {var lg=new Rect(inner.x+12,inner.yMax-32,inner.width-24,30);{string[] views={"Seats","Contact list","Agreements","History"};for(int v=0;v<4;v++)if(CourtButton(new Rect(lg.x+v*124,lg.y+2,118,26),"",views[v],councilView==v?CourtGoldFace:CourtNavy)){councilView=v;councilListScroll=Vector2.zero;}}
    string[] names={"Allied","Neutral","Rival","At War"};float x=lg.xMax-4;
    for(int k=3;k>=0;k--){var s=new GUIStyle(courtItalic){fontSize=13,wordWrap=false,alignment=TextAnchor.MiddleLeft};string t="= "+names[k];float w=s.CalcSize(new GUIContent(t)).x;x-=w;GUI.Label(new Rect(x,lg.y,w+4,lg.height),t,s);x-=24;DrawDipIcon(CouncilGroupIcons[k],new Rect(x,lg.y+5,20,20),k==3?new Color(1f,.45f,.4f):(Color?)null);x-=18;}}
   // ---- The chosen leader ----
@@ -194,6 +195,8 @@ public partial class RealmGame {
   FooterFigure(520,"compass","Influence "+world.nations[0].influence,"(+"+world.InfluencePerTurn(0)+" / turn)");FooterRule(720);
   FooterFigure(860,"people","Envoys "+world.EnvoysOut(0)+" / "+world.EnvoyLimit(0),"");FooterRule(990);
   if(CourtButton(new Rect(1030,758,226,34),"","Return to Map",CourtNavy)){detailsScreen="";GUIUtility.ExitGUI();}
+  if(councilHover!=null){var hs=new GUIStyle(courtText){fontSize=14,wordWrap=true,alignment=TextAnchor.UpperLeft};var mp=Event.current.mousePosition;float hw=320,hh=hs.CalcHeight(new GUIContent(councilHover),hw-20)+16;var hb=new Rect(Mathf.Clamp(mp.x+14,8,1272-hw),Mathf.Clamp(mp.y+18,8,740-hh),hw,hh);Fill(hb,new Color(.02f,.03f,.08f,.97f));Fill(new Rect(hb.x,hb.y,hb.width,1),CourtGold);Fill(new Rect(hb.x,hb.yMax-1,hb.width,1),CourtGold);GUI.Label(new Rect(hb.x+10,hb.y+8,hw-20,hh-16),councilHover,hs);}
+  if(councilModal){GUI.enabled=true;DrawCouncilConfirm();}
   DrawTip(new Rect(956,124,316,620));
  }
  void OpenCourt(int o){diplomacyPartner=o;diplomacyChooser=false;ResetDiplomacyUI();}
@@ -216,7 +219,7 @@ public partial class RealmGame {
    GUI.color=new Color(1f,.8f,.35f,.35f);GUI.DrawTexture(new Rect(fig.center.x-fig.width*.6f,fig.yMax-fig.height*.16f,fig.width*1.2f,fig.height*.24f),IsoPicture(4,8,0),ScaleMode.StretchToFill,true);
    var glow=new Color(1f,.84f,.42f);foreach(float grow in new[]{14f,9f,5f,2f}){float a=grow>12?.28f:grow>8?.42f:grow>4?.62f:.9f;GUI.color=new Color(glow.r,glow.g,glow.b,a);GUI.DrawTexture(new Rect(fig.x-grow,fig.y-grow,fig.width+grow*2,fig.height+grow*2),seated,ScaleMode.StretchToFill,true);}GUI.color=old;}
   GUI.DrawTexture(fig,seated,ScaleMode.StretchToFill,true);
-  int waiting=world.offers.Count(x=>x.to==0&&x.from==o&&x.status==0&&x.expires>world.turn);if(waiting>0){var b=new Rect(fig.xMax-26,fig.y+6,22,22);Fill(b,new Color(.75f,.18f,.14f));GUI.Label(b,waiting.ToString(),dipBadge);}
+  DrawSeatMarkers(fig,o);
   // Name plate across the foot of the throne.
   // The full name: one line if it fits at a readable size, otherwise two, and the plate grows to hold it.
   float nameH;var nameStyle=FitName(world.NationName(o).ToUpperInvariant(),card.width*.94f-10,new GUIStyle(courtCaps){alignment=TextAnchor.MiddleCenter,normal={textColor=CourtCream}},15,11,9,out nameH);plateH=Mathf.Max(plateH,nameH+6);
@@ -270,7 +273,7 @@ public partial class RealmGame {
   {var bd=Art("diplomacy-backdrop");if(bd!=null)DrawCropped(pic,bd,BackdropAspect);else Fill(pic,new Color(.15f,.2f,.3f));}
   var face=Portrait(pn.portrait,world.Era(o));if(face!=null)DrawPortrait(pic,face);
   {var flag=FlagTexture(o);if(flag!=null){var fr=new Rect(pic.x+6,pic.y+6,Mathf.Min(42,pic.width*.28f),Mathf.Min(28,pic.width*.19f));Fill(new Rect(fr.x-1,fr.y-1,fr.width+2,fr.height+2),CourtGold);GUI.DrawTexture(fr,flag,ScaleMode.StretchToFill,true);}}
-  int waiting=world.offers.Count(x=>x.to==0&&x.from==o&&x.status==0&&x.expires>world.turn);if(waiting>0){var b=new Rect(pic.xMax-28,pic.y+6,22,22);Fill(b,new Color(.75f,.18f,.14f));GUI.Label(b,waiting.ToString(),dipBadge);}
+  DrawSeatMarkers(pic,o);
   var plate=new Rect(card.x-4,card.yMax-56,card.width+8,56);Fill(plate,new Color(.04f,.06f,.12f,.97f));Fill(new Rect(plate.x,plate.y,plate.width,1),CourtGold);Fill(new Rect(plate.x,plate.yMax-1,plate.width,1),CourtGold);Fill(new Rect(plate.x,plate.y,1,plate.height),CourtGold);Fill(new Rect(plate.xMax-1,plate.y,1,plate.height),CourtGold);
   FitLabel(new Rect(plate.x+4,plate.y+3,plate.width-8,24),world.NationName(o).ToUpperInvariant(),new GUIStyle(courtCaps){fontSize=15,alignment=TextAnchor.MiddleCenter,normal={textColor=CourtCream}},9);
   Color ink;string mood=MoodText(o,out ink);var ms=new GUIStyle(courtCaps){fontSize=13,alignment=TextAnchor.MiddleLeft};ms.normal.textColor=ink;while(ms.fontSize>9&&ms.CalcSize(new GUIContent(mood)).x>plate.width-40)ms.fontSize--;
@@ -288,14 +291,14 @@ public partial class RealmGame {
   {string[] icons={"handshake","mask","crown"};string[] text={"Trust: "+world.Trust(o,0),"Fear: "+world.Threat(o,0),"Strength: "+Attitudes.Power[world.PowerLevel(0,o)]};
    for(int k=0;k<3;k++){var row=new Rect(x,y,w,27);Fill(row,new Color(.06f,.09f,.17f,.9f));Fill(new Rect(row.x,row.yMax-1,row.width,1),new Color(CourtGold.r,CourtGold.g,CourtGold.b,.35f));DrawDipIcon(icons[k],new Rect(row.x+8,row.y+3,22,22));GUI.Label(new Rect(row.x+40,row.y,row.width-44,row.height),text[k],new GUIStyle(courtText){fontSize=15,alignment=TextAnchor.MiddleLeft});y+=29;}}
   y+=4;CourtHeading(new Rect(x,y,w,22),"Agreements");y+=26;
-  {var held=Enumerable.Range(0,Pacts.Count).Where(k=>world.Pact(0,o,k)).Select(k=>Pacts.Names[k]).ToList();DrawDipIcon("book",new Rect(x+4,y+2,22,22));
+  {var held=Enumerable.Range(0,Pacts.Count).Where(k=>world.Pact(0,o,k)).Select(k=>Pacts.Names[k]).ToList();foreach(var ag in world.AgreementsBetween(0,o))if(world.AgreementActive(ag))held.Add((ag.gate>0?"Gate transit":"Passage")+" ("+(ag.end-world.turn)+" turns left)");if(world.contracts.Any(c=>c.from==0&&c.to==o||c.from==o&&c.to==0))held.Add("Trade deal");DrawDipIcon("book",new Rect(x+4,y+2,22,22));
    GUI.Label(new Rect(x+34,y,w-34,44),held.Count==0?"No active agreements.":string.Join(", ",held.ToArray())+".",new GUIStyle(courtItalic){fontSize=14});y+=40;}
   CourtHeading(new Rect(x,y,w,22),"Latest Contact");y+=26;
   {string said=CurlQuotes(world.Greeting(o));var qs=new GUIStyle(courtItalic){fontSize=14,alignment=TextAnchor.UpperCenter};var qr=new Rect(x,y,w,side.yMax-16-4*38-6-y);while(qs.fontSize>10&&qs.CalcHeight(new GUIContent(said),qr.width)>qr.height)qs.fontSize--;GUI.Label(qr,said,qs);y+=66;}
   float by=side.yMax-16-4*38;bool war=world.AtWar(0,o);
-  if(CourtButton(new Rect(x,by,w,34),"handshake","Open Diplomacy",CourtGoldFace)){OpenCourt(o);GUIUtility.ExitGUI();}
+  if(CourtButton(new Rect(x,by,w,34),"handshake","Request Audience",CourtGoldFace)){OpenCourt(o);GUIUtility.ExitGUI();}
   if(CourtAction(new Rect(x,by+38,w,34),"coins",war?"Offer Peace Terms":"Propose Trade",!war&&world.Rivals(0,o)?"No dealings between rivals.":"",war?"Offer peace with gold and resources.":"Exchange gold, payments and resources.",CourtNavy)){OpenCourt(o);customDeal=true;GUIUtility.ExitGUI();}
-  if(CourtButton(new Rect(x,by+76,w,34),"scroll","View Agreements",CourtNavy)){OpenCourt(o);GUIUtility.ExitGUI();}
+  if(CourtButton(new Rect(x,by+76,w,34),"scroll","View Agreements",CourtNavy)){councilView=2;councilListScroll=Vector2.zero;}
   if(CourtButton(new Rect(x,by+114,w,34),"gateway","View Civilisation",CourtNavy)){OpenCourt(o);diplomacyDiscuss=true;detailsScroll=Vector2.zero;GUIUtility.ExitGUI();}
  }
  // ---- The Court: one leader ----
@@ -396,29 +399,9 @@ public partial class RealmGame {
   }else if(customDeal){
    // ---- A trade deal, or the terms of a peace ----
    if(DipButton(new Rect(left,y,wide2,26),"◂ Back",navy))customDeal=false;y+=32;
-   DipHeading(new Rect(left,y,wide2,22),war?"Peace terms":"Trade deal");y+=28;
-   GUI.Label(new Rect(left,y+3,150,22),"Payments run for",new GUIStyle(dipRow){fontSize=13});diplomacyDuration=Dropdown(new Rect(left+150,y,150,26),"length",diplomacyDuration,new[]{"10 turns","15 turns","30 turns"});y+=32;
-   // Both columns fit the content width (owner report, 21 Nov 2026: THEY GIVE ran past the panel and lost its + buttons).
-   float colW=(wide2-12)/2;
-   for(int s=0;s<2;s++){
-    var col=new Rect(left+s*(colW+12),y,colW,150);DipPanel(col,.9f);GUI.Label(new Rect(col.x,col.y+4,col.width,20),s==0?"YOU GIVE":"THEY GIVE",dipCaps);
-    DrawIcon(PixelArt.IconGold,new Rect(col.x+8,col.y+32,22,22));GUI.Label(new Rect(col.x+32,col.y+30,60,24),"Gold",dipRow);
-    if(s==0)giveGold=Stepper(new Rect(col.x+86,col.y+30,col.width-94,24),giveGold,25,10000);else askGold=Stepper(new Rect(col.x+86,col.y+30,col.width-94,24),askGold,25,10000);
-    GUI.Label(new Rect(col.x+10,col.y+60,80,24),"Per turn",dipRow);
-    if(s==0)givePerTurn=Stepper(new Rect(col.x+86,col.y+60,col.width-94,24),givePerTurn,1,20);else askPerTurn=Stepper(new Rect(col.x+86,col.y+60,col.width-94,24),askPerTurn,1,20);
-    GUI.Label(new Rect(col.x+10,col.y+90,col.width-20,20),"Resource",hudSmall);
-    if(s==0)giveResource=Dropdown(new Rect(col.x+8,col.y+112,col.width-16,26),"give",giveResource,World.ResourceNames);else askResource=Dropdown(new Rect(col.x+8,col.y+112,col.width-16,26),"ask",askResource,World.ResourceNames);
-   }
-   y+=158;
-   var offer=new DiplomaticOffer{from=0,to=partner,kind=war?TreatyKind.Peace:TreatyKind.Trade,duration=new[]{10,15,30}[diplomacyDuration],giveGold=DealNumber(giveGold,10000),askGold=DealNumber(askGold,10000),givePerTurn=DealNumber(givePerTurn,20),askPerTurn=DealNumber(askPerTurn,20),giveResource=giveResource,askResource=askResource};
-   if(war)y=DrawPeaceTerms(partner,side,y,offer);
-   string problem=world.OfferProblem(offer);int will=problem==""?world.OfferWillingness(offer):-1;
-   var verdict=new Rect(left,y,wide2,40);var keep=GUI.color;GUI.color=problem!=""?new Color(.75f,.75f,.78f):will>=0?DipGood:DipBad;GUI.Label(verdict,problem!=""?problem:world.OfferAssessment(offer),new GUIStyle(dipRow){fontSize=13,wordWrap=true});GUI.color=keep;y+=44;
-   float sendW=(wide2-8)*.58f;var send=new Rect(left,y,sendW,40);GUI.enabled=enabled&&problem=="";
-   if(DipButton(send,war?"OFFER PEACE":"PROPOSE TRADE",teal)){var sent=world.Propose(offer);status=sent.answer;dipReply=world.LeaderReply(partner,sent,sent.status==1);dipReplyPartner=partner;if(sent.status==1){customDeal=false;giveGold=askGold=givePerTurn=askPerTurn="0";giveResource=askResource=0;ResetPeaceTerms();}}
-   // The least gold now that would turn their answer; nothing else in the deal is touched.
-   if(DipButton(new Rect(left+sendW+8,y,wide2-sendW-8,40),"What would it take?",navy)){int need=world.GoldToAccept(offer);if(need>0){giveGold=(DealNumber(giveGold,10000)+need).ToString();status="They would accept with "+need+" more gold now.";}else status=need==0?"They would already accept.":"No gold you hold would change their mind: "+string.Join("; ",world.AcceptanceLines(offer).Where(l=>l.Value<0).OrderBy(l=>l.Value).Take(2).Select(l=>l.Key).ToArray())+".";}
-   GUI.enabled=enabled;if(problem=="")Tip(send,"Why they would answer so:",world.AcceptanceLines(offer));
+   DipHeading(new Rect(left,y,wide2,22),war?"Peace terms":"The deal table");y+=28;
+   GUI.Label(new Rect(left,y+3,150,22),"The deal runs for",new GUIStyle(dipRow){fontSize=13});diplomacyDuration=Dropdown(new Rect(left+150,y,150,26),"length",diplomacyDuration,new[]{"10 turns","15 turns","30 turns"});y+=32;
+   y=DrawDealTable(partner,left,y,wide2,war,enabled,navy,teal,side);
   }}else{
    if(war){
     // ---- War: exhaustion on both sides, and peace ----

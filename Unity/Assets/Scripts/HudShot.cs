@@ -71,6 +71,13 @@ namespace ParadigmRealm { public partial class RealmGame {
   diplomacyPartner=councilPick;diplomacyChooser=false;ResetDiplomacyUI();yield return Frames(20);yield return Shot(folder,"hud-court-long.bmp");diplomacyChooser=true;councilPick=-1;
   for(int o=9;o<world.civCount;o++)world.met[o]=false;
   diplomacyPartner=Enumerable.Range(1,world.civCount-1).First(o=>world.met[o]);diplomacyChooser=false;ResetDiplomacyUI();yield return Frames(20);yield return Shot(folder,"hud-court.bmp");customDeal=true;yield return Frames(15);yield return Shot(folder,"hud-court-trade.bmp");customDeal=false;requestsView=true;yield return Frames(15);yield return Shot(folder,"hud-court-request.bmp");requestsView=false;
+  // The negotiation screens (23 Nov 2026): a passage clause on the table, the ruler's counteroffer, then the Council's views.
+  {int p=diplomacyPartner;world.nations[0].gold=System.Math.Max(world.nations[0].gold,600);world.gold=world.nations[0].gold;customDeal=true;dealAskPassage=true;yield return Frames(15);yield return Shot(folder,"hud-deal-passage.bmp");
+   world.Propose(new DiplomaticOffer{from=0,to=p,kind=TreatyKind.Trade,duration=15,askPassage=true});dealAskPassage=false;yield return Frames(15);yield return Shot(folder,"hud-deal-counter.bmp");
+   var counter=world.offers.Find(o=>o.from==p&&o.to==0&&o.status==0&&o.counterOf>0);if(counter!=null)world.RespondToOffer(counter.id,true);customDeal=false;
+   diplomacyChooser=true;councilPick=p;councilView=0;yield return Frames(15);yield return Shot(folder,"hud-council-markers.bmp");
+   councilView=1;yield return Frames(15);yield return Shot(folder,"hud-council-list.bmp");councilView=2;yield return Frames(15);yield return Shot(folder,"hud-council-agreements.bmp");
+   councilView=3;yield return Frames(15);yield return Shot(folder,"hud-council-history.bmp");councilView=0;diplomacyChooser=false;}
   // With a proposal waiting from them (the "Under proposal" row and the scrolling panel).
   world.offers.Add(new DiplomaticOffer{id=99001,from=diplomacyPartner,to=0,kind=Pacts.Kind[Pacts.Commercial],created=world.turn,expires=world.turn+5,status=0});
   yield return Frames(20);yield return Shot(folder,"hud-court-proposal.bmp");world.offers.RemoveAll(o=>o.id==99001);

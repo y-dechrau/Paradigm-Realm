@@ -7,7 +7,7 @@ namespace ParadigmRealm {
 public partial class RealmGame {
  int diplomacyPartner=1,diplomacyDuration=1,giveResource,askResource;
  string giveGold="0",askGold="0",givePerTurn="0",askPerTurn="0";
- void ResetDiplomacyUI(){giveGold=askGold=givePerTurn=askPerTurn="0";giveResource=askResource=0;customDeal=false;claimsView=false;requestsView=false;ResetPeaceTerms();pendingUnit=-1;pendingWars=new int[0];}
+ void ResetDiplomacyUI(){giveGold=askGold=givePerTurn=askPerTurn="0";giveResource=askResource=0;customDeal=false;claimsView=false;requestsView=false;ResetPeaceTerms();pendingUnit=-1;pendingWars=new int[0];ResetDealTable();}
  static int DealNumber(string text,int maximum){int value;return int.TryParse(text,out value)?Math.Max(0,Math.Min(maximum,value)):0;}
  void DrawAdvancedDiplomacy(){
   GUILayout.Label("Proposals awaiting your answer",heading);
