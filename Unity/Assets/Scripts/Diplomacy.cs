@@ -77,7 +77,7 @@ public static class Attitudes {
  public int[] modsA=new int[OpinionMods.Count],modsB=new int[OpinionMods.Count];
  public int rivalA=-1,rivalB=-1,envoyA,envoyB,exhaustA,exhaustB;
  // Save version 43: who declared the war under way (or the last one), so allies can tell the attacker from the attacked.
- public int lastDeclarer=-1;
+ public int lastDeclarer=-1,lastPassageAsk=-99;
  // Save version 36: a religious treaty (no missionaries or funded clergy between the two) lasts until this turn.
  public int faithTreatyUntil;
  public List<string> events=new List<string>();
@@ -90,6 +90,9 @@ public static class Attitudes {
  // Save version 43, peace terms only (DiplomacyPeace.cs): a city handed over each way (-1 none), the recipient's withdrawal
  // pledge, and the truce length (0 means the usual ten turns).
  public int giveCity=-1,askCity=-1,truce;public bool withdraw;
+ // Negotiated passage (DiplomacyAgreements.cs, 23 Nov 2026): the giver lets the other side cross its land, or reach one gateway
+ // (cell + 1). A counteroffer names the offer it answers and which terms it changed (1 gold now, 4 duration); why: a rival's reason.
+ public bool givePassage,askPassage;public int giveGate,askGate,counterOf,changed;public string why="";
  public TreatyKind kind; public string answer="";
  public DiplomaticOffer Copy(){return (DiplomaticOffer)MemberwiseClone();}
 }
@@ -112,7 +115,7 @@ public partial class World {
  static int Clamp(int v,int lo,int hi){return v<lo?lo:v>hi?hi:v;}
  int Treasury(int owner){return owner==0?gold:nations[owner].gold;}
  void AddDiplomaticGold(int owner,int amount){nations[owner].gold=Treasury(owner)+amount;if(owner==0)gold=nations[0].gold;}
- void DiplomacyEvent(int a,int b,string message){var p=Relation(a,b);p.events.Insert(0,"Turn "+turn+": "+message);if(p.events.Count>12)p.events.RemoveAt(12);if(a==0||b==0||met[a]&&met[b])Note(NationName(a)+" / "+NationName(b)+": "+message);}
+ void DiplomacyEvent(int a,int b,string message){Record(RecordKinds.Of(message),a,b,message);var p=Relation(a,b);p.events.Insert(0,"Turn "+turn+": "+message);if(p.events.Count>12)p.events.RemoveAt(12);if(a==0||b==0||met[a]&&met[b])Note(NationName(a)+" / "+NationName(b)+": "+message);}
  public string Personality(int owner){return owner==0?"Your decisions shape your reputation.":new[]{"Mercantile: values trade and reliable payments.","Scholarly: favours research cooperation.","Martial: respects strength and keeps its word to allies.","Builder: prefers peace and steady growth.","Expansionist: watches its neighbours closely."}[(owner-1)%5];}
 
  // ---------- agreements ----------

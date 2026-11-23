@@ -54,7 +54,7 @@ public partial class World {
  public string MoveProblem(Unit u,int x,int y){
   if(u==null||!units.Contains(u))return "No such unit.";var t=At(x,y);if(t==null)return "Edge of the world.";if(Distance(u.x,u.y,t.x,t.y)!=1)return "Not next to it.";
   if(u.unfed)return "No food: it cannot act until there is more.";if(u.moves<=0)return "No movement left this turn.";
-  if(!Passable(u,t,t.terrain))return "It cannot cross "+TerrainNames[t.terrain]+".";if(!CanEnter(u.owner,t))return "Closed borders.";
+  if(!Passable(u,t,t.terrain))return "It cannot cross "+TerrainNames[t.terrain]+".";if(!CanEnter(u.owner,t))return EnterReason(u.owner,t);
   if(!Capacity(u,t.x,t.y))return "That tile is full.";int cost=StepCost(u,u.x,u.y,t);if(u.moves<cost)return "Not enough movement left ("+u.moves+" of "+cost+").";
   if(u.stack!=0){var mates=StackOf(u).Where(a=>a!=u&&!a.unfed).ToList();foreach(var m in mates)if(m.moves<StepCost(m,u.x,u.y,t))return "Its stack waits for "+UnitName(m)+", which has no movement left.";}
   return "";

@@ -348,10 +348,10 @@ namespace ParadigmRealm
             // A rival moving its own unit cannot change which of its borders you see, so only your moves and the turn's full sight
             // update look for borders (owner report, 20 Nov 2026: this scan of every tile on every rival step made End Turn take seconds).
             if(mover<=0)for(int i=1;i<civCount;i++)if(!met[i]&&!(gatesLocked&&IsNativeNation(i))){bordersSeen=new bool[civCount];foreach(var t in nearX>=0?TilesAround(nearX,nearY,ContactReach):UnmetTerritory())if(t.owner>0&&t.owner<civCount&&!met[t.owner]&&!bordersSeen[t.owner]&&Visible(t.x,t.y))bordersSeen[t.owner]=true;break;}
-            for(int i=1;i<civCount;i++)if((mover<=0||mover==i)&&!met[i]&&!(gatesLocked&&IsNativeNation(i))&&(bordersSeen!=null&&bordersSeen[i]||units.Any(u=>u.owner==i&&Visible(u.x,u.y))||cities.Any(c=>c.owner==i&&Visible(c.x,c.y)))){met[i]=true;Note("First contact: "+NationName(i)+".");AddEraScore(0,1,"first contact with "+NationName(i));AddEraScore(i,1,"first contact");if(newContacts==null)newContacts=new List<int>();newContacts.Add(i);}}
+            for(int i=1;i<civCount;i++)if((mover<=0||mover==i)&&!met[i]&&!(gatesLocked&&IsNativeNation(i))&&(bordersSeen!=null&&bordersSeen[i]||units.Any(u=>u.owner==i&&Visible(u.x,u.y))||cities.Any(c=>c.owner==i&&Visible(c.x,c.y)))){met[i]=true;Note("First contact: "+NationName(i)+".");Record(RecordKinds.FirstContact,0,i,"First contact between "+NationName(0)+" and "+NationName(i)+".");AddEraScore(0,1,"first contact with "+NationName(i));AddEraScore(i,1,"first contact");if(newContacts==null)newContacts=new List<int>();newContacts.Add(i);}}
         public bool AtWar(int a,int b){return a>=0&&b>=0&&a<civCount&&b<civCount&&a!=b&&(a!=0&&b!=0?RivalWar(a,b):war[a==0?b:a]);}
         bool RivalWar(int a,int b){var p=Relation(a,b);return p!=null&&p.atWar;}
-        public bool CanEnter(int owner,Tile t){return t.owner<0||t.owner==owner||AtWar(owner,t.owner)||HasAccess(owner,t.owner)||GateAccessTile(owner,t);}
+        public bool CanEnter(int owner,Tile t){return t.owner<0||t.owner==owner||AtWar(owner,t.owner)||HasAccess(owner,t.owner)||GateAccessTile(owner,t)||PassageTile(owner,t);}
         public void RebuildTerritory()
         {
             // A city is joined to the roads that reach it; workers cannot build on its tile.

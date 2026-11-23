@@ -20,7 +20,8 @@ public partial class World {
   if(o.giveResource>0&&!HasDomesticResource(o.from,o.giveResource)||o.askResource>0&&!HasDomesticResource(o.to,o.askResource))return "Resources must be domestically improved and connected to the capital; imports cannot be exported.";
   if(o.giveResource>0&&o.giveResource==o.askResource)return "Choose different resources.";
   if(Recurring(o)&&contracts.Any(c=>SamePair(c.from,c.to,o.from,o.to)))return "End the existing trade deal before replacing it.";
-  if(o.kind==TreatyKind.Trade&&!Recurring(o)&&o.giveGold+o.askGold==0)return "Add a payment or resource to the trade.";
+  if(o.kind==TreatyKind.Trade&&!Recurring(o)&&o.giveGold+o.askGold==0&&!HasPassageTerms(o))return "Add a payment, resource or passage to the deal.";
+  {string passage=PassageProblem(o);if(passage!="")return passage;}
   int k=Pacts.Of(o.kind);
   if(k>=0){if(Pact(o.from,o.to,k))return Pacts.Names[k]+" already in force.";string tech=PactTech(k);if(tech!=null&&(!HasTech(o.from,tech)||!HasTech(o.to,tech)))return "Both sides need "+(tech=="writing"?"Writing":"Code of Laws")+".";
    if(k==Pacts.GateAccess&&!OwnsGate(o.from)&&!OwnsGate(o.to))return "Neither of you holds a gateway.";}
@@ -58,7 +59,7 @@ public partial class World {
  public int OfferWillingness(DiplomaticOffer o){return Acceptance(o,null);}
  int Acceptance(DiplomaticOffer o,List<KeyValuePair<string,int>> lines){
   int sum=0,value=DealValue(o);
-  if(o.kind==TreatyKind.Trade){Part(lines,ref sum,"What the terms are worth to them",value);Part(lines,ref sum,"Goodwill",Math.Max(0,Opinion(o.to,o.from))/5);return sum;}
+  if(o.kind==TreatyKind.Trade){Part(lines,ref sum,"What the terms are worth to them",value);Part(lines,ref sum,"Goodwill",Math.Max(0,Opinion(o.to,o.from))/5);PassageLines(o,lines,ref sum);return sum;}
   if(o.kind==TreatyKind.Peace){
    var p=Relation(o.from,o.to);int age=turn-p.warStarted,mine=Exhaustion(o.to,o.from),yours=Exhaustion(o.from,o.to);
    Part(lines,ref sum,"Will to fight on",-40);
@@ -75,16 +76,17 @@ public partial class World {
   Part(lines,ref sum,"The terms offered",Clamp(value/5,-40,40));
   return sum;}
  public string OfferAssessment(DiplomaticOffer o){string problem=OfferProblem(o);if(problem!="")return problem;int w=OfferWillingness(o);return (w>=0?"They would accept (+"+w+").":"They would refuse ("+w+").")+(modernRules?NeedText(o.to):"");}
- public DiplomaticOffer Propose(DiplomaticOffer draft){var o=draft.Copy();o.status=2;o.answer=OfferProblem(o);if(o.answer!="")return o;var p=Relation(o.from,o.to);if((o.from==p.a?p.lastA:p.lastB)==turn||offers.Any(x=>x.status==0&&SamePair(x.from,x.to,o.from,o.to))){o.answer="One proposal per turn, with only one pending proposal per pair.";return o;}if(o.from==p.a)p.lastA=turn;else p.lastB=turn;o.id=nextDiplomaticId++;o.created=turn;o.expires=turn+3;o.status=0;offers.Add(o);
+ public DiplomaticOffer Propose(DiplomaticOffer draft){var o=draft.Copy();o.status=2;o.answer=OfferProblem(o);if(o.answer!="")return o;var p=Relation(o.from,o.to);bool haggle=o.from==0&&o.kind==TreatyKind.Trade;if((haggle?!TalkAllowed(o.to,false):(o.from==p.a?p.lastA:p.lastB)==turn)||offers.Any(x=>x.status==0&&SamePair(x.from,x.to,o.from,o.to))){o.answer=haggle&&!TalkAllowed(o.to,false)?"They will hear no more proposals this turn ("+DiplomacyTuning.TalksPerTurn+" a turn).":offers.Any(x=>x.status==0&&SamePair(x.from,x.to,o.from,o.to))?"Answer the proposal that is waiting first.":"One pact proposal per turn.";return o;}if(haggle)TalkAllowed(o.to,true);if(o.from==p.a)p.lastA=turn;else p.lastB=turn;o.id=nextDiplomaticId++;o.created=turn;o.expires=turn+3;o.status=0;offers.Add(o);
   if(o.to==0){AddRivalCall(o.from,o.id,CallText(o));o.answer="Awaiting your response.";DiplomacyEvent(o.from,o.to,"New diplomatic proposal. Respond within three turns.");}
   else if(OfferWillingness(o)>=0)AcceptOffer(o);
-  else{int w=OfferWillingness(o);o.status=2;o.answer="Declined ("+w+").";DiplomacyEvent(o.from,o.to,OfferName(o.kind)+" declined.");if(o.kind==TreatyKind.Trade&&o.from==0){var counter=new DiplomaticOffer{from=o.to,to=0,kind=o.kind,duration=o.duration,giveGold=o.askGold,askGold=o.giveGold-w+5,givePerTurn=o.askPerTurn,askPerTurn=o.givePerTurn,giveResource=o.askResource,askResource=o.giveResource};if(OfferProblem(counter)==""){counter.id=nextDiplomaticId++;counter.created=turn;counter.expires=turn+3;counter.answer="Counteroffer: revised upfront payment.";offers.Add(counter);AddRivalCall(counter.from,counter.id,"makes a counteroffer.");DiplomacyEvent(o.to,0,"A counteroffer is waiting in your inbox.");}}}
+  else{int w=OfferWillingness(o);o.status=2;o.answer="Declined ("+w+").";DiplomacyEvent(o.from,o.to,OfferName(o.kind)+" declined.");o.answer=AnswerReasons(o);if(o.kind==TreatyKind.Trade&&o.from==0){var counter=CounterFor(o);if(counter!=null){counter.id=nextDiplomaticId++;counter.created=turn;counter.expires=turn+DiplomacyTuning.AnswerTurns;counter.answer="Counteroffer.";offers.Add(counter);o.counterOf=counter.id;Record(RecordKinds.Counter,o.to,0,NationName(o.to)+" answered with a counteroffer: "+TermsText(counter)+".");}}}
   offers.RemoveAll(x=>x.status!=0&&x.created<turn-10);return o;
  }
  public static string OfferName(TreatyKind kind){int k=Pacts.Of(kind);return k>=0?Pacts.Names[k]:kind==TreatyKind.Trade?"Trade deal":kind==TreatyKind.Peace?"Peace":"Proposal";}
  bool AcceptOffer(DiplomaticOffer o){string reason=OfferProblem(o);if(reason!=""){o.status=2;o.answer=reason;return false;}AddDiplomaticGold(o.from,o.askGold-o.giveGold);AddDiplomaticGold(o.to,o.giveGold-o.askGold);int until=turn+o.duration;
   int k=Pacts.Of(o.kind);if(k>=0)SetPact(o.from,o.to,k,true);else if(o.kind==TreatyKind.Peace){MakePeace(o.from,o.to);ApplyPeaceTerms(o);}
   if(Recurring(o))contracts.Add(new DiplomaticContract{id=nextDiplomaticId++,from=o.from,to=o.to,start=turn,end=until,givePerTurn=o.givePerTurn,askPerTurn=o.askPerTurn,giveResource=o.giveResource,askResource=o.askResource});
+  SignPassage(o);
   if(k>=0){AddOpinion(o.from,o.to,OpinionMods.Dealings,3);AddOpinion(o.to,o.from,OpinionMods.Dealings,3);}o.status=1;o.answer="Accepted.";DiplomacyEvent(o.from,o.to,OfferName(o.kind)+" agreed.");return true;
  }
  public bool RespondToOffer(int id,bool accept){var o=offers.Find(x=>x.id==id&&x.to==0&&x.status==0);if(o==null||result!="")return false;if(turn>=o.expires){o.status=3;o.answer="Expired.";return false;}if(accept)return AcceptOffer(o);o.status=2;o.answer="Declined by player.";DiplomacyEvent(o.from,o.to,"Proposal declined.");return true;}
@@ -93,8 +95,8 @@ public partial class World {
   if(k>=0)s+=" "+Pacts.Effects[k]+" It lasts until one side ends it.";
   if(o.kind==TreatyKind.Peace)s+=" Terms: "+PeaceTermsText(o);
   var mine=new List<string>();var theirs=new List<string>();
-  if(o.giveGold>0)mine.Add(o.giveGold+" gold now");if(o.givePerTurn>0)mine.Add(o.givePerTurn+" gold a turn");if(o.giveResource>0)mine.Add(ResourceNames[o.giveResource]);
-  if(o.askGold>0)theirs.Add(o.askGold+" gold now");if(o.askPerTurn>0)theirs.Add(o.askPerTurn+" gold a turn");if(o.askResource>0)theirs.Add(ResourceNames[o.askResource]);
+  if(o.giveGold>0)mine.Add(o.giveGold+" gold now");if(o.givePerTurn>0)mine.Add(o.givePerTurn+" gold a turn");if(o.giveResource>0)mine.Add(ResourceNames[o.giveResource]);if(o.givePassage)mine.Add("passage through its land");if(o.giveGate>0)mine.Add("use of "+GateLabel(o.giveGate));
+  if(o.askGold>0)theirs.Add(o.askGold+" gold now");if(o.askPerTurn>0)theirs.Add(o.askPerTurn+" gold a turn");if(o.askResource>0)theirs.Add(ResourceNames[o.askResource]);if(o.askPassage)theirs.Add("passage through its land");if(o.askGate>0)theirs.Add("use of "+GateLabel(o.askGate));
   if(mine.Count>0)s+=" "+NationName(o.from)+" gives "+string.Join(", ",mine.ToArray())+".";
   if(theirs.Count>0)s+=" "+NationName(o.to)+" gives "+string.Join(", ",theirs.ToArray())+".";
   if(Recurring(o))s+=" Payments and resources run for "+o.duration+" turns; a shared resource is not lost by its supplier.";
@@ -134,6 +136,7 @@ public partial class World {
   claims.RemoveAll(c=>{var city=CityById(c.city);return city==null||city.owner==c.owner;});
   foreach(var c in contracts.Where(c=>c.end<=turn).ToArray()){contracts.Remove(c);DiplomacyEvent(c.from,c.to,"Trade deal completed.");}
   foreach(var o in offers.Where(o=>o.status==0&&o.expires<=turn)){o.status=3;o.answer="Expired.";}
+  AgreementsTurn();
   RequestsTurn();
  }
 
@@ -147,7 +150,7 @@ public partial class World {
   {var unitsOf=new List<Unit>[civCount];var citiesOf=new List<City>[civCount];for(int o=0;o<civCount;o++){unitsOf[o]=new List<Unit>();citiesOf[o]=new List<City>();}foreach(var u in units)if(u.owner>=0&&u.owner<civCount)unitsOf[u.owner].Add(u);foreach(var c in cities)citiesOf[c.owner].Add(c);
    int scanned=0;foreach(var pair in diplomacy){if(++scanned%120==0)yield return 1;if(pair.a==0||pair.contact||(pair.a+pair.b+turn)%3!=0||SealedApart(pair.a,pair.b))continue;bool seen=false;foreach(var u in unitsOf[pair.b])if(VisibleTo(pair.a,u.x,u.y)){seen=true;break;}if(!seen)foreach(var c in citiesOf[pair.b])if(VisibleTo(pair.a,c.x,c.y)){seen=true;break;}if(!seen)foreach(var u in unitsOf[pair.a])if(VisibleTo(pair.b,u.x,u.y)){seen=true;break;}if(seen)pair.contact=true;}}
   yield return 1;
-  for(int a=1;a<civCount;a++){if(turn%5!=a%5||!cities.Any(c=>c.owner==a))continue;
+  for(int a=1;a<civCount;a++){if(turn%5!=a%5||!cities.Any(c=>c.owner==a))continue;PassageAI(a);
    for(int b=0;b<civCount;b++){if(!HasContact(a,b)||offers.Any(o=>o.status==0&&SamePair(o.from,o.to,a,b)))continue;var p=Relation(a,b);DiplomaticOffer offer=null;
     if(AtWar(a,b)){if(RivalWantsPeace(a,b))offer=AIPeaceOffer(a,b);}
     else{
@@ -182,7 +185,7 @@ public partial class World {
  }
 
  // ---------- validity and older saves ----------
- bool DiplomacyValid(){if(diplomacy==null||diplomacy.Count!=civCount*(civCount-1)/2||offers==null||contracts==null||claims==null||warWeariness==null||warWeariness.Length!=civCount||nextDiplomaticId<1)return false;
+ bool DiplomacyValid(){if(!AgreementsValid())return false;if(diplomacy==null||diplomacy.Count!=civCount*(civCount-1)/2||offers==null||contracts==null||claims==null||warWeariness==null||warWeariness.Length!=civCount||nextDiplomaticId<1)return false;
   var keys=new HashSet<int>();foreach(var p in diplomacy){if(p==null||p.a<0||p.b>=civCount||p.a>=p.b||!keys.Add(p.a*1000+p.b)||p.events==null||p.events.Count>12||p.events.Any(x=>x==null)||p.trustA<0||p.trustB<0||p.trustA>100||p.trustB>100||p.alarmA<0||p.alarmB<0||p.alarmA>100||p.alarmB>100||p.exhaustA<0||p.exhaustB<0||p.exhaustA>100||p.exhaustB>100||p.pacts<0||p.pacts>=1<<Pacts.Count||p.pactSince==null||p.pactSince.Length!=Pacts.Count||p.modsA==null||p.modsB==null||p.modsA.Length!=OpinionMods.Count||p.modsB.Length!=OpinionMods.Count||p.modsA.Any(v=>v<-100||v>100)||p.modsB.Any(v=>v<-100||v>100)||p.rivalA< -1||p.rivalB< -1||p.envoyA<0||p.envoyA>1||p.envoyB<0||p.envoyB>1||p.peaceUntil<0||p.warStarted<0)return false;}
   var ids=new HashSet<int>();foreach(var o in offers){if(o==null||o.id<1||o.id>=nextDiplomaticId||!ids.Add(o.id)||o.from<0||o.to<0||o.from>=civCount||o.to>=civCount||o.from==o.to||o.status<0||o.status>3||o.created<1||o.expires<=o.created||o.answer==null||!ValidKind(o.kind)||o.duration<5||o.duration>30||o.giveGold<0||o.askGold<0||o.giveGold>10000||o.askGold>10000||!ValidRecurring(o.givePerTurn,o.askPerTurn,o.giveResource,o.askResource))return false;}
   keys.Clear();foreach(var c in contracts)if(c==null||c.id<1||c.id>=nextDiplomaticId||!ids.Add(c.id)||c.from<0||c.to<0||c.from>=civCount||c.to>=civCount||c.from==c.to||c.start<1||c.end<=c.start||!keys.Add(Math.Min(c.from,c.to)*1000+Math.Max(c.from,c.to))||!ValidRecurring(c.givePerTurn,c.askPerTurn,c.giveResource,c.askResource))return false;
