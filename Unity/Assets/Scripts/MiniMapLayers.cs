@@ -14,7 +14,7 @@ namespace ParadigmRealm {
 //  Military   - the units you can see: yours, theirs, enemies at war in red, barbarian raiders and camps.
 // Only what you know is shown: unexplored land stays dark and foreign units only where you can see them.
 public partial class RealmGame {
- static readonly string[] MiniLayerNames={"Terrain","Political","Religion","Trade routes","Diplomacy","Military"};
+ static readonly string[] MiniLayerNames={"Terrain","Political","Religion","Trade routes","Diplomacy","Military","Traditions"};
  int miniLayer=-1,miniLayerBuilt=-1;bool miniLayerOpen,miniKeyAlways;// miniKeyAlways: -hudShot shows the key without a pointer
  int MiniLayer{get{if(miniLayer<0){try{miniLayer=Mathf.Clamp(PlayerPrefs.GetInt("MiniMapLayer",0),0,MiniLayerNames.Length-1);}catch{miniLayer=0;}}return miniLayer;}
   set{miniLayer=value;try{PlayerPrefs.SetInt("MiniMapLayer",value);}catch{}}}
@@ -24,7 +24,7 @@ public partial class RealmGame {
  static readonly Color MiniWater=new Color(.1f,.17f,.3f),MiniWild=new Color(.38f,.4f,.33f);
  // Before the minimap is painted: which city each owned tile belongs to (the nearest of its owner's), for the religion layer.
  void PrepareMiniLayer(){
-  miniCityLand.Clear();if(MiniLayer!=2)return;var best=new Dictionary<int,int>();
+  miniCityLand.Clear();if(MiniLayer!=2&&MiniLayer!=6)return;var best=new Dictionary<int,int>();
   foreach(var c in world.cities){var ct=world.At(c.x,c.y);if(ct==null||ct.realm!=viewRealm)continue;int r=world.TerritoryRadius(c)+1;
    for(int dy=-r;dy<=r;dy++)for(int dx=-r;dx<=r;dx++){var t=world.StepIn(c.x,c.y,dx,dy,r);if(t==null||t.owner!=c.owner)continue;int d=world.Distance(c.x,c.y,t.x,t.y);if(d>r)continue;int cell=t.y*world.Width+t.x;int had;
     if(!best.TryGetValue(cell,out had)||d<had){best[cell]=d;miniCityLand[cell]=c;}}}
@@ -42,6 +42,7 @@ public partial class RealmGame {
     return basic;}
    case 4:{if(water)return MiniWater;if(t.owner<0)return MiniWild;return DiplomacyInk(t.owner);}
    case 5:return water?Dim(MiniWater,.8f):t.owner>=0?Dim(Color.Lerp(NationInk(t.owner),terrain,.6f),.5f):Dim(terrain,.45f);
+   case 6:{if(water)return MiniWater;if(t.owner<0)return MiniWild;City c;if(!miniCityLand.TryGetValue(cell,out c)||!world.lifeways)return new Color(.55f,.55f,.58f);int way=world.WayOf(c).tradition;return way>=0?WayInk[way]:new Color(.55f,.55f,.58f);}
   }
   return terrain;
  }
@@ -93,6 +94,7 @@ public partial class RealmGame {
     foreach(var g in seen)rows.Add(new KeyValuePair<Color,string>(FaithColour(g.Key>=0?g.Key:-1),(g.Key>=0?world.FaithName(g.Key):"No main faith yet")+" ("+g.Count()+(g.Count()==1?" city)":" cities)")));break;}
    case 3:rows.Add(new KeyValuePair<Color,string>(new Color(1f,.82f,.3f),"Roads and rivers joining cities to their capital"));rows.Add(new KeyValuePair<Color,string>(new Color(.75f,.62f,.42f),"Other roads"));rows.Add(new KeyValuePair<Color,string>(new Color(1f,.85f,.35f),"Dotted: your commercial pacts"));break;
    case 4:rows.Add(new KeyValuePair<Color,string>(InkYou,"You"));rows.Add(new KeyValuePair<Color,string>(InkFriend,"Friendly"));rows.Add(new KeyValuePair<Color,string>(InkNeutral,"Neutral"));rows.Add(new KeyValuePair<Color,string>(InkWary,"Wary or threatened"));rows.Add(new KeyValuePair<Color,string>(InkCold,"Unfriendly or rival"));rows.Add(new KeyValuePair<Color,string>(InkWar,"At war with you"));rows.Add(new KeyValuePair<Color,string>(InkUnmet,"Not yet met"));break;
+   case 6:for(int way=0;way<Lifeways.Count;way++)rows.Add(new KeyValuePair<Color,string>(WayInk[way],Lifeways.Names[way]));rows.Add(new KeyValuePair<Color,string>(new Color(.55f,.55f,.58f),"No settled tradition"));break;
    case 5:rows.Add(new KeyValuePair<Color,string>(InkYou,"Your units"));rows.Add(new KeyValuePair<Color,string>(InkWar,"Enemies at war, barbarians"));rows.Add(new KeyValuePair<Color,string>(new Color(.85f,.85f,.85f),"Others' units (pale: civilians)"));break;
   }
   if(rows.Count==0)return;var st=new GUIStyle(hudSmall){fontSize=12,alignment=TextAnchor.MiddleLeft,wordWrap=false};float w=24+rows.Max(r=>st.CalcSize(new GUIContent(r.Value)).x)+12,h=rows.Count*18+10;

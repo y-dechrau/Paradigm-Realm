@@ -48,10 +48,11 @@ namespace ParadigmRealm
             }catch(Exception e){loadError="Could not delete: "+e.Message;}
             deleteCandidate=null;
         }
-        void OpenDetails(string name){detailsScreen=name;diplomacyDiscuss=false;diplomacyChooser=name=="Diplomacy"&&!diplomacyDirect;diplomacyDirect=false;researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
+        void OpenDetails(string name){detailsScreen=name;faithsView=false;diplomacyDiscuss=false;diplomacyChooser=name=="Diplomacy"&&!diplomacyDirect;diplomacyDirect=false;researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
         void DrawDetailsScreen()
         {
             if(detailsScreen=="Diplomacy"){DrawDiplomacyScreen();return;}
+            if(detailsScreen=="Religion"&&world.lifeways&&!faithsView){DrawTraditionsScreen();return;}
             if(detailsScreen=="Religion"&&world.modernRules){DrawFaithScreen();return;}
             if(detailsScreen=="Economy"&&empireTab==2){detailsScreen="Military";militaryTab=0;empireTab=0;}
             if(detailsScreen=="Military"&&militaryTab==0&&world.nationalForces){DrawForcesScreen();return;}

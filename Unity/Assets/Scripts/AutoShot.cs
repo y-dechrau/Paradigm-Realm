@@ -32,6 +32,8 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-dimShot");if(i>=0&&i+1<args.Length)StartCoroutine(DimShot(args[i+1]));
             i=Array.IndexOf(args,"-speciesShot");if(i>=0&&i+1<args.Length)StartCoroutine(SpeciesShot(args[i+1]));
             i=Array.IndexOf(args,"-hudShot");if(i>=0&&i+1<args.Length)StartCoroutine(HudShot(args[i+1]));
+            // "-granary": opens the First Granary scenario at once (a capital that cannot feed itself; Beliefs & Traditions, 23 Nov 2026).
+            i=Array.IndexOf(args,"-granary");if(i>=0){string scenario=System.IO.Path.Combine(Application.temporaryCachePath,"granary-scenario.json");System.IO.File.WriteAllText(scenario,JsonUtility.ToJson(World.GranaryScenario()));LoadFile(scenario);activeSavePath=null;guide=false;tutorialOn=false;tutorialStep=-1;status="The First Granary: end the turn twice.";}
             i=Array.IndexOf(args,"-resourceGallery");if(i>=0&&i+1<args.Length)StartCoroutine(ResourceGalleryRun(args[i+1]));
             i=Array.IndexOf(args,"-spriteCompare");if(i>=0&&i+1<args.Length)StartCoroutine(SpriteCompareRun(args[i+1]));
             i=Array.IndexOf(args,"-listCivs");if(i>=0&&i+1<args.Length)StartCoroutine(ListCivs(args[i+1]));

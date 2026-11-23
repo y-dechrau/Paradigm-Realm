@@ -116,7 +116,7 @@ public partial class RealmGame {
    if(r.Contains(m))SetCityTip(faith?World.FaithBuildingName(b):World.BuildName(b)+"\n"+World.BuildingEffect(b)+(world.nationalForces&&(b==30||b==40||b==32)?"\nNational arms output: +"+(b==30?ForcesRules.WorkshopArms:b==40?ForcesRules.FactoryArms:ForcesRules.BarracksArms)+" a turn from this building.":""));at++;}
  }
  string TotalTip(City c,int k,int total){
-  if(k==4)return "Faith "+total+" a turn. "+(world.modernRules?FaithShareText(c):c.religion>=0?"Follows "+world.FaithName(c.religion):"No majority faith")+". Shrines, temples and holy sites add faith.";
+  if(k==4)return "Faith "+total+" a turn. "+(world.modernRules?FaithShareText(c):c.religion>=0?"Follows "+world.FaithName(c.religion):"No majority faith")+". Shrines, temples and holy sites add faith."+(world.lifeways?" Way of life: "+world.WayLine(c)+".":"");
   var parts=world.YieldBreakdown(c,k);var lines=new List<string>{new[]{"Food","Shields","Science","Gold"}[k]+": "+(k==0&&total>0?"+":"")+total+" a turn"};
   foreach(var p in parts)lines.Add("  "+p.Key+"   "+(p.Value>0?"+":"")+p.Value);
   if(k==1&&c.build>=0&&c.buildingProject>=0&&world.modernRules)lines.Add("Shared between the two lines: units "+world.LineShare(c,false)+", buildings "+world.LineShare(c,true)+".");

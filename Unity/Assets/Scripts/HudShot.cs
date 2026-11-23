@@ -88,6 +88,13 @@ namespace ParadigmRealm { public partial class RealmGame {
    miniLayerOpen=true;yield return Frames(3);gateScene=null;yield return CleanShot(folder,"hud-minimap-list.bmp");miniLayerOpen=false;miniKeyAlways=false;MiniLayer=keep;}
    {var woodHill=world.tiles.FirstOrDefault(t=>t.realm==0&&World.HillWoods(t)&&t.seen);if(woodHill!=null){isoWidth=192;FocusTile(woodHill.x,woodHill.y);yield return Frames(10);yield return CleanShot(folder,"hud-hill-woods.bmp");}}
    detailsScreen="Military";militaryTab=1;yield return Frames(10);yield return Shot(folder,"hud-military-units.bmp");detailsScreen="";militaryTab=0;
+  // Beliefs & Traditions (23 Nov 2026): the first question, then the First Granary scenario from shortage to a lean feast.
+  {detailsScreen="";cityScreen=false;selected=-1;world.wayChoices.Clear();world.NationWayOf(0).opening=-1;int keepTurn=world.turn;world.turn=1;world.LifewaysTurn();world.turn=keepTurn;yield return Frames(10);yield return Shot(folder,"hud-way-opening.bmp");
+   world=World.GranaryScenario();viewRealm=0;var gc=world.cities.First(c=>c.owner==0);FocusTile(gc.x,gc.y);world.LifewaysTurn();world.turn++;world.LifewaysTurn();yield return Frames(15);yield return Shot(folder,"hud-way-shortage.bmp");
+   world.WayResolve(world.NextWayChoice(),0);for(int k=0;k<Lifeways.RememberAfter;k++){world.turn++;world.LifewaysTurn();}yield return Frames(10);yield return Shot(folder,"hud-way-remember.bmp");
+   world.WayResolve(world.NextWayChoice(),0);var feast=world.practices[0];gc.food=0;world.turn=feast.nextDue;world.LifewaysTurn();yield return Frames(10);yield return Shot(folder,"hud-way-lean.bmp");
+   world.WayResolve(world.NextWayChoice(),1);world.met[1]=true;world.Relation(0,1).contact=true;foreach(var c in world.cities.Where(c=>c.owner==0)){var l=world.WayOf(c);l.adherence[Lifeways.Remembrance]=Mathf.Max(l.adherence[Lifeways.Remembrance],62);l.tradition=Lifeways.Remembrance;l.conviction=55;l.cause="it grew out of the relief of turn 2";}
+   world.TakeCommitment(0,Lifeways.Remembrance);world.DeclareVow(0,2,gc.id,-1,20);detailsScreen="Religion";faithsView=false;yield return Frames(15);yield return Shot(folder,"hud-traditions.bmp");detailsScreen="";}
   Application.Quit();
  }
 }}

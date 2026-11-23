@@ -74,7 +74,7 @@ namespace ParadigmRealm
             Centred();if(!guide)DrawTutorial();
             if(guide)DrawGuide();if(confirmNew){GUI.Box(new Rect(420,270,440,190),"");GUILayout.BeginArea(new Rect(445,290,390,145));GUILayout.Label("Start a new world?",heading);GUILayout.Label("Save first if you want to keep your current game.",body);if(Button("Start new game")){confirmNew=false;nameSetup=true;GUIUtility.ExitGUI();}if(Button("Cancel"))confirmNew=false;GUILayout.EndArea();}
             if(pendingUnit!=-1){DrawWarPrompt();return;}
-            if(gateScene!=null)DrawGateScene();else if(gatePanel!=null)DrawGatePanel();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker){}else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();
+            if(gateScene!=null)DrawGateScene();else if(gatePanel!=null)DrawGatePanel();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker){}else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();else if(WayPromptOpen())DrawWayPrompt();
             DrawSaveToast();
         }
         // Meeting a civilisation opens Diplomacy with them straight away, one meeting at a time. This runs between frames, not
