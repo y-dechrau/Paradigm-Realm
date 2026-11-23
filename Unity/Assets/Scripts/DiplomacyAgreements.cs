@@ -110,7 +110,7 @@ public partial class World {
  }
  // What the recipient makes of the passage clauses: every reason, by name (they join the reckoning in Acceptance).
  void PassageLines(DiplomaticOffer o,List<KeyValuePair<string,int>> lines,ref int sum){
-  if(!HasPassageTerms(o))return;int r=o.to,p=o.from;int agenda=AgendaOf(r);
+  if(!HasPassageTerms(o))return;int r=o.to,p=o.from;int agenda=AgendaOf(r);{int openHand=WayDealInterest(p);if(openHand>0)Part(lines,ref sum,"They hold to the Open Hand: a word given is a word kept",openHand);}
   if(o.askPassage||o.askGate>0){
    bool gate=!o.askPassage;int cost=((gate?DiplomacyTuning.GateBase:DiplomacyTuning.PassageBase)+o.duration*(gate?DiplomacyTuning.GatePerTurn:DiplomacyTuning.PassagePerTurn))*DiplomacyTuning.Pick(DiplomacyTuning.Caution,agenda)/100;
    Part(lines,ref sum,gate?"Letting your people use their gateway for "+o.duration+" turns":"Letting your soldiers cross their land for "+o.duration+" turns",-cost);
@@ -213,7 +213,7 @@ public partial class World {
   // A host that has been paid loses nothing; a guest gives up its way through only if none of its units are using it.
   return other==g.host||!units.Any(u=>u.owner==g.guest&&At(u.x,u.y).owner==g.host);}
  public string CancelByAgreement(int id,int by){string why=CancelReason(id,by);if(why!="")return why;var g=agreements.Find(x=>x.id==id);if(!WouldAgreeToCancel(g,by))return NationName(by==g.guest?g.host:g.guest)+" will not release you: its units are using the passage.";EndAgreement(g,2,"both sides agreed");return "";}
- public string BreakAgreement(int id,int by){string why=CancelReason(id,by);if(why!="")return why;var g=agreements.Find(x=>x.id==id);EndAgreement(g,by==g.guest?3:4,NationName(by)+" went back on it");return "";}
+ public string BreakAgreement(int id,int by){string why=CancelReason(id,by);if(why!="")return why;WayBrokenWord(by);var g=agreements.Find(x=>x.id==id);EndAgreement(g,by==g.guest?3:4,NationName(by)+" went back on it");return "";}
  // ---- rivals ask for passage ----
  // A rival at war asks a neighbour whose land lies on its way to the enemy, offering gold; at most once in AskCooldown turns
  // per neighbour, and never while another proposal between the two is waiting.
@@ -229,7 +229,7 @@ public partial class World {
     offer.giveGold=Math.Min(pay,Treasury(a)/2);if(offer.giveGold<5&&b==0)continue;
     p.lastPassageAsk=turn;Propose(offer);return;}}
  }
- bool AgreementsValid(){
+ bool AgreementsValid(){if(!LifewaysValid())return false;
   if(agreements==null||diplomaticHistory==null)return true;
   foreach(var g in agreements)if(g==null||g.guest<0||g.host<0||g.guest>=civCount||g.host>=civCount||g.guest==g.host||g.end<g.start||g.status<0||g.status>6||g.gate<0||g.gate>tiles.Length)return false;
   return diplomaticHistory.All(r=>r!=null&&r.kind>=0&&r.kind<RecordKinds.Names.Length);

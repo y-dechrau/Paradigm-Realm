@@ -67,7 +67,7 @@ public partial class World {
  int BaseFaith(City c){var n=nations[c.owner];int f=(n.capital==c.id||modernRules?1:0)+PilgrimFaith(c)+ShrineFaith(c);if(HasBuilding(c,36))f+=2;if(IsHolyCity(c))f+=3;if(n.pantheon==4)f++;if(FaithTenet(c.religion)==5)f+=2;f+=BeliefFaith(c);return Math.Max(0,f+CivFaith(c)+AgeFaith(c));}
  public int FaithPerTurn(int owner){return cities.Where(c=>c.owner==owner).Sum(FaithYield);}
  // Tenets help the cities that follow the faith; the pantheon helps every city of its civilisation.
- void ApplyReligionYields(City c,ref int f,ref int p,ref int s,ref int g){int pan=nations[c.owner].pantheon;if(pan==0)f++;else if(pan==1)p++;else if(pan==2)g+=2;else if(pan==3)s++;BeliefYields(c,ref f,ref p,ref s,ref g);switch(FaithTenet(c.religion)){case 0:f++;break;case 1:p++;break;case 2:g+=2;break;case 3:s+=2;break;}}
+ void ApplyReligionYields(City c,ref int f,ref int p,ref int s,ref int g){WayYields(c,ref f,ref p,ref s,ref g);int pan=nations[c.owner].pantheon;if(pan==0)f++;else if(pan==1)p++;else if(pan==2)g+=2;else if(pan==3)s++;BeliefYields(c,ref f,ref p,ref s,ref g);switch(FaithTenet(c.religion)){case 0:f++;break;case 1:p++;break;case 2:g+=2;break;case 3:s+=2;break;}}
  public int ReligionContent(City c){var n=nations[c.owner];return (FaithTenet(c.religion)==4?1:0)+(n.pantheon==5&&n.capital==c.id?2:0)+(c.religion>=0&&c.religion==n.founded?1:0)+BeliefContent(c);}
  // The founder's tithe: +1 gold for every two cities in the world that follow its faith.
  public int ReligionTithe(int owner){int r=nations[owner].founded;return r<0?0:cities.Count(c=>c.religion==r)/2*TitheMultiplier(owner);}

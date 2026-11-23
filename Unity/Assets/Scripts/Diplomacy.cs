@@ -131,7 +131,7 @@ public partial class World {
  public bool EndTreaty(int a,int b,TreatyKind kind){
   if(kind==TreatyKind.Trade){if(!HasContact(a,b)||result!=""||contracts.RemoveAll(c=>SamePair(c.from,c.to,a,b))==0)return false;AddOpinion(b,a,OpinionMods.Broken,-8);DiplomacyEvent(a,b,"Trade deal broken by "+NationName(a)+".");return true;}
   int k=Pacts.Of(kind);if(k<0||PactEndReason(a,b,k)!="")return false;var p=Relation(a,b);bool bond=k==Pacts.NonAggression||k==Pacts.Defensive;
-  SetPact(a,b,k,false);AddOpinion(b,a,OpinionMods.Broken,k==Pacts.Defensive?-25:bond?-15:-8);SetTrust(b,a,Trust(b,a)-(bond?20:10));
+  WayBrokenWord(a);SetPact(a,b,k,false);AddOpinion(b,a,OpinionMods.Broken,k==Pacts.Defensive?-25:bond?-15:-8);SetTrust(b,a,Trust(b,a)-(bond?20:10));
   if(bond&&!Friends(a,b))p.peaceUntil=Math.Max(p.peaceUntil,turn+Pacts.Notice);
   if(k==Pacts.Defensive)AbandonCommitmentsOnBreak(a,b);
   if(b==0)AddRivalCall(a,0,"has ended our "+Pacts.Names[k].ToLower()+".");
@@ -248,7 +248,7 @@ public partial class World {
  public bool DropClaim(int a,int cityId){return claims.RemoveAll(c=>c.owner==a&&c.city==cityId)>0;}
 
  // ---------- war and peace ----------
- public string WarReason(int a,int b){if(!HasContact(a,b))return "First contact required.";if(result!="")return "The game has ended.";if(AtWar(a,b))return "Already at war.";var p=Relation(a,b);if(Friends(a,b))return "End the "+(Allied(a,b)?"defensive":"non-aggression")+" pact first; that gives ten turns' notice.";if(p.peaceUntil>turn)return "A truce protects this civilisation for "+(p.peaceUntil-turn)+" turns.";return "";}
+ public string WarReason(int a,int b){if(!HasContact(a,b))return "First contact required.";if(a!=0&&VowForbidsWar(a,b))return "A public vow forbids it.";if(result!="")return "The game has ended.";if(AtWar(a,b))return "Already at war.";var p=Relation(a,b);if(Friends(a,b))return "End the "+(Allied(a,b)?"defensive":"non-aggression")+" pact first; that gives ten turns' notice.";if(p.peaceUntil>turn)return "A truce protects this civilisation for "+(p.peaceUntil-turn)+" turns.";return "";}
  // The just cause a has for war on b, or "" when it has none.
  public string CasusBelli(int a,int b){
   var p=Relation(a,b);if(p==null)return "";
@@ -261,7 +261,7 @@ public partial class World {
  public bool FormalWarAvailable(int a,int b){return CasusBelli(a,b)!="";}
  public string CausePending(int a,int b){var p=Relation(a,b);if(p==null||CasusBelli(a,b)!="")return "";int best=-1;foreach(var c in claims)if(c.owner==a){var city=CityById(c.city);if(city!=null&&city.owner==b)best=Math.Max(best,c.turn);}int since=a==p.a?p.rivalA:p.rivalB;best=Math.Max(best,since);return best<0?"":"Just cause in "+Math.Max(1,Pacts.CauseDelay-(turn-best))+" turns.";}
  public bool DeclareWar(int a,int b,bool defensive=false){
-  if(WarReason(a,b)!="")return false;string cause=defensive?"Defence of an ally":CasusBelli(a,b);bool just=cause!="";
+  if(WarReason(a,b)!="")return false;WayWar(a,b);string cause=defensive?"Defence of an ally":CasusBelli(a,b);bool just=cause!="";
   if(b==0)AddRivalCall(a,0,"has declared war on you!"+(just?" ("+cause+")":""));
   var defenders=Enumerable.Range(0,civCount).Where(c=>c!=a&&c!=b&&Allied(c,b)).ToArray();
   var p=Relation(a,b);if(a==0||b==0){war[a==0?b:a]=true;openBorders[a==0?b:a]=false;}else p.atWar=true;
