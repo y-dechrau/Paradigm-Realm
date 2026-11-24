@@ -108,6 +108,7 @@ namespace ParadigmRealm
         public static string[] ActiveTechBenefits(int id){
             var benefits=new System.Collections.Generic.List<string>();
             if(TechnologyCatalog.IsKeystone(id)&&!string.IsNullOrEmpty(TechnologyCatalog.KeystoneEffect(id)))benefits.Add(TechnologyCatalog.EffectText(TechnologyCatalog.KeystoneEffect(id)));
+            if(id==BridgeTechIndex)benefits.Add("Roads bridge rivers");
             if(!TechnologyCatalog.IsKeystone(id)&&id<TechnologyCatalog.Count&&!string.IsNullOrEmpty(TechnologyCatalog.Effects[id])){benefits.Add(TechnologyCatalog.EffectText(TechnologyCatalog.Effects[id]));return benefits.ToArray();}
             for(int i=0;i<UnitNames.Length;i++)if(UnitTech[i]==id)benefits.Add("Train "+UnitNames[i]);
             for(int i=0;i<BuildingIds.Length;i++)if(BuildingTech[i]==id)benefits.Add("Build "+BuildingNames[i]);

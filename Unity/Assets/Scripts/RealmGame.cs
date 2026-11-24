@@ -70,11 +70,11 @@ namespace ParadigmRealm
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen()&&!turnRunning;
             FollowGateArrival();mapClock.Start();DrawMap();mapClock.Stop();hudClock.Start();DrawHud();hudClock.Stop();DrawRealmBanner();
             // Prompts, the tutorial and the guide keep their 1280 design, centred on the display.
-            if(tilePicker&&gateScene==null&&gatePanel==null&&foundStage<=0)DrawTilePicker();
+            if(tilePicker&&gateScene==null&&gatePanel==null&&!CampPanelOpen()&&foundStage<=0)DrawTilePicker();
             Centred();if(!guide)DrawTutorial();
             if(guide)DrawGuide();if(confirmNew){GUI.Box(new Rect(420,270,440,190),"");GUILayout.BeginArea(new Rect(445,290,390,145));GUILayout.Label("Start a new world?",heading);GUILayout.Label("Save first if you want to keep your current game.",body);if(Button("Start new game")){confirmNew=false;nameSetup=true;GUIUtility.ExitGUI();}if(Button("Cancel"))confirmNew=false;GUILayout.EndArea();}
             if(pendingUnit!=-1){DrawWarPrompt();return;}
-            if(gateScene!=null)DrawGateScene();else if(gatePanel!=null)DrawGatePanel();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker){}else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();else if(WayPromptOpen())DrawWayPrompt();
+            if(gateScene!=null)DrawGateScene();else if(gatePanel!=null)DrawGatePanel();else if(CampPanelOpen())DrawCampPanel();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker){}else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();else if(WayPromptOpen())DrawWayPrompt();
             DrawSaveToast();
         }
         // Meeting a civilisation opens Diplomacy with them straight away, one meeting at a time. This runs between frames, not
@@ -271,7 +271,7 @@ namespace ParadigmRealm
                 text+="\n"+(t.owner<0?"Unclaimed":world.met[t.owner]?world.NationName(t.owner):"Unknown territory");text+="\n"+(World.IsImpassable(t.terrain)?"Impassable to land units":"Movement: "+(World.RoughTerrain(t.terrain)?3:2));if(World.TerrainDefence(t.terrain)>0)text+="\nDefence: +"+World.TerrainDefence(t.terrain)+" for units standing here";
                 text+="\nFood "+v[0]+" | Production "+v[1]+" | Trade "+v[2];
                 if(t.resource>0&&world.ResourceKnown(0,t.resource))text+="\nResource: "+World.ResourceNames[t.resource]+" (+"+World.ResourceFood[t.resource]+" food, +"+World.ResourceShields[t.resource]+" shields, +"+World.ResourceTrade[t.resource]+" trade when worked"+(t.resource==15?"; +3 shields more with Chemistry":"")+")";
-                if(t.road)text+="\nRoad: 1 movement between connected roads"+(World.RoadTrade(t.terrain)?"; +1 trade":"");if(t.farm)text+="\nFarm / pasture: +2 food";if(t.mine)text+="\nMine: +2 production";if(t.fort)text+="\nFort: +2 defence";
+                if(t.road)text+="\nRoad: 1 movement between connected roads"+(t.terrain==7?world.HasBridges(0)?"; a bridge crosses the river":"; the river must be forded until Bridge Building":"")+(World.RoadTrade(t.terrain)?"; +1 trade":"");if(t.farm)text+="\nFarm / pasture: +2 food";if(t.mine)text+="\nMine: +2 production";if(t.fort)text+="\nFort: +2 defence";
                 if(world.Visible(x,y)){var city=world.cities.Find(c=>c.x==x&&c.y==y);if(city!=null)text+="\n"+city.name+" - "+world.NationName(city.owner);var units=world.units.Where(u=>u.x==x&&u.y==y);foreach(var unit in units.OrderByDescending(a=>a.id==selected).Take(3))text+="\n\n"+world.NationName(unit.owner)+": "+World.UnitNames[unit.type]+" — "+UnitDescription(unit)+"\nAttack "+(World.Attack[unit.type]+unit.promotion)+" / Defence "+(World.Defence[unit.type]+unit.promotion)+" ("+World.RankNames[Math.Max(0,Math.Min(2,unit.promotion))]+") | Health "+unit.hp+"/10 | Movement "+unit.moves+"/"+World.Moves[unit.type]+"\n"+world.Activity(unit)+" | "+world.Remaining(unit);if(units.Count()>3)text+="\n+ "+(units.Count()-3)+" more units; select to inspect.";}
                 else text+="\nOutside current sight; last-known information"+(string.IsNullOrEmpty(t.rememberedCity)?"":"\nLast seen city: "+t.rememberedCity);
             }
@@ -413,6 +413,8 @@ namespace ParadigmRealm
             if(c!=null&&own.Count>0){OpenTilePicker(x,y);return;}
             if(c!=null&&cityId!=c.id){cityId=c.id;selected=-1;return;}
             if(own.Count>0){int i=own.FindIndex(u=>u.id==selected);selected=own[(i+1)%own.Count].id;cityId=-1;return;}
+            // A barbarian camp you have found, or its raiders, will hear an offer.
+            if(OpenCampAt(x,y))return;
             // Left-clicking an empty tile only selects; orders are given with the right button.
         }
         void DrawGuide()

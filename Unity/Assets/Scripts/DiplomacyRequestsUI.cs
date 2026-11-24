@@ -65,7 +65,7 @@ public partial class RealmGame {
   var asks=world.requests.Where(r=>r.to==0&&r.status==RequestStatus.Pending).ToList();
   GUILayout.Label("Requests awaiting your answer",heading);if(asks.Count==0)GUILayout.Label("None.",small);
   foreach(var r in asks){GUILayout.Label(world.DescribeRequest(r),body);GUILayout.Label("Answer within "+Math.Max(1,RequestKinds.AnswerTurns-(world.turn-r.created))+" turns; no answer counts as a refusal. "+RequestKinds.Texts[r.kind],small);
-   GUILayout.BeginHorizontal();if(Button("Accept request #"+r.id))status=world.RespondToRequest(r.id,true)?"You have given your word.":"No longer possible: "+r.answer;if(Button("Refuse #"+r.id))world.RespondToRequest(r.id,false);GUILayout.EndHorizontal();}
+   GUILayout.BeginHorizontal();if(Button("Accept request #"+r.id))status=world.RespondToRequest(r.id,true)?"You have given your word.":"No longer possible: "+r.answer;if(Button("Refuse #"+r.id+" ("+OpinionMods.RequestRefused+" opinion)")&&world.RespondToRequest(r.id,false))status="Refused. "+world.NationName(r.from)+" thinks less of you.";GUILayout.EndHorizontal();}
   GUILayout.Label("Your commitments and deadlines",heading);var all=world.CommitmentSummary(0);if(all.Count==0)GUILayout.Label("None in force.",small);foreach(var line in all)GUILayout.Label(line,small);}
  void DrawRelationshipMemory(int partner){
   GUILayout.Label("What "+world.NationName(partner)+" remembers",heading);

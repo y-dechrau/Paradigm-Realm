@@ -9,8 +9,8 @@ public static void Run(){
     var w=World.New(137);Check(w.tech[TechnologyCatalog.Start]&&w.nations.All(n=>n.tech[TechnologyCatalog.Start]),"every civilisation starts with Stone Tools");
     Check(w.AvailableTech().Where(TechnologyCatalog.IsKeystone).OrderBy(i=>i).SequenceEqual(new[]{K("agriculture"),K("archery"),K("bronze")}.OrderBy(i=>i)),"Stone Tools opens Agriculture, Archery and Bronze Working (and Dawn minors)");
     var researched=new HashSet<int>{TechnologyCatalog.Start};while(researched.Count<TechnologyCatalog.ActiveCount){var available=w.AvailableTech();Check(available.Count>0,"no cycle or unreachable research");foreach(int i in available){Check(World.Requirements[i].All(p=>researched.Contains(p)),"prerequisites already complete");researched.Add(i);w.tech[i]=true;}}
-    Check(researched.Count==100&&TechnologyCatalog.ActiveCount==100&&TechnologyCatalog.IsActive(TechnologyCatalog.Index("m_herding"))&&Enumerable.Range(0,6).All(e=>Enumerable.Range(0,180).Count(t=>TechnologyCatalog.Active[t]&&TechnologyCatalog.Eras[t]==e)==TechnologyCatalog.EraSize[e])&&TechnologyCatalog.KeystoneCount==36&&TechnologyCatalog.EraNames.Length==6&&Enumerable.Range(0,6).All(e=>Enumerable.Range(0,180).Count(t=>TechnologyCatalog.Eras[t]==e)==30),"180 technologies, 36 keystones, 30 per era");
-    Check(Enumerable.Range(36,144).All(t=>World.Requirements[t].Length>0&&World.Requirements[t].All(p=>TechnologyCatalog.Eras[p]==TechnologyCatalog.Eras[t])&&World.ActiveTechBenefits(t).Length==1),"each minor technology needs only its own era and has one listed effect");w.CheckVictory();Check(w.result=="","researching every keystone no longer wins by itself (Stage 6: Transcendence is a project)");
+    Check(researched.Count==101&&TechnologyCatalog.ActiveCount==101&&TechnologyCatalog.IsActive(World.BridgeTechIndex)&&TechnologyCatalog.IsActive(TechnologyCatalog.Index("m_herding"))&&Enumerable.Range(0,6).All(e=>Enumerable.Range(0,180).Count(t=>TechnologyCatalog.Active[t]&&TechnologyCatalog.Eras[t]==e)==TechnologyCatalog.EraSize[e])&&TechnologyCatalog.KeystoneCount==36&&TechnologyCatalog.EraNames.Length==6&&Enumerable.Range(0,6).All(e=>Enumerable.Range(0,180).Count(t=>TechnologyCatalog.Eras[t]==e)==30),"180 technologies, 36 keystones, 30 per era");
+    Check(Enumerable.Range(36,144).All(t=>World.Requirements[t].Length>0&&World.Requirements[t].All(p=>TechnologyCatalog.Eras[p]==TechnologyCatalog.Eras[t])&&World.ActiveTechBenefits(t).Length==(t==World.BridgeTechIndex?2:1)),"each minor technology needs only its own era and has one listed effect (Bridge Building two)");w.CheckVictory();Check(w.result=="","researching every keystone no longer wins by itself (Stage 6: Transcendence is a project)");
     StageFive();
     PlayerRequestChecks();
     SecondRequestChecks();
@@ -291,7 +291,7 @@ static void PlayerRequestChecks(){
 // The living world: people, memory, materials and the map (owner request, 7 Nov 2026).
 // Owner requests of 7 Nov 2026, latest: tree size, speed, opening budget, animals and population.
 static void PacingAndPopulationChecks(){
-    Check(TechnologyCatalog.EraSize.SequenceEqual(new[]{11,14,15,20,25,15}),"11, 14, 15, 20, 25 and 15 technologies by age (Animal Husbandry in the Dawn Age)");
+    Check(TechnologyCatalog.EraSize.SequenceEqual(new[]{11,15,15,20,25,15}),"11, 15, 15, 20, 25 and 15 technologies by age (Animal Husbandry in the Dawn Age, Bridge Building in the Classical)");
     for(int i=0;i<TechnologyCatalog.Count;i++)if(TechnologyCatalog.Active[i])Check(World.Requirements[i].All(TechnologyCatalog.IsActive),"every prerequisite is itself researchable: "+TechnologyCatalog.Names[i]);
     // Long now costs what Standard used to; Standard two thirds and Quick one third.
     {var q=World.New(261,"Pace",0,0,1,0,1,2,4,hex:true,natives:false,rations:true);var s=World.New(261,"Pace",0,1,1,0,1,2,4,hex:true,natives:false,rations:true);var l=World.New(261,"Pace",0,2,1,0,1,2,4,hex:true,natives:false,rations:true);int t=K("agriculture");int old=World.TechCosts[t]*World.ResearchPace[0]/100;
@@ -502,12 +502,18 @@ static void EleventhNovemberChecks(){
     // Grass: painted in many mixed tones, not five flat ones, and the same wherever it is composed.
     {var grass=Enumerable.Repeat(0,9).ToArray();var a=PixelArt.ComposeHex(grass,14,9,0,0);var tones=new HashSet<uint>();foreach(uint p in a.p)if((p>>24)!=0)tones.Add(p);
      Check(tones.Count>120,"grassland is painted in many tones ("+tones.Count+")");Check(a.p.SequenceEqual(PixelArt.ComposeHex(grass,14,9,0,0).p),"and is the same every time");}
-    // Bridges: no road on a river tile before Engineering; a bridge costs twice a road tile to keep; every road tile costs gold.
+    // Bridges (as in Civilization IV, 24 Nov 2026): a road may be laid on a river at once but is forded, with no road speed, until the
+    // unit's people know Bridge Building; then it is a bridge and costs twice a road tile to keep. Every road tile costs gold.
     {var w=World.New(331,natives:false);var c=w.Found(w.units.First(u=>u.owner==0&&u.type==0));var t=w.Step(c.x,c.y,1,0);t.terrain=7;t.road=false;t.resource=0;w.RebuildTerritory();
      Action<string,bool> know=(id,on)=>{w.nations[0].tech[TechnologyCatalog.Index(id)]=on;w.tech=w.nations[0].tech;};know("wheel",true);know(World.BridgeTech,false);
-     var worker=w.Add(0,1,t.x,t.y);worker.moves=2;Check(w.JobReason(worker,1)==World.BridgeNeeded,"no road across a river without bridges ("+w.JobReason(worker,1)+")");
-     know(World.BridgeTech,true);Check(w.JobReason(worker,1)=="","Engineering allows the bridge ("+w.JobReason(worker,1)+")");
-     w.ResetRoadCount();int before=w.RoadTiles(0);t.road=true;w.ResetRoadCount();Check(w.RoadTiles(0)==before+World.BridgeTiles,"a bridge counts as two road tiles ("+before+" to "+w.RoadTiles(0)+")");
+     var worker=w.Add(0,1,t.x,t.y);worker.moves=2;Check(w.JobReason(worker,1)=="","a road can be laid on a river before bridges ("+w.JobReason(worker,1)+")");
+     w.ResetRoadCount();int before=w.RoadTiles(0);t.road=true;w.ResetRoadCount();Check(w.RoadTiles(0)==before+1,"a ford counts as one road tile");
+     var bank=w.At(c.x,c.y);bank.road=true;var rider=w.Add(0,2,c.x,c.y);int plain=w.StepCost(rider,c.x,c.y,t);Check(plain>=2&&w.StepCost(rider,t.x,t.y,bank)==1&&!w.Bridged(t),"a road gives no speed onto an unbridged river, and leaves it as any road ("+plain+")");
+     know(World.BridgeTech,true);Check(w.StepCost(rider,c.x,c.y,t)==1&&w.Bridged(t),"Bridge Building gives the road its speed over the river");
+     var foe=new Unit{id=-5,owner=1,type=2,x=c.x,y=c.y};w.nations[1].tech[World.BridgeTechIndex]=false;Check(w.StepCost(foe,c.x,c.y,t)==plain,"a people without the knowledge still fords it");
+     Check(World.TerrainDefence(7)==1,"a bridge takes nothing from a river's defence");
+     w.ResetRoadCount();Check(w.RoadTiles(0)==before+World.BridgeTiles,"a bridge counts as two road tiles ("+before+" to "+w.RoadTiles(0)+")");
+     {var old=World.New(332,natives:false);old.version=44;old.nations[0].tech[TechnologyCatalog.Index("engineering")]=true;old.tech=old.nations[0].tech;foreach(var p in old.diplomacy){p.modsA=new int[12];p.modsB=new int[12];}old.UpgradeSave();Check(old.version==World.SaveVersion&&old.HasBridges(0)&&!old.HasBridges(1)&&old.Valid(),"a version 44 save whose people know Engineering keeps its bridges");}
      Check(w.RoadUpkeep(0)==w.RoadTiles(0)&&World.RoadTilesPerGold==1,"each road tile costs 1 gold a turn");}
     // Roads wander four ways and a river tile carries a bridge; a town on a river tile has a second bank to build on.
     {var looks=new HashSet<string>();for(int look=0;look<4;look++)looks.Add(string.Join(",",PixelArt.HexRoad(1|1<<3,2,look).p.Select(p=>p.ToString("x")).ToArray()));Check(looks.Count==4,"a road lies four different ways ("+looks.Count+")");
@@ -525,6 +531,10 @@ static void EleventhNovemberChecks(){
         Check(wet(beside)==0&&wet(old)>40,"a road running the river's way lies beside it, not on it ("+(hex?"hex":"square")+": "+wet(old)+" wet pixels before, "+wet(beside)+" now)");
         var across=PixelArt.RiverRoad(hex,roadAcross,2,river,1,0);int over=wet(across);Check(over>0&&over<70&&ink(across)>60,"a road across the river bridges it by a short crossing ("+over+" pixels over water)");
         Check(!PixelArt.RiverRoad(hex,roadAlong,0,river,1,aside).p.SequenceEqual(beside.p),"and follows its age");
+        var forded=PixelArt.RiverRoad(hex,roadAcross,2,river,1,0,true);Check(wet(forded)>0&&wet(forded)<over,"an unbridged crossing is stepping stones ("+wet(forded)+" of "+over+" pixels over water)");
+        // A farm on a river is the painted field cut back from the water.
+        {var paint=Enumerable.Repeat(0xFFC89632u,128*64).ToArray();var laid=PixelArt.RiverField(hex,river,1,paint,128,64);int drowned=0,sown=0;for(int y=0;y<water.h;y++)for(int x=0;x<water.w;x++)for(int k=0;k<4;k++){if((laid.Get(x*2+(k&1),y*2+(k>>1))>>24)==0)continue;sown++;if((water.Get(x,y)>>24)!=0)drowned++;}
+         Check(drowned==0&&sown>1500&&laid.w==water.w*2,"the painted field lies on both banks and off the water ("+sown+" pixels sown, "+drowned+" in the river)");}
     }
     // Running water: a river with a known outflow has three moving pictures of the same shape; one without stays still.
     foreach(bool hex in new[]{true,false}){int arms=hex?(1|1<<3):(1<<1|1<<3),flowing=arms|(hex?1:2)<<PixelArt.RiverDownShift;var land=new[]{0,0,0,0,7,0,0,0,0};

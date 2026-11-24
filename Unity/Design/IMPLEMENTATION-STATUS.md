@@ -2,6 +2,10 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 24 Nov: bridges, bargains with barbarians, reputation, Chronicle, river farms (save version 45)
+
+Implemented; rules, numbers and file names are in [BRIDGES-BARBARIANS-REPUTATION-2026-11-24.md](BRIDGES-BARBARIANS-REPUTATION-2026-11-24.md). The 11 Nov rule that a road on a river needs Engineering is replaced by Bridge Building. Not hand-played; balance untuned.
+
 ## Owner request 13 Nov: the research screen after the owner's mockup, "The Chronicle of Discovery" (no save change)
 
 - **Screen** (`TechTreeScreen.cs`, replaces the old `DrawExpandedResearch` and `DrawTechnologyDetails` in `ContentUI.cs`). A full-screen page, drawn without the top bar:

@@ -79,8 +79,8 @@ public partial class RealmGame {
    // Their terms are loaded into the table as your own next proposal.
    giveGold=c.askGold.ToString();askGold=c.giveGold.ToString();givePerTurn=c.askPerTurn.ToString();askPerTurn=c.givePerTurn.ToString();giveResource=c.askResource;askResource=c.giveResource;dealGivePassage=c.askPassage;dealAskPassage=c.givePassage;
    var mine=world.KnownGatesOf(0,partner);var theirs=world.KnownGatesOf(partner,0);dealGiveGate=c.askGate>0?mine.FindIndex(t=>t.y*world.Width+t.x+1==c.askGate)+1:0;dealAskGate=c.giveGate>0?theirs.FindIndex(t=>t.y*world.Width+t.x+1==c.giveGate)+1:0;
-   diplomacyDuration=c.duration<=10?0:c.duration<=15?1:2;world.RespondToOffer(c.id,false);status="Their terms are on the table. Change what you wish and propose again.";GUIUtility.ExitGUI();}
-  if(DipButton(new Rect(br.x+2*(bw+8),br.y,bw,30),"Decline",navy)){world.RespondToOffer(c.id,false);status="Counteroffer declined.";GUIUtility.ExitGUI();}
+   diplomacyDuration=c.duration<=10?0:c.duration<=15?1:2;world.RespondToOffer(c.id,false,true);status="Their terms are on the table. Change what you wish and propose again.";GUIUtility.ExitGUI();}
+  if(DipButton(new Rect(br.x+2*(bw+8),br.y,bw,30),"Decline",navy)){world.RespondToOffer(c.id,false);status="Counteroffer declined ("+World.DeclineCost(c)+" opinion).";GUIUtility.ExitGUI();}
   return box.yMax+10;
  }
  // ---------- the Council's other views ----------

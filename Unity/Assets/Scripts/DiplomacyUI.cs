@@ -15,7 +15,7 @@ public partial class RealmGame {
   if(pending.Count==0)GUILayout.Label("None.",small);
   foreach(var o in pending){GUILayout.Label(world.DescribeOffer(o),body);GUILayout.Label("Answer within "+(o.expires-world.turn)+" turns.",small);GUILayout.BeginHorizontal();
    if(Button("Accept #"+o.id))status=world.RespondToOffer(o.id,true)?"Agreement accepted.":"Agreement unavailable: terms changed or expired.";
-   if(Button("Decline #"+o.id))world.RespondToOffer(o.id,false);GUILayout.EndHorizontal();}
+   if(Button("Decline #"+o.id+" ("+World.DeclineCost(o)+" opinion)")&&world.RespondToOffer(o.id,false))status="Declined. "+world.NationName(o.from)+" thinks less of you.";GUILayout.EndHorizontal();}
   DrawRequestInbox();
   var known=Enumerable.Range(1,world.civCount-1).Where(i=>world.met[i]).ToArray();if(known.Length==0){GUILayout.Label("Explore to meet other civilisations.",body);return;}
   if(!world.met[diplomacyPartner])diplomacyPartner=known[0];int partner=diplomacyPartner;var p=world.Relation(0,partner);var pn=world.nations[partner];int attitude=world.Attitude(partner,0);

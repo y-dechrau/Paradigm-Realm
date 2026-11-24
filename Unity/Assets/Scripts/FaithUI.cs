@@ -144,7 +144,7 @@ public partial class RealmGame {
   GUILayout.Label("Religious history",heading);
   foreach(var e in world.faithEvents)GUILayout.Label("Awaiting your decision: "+FaithCatalog.EventNames[e.kind],body);
   if(world.faithHistory==null||world.faithHistory.Count==0)GUILayout.Label("Nothing recorded yet.",small);
-  else foreach(var line in world.faithHistory)GUILayout.Label(line,small);
+  else foreach(var line in world.faithHistory.Where(l=>!world.NamesUnmet(l)))GUILayout.Label(line,small);
  }
  // The city screen's faith line: the two largest faiths and the unaffiliated.
  string FaithShareText(City c){var d=world.Demographics(c);var faiths=d.Where(a=>a.Key>=0&&a.Value>0).Take(2).Select(a=>world.FaithName(a.Key)+" "+a.Value+"%").ToList();int none=d.Last().Value;return (faiths.Count==0?"No faith yet":string.Join(", ",faiths.ToArray()))+(none>0&&faiths.Count>0?", none "+none+"%":"")+(world.IsHolyCity(c)?" (holy city)":"");}

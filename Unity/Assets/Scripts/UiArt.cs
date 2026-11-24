@@ -7,7 +7,7 @@ namespace ParadigmRealm
     // Painted interface art (owner request, 8 Nov 2026: "make the UI like the picture"). SpriteCook pictures made in the style of
     // the owner's Religion mockup live in Resources/UI: icon-<name> (128 x 128) replaces each drawn interface icon by its id,
     // logo is the compass-rose emblem, panel is the gold-cornered navy frame every GUI.Box uses, button is the gold-trimmed
-    // menu face of the left menu and medallion is the round button of the bottom bar. Missing files fall back to the drawn art.
+    // menu face of the left menu. The bottom bar of medallions was taken out on 24 Nov 2026: the left menu has every screen it opened. Missing files fall back to the drawn art.
     public partial class RealmGame
     {
         static readonly string[] IconArtNames={"empire","research","diplomacy","cities","military","realms","victory","chronicle","identity",
@@ -31,27 +31,6 @@ namespace ParadigmRealm
             GUI.DrawTextureWithTexCoords(new Rect(r.x+endW,r.y,r.width-2*endW,r.height),t,new Rect(endTex,0,1-2*endTex,1));
             GUI.DrawTextureWithTexCoords(new Rect(r.xMax-endW,r.y,endW,r.height),t,new Rect(1-endTex,0,endTex,1));
             GUI.color=old;
-        }
-        void DrawMedallion(Rect r,bool lit){var t=UiTex("medallion");if(t==null){GUI.Box(r,"");return;}var old=GUI.color;if(lit)GUI.color=new Color(1.25f,1.15f,.9f,old.a);GUI.DrawTexture(r,t,ScaleMode.ScaleToFit,true);GUI.color=old;}
-
-        // Bottom bar of round medallions (after the mockup): quick ways into the main screens.
-        static readonly string[] MedalScreens={"Economy","Research","Civics","Chronicle","Victory","Diplomacy","Military","Atlas","Religion"};
-        static readonly string[] MedalTips={"Empire","Research","Civics","Chronicle","Victory","Diplomacy","Units: active and idle","Realms","Religion"};
-        static readonly string[] MedalArt={"crown","research2","civics","chronicle","victory","diplomacy","military2","realms","faith"};
-        const float MedalSize=46,MedalGap=50;
-        static Rect MedalBar{get{float w=MedalScreens.Length*MedalGap;return new Rect(739+MidShift-w/2,750,w,MedalSize);}}
-        void DrawMedalBar()
-        {
-            var bar=MedalBar;var e=Event.current;string tip=null;
-            for(int i=0;i<MedalScreens.Length;i++)
-            {
-                var r=new Rect(bar.x+i*MedalGap+(MedalGap-MedalSize)/2,bar.y,MedalSize,MedalSize);bool over=r.Contains(e.mousePosition);
-                DrawMedallion(r,over);var art=UiTex("icon-"+MedalArt[i]);
-                if(art!=null)GUI.DrawTexture(new Rect(r.x+9,r.y+9,r.width-18,r.height-18),art,ScaleMode.ScaleToFit,true);
-                if(over)tip=MedalTips[i];
-                if(GUI.Button(r,"",GUIStyle.none))OpenRailScreen(MedalScreens[i]);
-            }
-            if(tip!=null){var size=hudCentre.CalcSize(new GUIContent(tip));var tr=new Rect(e.mousePosition.x-size.x/2-6,bar.y-size.y-12,size.x+12,size.y+6);Fill(tr,new Color(.05f,.08f,.16f,.95f));Fill(new Rect(tr.x,tr.yMax-1,tr.width,1),UiGold);GUI.Label(tr,tip,hudCentre);}
         }
         void OpenRailScreen(string screen)
         {

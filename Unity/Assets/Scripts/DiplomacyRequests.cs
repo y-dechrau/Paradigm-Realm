@@ -138,7 +138,7 @@ public partial class World {
    int spare=Math.Min(60,Treasury(r.to)/4);if(spare>=10){AddDiplomaticGold(r.to,-spare);AddDiplomaticGold(r.from,spare);AddOpinion(r.from,r.to,OpinionMods.Aid,6);r.status=RequestStatus.Refused;r.answer="Cannot do it: "+string.Join("; ",RequestLines(r).Where(l=>l.Value<0).Select(l=>l.Key).Take(2).ToArray())+". Sent "+spare+" gold instead.";
     DiplomacyEvent(r.from,r.to,NationName(r.to)+" could not "+RequestKinds.Names[r.kind].ToLower()+" and sent "+spare+" gold instead.");return;}}
   r.status=RequestStatus.Refused;var worst=RequestLines(r).Where(l=>l.Value<0).OrderBy(l=>l.Value).Select(l=>l.Key).Take(2).ToArray();r.answer="Refused"+(r.to==0?" by you":worst.Length>0?": "+string.Join("; ",worst):"")+".";
-  DiplomacyEvent(r.from,r.to,"Refused: "+DescribeRequest(r));
+  DiplomacyEvent(r.from,r.to,"Refused: "+DescribeRequest(r));TurnedDown(r.from,r.to,OpinionMods.RequestRefused);
   if(Allied(r.to,r.from)&&(r.kind==RequestKinds.JoinWar||r.kind==RequestKinds.DefendGate)&&WarStartedBy(r.target,r.from))AddOpinion(r.from,r.to,OpinionMods.Abandoned,-10);
   if(r.consequence>0)Threaten(r,false);}
  // The asker carries out its threat only when it is credible (at least as strong) and only once; otherwise it is remembered.

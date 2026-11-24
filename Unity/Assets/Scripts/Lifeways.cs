@@ -61,7 +61,7 @@ public partial class World {
  public NationWay NationWayOf(int owner){WayGuard();var n=nationWays.Find(x=>x.owner==owner);if(n==null){n=new NationWay{owner=owner};nationWays.Add(n);}return n;}
  void WayPay(int owner,int amount){nations[owner].gold-=amount;if(owner==0)gold=nations[0].gold;}
  void Sway(CityWay l,int by){l.conviction=Math.Max(0,Math.Min(100,l.conviction+by));}
- void WayTell(string text,int owner=-1){WayGuard();wayChronicle.Insert(0,"Turn "+turn+": "+text);if(wayChronicle.Count>Lifeways.ChronicleMax)wayChronicle.RemoveAt(wayChronicle.Count-1);if(owner==0)Note(text);}
+ void WayTell(string text,int owner=-1){WayGuard();if(owner>0&&!Known(owner))return;wayChronicle.Insert(0,"Turn "+turn+": "+text);if(wayChronicle.Count>Lifeways.ChronicleMax)wayChronicle.RemoveAt(wayChronicle.Count-1);if(owner==0)Note(text);}
  public IEnumerable<City> Followers(int owner,int tradition){return cities.Where(c=>c.owner==owner&&WayOf(c).tradition==tradition);}
  public bool RootOf(City c,int t){var l=WayOf(c);var tile=At(c.x,c.y);
   switch(t){case Lifeways.Ford:return tile!=null&&NearRiver(tile);case Lifeways.Remembrance:return c.scars!=null&&c.scars.Count>0||c.age>=40;

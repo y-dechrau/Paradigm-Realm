@@ -208,7 +208,7 @@ public partial class World {
    Unit foe=null;foreach(var u in units)if(u.x==c.x&&u.y==c.y&&u.owner!=owner&&u.owner<civCount&&AtWar(owner,u.owner)&&Power[u.type]>0){foe=u;break;}
    if(foe==null||units.Any(u=>u.x==c.x&&u.y==c.y&&u.owner==owner)){c.siege=0;continue;}
    int push=Math.Max(1,Attack[foe.type]+foe.promotion+DimensionStrength(foe,false));c.siege+=push;
-   if(c.siege>=2+ColonyDefence(c)*2){int old=c.owner;c.owner=foe.owner;c.siege=0;c.homeCity=-1;LinkColony(c);Note((old==0?"Your colony of ":NationName(old)+"'s colony of ")+c.name+" has fallen to "+(foe.owner==0?"your soldiers":NationName(foe.owner))+".");AddOpinion(old,foe.owner,OpinionMods.Conquest,-15);}
+   if(c.siege>=2+ColonyDefence(c)*2){int old=c.owner;c.owner=foe.owner;c.siege=0;c.homeCity=-1;LinkColony(c);NoteEvent((old==0?"Your colony of ":NationName(old)+"'s colony of ")+c.name+" has fallen to "+(foe.owner==0?"your soldiers":NationName(foe.owner))+".",At(c.x,c.y),old,foe.owner);AddOpinion(old,foe.owner,OpinionMods.Conquest,-15);}
    else if(owner==0&&c.siege<=push)dimensionNews.Add(c.name+" is under attack by "+NationName(foe.owner)+" and has no garrison.");
   }
  }

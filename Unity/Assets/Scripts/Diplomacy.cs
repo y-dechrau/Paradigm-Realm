@@ -40,11 +40,15 @@ public static class Pacts {
 // Marks that deeds leave on one leader's opinion of another. Each fades toward nothing.
 public static class OpinionMods {
  // Save version 43 (13 Nov 2026) adds four marks of what was done for or against a partner (DiplomacyMemory.cs).
- public const int Dealings=0,Gifts=1,Grievance=2,War=3,Conquest=4,Borders=5,Envoy=6,Broken=7,Aid=8,KeptWord=9,Abandoned=10,Protected=11,Count=12;
- public static readonly string[] Names={"Past dealings","Gifts","Grievances","Declared war on us","Took our cities","Settled against our borders","Their envoy at our court","Broke an agreement","Helped us","Kept their word","Abandoned us","Attacked those we protect"};
+ public const int Dealings=0,Gifts=1,Grievance=2,War=3,Conquest=4,Borders=5,Envoy=6,Broken=7,Aid=8,KeptWord=9,Abandoned=10,Protected=11,Declined=12,Count=13;
+ public static readonly string[] Names={"Past dealings","Gifts","Grievances","Declared war on us","Took our cities","Settled against our borders","Their envoy at our court","Broke an agreement","Helped us","Kept their word","Abandoned us","Attacked those we protect","Turned us down"};
  // How many turns pass for each point a mark fades (a forgiving leader halves it). Help and kept words fade slowest: a long
  // record of good faith is what makes a relationship hard to shake. Envoy (1) is handled on its own.
- public static readonly int[] FadeEvery={3,3,2,2,4,2,1,4,6,6,4,3};
+ public static readonly int[] FadeEvery={3,3,2,2,4,2,1,4,6,6,4,3,4};
+ // Save version 45 (owner request, 24 Nov 2026): turning down what another civilisation offers or asks lowers its opinion of you.
+ // Letting a proposal lapse counts as turning it down. A counteroffer is haggling, so refusing one costs a single point, and
+ // refusing a request costs most. The mark never passes DeclinedCap, so being asked often cannot ruin a friendship by itself.
+ public const int OfferDeclined=-3,CounterDeclined=-1,RequestRefused=-5,DeclinedCap=-20;
  // Gifts can never add more than this, however many are sent.
  public const int GiftCap=20;
 }
@@ -150,7 +154,10 @@ public partial class World {
   bool good=kind==OpinionMods.Gifts||kind==OpinionMods.Aid||kind==OpinionMods.KeptWord;
   // Each gift is worth less as gifts pile up, and together they never pass GiftCap: gold cannot wash out a betrayal.
   if(kind==OpinionMods.Gifts&&amount>0){if(m[kind]>=OpinionMods.GiftCap)return;amount=Math.Max(1,amount*(OpinionMods.GiftCap-m[kind])/OpinionMods.GiftCap);m[kind]=Clamp(m[kind]+amount,0,OpinionMods.GiftCap);return;}
-  m[kind]=Clamp(m[kind]+amount,either||!good?-100:0,either||good?100:0);}
+  m[kind]=Clamp(m[kind]+amount,kind==OpinionMods.Declined?OpinionMods.DeclinedCap:either||!good?-100:0,either||good?100:0);}
+ // One civilisation turned down what another offered or asked. The player keeps no opinion marks of its own, so only a rival minds.
+ public static int DeclineCost(DiplomaticOffer o){return o.counterOf>0?OpinionMods.CounterDeclined:OpinionMods.OfferDeclined;}
+ void TurnedDown(int asker,int refuser,int amount){if(asker==0||Relation(asker,refuser)==null)return;AddOpinion(asker,refuser,OpinionMods.Declined,amount);if(refuser==0&&met[asker])Note("Turning "+NationName(asker)+" down has lowered your reputation with them ("+amount+" opinion).");}
  // An offence against the victim (the old grievance scale: two points of grievance cost one of opinion).
  void Grieve(int victim,int offender,int amount){AddOpinion(victim,offender,OpinionMods.Grievance,-(amount+1)/2);}
  public int Grievances(int observer,int other){var m=Mods(observer,other);int s=0;for(int k=0;k<m.Length;k++)if(m[k]<0)s-=m[k];return s;}

@@ -24,7 +24,7 @@ namespace ParadigmRealm
         static Rect MapView{get{return new Rect(MapX,MapY,MapW,MapH);}}
         static Rect TopBar{get{return new Rect(0,0,MapW,38);}}
         static readonly Rect ResearchCard=new Rect(174,46,300,52),UnitCard=new Rect(8,592,410,200),MorePanel=new Rect(8,246,410,340);
-        static Rect TileCard{get{return new Rect(571+MidShift,694,336,52);}}
+        static Rect TileCard{get{return new Rect(571+MidShift,740,336,52);}}
         static Rect MiniMap{get{return new Rect(1004+RightShift,590,234,138);}}
         static Rect MiniButtons{get{return new Rect(1242+RightShift,590,32,138);}}
         static Rect EndTurnRect{get{return new Rect(1060+RightShift,738,214,54);}}
@@ -63,7 +63,7 @@ namespace ParadigmRealm
         void BuildHudRects()
         {
             hudRects.Clear();if(world==null)return;
-            hudRects.Add(TopBar);hudRects.Add(RailRect);hudRects.Add(ResearchCard);hudRects.Add(MiniMap);hudRects.Add(MiniButtons);hudRects.Add(MiniLayerTab);if(miniLayerOpen)hudRects.Add(MiniLayerList);hudRects.Add(EndTurnRect);hudRects.Add(TileCard);hudRects.Add(MedalBar);
+            hudRects.Add(TopBar);hudRects.Add(RailRect);hudRects.Add(ResearchCard);hudRects.Add(MiniMap);hudRects.Add(MiniButtons);hudRects.Add(MiniLayerTab);if(miniLayerOpen)hudRects.Add(MiniLayerList);hudRects.Add(EndTurnRect);hudRects.Add(TileCard);
             if(CardShown())hudRects.Add(UnitCard);if(moreActions&&CardShown())hudRects.Add(MorePanel);
             for(int i=0;i<MetRivals().Count;i++)hudRects.Add(LeaderRect(i));
             for(int i=0;i<RecentNotes().Count;i++)hudRects.Add(NoteRect(i));
@@ -115,7 +115,7 @@ namespace ParadigmRealm
             bool idle=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen()&&!turnRunning;GUI.enabled=idle;
             DrawRail();DrawResearchCard();DrawLeaders();DrawNotices();DrawMiniMap();
             if(CardShown()){if(moreActions)DrawMoreActions();DrawUnitCard();DrawSiteCard(Selected());}else moreActions=false;
-            DrawTileCard();DrawMedalBar();DrawBuildNotice();DrawRivalCall();
+            DrawTileCard();DrawBuildNotice();DrawRivalCall();
 
             GUI.enabled=idle&&world.result=="";
 
@@ -376,7 +376,7 @@ namespace ParadigmRealm
             int unitLines=Math.Min(3,present.Count)+(present.Count>3?1:0);
             if(t==null||!t.seen){GUI.Box(TileCard,"");GUI.Label(new Rect(TileCard.x,TileCard.y+15,TileCard.width,22),t==null?"Point at the map to inspect a tile":"Unexplored",hudCentre);return;}
             var v=world.TileYield(t);bool known=t.resource>0&&world.ResourceKnown(0,t.resource);if(t.resource>0&&!known){v[0]-=World.ResourceFood[t.resource];v[1]-=World.ResourceShields[t.resource];v[2]-=World.ResourceTrade[t.resource];}
-            var features=new List<string>{World.TerrainNames[t.terrain]+(World.HillWoods(world.At(t.x,t.y))?(world.At(t.x,t.y).woods==2?" with jungle (+1 shield; clear before farming or mining)":" with woods (+1 shield; clear before farming or mining)"):"")+(World.TerrainDefence(t.terrain)>0?" (defence +"+World.TerrainDefence(t.terrain)+")":"")};if(t.road)features.Add(World.Forested(t.terrain)?"Trail":"Road");if(t.farm)features.Add("Farm");if(t.mine)features.Add("Mine");if(t.fort)features.Add("Fort");if(known)features.Add(World.ResourceNames[t.resource]);
+            var features=new List<string>{World.TerrainNames[t.terrain]+(World.HillWoods(world.At(t.x,t.y))?(world.At(t.x,t.y).woods==2?" with jungle (+1 shield; clear before farming or mining)":" with woods (+1 shield; clear before farming or mining)"):"")+(World.TerrainDefence(t.terrain)>0?" (defence +"+World.TerrainDefence(t.terrain)+")":"")};if(t.road)features.Add(World.Forested(t.terrain)?"Trail":t.terrain==7?world.HasBridges(0)?"Road and bridge":"Road and ford (slow until Bridge Building)":"Road");if(t.farm)features.Add("Farm");if(t.mine)features.Add("Mine");if(t.fort)features.Add("Fort");if(known)features.Add(World.ResourceNames[t.resource]);
             {var beast=world.wildlife&&world.Visible(t.x,t.y)?world.AnimalAt(t.x,t.y):null;if(beast!=null)features.Add(world.AnimalLabel(beast));}if(world.barbarians){var raider=world.Visible(t.x,t.y)?world.RaiderAt(t.x,t.y):null;if(raider!=null)features.Add(world.RaiderLabel(raider));var camp=world.CampAt(t.x,t.y);if(camp!=null&&(camp.seen||world.Visible(t.x,t.y)))features.Add(world.CampLabel(camp));}
             // Tribal villages (owner request): named on the card, with the civilisation they joined if any.
             {var ruinTile=world.At(t.x,t.y);if(ruinTile!=null&&ruinTile.ruin)features.Add(ruinTile.realm>0?"Relic site":"Ancient ruins");}

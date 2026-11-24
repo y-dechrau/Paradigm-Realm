@@ -45,10 +45,27 @@ namespace ParadigmRealm { public partial class RealmGame {
    // Barbarians: a camp and two raiders (one hurt) beside the city on the map.
    {var barbSpots=world.tiles.Where(t=>t.realm==0&&world.Distance(t.x,t.y,home.x,home.y)>=2&&world.Distance(t.x,t.y,home.x,home.y)<=3&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!world.units.Any(u=>u.x==t.x&&u.y==t.y)&&world.Visible(t.x,t.y)).Take(3).ToList();
     if(barbSpots.Count==3){bool was=world.barbarians;world.barbarians=true;world.camps.Add(new BarbarianCamp{id=99101,x=barbSpots[0].x,y=barbSpots[0].y,seen=true});world.raiders.Add(new Raider{id=99102,x=barbSpots[1].x,y=barbSpots[1].y});world.raiders.Add(new Raider{id=99103,x=barbSpots[2].x,y=barbSpots[2].y,hp=6,mounted=1});
-     selected=-1;isoWidth=192;FocusTile(barbSpots[0].x,barbSpots[0].y);yield return Frames(30);yield return Shot(folder,"hud-barbarians.bmp");world.camps.Clear();world.raiders.Clear();world.barbarians=was;}}
+     selected=-1;isoWidth=192;FocusTile(barbSpots[0].x,barbSpots[0].y);yield return Frames(30);yield return Shot(folder,"hud-barbarians.bmp");
+     // The camp panel (24 Nov 2026): offers open, then hired.
+     {bool[] metWas=(bool[])world.met.Clone();int goldWas=world.gold;for(int o=1;o<world.civCount&&o<=4;o++)world.met[o]=true;world.gold=world.nations[0].gold=400;world.camps.Add(new BarbarianCamp{id=99104,x=barbSpots[1].x,y=barbSpots[1].y,seen=true});OpenCampAt(barbSpots[0].x,barbSpots[0].y);yield return Frames(15);yield return Shot(folder,"hud-camp-panel.bmp");
+      world.PayOff(0,world.camps[0]);yield return Frames(10);yield return Shot(folder,"hud-camp-paid.bmp");campPanel=-1;world.met=metWas;world.gold=world.nations[0].gold=goldWas;}
+     world.camps.Clear();world.raiders.Clear();world.barbarians=was;}}
+   // Farms and roads on a river (24 Nov 2026): the painted field on both banks; a road without and with Bridge Building.
+   {var rivers=world.tiles.Where(t=>t.realm==0&&t.terrain==7&&t.gateLink==0&&t.y>3&&t.y<world.MainHeight-4&&world.RiverDown(t)>=0).ToList();
+    System.Func<Tile,bool> dry=t=>t!=null&&t.terrain!=7&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!t.village&&!t.ruin&&t.gateLink==0;int across=-1;
+    var bend=rivers.FirstOrDefault(t=>{int d=world.RiverDown(t);var next=world.Step(t.x,t.y,World.HexDi[d],World.HexDj[d]);if(next==null||next.terrain!=7||world.RiverDown(next)<0||next.ruin||next.village)return false;
+     var after=world.Step(next.x,next.y,World.HexDi[world.RiverDown(next)],World.HexDj[world.RiverDown(next)]);if(after==null||after.terrain!=7)return false;
+     for(int k=0;k<3;k++)if(dry(world.Step(next.x,next.y,World.HexDi[k],World.HexDj[k]))&&dry(world.Step(next.x,next.y,-World.HexDi[k],-World.HexDj[k]))){across=k;return true;}return false;});
+    if(bend!=null){var around=world.tiles.Where(t=>t.realm==0&&world.Distance(t.x,t.y,bend.x,bend.y)<=4).ToList();int bridgeTech=World.BridgeTechIndex;bool knew=world.nations[0].tech[bridgeTech];
+     foreach(var t in around){t.seen=true;t.rememberedTerrain=t.terrain;if(t.terrain!=7&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&world.Distance(t.x,t.y,bend.x,bend.y)<=2){t.terrain=0;t.rememberedTerrain=0;t.cleared=true;t.resource=0;t.woods=0;}}
+     int dd=world.RiverDown(bend);var ford=world.Step(bend.x,bend.y,World.HexDi[dd],World.HexDj[dd]);bend.farm=bend.rememberedFarm=true;
+     var n=world.Step(ford.x,ford.y,World.HexDi[across],World.HexDj[across]);var o=world.Step(ford.x,ford.y,-World.HexDi[across],-World.HexDj[across]);
+     foreach(var t in new[]{ford,n,o})t.road=t.rememberedRoad=true;foreach(var t in around)if(!t.road&&t.terrain==0&&world.Distance(t.x,t.y,bend.x,bend.y)==1)t.farm=t.rememberedFarm=true;
+     world.units.RemoveAll(u=>u.owner!=0);var watcher=world.Add(0,3,o.x,o.y);world.Reveal();selected=-1;isoWidth=256;FocusTile(bend.x,bend.y);world.nations[0].tech[bridgeTech]=false;yield return Frames(40);yield return Shot(folder,"hud-river-farm-ford.bmp");
+     world.nations[0].tech[bridgeTech]=true;yield return Frames(20);yield return Shot(folder,"hud-river-farm-bridge.bmp");world.units.Remove(watcher);researchScreen=true;world.nations[0].tech[TechnologyCatalog.Index("writing")]=true;FocusTechnology(bridgeTech);yield return Frames(20);yield return Shot(folder,"hud-bridge-tech.bmp");researchScreen=false;inspectedTech=-1;researchEra=-1;world.nations[0].tech[bridgeTech]=knew;}}
    // Soldiers: each type strikes the tile beside it (mid-blow), then takes guard (mid-clip, then held).
-   var field=world.tiles.Where(t=>t.realm==0&&world.Distance(t.x,t.y,home.x,home.y)>=2&&world.Distance(t.x,t.y,home.x,home.y)<=4&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)).Take(5).ToList();
-   int[] types={2,7,4,8,5};var soldiers=new System.Collections.Generic.List<Unit>();
+   var field=world.tiles.Where(t=>t.realm==0&&world.Distance(t.x,t.y,home.x,home.y)>=2&&world.Distance(t.x,t.y,home.x,home.y)<=4&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)).Take(6).ToList();
+   int[] types={2,7,4,8,5,3};var soldiers=new System.Collections.Generic.List<Unit>();
    for(int k=0;k<field.Count;k++){var s=world.Add(0,types[k],field[k].x,field[k].y);soldiers.Add(s);}
    selected=-1;isoWidth=128;FocusTile(home.x,home.y);yield return Frames(10);yield return Shot(folder,"hud-soldiers-still.bmp");
    if(world.strikeLog==null)world.strikeLog=new System.Collections.Generic.List<int[]>();

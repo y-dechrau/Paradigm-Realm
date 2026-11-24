@@ -89,7 +89,7 @@ public partial class World {
   SignPassage(o);
   if(k>=0){AddOpinion(o.from,o.to,OpinionMods.Dealings,3);AddOpinion(o.to,o.from,OpinionMods.Dealings,3);}o.status=1;o.answer="Accepted.";DiplomacyEvent(o.from,o.to,OfferName(o.kind)+" agreed.");return true;
  }
- public bool RespondToOffer(int id,bool accept){var o=offers.Find(x=>x.id==id&&x.to==0&&x.status==0);if(o==null||result!="")return false;if(turn>=o.expires){o.status=3;o.answer="Expired.";return false;}if(accept)return AcceptOffer(o);o.status=2;o.answer="Declined by player.";DiplomacyEvent(o.from,o.to,"Proposal declined.");return true;}
+ public bool RespondToOffer(int id,bool accept,bool amend=false){var o=offers.Find(x=>x.id==id&&x.to==0&&x.status==0);if(o==null||result!="")return false;if(turn>=o.expires){o.status=3;o.answer="Expired.";return false;}if(accept)return AcceptOffer(o);o.status=2;o.answer="Declined by player.";DiplomacyEvent(o.from,o.to,"Proposal declined.");if(!amend)TurnedDown(o.from,o.to,DeclineCost(o));return true;}
  public string DescribeOffer(DiplomaticOffer o){
   int k=Pacts.Of(o.kind);string s=NationName(o.from)+" proposes "+(k>=0?"a "+Pacts.Names[k].ToLower():o.kind==TreatyKind.Peace?"peace":"a trade deal")+" to "+NationName(o.to)+".";
   if(k>=0)s+=" "+Pacts.Effects[k]+" It lasts until one side ends it.";
@@ -135,7 +135,7 @@ public partial class World {
   // A claim ends when its city is gone or belongs to the claimant.
   claims.RemoveAll(c=>{var city=CityById(c.city);return city==null||city.owner==c.owner;});
   foreach(var c in contracts.Where(c=>c.end<=turn).ToArray()){contracts.Remove(c);DiplomacyEvent(c.from,c.to,"Trade deal completed.");}
-  foreach(var o in offers.Where(o=>o.status==0&&o.expires<=turn)){o.status=3;o.answer="Expired.";}
+  foreach(var o in offers.Where(o=>o.status==0&&o.expires<=turn)){o.status=3;o.answer="Expired.";if(o.counterOf==0&&!Gone(o.from)&&OfferProblem(o)=="")TurnedDown(o.from,o.to,DeclineCost(o));}
   AgreementsTurn();
   RequestsTurn();
  }
@@ -200,7 +200,7 @@ public partial class World {
   if(claims==null)claims=new List<Claim>();if(diplomacy==null)return;
   foreach(var p in diplomacy){if(p==null)continue;
    if(p.pactSince==null||p.pactSince.Length!=Pacts.Count)p.pactSince=new int[Pacts.Count];
-   if(p.modsA==null||p.modsA.Length!=OpinionMods.Count)p.modsA=new int[OpinionMods.Count];if(p.modsB==null||p.modsB.Length!=OpinionMods.Count)p.modsB=new int[OpinionMods.Count];
+   p.modsA=Grow(p.modsA??new int[0],OpinionMods.Count);p.modsB=Grow(p.modsB??new int[0],OpinionMods.Count);
    p.pacts=0;Action<int,bool> keep=(k,on)=>{if(on){p.pacts|=1<<k;p.pactSince[k]=Math.Max(0,turn-Pacts.MinTurns);}};
    bool war=AtWar(p.a,p.b);
    if(!war){keep(Pacts.Borders,p.accessUntil>turn||p.a==0&&openBorders!=null&&p.b<openBorders.Length&&openBorders[p.b]);keep(Pacts.NonAggression,p.friendUntil>turn||p.allianceUntil>turn);keep(Pacts.Defensive,p.allianceUntil>turn);keep(Pacts.Research,p.researchUntil>turn);}

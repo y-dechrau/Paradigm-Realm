@@ -28,6 +28,7 @@ public static class BarbarianChecks {
   // Wild animals hunt raiders.
   {clear();w.wildlife=true;w.turn=Math.Max(30,World.HuntersFrom);var r=new Raider{id=9106,x=far.x,y=far.y};w.raiders.Add(r);w.animals.Add(new Animal{id=9107,kind=0,x=open.x,y=open.y});
    for(int k=0;k<4&&r.hp>=10&&w.raiders.Contains(r);k++)w.TickAnimalsForChecks(false);Check(r.hp<10||!w.raiders.Contains(r),"a hunter attacks a raider");w.wildlife=false;}
+  Bargains(w,open,side,clear);
   // Camps appear, only on land nobody owns, and send raiders.
   {clear();int raidersSeen=0;for(int k=0;k<200;k++){w.turn++;w.BarbariansTurnForChecks();raidersSeen=Math.Max(raidersSeen,w.raiders.Count);}
    Check(w.camps.Count>0&&w.camps.Count<=w.CampLimit(),"camps appear up to the limit ("+w.camps.Count+" of "+w.CampLimit()+")");Check(raidersSeen>0,"camps send out raiders");
@@ -36,7 +37,34 @@ public static class BarbarianChecks {
   {var g=World.New(173,"Whole",0,1,1,0,0,2,4,hex:true,natives:false,wild:true);g.barbarians=true;g.Found(g.units.First(u=>u.owner==0&&u.type==0));int most=0;
    for(int t=0;t<120&&g.result=="";t++){foreach(int o in Enumerable.Range(1,g.civCount-1))g.Relation(0,o).peaceUntil=g.turn+10;g.EndTurn();most=Math.Max(most,g.camps.Count);}
    Check(g.Valid(),"a 120-turn game stays valid (most camps "+most+")");Check(most>0,"camps appear in a whole game");
-   var copy=UnityEngine.JsonUtility.FromJson<World>(UnityEngine.JsonUtility.ToJson(g));Check(copy.barbarians&&copy.camps.Count==g.camps.Count&&copy.raiders.Count==g.raiders.Count,"barbarians are saved");}
+   var copy=UnityEngine.JsonUtility.FromJson<World>(UnityEngine.JsonUtility.ToJson(g));Check(copy.barbarians&&copy.camps.Count==g.camps.Count&&copy.raiders.Count==g.raiders.Count,"barbarians are saved");
+   if(copy.camps.Count>0){copy.camps[0].deals.Add(new BarbarianDeal{payer=0,target=1,until=copy.turn+9});var again=UnityEngine.JsonUtility.FromJson<World>(UnityEngine.JsonUtility.ToJson(copy));Check(again.camps[0].deals.Count>0&&again.Contract(again.camps[0]).target==1&&again.Contract(again.camps[0]).payer==0,"bargains are saved");}}
+ }
+ // Bargains (24 Nov 2026): pay a camp off, or hire it against another civilisation like a privateer.
+ static void Bargains(World w,Tile open,Tile side,Action clear){
+  Func<BarbarianCamp> camp=()=>{clear();var c=new BarbarianCamp{id=9201,x=open.x,y=open.y,seen=true,nextRaid=9999};w.camps.Add(c);return c;};
+  Action<int> purse=v=>{w.gold=v;w.nations[0].gold=v;};
+  // Paid off: the price is taken, and a raider beside your worker lets it be until the bargain ends.
+  {var c=camp();purse(0);Check(!w.PayOff(0,c)&&w.PayOffReason(0,c).Contains("gold"),"no gold, no bargain");int price=w.PayOffPrice(0,c);purse(price+7);Check(w.PayOff(0,c)&&w.gold==7&&w.nations[0].gold==7,"the price is paid");
+   Check(w.PayOffPrice(0,c)>price&&w.PayOffReason(0,c)!="","the next payment is dearer, and they are not paid twice at once");
+   var r=new Raider{id=9202,x=side.x,y=side.y,camp=c.id};w.raiders.Add(r);var near=w.Step(side.x,side.y,World.HexDi[0],World.HexDj[0]);var worker=w.Add(0,1,near.x,near.y);w.BarbariansTurnForChecks();
+   Check(worker.hp==10&&w.units.Contains(worker)&&!w.BarbarianNear(0,worker.x,worker.y,3),"a raider whose camp is paid leaves your worker alone");
+   w.turn+=BarbarianTerms.TruceTurns+1;r.x=side.x;r.y=side.y;w.BarbariansTurnForChecks();Check(!w.CampSpares(c,0)&&(worker.hp<10||!w.units.Contains(worker)),"and strikes again once the gold is spent");}
+  // Attacking them breaks the bargain.
+  {var c=camp();purse(9999);w.PayOff(0,c);var soldier=w.Add(0,6,side.x,side.y);soldier.moves=4;w.Move(soldier,c.x,c.y);Check(!w.CampSpares(c,0),"attacking a camp you paid ends the bargain");}
+  // Hired: raiders march on the people named, spare you, and nobody is blamed for it.
+  {var c=camp();City target=null;foreach(var t in w.tiles.Where(t=>t.realm==0&&w.Distance(t.x,t.y,open.x,open.y)>=5&&w.Distance(t.x,t.y,open.x,open.y)<=14&&w.cities.All(x=>w.Distance(x.x,x.y,t.x,t.y)>=5)).OrderBy(t=>w.Distance(t.x,t.y,open.x,open.y))){if(PixelArt.IsWater(t.terrain)||World.IsImpassable(t.terrain)||World.Barren(t.terrain))continue;var settler=w.Add(1,0,t.x,t.y);settler.moves=4;target=w.Found(settler);if(target!=null){w.met[1]=true;if(w.HireReason(0,c,1).Contains("reach")){w.cities.Remove(target);target=null;}}w.units.Remove(settler);if(target!=null)break;}
+   Check(target!=null,"a rival city stands near the camp");w.met[1]=false;purse(9999);Check(w.HireReason(0,c,1)!="","they cannot be sent against people you have not met");w.met[1]=true;
+   int opinion=w.Opinion(1,0),price=w.HirePrice(c,1);bool war=w.AtWar(0,1);purse(price+50);Check(w.Hire(0,c,1)&&w.gold==50,"hiring takes the price ("+price+")");Check(w.HireReason(0,c,2)!=""&&w.CampSpares(c,0)&&!w.CampSpares(c,1),"one employer at a time, and the employer is spared");
+   w.nations[1].gold=500;var r=new Raider{id=9203,x=side.x,y=side.y,camp=c.id};w.raiders.Add(r);int far=w.Distance(r.x,r.y,target.x,target.y),least=far;int treasury=w.gold;
+   for(int k=0;k<BarbarianTerms.HireTurns-1&&w.gold==treasury;k++){w.turn++;r.hp=10;w.BarbariansTurnForChecks();if(w.raiders.Contains(r))least=Math.Min(least,w.Distance(r.x,r.y,target.x,target.y));}
+   Check(least<far&&least<=2,"hired raiders march on their target ("+far+" tiles to "+least+")");Check(w.gold>treasury,"and half of what they plunder is yours ("+(w.gold-treasury)+" gold)");
+   Check(w.Opinion(1,0)==opinion&&w.AtWar(0,1)==war,"nobody learns who sent them");
+   int full=w.PayOffPrice(1,c);w.nations[1].gold=full+10;Check(w.PayOff(1,c)&&w.Contract(c)==null&&w.CampSpares(c,1),"the victim may buy them off at double the price");
+   w.cities.Remove(target);w.RebuildTerritory();}
+  // A line in the Chronicle never names a civilisation the player has not met.
+  {w.met[2]=false;w.Note(w.NationName(2)+" did something far away.");Check(!w.log[0].Contains(w.NationName(2))&&w.log[0].Contains("unknown people"),"unmet civilisations are not named ("+w.log[0]+")");w.met[2]=true;w.Note(w.NationName(2)+" did something.");Check(w.log[0].Contains(w.NationName(2)),"met ones are");}
+  clear();w.turn=30;
  }
 }
 }

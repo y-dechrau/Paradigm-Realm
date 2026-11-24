@@ -102,12 +102,13 @@ namespace ParadigmRealm
             int[] offI=world.Hex?World.HexDi:new[]{0,1,0,-1},offJ=world.Hex?World.HexDj:new[]{-1,0,1,0};int shifted=0;
             // Where river and road leave by the same side into another river tile, the road steps aside along that edge.
             for(int r=0;r<dirs;r++){int k=world.Hex?r:r*2+1;if((roadMask&(1<<k))==0||(riverMask&(1<<r))==0)continue;if(IsoKnownTerrain(world.Step(t.x,t.y,offI[r],offJ[r]))==7){shifted|=1<<k;if(((riverMask>>PixelArt.RiverDownShift)&7)-1==r)shifted|=256<<k;}}
-            int era=RoadEra(t),variant=(t.x*7+t.y*3)%3;string key=(world.Hex?"h":"s")+roadMask+"."+era+"."+riverMask+"."+variant+"."+shifted;Texture2D tex;
-            if(!riverRoadPictures.TryGetValue(key,out tex)){var cv=PixelArt.RiverRoad(world.Hex,roadMask,era,riverMask,variant,shifted);tex=TileTexture(PixelArt.Scale2x(world.Hex?cv:PixelArt.ToDiamond(cv)));riverRoadPictures[key]=tex;}
+            int era=RoadEra(t),variant=(t.x*7+t.y*3)%3;bool ford=!world.Bridged(t);string key=(world.Hex?"h":"s")+roadMask+"."+era+"."+riverMask+"."+variant+"."+shifted+(ford?"f":"");Texture2D tex;
+            if(!riverRoadPictures.TryGetValue(key,out tex)){var cv=PixelArt.RiverRoad(world.Hex,roadMask,era,riverMask,variant,shifted,ford);tex=TileTexture(PixelArt.Scale2x(world.Hex?cv:PixelArt.ToDiamond(cv)));riverRoadPictures[key]=tex;}
             return tex;
         }
-        // How the road lies on this tile: one of four wanderings by place, or a straight bridge on a river tile.
-        static int RoadLook(Tile t){return t.terrain==7?PixelArt.RoadBridge:((t.x*73856093^t.y*19349663)&0x7fffffff)%4;}
+        // How the road lies on this tile: one of four wanderings by place, or a straight bridge on a river tile once the land's owner
+        // has Bridge Building.
+        int RoadLook(Tile t){return t.terrain==7&&world.Bridged(t)?PixelArt.RoadBridge:((t.x*73856093^t.y*19349663)&0x7fffffff)%4;}
         int[] roadEras;int roadErasTurn=-1,roadEraProbe=-1;World roadErasWorld;
         int RoadEra(Tile t)
         {
@@ -215,14 +216,16 @@ namespace ParadigmRealm
             else if(PixelArt.IsWater(t.terrain))for(int k=0;k<dirs;k++){var n=world.Step(t.x,t.y,offI[k],offJ[k]);if(IsoKnownTerrain(n)!=7)continue;int flow=world.RiverLinks(world.At(n.x,n.y));if(flow<0||(flow&(1<<((k+dirs/2)%dirs)))!=0)mask|=1<<k;}
             return mask;
         }
-        // A farm on a river tile is a patchwork of small plots on both banks that leaves the river and its banks clear (owner
-        // request, 10 Nov 2026; PixelArt.FarmQuilt). One picture is kept for each river shape, layout and pattern.
+        // A farm on a river tile lies on both banks and leaves the river and its banks clear (owner request, 10 Nov 2026). It is the same
+        // painted field as on any other tile, cut back from the water (owner report, 24 Nov 2026: the drawn patchwork looked like another
+        // art style; PixelArt.RiverField). The patchwork (FarmQuilt) is kept for when no field picture is supplied. One picture is kept
+        // for each river shape, layout and field.
         readonly Dictionary<long,Texture2D> riverFields=new Dictionary<long,Texture2D>();
         Texture2D RiverQuilt(Tile t)
         {
-            int mask=RiverMaskOf(t),variant=(t.x*7+t.y*3)%3,seed=((t.x*5+t.y*3)&0x7fffffff)%4;long key=seed|((long)variant<<2)|(world.Hex?1L<<4:0)|((long)mask<<5);
+            int mask=RiverMaskOf(t),variant=(t.x*7+t.y*3)%3,seed=IsoVariant(t.x,t.y)%3;long key=seed|((long)variant<<2)|(world.Hex?1L<<4:0)|((long)mask<<5);
             Texture2D made;if(riverFields.TryGetValue(key,out made)&&made!=null)return made;
-            made=TileTexture(PixelArt.Scale2x(PixelArt.FarmQuilt(world.Hex,mask,variant,seed)));riverFields[key]=made;return made;
+            var field=SpriteSlot("field-"+seed);made=field!=null?SoftTexture(PixelArt.RiverField(world.Hex,mask,variant,ReadArtPixels(field),field.width,field.height)):TileTexture(PixelArt.Scale2x(PixelArt.FarmQuilt(world.Hex,mask,variant,seed)));riverFields[key]=made;return made;
         }
         // ---------- drawing ----------
         void DrawIsoMap()

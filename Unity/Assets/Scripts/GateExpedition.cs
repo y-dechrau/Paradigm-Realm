@@ -138,7 +138,7 @@ public partial class World {
  }
  void FinishApproach(GateStudy s,Tile gate,string how)
  {
-  OpenGate(gate,how);gateStudies.RemoveAll(x=>x.pair==s.pair);ShapeLanding(s,gate);
+  OpenGate(gate,how,s.owner);gateStudies.RemoveAll(x=>x.pair==s.pair);ShapeLanding(s,gate);
   // The opener sees the land around the far side, not the whole world beyond.
   var far=GateTwin(gate);if(far!=null){var known=nations[s.owner].known;for(int k=0;k<tiles.Length;k++){var t=tiles[k];if(t.realm!=far.realm||Distance(t.x,t.y,far.x,far.y)>GateApproach.LandingSight)continue;if(known!=null&&k<known.Length)known[k]=true;if(s.owner==0)t.seen=true;}}
  }
@@ -213,7 +213,7 @@ public partial class World {
   if(!GateSteady(gate))return;
   if(!HoldsGate(s.owner,gate)||EnemyAtGate(s.owner,gate)){if(s.owner==0)Note("The gateway could not be closed: "+(EnemyAtGate(s.owner,gate)?"an enemy stands beside it.":"none of your units holds it."));return;}
   openedGates.Remove(GatePair(gate));gatesLocked=true;
-  Note((s.owner==0?"Your people":NationName(s.owner))+" closed the "+GateStyleNames[GateStyle(gate)].ToLower()+" to the "+RealmNames[GateRealm(gate)]+". It is sealed again.");
+  NoteEvent((s.owner==0?"Your people":NationName(s.owner))+" closed the "+GateStyleNames[GateStyle(gate)].ToLower()+" to the "+RealmNames[GateRealm(gate)]+". It is sealed again.",gate,s.owner);
  }
  // For the checks.
  internal bool BeyondErrandForCheck(Unit u){return BeyondErrand(u);}

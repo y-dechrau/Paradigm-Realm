@@ -54,7 +54,7 @@ public partial class World {
  public bool GateOpen(Tile t){if(t==null||t.gateLink<=0)return false;if(GateSteady(t))return true;return CycleOpen(FindState(t));}
  // Open for good, as against open for this part of its cycle (DimensionGates.cs).
  public bool GateSteady(Tile t){if(t==null||t.gateLink<=0)return false;if(!gatesLocked)return true;return openedGates!=null&&openedGates.Contains(GatePair(t));}
- public bool OpenGate(Tile t,string how=""){if(t==null||t.gateLink<=0||GateSteady(t))return false;if(openedGates==null)openedGates=new List<int>();openedGates.Add(GatePair(t));var twin=GateTwin(t);int r=t.realm>0?t.realm:twin!=null?twin.realm:0;Note((how!=""?how+" ":"")+"An ancient gateway has opened: the "+GateStyleNames[GateStyle(t)].ToLower()+" to the "+RealmNames[r]+".");if(GateCells().Count>0&&openedGates.Count>=GateCells().Count)gatesLocked=false;return true;}
+ public bool OpenGate(Tile t,string how="",int opener=-1){if(t==null||t.gateLink<=0||GateSteady(t))return false;if(openedGates==null)openedGates=new List<int>();openedGates.Add(GatePair(t));var twin=GateTwin(t);int r=t.realm>0?t.realm:twin!=null?twin.realm:0;NoteEvent((how!=""?how+" ":"")+"An ancient gateway has opened: the "+GateStyleNames[GateStyle(t)].ToLower()+" to the "+RealmNames[r]+".",twin!=null&&!Visible(t.x,t.y)?twin:t,opener);if(GateCells().Count>0&&openedGates.Count>=GateCells().Count)gatesLocked=false;return true;}
  // How gateways open (owner request, 8 Nov 2026: "by both"):
  //  - Knowledge: the first home civilisation to learn a world's key technology breaks the seals of every gateway to that world.
  //  - A wonder: the Gatekeeper's Key (Mysticism), built in a city within 10 tiles of a sealed gateway, opens the nearest one.
@@ -67,12 +67,12 @@ public partial class World {
   if(!gatesLocked)return;
   for(int r=1;r<RealmKeyTech.Length;r++){
    int learner=-1;for(int o=0;o<civCount&&learner<0;o++)if(!IsNativeNation(o)&&HasTech(o,RealmKeyTech[r]))learner=o;if(learner<0)continue;
-   foreach(int i in GateCells().ToList()){var t=tiles[i];if(t.realm!=0||GateSteady(t))continue;var twin=GateTwin(t);if(twin==null||twin.realm!=r)continue;OpenGate(t,(learner==0?"Your":NationName(learner)+"'s")+" scholars of "+RealmKeyName(r)+" have broken a seal.");}
+   foreach(int i in GateCells().ToList()){var t=tiles[i];if(t.realm!=0||GateSteady(t))continue;var twin=GateTwin(t);if(twin==null||twin.realm!=r)continue;OpenGate(t,(learner==0?"Your":NationName(learner)+"'s")+" scholars of "+RealmKeyName(r)+" have broken a seal.",learner);}
   }
  }
  public Tile NearestSealedGate(int x,int y,int range){Tile best=null;int least=int.MaxValue;foreach(int i in GateCells()){var t=tiles[i];if(t.realm!=0||GateSteady(t))continue;int d=Distance(x,y,t.x,t.y);if(d<=range&&d<least){least=d;best=t;}}return best;}
  public string RiteReason(Unit u){if(u==null||u.type!=PriestUnit)return "Only a priest can perform the rite.";var t=At(u.x,u.y);if(t==null||t.gateLink<=0)return "Stand on a gateway.";if(GateOpen(t))return "This gateway is already open.";if(!HasTech(u.owner,"mysticism"))return "Requires Mysticism.";if(u.moves<=0)return "The priest needs movement.";if(nations[u.owner].faith<RiteFaith)return "Needs "+RiteFaith+" faith.";return "";}
- public bool PerformRite(Unit u){if(RiteReason(u)!="")return false;nations[u.owner].faith-=RiteFaith;var t=At(u.x,u.y);units.Remove(u);OpenGate(t,(u.owner==0?"Your":NationName(u.owner)+"'s")+" priest gave their life to the rite of unsealing.");return true;}
+ public bool PerformRite(Unit u){if(RiteReason(u)!="")return false;nations[u.owner].faith-=RiteFaith;var t=At(u.x,u.y);units.Remove(u);OpenGate(t,(u.owner==0?"Your":NationName(u.owner)+"'s")+" priest gave their life to the rite of unsealing.",u.owner);return true;}
  public string GateName(Tile t){int r=GateRealm(t);if(!GateOpen(t))return "Sealed ancient gateway";return t.realm==0?"Ancient gateway to the "+RealmNames[r]:"Ancient gateway home";}
  // Called once a new world has been generated: appends the five worlds and links their gateways to the home world.
  void AddRealms(){
