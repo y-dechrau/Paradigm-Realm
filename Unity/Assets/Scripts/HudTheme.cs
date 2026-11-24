@@ -25,8 +25,8 @@ namespace ParadigmRealm
         static Rect TopBar{get{return new Rect(0,0,MapW,38);}}
         static readonly Rect ResearchCard=new Rect(174,46,300,52),UnitCard=new Rect(8,592,410,200),MorePanel=new Rect(8,246,410,340);
         static Rect TileCard{get{return new Rect(571+MidShift,740,336,52);}}
-        static Rect MiniMap{get{return new Rect(1004+RightShift,590,234,138);}}
-        static Rect MiniButtons{get{return new Rect(1242+RightShift,590,32,138);}}
+        static Rect MiniMap{get{return new Rect(934+RightShift,574,304,156);}}
+        static Rect MiniButtons{get{return new Rect(1242+RightShift,574,32,156);}}
         static Rect EndTurnRect{get{return new Rect(1060+RightShift,738,214,54);}}
         static readonly string[] RailScreens={"Economy","Civics","Military","Research","Diplomacy","Religion","Cities","Atlas","Victory","Chronicle"};
         // Military sits below Civics and holds Forces and the old Units screen (owner request, 21 Nov 2026).
@@ -122,6 +122,7 @@ namespace ParadigmRealm
             if(turnRunning){GUI.enabled=true;GUI.Box(EndTurnRect,"");GUI.Label(new Rect(EndTurnRect.x,EndTurnRect.y+6,EndTurnRect.width,20),"The world moves...",hudCentre);EraBar(new Rect(EndTurnRect.x+12,EndTurnRect.y+32,EndTurnRect.width-24,10),Mathf.Min(turnStep,world.civCount)/(float)Math.Max(1,world.civCount));GUI.enabled=false;}
             else{
             if(GUI.Button(EndTurnRect,"END TURN",endTurnStyle))EndTurn();
+            {int waiting=IdleCount();if(waiting>0)GUI.Label(new Rect(EndTurnRect.x+8,EndTurnRect.yMax-21,120,16),waiting+" idle",new GUIStyle(keyCapStyle){alignment=TextAnchor.MiddleLeft,clipping=TextClipping.Overflow});}
             var cap=new Rect(EndTurnRect.xMax-50,EndTurnRect.yMax-21,42,16);Fill(cap,new Color(.12f,.08f,.03f,.75f));GUI.Label(cap,"Enter",keyCapStyle);}
             GUI.enabled=true;
             DrawTopBar();
@@ -225,11 +226,11 @@ namespace ParadigmRealm
         // The known world in miniature with the visible area outlined; click or drag to move the view.
         void DrawMiniMap()
         {
-            GUI.Box(MiniMap,"");var inner=new Rect(MiniMap.x+5,MiniMap.y+5,MiniMap.width-10,MiniMap.height-10);
+            GUI.Box(MiniMap,"");var inner=new Rect(MiniMap.x+4,MiniMap.y+4,MiniMap.width-8,MiniMap.height-8);
             if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>3f)BuildAtlasTexture();
             // Staggered rows are a quarter of a tile width apart (16 of 64 pixels), so a row is a quarter as tall as a column is wide.
             float aspect=world.Width/(world.Hex?ViewRows*PixelArt.HR/(float)PixelArt.HW:world.Staggered?ViewRows*.25f:(float)ViewRows),w=inner.width,h=w/aspect;if(h>inner.height){h=inner.height;w=h*aspect;}
-            var drawn=new Rect(inner.center.x-w/2,inner.center.y-h/2,w,h);Fill(inner,UiTrough);if(miniTexture==null||miniWorld!=world||miniRealm!=viewRealm||miniLayerBuilt!=MiniLayer||miniBuilt<0||!turnRunning&&Time.realtimeSinceStartup-miniBuilt>1f&&MiniSignature()!=miniSig)BuildMiniTexture();GUI.DrawTexture(drawn,miniTexture??atlasTexture,ScaleMode.StretchToFill);
+            var drawn=new Rect(inner.center.x-w/2,inner.center.y-h/2,w,h);Fill(inner,MiniUnknown);if(miniTexture==null||miniWorld!=world||miniRealm!=viewRealm||miniLayerBuilt!=MiniLayer||miniBuilt<0||!turnRunning&&Time.realtimeSinceStartup-miniBuilt>1f&&MiniSignature()!=miniSig)BuildMiniTexture();GUI.DrawTexture(drawn,miniTexture??atlasTexture,ScaleMode.StretchToFill);
             float vx,vy,vw,vh;
             if(diamondView&&world.Rows){float tw=isoWidth,rowH=RowPixels(tw);vx=camI-MapW/2/tw;vw=MapW/tw;vy=camJ-MapH/2/rowH;vh=MapH/rowH;}
             else if(diamondView){// The diagonal view covers a turned square of the grid; outline the grid rectangle around it.
@@ -237,10 +238,12 @@ namespace ParadigmRealm
                 vx=lo;vy=top;vw=hi-lo;vh=bottom-top;}
             else{vx=mapScroll.x/tilePixels;vy=mapScroll.y/ClassicRowHeight();vw=MapW/tilePixels;vh=MapH/ClassicRowHeight();}
             vy-=ViewTop;float sx=w/world.Width,sy=h/ViewRows;var view=new Rect(drawn.x+vx*sx,drawn.y+vy*sy,vw*sx,vh*sy);
-            DrawMiniLayerControls(drawn,sx,sy);
-            GUI.BeginGroup(drawn);var local=new Rect(view.x-drawn.x,view.y-drawn.y,view.width,view.height);var edge=new Color(1,1,1,.9f);
-            Fill(new Rect(local.x,local.y,local.width,1),edge);Fill(new Rect(local.x,local.yMax-1,local.width,1),edge);Fill(new Rect(local.x,local.y,1,local.height),edge);Fill(new Rect(local.xMax-1,local.y,1,local.height),edge);
-            GUI.EndGroup();
+            DrawMiniMarks(drawn);DrawMiniLayerControls(drawn,sx,sy);
+            GUI.BeginGroup(drawn);var local=new Rect(view.x-drawn.x,view.y-drawn.y,view.width,view.height);var edge=new Color(1,1,1,.95f);
+            // What the map shows: a faint pane with bright corners, so the land inside it can still be read.
+            Fill(local,new Color(1,1,1,.07f));var faint=new Color(1,1,1,.45f);Fill(new Rect(local.x,local.y,local.width,1),faint);Fill(new Rect(local.x,local.yMax-1,local.width,1),faint);Fill(new Rect(local.x,local.y,1,local.height),faint);Fill(new Rect(local.xMax-1,local.y,1,local.height),faint);
+            {float cl=Mathf.Min(8,Mathf.Min(local.width,local.height)/3);foreach(int q in new[]{0,1,2,3}){float cx=(q&1)==0?local.x:local.xMax-cl,cy=q<2?local.y:local.yMax-2;Fill(new Rect(cx,cy,cl,2),edge);Fill(new Rect((q&1)==0?local.x:local.xMax-2,q<2?local.y:local.yMax-cl,2,cl),edge);}}
+            GUI.EndGroup();DrawMiniTip(drawn);
             var e=Event.current;
             if((e.type==EventType.MouseDown||e.type==EventType.MouseDrag)&&e.button==0&&drawn.Contains(e.mousePosition)&&GUI.enabled)
             {int tx=Mathf.Clamp((int)((e.mousePosition.x-drawn.x)/sx),0,world.Width-1),ty=ViewTop+Mathf.Clamp((int)((e.mousePosition.y-drawn.y)/sy),0,ViewRows-1);globeZoom=false;FocusTile(tx,ty);e.Use();}

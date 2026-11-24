@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 namespace ParadigmRealm {
  public sealed class SettlementReport {
+  public int shared;public string sharedWith="";// tiles its land would share with another of your cities (or one to be)
   public int x,y,score,food,production,gold,knownTiles,unknownTiles,housing,upkeep,distance;
   public bool freshWater,coastal,threat;
   public string reason="",diplomacyWarning="";
@@ -65,21 +66,39 @@ namespace ParadigmRealm {
    report.resources=resources.OrderBy(r=>r).ToList();report.housing=report.freshWater?8:6;
    var capital=cities.Where(c=>c.owner==owner).OrderBy(c=>c.id).FirstOrDefault();report.upkeep=1+(capital==null?0:Distance(x,y,capital.x,capital.y)/10);
    report.threat=SettlementThreat(owner,x,y);report.diplomacyWarning=SettlementDiplomacyWarning(owner,x,y);
-   report.score=report.food*4+report.production*2+report.gold*2+(modernRules?report.resources.Sum(r=>ResourceSiteValue(r))+DistinctKinds(report.resources)*4:report.resources.Count*4)+(report.freshWater?8:0)+(report.coastal?2:0)-report.upkeep*3-report.distance*2-(report.threat?60:0)-(report.diplomacyWarning!=""?100:0);
+   // Land two of your cities would both want (owner request, 25 Nov 2026): counted for the player's suggestions, against your own
+   // cities and the places your other Settlers are walking to.
+   if(owner==0)report.shared=SharedLand(x,y,out report.sharedWith);
+   report.score=-report.shared*SharedCost-(report.shared>0?0:SharedLandWide(owner,x,y)/2)+report.food*4+report.production*2+report.gold*2+(modernRules?report.resources.Sum(r=>ResourceSiteValue(r))+DistinctKinds(report.resources)*4:report.resources.Count*4)+(report.freshWater?8:0)+(report.coastal?2:0)-report.upkeep*3-report.distance*2-(report.threat?60:0)-(report.diplomacyWarning!=""?100:0);
    return report;
   }
+  public const int SharedCost=2,SharedReach=3,SharedWideReach=4;
+  // Tiles within a grown city's reach of this site that one of your cities (or a city to be) also reaches. Mountains and ice do not count.
+  int SharedLand(int x,int y,out string with){with="";var rivals=SiteNeighbours(x,y,SharedReach);if(rivals.Count==0)return 0;int n=0,most=0;var counts=new Dictionary<string,int>();
+   var seen=new HashSet<int>();for(int dy=-SharedReach;dy<=SharedReach;dy++)for(int dx=-SharedReach;dx<=SharedReach;dx++){var t=StepIn(x,y,dx,dy,SharedReach);if(t==null||!seen.Add(t.y*Width+t.x)||Distance(x,y,t.x,t.y)>SharedReach||IsImpassable(t.terrain)||Barren(t.terrain)&&!IsWater(t.terrain))continue;bool any=false;
+    foreach(var c in rivals){if(Distance(c.Key.x,c.Key.y,t.x,t.y)>SharedReach)continue;any=true;int k;counts.TryGetValue(c.Value,out k);counts[c.Value]=k+1;}if(any)n++;}
+   foreach(var kv in counts)if(kv.Value>most){most=kv.Value;with=kv.Key;}return n;}
+  int SharedLandWide(int owner,int x,int y){if(owner!=0)return 0;var rivals=SiteNeighbours(x,y,SharedWideReach);if(rivals.Count==0)return 0;int n=0;var seen=new HashSet<int>();
+   for(int dy=-SharedWideReach;dy<=SharedWideReach;dy++)for(int dx=-SharedWideReach;dx<=SharedWideReach;dx++){var t=StepIn(x,y,dx,dy,SharedWideReach);if(t==null||!seen.Add(t.y*Width+t.x)||Distance(x,y,t.x,t.y)>SharedWideReach||IsImpassable(t.terrain))continue;foreach(var c in rivals)if(Distance(c.Key.x,c.Key.y,t.x,t.y)<=SharedWideReach){n++;break;}}
+   return n;}
+  // Your cities, and where your other Settlers are bound, close enough for their land to meet this site's.
+  List<KeyValuePair<Tile,string>> SiteNeighbours(int x,int y,int reach){var list=new List<KeyValuePair<Tile,string>>();
+   foreach(var c in cities)if(c.owner==0&&Distance(c.x,c.y,x,y)<=reach*2)list.Add(new KeyValuePair<Tile,string>(At(c.x,c.y),c.name));
+   foreach(var u in units)if(u.owner==0&&u.type==0&&u.hasOrder&&u.id!=siteFor&&Distance(u.destinationX,u.destinationY,x,y)<=reach*2)list.Add(new KeyValuePair<Tile,string>(At(u.destinationX,u.destinationY),"another Settler's city"));
+   return list;}
+  [NonSerialized] int siteFor=-1;// the Settler whose sites are being weighed
   static int DistinctKinds(List<int> resources){return resources.Where(r=>r>0&&r<ResourceKind.Length).Select(r=>ResourceKind[r]).Distinct().Count();}
   // One short line for the map prompt: why this site is suggested.
   public string SiteHighlights(SettlementReport r){
    var bits=new List<string>();if(r.freshWater)bits.Add("fresh water");if(r.coastal)bits.Add("coast");
    if(r.resources.Count>0)bits.Add(string.Join(", ",r.resources.Select(i=>ResourceNames[i])));
-   bits.Add("food "+(r.food>=0?"+":"")+r.food+", shields "+r.production);return string.Join(" • ",bits);
+   bits.Add("food "+(r.food>=0?"+":"")+r.food+", shields "+r.production);if(r.shared>0)bits.Add("shares "+r.shared+(r.shared==1?" tile":" tiles")+" with "+r.sharedWith);return string.Join(" • ",bits);
   }
   bool SettlementThreat(int owner,int x,int y){return AnimalThreat(owner,x,y)||BarbarianNear(owner,x,y,3)||units.Any(u=>Power[u.type]>0&&AtWar(owner,u.owner)&&VisibleTo(owner,u.x,u.y)&&Distance(u.x,u.y,x,y)<=3);}
   bool SafeSettlerPath(Unit u,List<Tile> route){return route.All(t=>!SettlementThreat(u.owner,t.x,t.y));}
   public List<SettlementReport> SettlementOptions(Unit u,int limit=5){
    if(u==null||u.type!=0||!units.Contains(u))return new List<SettlementReport>();
-   var reports=new List<SettlementReport>();
+   var reports=new List<SettlementReport>();siteFor=u.id;
    // Local planning is bounded. The adviser can be reopened after moving/exploring.
    var scanned=new HashSet<int>();
    for(int sy=-12;sy<=12;sy++)for(int sx=-12;sx<=12;sx++){

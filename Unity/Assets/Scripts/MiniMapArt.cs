@@ -1,53 +1,103 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 namespace ParadigmRealm {
-// A sharper minimap (owner request, 9 Nov 2026). The atlas texture keeps one pixel per tile for the globe and the atlas screen;
-// the minimap gets its own picture with several pixels per tile: the terrain colour lightly mottled, shallows along coasts,
-// a tint and a bright edge for each civilisation's land, rivers as blue threads and cities as framed dots. It is drawn smooth
-// with mipmaps, so a large world shrinks cleanly into the small panel.
+// The mini-map, redrawn after Stellaris's galaxy map (owner request, 25 Nov 2026: "needs to be clearer"). Dark, quiet ground; each
+// civilisation's land one flat field of its colour with a bright, rounded border and a thin dark line outside it; unexplored land near
+// black; coasts a fine pale line. Cities are crisp dots drawn over the picture at their own size on screen, capitals stars, gateways
+// you have found gold diamonds, and a gateway you have only heard of a gold arrow from your capital pointing the way. The other layers
+// use the same shapes with their own colours. Each tile is a point on the map's real rows, and every pixel belongs to the group of
+// tiles that outweighs the others round it, which is what rounds the borders. The atlas texture (one pixel a tile) is still used by
+// the globe and the atlas screen.
 public partial class RealmGame {
- Texture2D miniTexture;World miniWorld;float miniBuilt=-99;int miniRealm=-1;Color32[] miniPixels;
- void BuildMiniTexture(){
-  int W=world.Width,H=ViewRows,top=ViewTop;int scale=Mathf.Clamp(560/Math.Max(1,W),3,8);int tw=W*scale,th=H*scale;
-  if(miniTexture==null||miniTexture.width!=tw||miniTexture.height!=th){if(miniTexture!=null)Destroy(miniTexture);miniTexture=new Texture2D(tw,th,TextureFormat.RGBA32,true){filterMode=FilterMode.Trilinear,wrapMode=TextureWrapMode.Clamp,anisoLevel=2};miniPixels=new Color32[tw*th];}
-  var dark=new Color32(6,10,16,255);PrepareMiniLayer();
-  for(int y=0;y<H;y++)for(int x=0;x<W;x++){
-   var source=world.tiles[(y+top)*W+x];var t=world.KnownTile(source);
-   Color c;bool seen=t.seen;
-   if(!seen)c=new Color(.025f,.04f,.06f,1);else{c=AtlasColour(t.terrain);if(t.owner>=0){var n=nations[t.owner];c=Color.Lerp(c,new Color(n.r,n.g,n.b,1),.32f);}}
-   if(seen&&MiniLayer!=0)c=MiniLayerColour((y+top)*W+x,t,c);
-   bool water=seen&&PixelArt.IsWater(t.terrain),river=seen&&t.terrain==7;
-   // Neighbours for coasts and borders (north, east, south, west in grid steps).
-   int ownN=OwnerAt(x,y-1,top),ownE=OwnerAt(x+1,y,top),ownS=OwnerAt(x,y+1,top),ownW=OwnerAt(x-1,y,top);
-   bool landN=LandAt(x,y-1,top),landE=LandAt(x+1,y,top),landS=LandAt(x,y+1,top),landW=LandAt(x-1,y,top);
-   for(int py=0;py<scale;py++)for(int px=0;px<scale;px++){
-    Color p=c;
-    if(seen){
-     // Gentle mottling so land does not read as flat squares.
-     float n=Hash01(x*scale+px,y*scale+py);p=Color.Lerp(p,p*(water?1.08f:1.12f),n*.6f);p=Color.Lerp(p,p*.88f,(1-n)*.35f);
-     // Shallows: water pixels next to land are lighter.
-     if(water&&!river){bool near=(py==0&&landN)||(py==scale-1&&landS)||(px==0&&landW)||(px==scale-1&&landE);if(near)p=Color.Lerp(p,new Color(.45f,.7f,.8f,1),.45f);}
-     // Rivers: a blue thread through the middle of the tile on a land-coloured bank.
-     if(river&&MiniLayer==0){p=AtlasColour(0);int mid=scale/2;if(Math.Abs(px-mid)<=Math.Max(0,scale/4)||Math.Abs(py-mid)<=Math.Max(0,scale/4))p=new Color(.2f,.45f,.75f,1);}
-     // Borders: a bright edge in the owner's colour where the owner changes.
-     if(t.owner>=0){var ink=nations[t.owner];bool edge=(py==0&&ownN!=t.owner)||(py==scale-1&&ownS!=t.owner)||(px==0&&ownW!=t.owner)||(px==scale-1&&ownE!=t.owner);if(edge)p=Color.Lerp(new Color(ink.r,ink.g,ink.b,1),Color.white,.25f);}
-    }
-    // Texture rows run bottom-up.
-    miniPixels[((H-1-y)*scale+(scale-1-py))*tw+x*scale+px]=p;}
-  }
-  // Cities: a dot in the owner's colour with a light frame, about two tiles across; your own a little larger.
-  foreach(var city in world.cities){var ct=world.tiles[city.y*W+city.x];if(ct.realm!=viewRealm||!(city.owner==0||ct.seen))continue;int r=Math.Max(2,scale*(city.owner==0?5:4)/4);
-   int cx=city.x*scale+scale/2,cy=(H-1-(city.y-top))*scale+scale/2;var ink=nations[city.owner];
-   for(int dy=-r;dy<=r;dy++)for(int dx=-r;dx<=r;dx++){int d2=dx*dx+dy*dy;if(d2>r*r)continue;int qx=cx+dx,qy=cy+dy;if(qx<0||qy<0||qx>=tw||qy>=th)continue;
-    miniPixels[qy*tw+qx]=d2>=(r-1)*(r-1)?new Color32(240,232,210,255):new Color32((byte)(ink.r*255),(byte)(ink.g*255),(byte)(ink.b*255),255);}}
-  // Found sealed gateways stay marked in gold.
-  if(viewRealm==0&&world.gatesFound!=null)foreach(int cell in world.gatesFound){var g=world.tiles[cell];int cx=g.x*scale+scale/2,cy=(H-1-(g.y-top))*scale+scale/2,r=Math.Max(2,scale);
-   for(int dy=-r;dy<=r;dy++)for(int dx=-r;dx<=r;dx++){if(Math.Abs(dx)+Math.Abs(dy)>r)continue;int qx=cx+dx,qy=cy+dy;if(qx<0||qy<0||qx>=tw||qy>=th)continue;miniPixels[qy*tw+qx]=new Color32(255,210,64,255);}}
+ Texture2D miniTexture;World miniWorld;float miniBuilt=-99;int miniRealm=-1;Color32[] miniPixels;int[] miniKey;
+ static readonly Color MiniUnknown=new Color(.016f,.024f,.043f),MiniSea=new Color(.045f,.075f,.14f),MiniLand=new Color(.2f,.225f,.25f),MiniCoast=new Color(.36f,.44f,.54f);
+ // Rows as tall as they are on the map: the share of a tile's width.
+ float MiniRowShare(){return world.Hex?PixelArt.HR/(float)PixelArt.HW:world.Staggered?.25f:1f;}
+ float MiniShift(int y){return world.Rows&&(y&1)!=0?.5f:0f;}
+ void BuildMiniTexture(){float began=Time.realtimeSinceStartup;
+  int W=world.Width,H=ViewRows,top=ViewTop;float share=MiniRowShare();int scale=Mathf.Clamp(640/Math.Max(1,W),3,9);int tw=W*scale,th=Mathf.Max(8,Mathf.RoundToInt(H*scale*share));
+  if(miniTexture==null||miniTexture.width!=tw||miniTexture.height!=th){if(miniTexture!=null)Destroy(miniTexture);miniTexture=new Texture2D(tw,th,TextureFormat.RGBA32,true){filterMode=FilterMode.Trilinear,wrapMode=TextureWrapMode.Clamp,anisoLevel=2};miniPixels=new Color32[tw*th];miniKey=new int[tw*th];}
+  PrepareMiniLayer();
+  // What every tile shows: its kind (0 unknown, 1 water, 2 land), the group its land belongs to, and its colour on this layer.
+  var key=new int[W*H];var ink=new Color[W*H];
+  for(int y=0;y<H;y++)for(int x=0;x<W;x++){int at=y*W+x,cell=(y+top)*W+x;var t=world.KnownTile(world.tiles[cell]);if(!t.seen){key[at]=0;ink[at]=MiniUnknown;continue;}
+   bool water=PixelArt.IsWater(t.terrain)&&t.terrain!=7;key[at]=t.owner>=0?10+t.owner:water?1:2;ink[at]=MiniTileColour(cell,t,water);}
+  float rowPixels=scale*share;bool wrap=world.Sphere;float reach=1.18f*scale;
+  for(int py=0;py<th;py++){float fy=(py+.5f)/rowPixels-.5f;int r0=Mathf.FloorToInt(fy-1.2f/share*.75f),r1=Mathf.CeilToInt(fy+1.2f/share*.75f);
+   for(int px=0;px<tw;px++){
+    // The tiles round this pixel vote for their group; near tiles count most.
+    int n=0;float nearest=float.MaxValue;int nearAt=-1;
+    for(int ry=Math.Max(0,r0);ry<=Math.Min(H-1,r1);ry++){float shift=MiniShift(ry+top),dy=(ry-fy)*rowPixels;if(dy>reach||dy<-reach)continue;float fx=(px+.5f)/scale-.5f-shift;int c=Mathf.RoundToInt(fx);
+     for(int k=c-1;k<=c+1;k++){int qx=k;if(qx<0||qx>=W){if(!wrap)continue;qx=(qx%W+W)%W;}float dx=(k-fx)*scale,d=dx*dx+dy*dy;if(d>reach*reach)continue;
+      int at=ry*W+qx;if(d<nearest){nearest=d;nearAt=at;}float weight=reach-Mathf.Sqrt(d);weight*=weight;int g=key[at],slot=0;while(slot<n&&voteKey[slot]!=g)slot++;if(slot==n){if(n>=voteKey.Length)continue;n++;voteKey[slot]=g;voteSum[slot]=0;voteAt[slot]=at;voteNear[slot]=float.MaxValue;}
+      voteSum[slot]+=weight;if(d<voteNear[slot]){voteNear[slot]=d;voteAt[slot]=at;}}}
+    int best=-1;for(int s=0;s<n;s++)if(best<0||voteSum[s]>voteSum[best])best=s;
+    int to=(th-1-py)*tw+px;if(best<0){miniKey[to]=0;miniPixels[to]=MiniUnknown;continue;}
+    miniKey[to]=voteKey[best];miniPixels[to]=ink[voteAt[best]];}}
+  EdgeMini(tw,th,wrap);if(devRun)Debug.Log("PROBEINFO minimap "+tw+"x"+th+" painted in "+((Time.realtimeSinceStartup-began)*1000).ToString("0")+" ms");
   PaintMiniOverlay(tw,th,scale,top);miniSig=MiniSignature();miniRepaints++;
   miniTexture.SetPixels32(miniPixels);miniTexture.Apply(true);miniWorld=world;miniBuilt=Time.realtimeSinceStartup;miniRealm=viewRealm;miniLayerBuilt=MiniLayer;
  }
- int OwnerAt(int x,int y,int top){if(y<0||y>=ViewRows)return -2;x=((x%world.Width)+world.Width)%world.Width;var t=world.KnownTile(world.tiles[(y+top)*world.Width+x]);return t.seen?t.owner:-2;}
- bool LandAt(int x,int y,int top){if(y<0||y>=ViewRows)return false;x=((x%world.Width)+world.Width)%world.Width;var t=world.KnownTile(world.tiles[(y+top)*world.Width+x]);return t.seen&&!PixelArt.IsWater(t.terrain);}
+ static readonly int[] voteKey=new int[12],voteAt=new int[12];static readonly float[] voteSum=new float[12],voteNear=new float[12];
+ // Borders: two bright pixels inside a civilisation's land, a dark one outside it, and a fine line where known land meets water.
+ void EdgeMini(int tw,int th,bool wrap){
+  var made=(Color32[])miniPixels.Clone();
+  for(int y=0;y<th;y++)for(int x=0;x<tw;x++){int at=y*tw+x,k=miniKey[at];int near=0;bool otherOwner=false,land=false;
+   for(int d=1;d<=2&&near==0;d++)for(int q=0;q<4;q++){int nx=x+(q==0?d:q==1?-d:0),ny=y+(q==2?d:q==3?-d:0);if(ny<0||ny>=th)continue;if(nx<0||nx>=tw){if(!wrap)continue;nx=(nx+tw)%tw;}int o=miniKey[ny*tw+nx];if(o==k)continue;
+     if(k>=10){near=d;break;}
+     if(o>=10&&d==1)otherOwner=true;if(d==1&&(k==1&&o==2||k==2&&o==1))land=true;}
+   if(k>=10&&near>0){var ink=BorderInk(k-10);made[at]=Color.Lerp(ink,Color.white,near==1?.38f:.12f);}
+   else if(otherOwner)made[at]=Color.Lerp(miniPixels[at],Color.black,.7f);
+   else if(land)made[at]=Color.Lerp(miniPixels[at],MiniCoast,.75f);}
+  miniPixels=made;
+ }
+ // On the Diplomacy, Religion and other layers the border keeps the colour the layer gives that people.
+ Color BorderInk(int owner){return MiniLayer==4?DiplomacyInk(owner):NationInk(owner);}
+ Color MiniTileColour(int cell,Tile t,bool water){
+  Color c;
+  if(MiniLayer==0){c=water?Color.Lerp(AtlasColour(t.terrain),MiniSea,.45f):Color.Lerp(AtlasColour(t.terrain),Color.black,.06f);if(t.owner>=0)c=Color.Lerp(c,NationInk(t.owner),.3f);c.a=1;return c;}
+  if(MiniLayer==1){if(t.owner>=0){c=Color.Lerp(MiniUnknown,NationInk(t.owner),.66f);c.a=1;return c;}if(water)return MiniSea;
+   // Unclaimed land is one quiet field; only polar ice stands out a little.
+   c=t.terrain==14||t.terrain==15?Color.Lerp(MiniLand,new Color(.5f,.62f,.72f),.3f):MiniLand;c.a=1;return c;}
+  return MiniLayerColour(cell,t,AtlasColour(t.terrain));
+ }
+ // ---------- marks drawn over the picture, at their own size on screen ----------
+ readonly Dictionary<string,Texture2D> miniMarks=new Dictionary<string,Texture2D>();
+ // Small white shapes, tinted when drawn: dot, ring, star, diamond, arrow0 to arrow7 (north, then clockwise by eighths).
+ Texture2D MiniMark(string kind){
+  Texture2D t;if(miniMarks.TryGetValue(kind,out t)&&t!=null)return t;const int n=32;t=new Texture2D(n,n,TextureFormat.RGBA32,true){filterMode=FilterMode.Trilinear,wrapMode=TextureWrapMode.Clamp};var px=new Color32[n*n];
+  for(int y=0;y<n;y++)for(int x=0;x<n;x++){float cover=0;for(int s=0;s<4;s++){float fx=(x+.25f+.5f*(s&1)-n/2f)/(n/2f),fy=(y+.25f+.5f*(s>>1)-n/2f)/(n/2f);if(kind.StartsWith("arrow")){float turn=(kind[5]-'0')*Mathf.PI/4,lx=fx*Mathf.Cos(turn)-fy*Mathf.Sin(turn),ly=fx*Mathf.Sin(turn)+fy*Mathf.Cos(turn);fx=lx;fy=ly;}float d=Mathf.Sqrt(fx*fx+fy*fy);bool on=false;
+    switch(kind.StartsWith("arrow")?"arrow":kind){case "dot":on=d<=.95f;break;case "ring":on=d<=.95f&&d>=.68f;break;case "diamond":on=Mathf.Abs(fx)+Mathf.Abs(fy)<=.95f;break;
+     case "star":{float a=Mathf.Atan2(fx,fy);float w=Mathf.Abs(Mathf.Cos(a*2.5f));on=d<=Mathf.Lerp(.42f,.98f,w*w*w);break;}
+     case "arrow":on=fy<=.95f&&fy>=-.1f&&Mathf.Abs(fx)<=(.95f-fy)*.75f||fy<-.1f&&fy>=-.95f&&Mathf.Abs(fx)<=.2f;break;}
+    if(on)cover+=.25f;}
+   px[y*n+x]=new Color32(255,255,255,(byte)(cover*255));}
+  t.SetPixels32(px);t.Apply(true);themeTextures.Add(t);miniMarks[kind]=t;return t;}
+ void Mark(string kind,Vector2 at,float size,Color ink){var old=GUI.color;GUI.color=ink;GUI.DrawTexture(new Rect(at.x-size/2,at.y-size/2,size,size),MiniMark(kind),ScaleMode.StretchToFill,true);GUI.color=old;}
+ Vector2 MiniPoint(Rect drawn,int x,int y){float sx=drawn.width/world.Width,sy=drawn.height/ViewRows;return new Vector2(drawn.x+(x+.5f+MiniShift(y))*sx,drawn.y+(y-ViewTop+.5f)*sy);}
+ void DrawMiniMarks(Rect drawn){
+  if(Event.current.type!=EventType.Repaint)return;
+  var dark=new Color(0,0,0,.85f);
+  foreach(var c in world.cities){var t=world.At(c.x,c.y);if(t==null||t.realm!=viewRealm||!(c.owner==0||t.seen))continue;var at=MiniPoint(drawn,c.x,c.y);bool capital=world.nations[c.owner].capital==c.id&&(c.owner==0||world.met[c.owner]);var ink=c.owner==0?Color.white:Color.Lerp(NationInk(c.owner),Color.white,.55f);
+   if(capital){Mark("star",at,c.owner==0?14.5f:11.5f,dark);Mark("star",at,c.owner==0?11.5f:9f,c.owner==0?new Color(1f,.9f,.5f):ink);}
+   else{Mark("dot",at,c.owner==0?6.5f:5.5f,dark);Mark("dot",at,c.owner==0?4.4f:3.5f,ink);}}
+  if(viewRealm==0&&world.gatesFound!=null)foreach(int cell in world.gatesFound){var g=world.tiles[cell];var at=MiniPoint(drawn,g.x,g.y);Mark("diamond",at,10,dark);Mark("diamond",at,7.5f,world.GateOpen(g)?new Color(.5f,.9f,1f):new Color(1f,.82f,.25f));}
+  // Where to look for a gateway you have only heard of: the way, not the place.
+  if(viewRealm==0){var home=world.CapitalCity(0);if(home!=null&&world.At(home.x,home.y).realm==0){var from=MiniPoint(drawn,home.x,home.y);var told=new HashSet<int>();
+    foreach(var h in world.OpenHints()){if(!told.Add(h.direction))continue;float a=h.direction*Mathf.PI/4;var way=new Vector2(Mathf.Sin(a),-Mathf.Cos(a));float pulse=.65f+.35f*Mathf.Sin(Time.realtimeSinceStartup*2.5f);var at=from+way*17;
+     if(!drawn.Contains(at))at=new Vector2(Mathf.Clamp(at.x,drawn.x+5,drawn.xMax-5),Mathf.Clamp(at.y,drawn.y+5,drawn.yMax-5));
+     string arrow="arrow"+(h.direction&7);Mark(arrow,at,16,dark);Mark(arrow,at,12.5f,new Color(1f,.82f,.25f,pulse));}}}
+ }
+ // Whose land the pointer is over, beside it.
+ void DrawMiniTip(Rect drawn){
+  var m=Event.current.mousePosition;if(!drawn.Contains(m)||miniLayerOpen)return;int row=Mathf.Clamp((int)((m.y-drawn.y)/(drawn.height/ViewRows)),0,ViewRows-1),y=ViewTop+row;int x=Mathf.FloorToInt((m.x-drawn.x)/(drawn.width/world.Width)-MiniShift(y));if(x<0||x>=world.Width)return;
+  var t=world.KnownTile(world.tiles[y*world.Width+x]);string s=!t.seen?"Unexplored":t.owner<0?World.TerrainNames[t.terrain]:t.owner==0||world.met[t.owner]?world.NationName(t.owner):"An unknown people";
+  var city=t.seen?world.cities.Find(c=>(c.owner==0||world.At(c.x,c.y).seen)&&world.At(c.x,c.y).realm==viewRealm&&(MiniPoint(drawn,c.x,c.y)-m).sqrMagnitude<30):null;if(city!=null)s=city.name+" • "+(city.owner==0||world.met[city.owner]?world.NationName(city.owner):"An unknown people");
+  var st=new GUIStyle(hudSmall){fontSize=12,wordWrap=false,alignment=TextAnchor.MiddleLeft};var size=st.CalcSize(new GUIContent(s));var r=new Rect(Mathf.Min(m.x-size.x/2-6,MiniMap.xMax-size.x-12),MiniMap.yMax-23,size.x+12,20);r.x=Mathf.Max(MiniMap.x,r.x);
+  Fill(r,new Color(.03f,.05f,.1f,.92f));GUI.Label(new Rect(r.x+6,r.y,size.x+4,r.height),s,st);
+ }
  // The gold hover lists where the money goes (owner request, 9 Nov 2026: road upkeep must be visible).
  string goldTip="";float goldTipAt=-9;
  string GoldTooltipDetail(){if(Time.realtimeSinceStartup-goldTipAt<.5f)return goldTip;goldTipAt=Time.realtimeSinceStartup;var b=world.BudgetDetail(0);return goldTip=" (income "+b.Income+"; units "+(b.army+b.civilians)+", buildings "+(b.cityUpkeep+b.buildingUpkeep)+", roads "+b.roads+" for "+world.RoadTiles(0)+" road tiles)";}

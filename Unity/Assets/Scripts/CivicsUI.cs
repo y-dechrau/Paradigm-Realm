@@ -94,7 +94,7 @@ public partial class RealmGame {
  string OpenGateTale(Tile gate){var twin=world.GateTwin(gate);int r=gate.realm>0?0:twin!=null?twin.realm:1;return "The seal has broken. The "+World.GateStyleNames[world.GateStyle(gate)].ToLower()+" stands open, and its light spills across the land.\n\nThrough it lies "+(r==0?"your own world":"the "+World.RealmNames[r])+". Whatever was shut away is shut away no longer.\n\nYour people may pass, and so may anything on the other side.";}
  void DrawGateScene(){
   GUI.enabled=true;ChronicleStyles();float t=Time.realtimeSinceStartup-gateSceneStart,show=Mathf.Clamp01(t/1.2f),bar=120*show;
-  Fill(FullCanvas,new Color(0,0,0,.9f*show));Fill(new Rect(0,0,1280,bar),Color.black);Fill(new Rect(0,800-bar,1280,bar),Color.black);
+  var all=FullCanvas;Fill(all,new Color(0,0,0,.94f*show));Fill(new Rect(all.x,0,all.width,bar),Color.black);Fill(new Rect(all.x,800-bar,all.width,bar),Color.black);
   // The gateway's own sealed picture (or, once open, the owner's painting of it); the drawn door when the art is missing.
   if(gateScenePicture==null){bool open=world.GateOpen(gateScene);int style=world.GateStyle(gateScene);var painted=open?Art("gate-scene-"+style):SpriteSlot("gate-sealed-"+style);if(painted!=null)gateScenePicture=painted;else{gateScenePicture=SoftTexture(PixelArt.Scale2x(PixelArt.GatewaySprite(PixelArt.SealedGate)));themeTextures.Add(gateScenePicture);}}
   float breath=1+.015f*Mathf.Sin(t*1.2f),size=(300+Mathf.Min(t,10)*6)*breath;var old=GUI.color;GUI.color=new Color(1,1,1,Mathf.Clamp01((t-.3f)/1.2f));var at=new Rect(330-size/2,410-size/2,size,size);

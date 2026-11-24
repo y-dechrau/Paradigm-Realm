@@ -185,9 +185,10 @@ public partial class World {
  {
   if(IsNativeNation(owner)||!dimensionRules||turn<DimensionSettings.LegendTurn||(turn+owner)%10!=0)return;var gates=HomeGates();if(gates.Any(g=>GateKnownTo(owner,g)))return;
   var capital=cities.Find(c=>c.id==nations[owner].capital)??cities.FirstOrDefault(c=>c.owner==owner&&At(c.x,c.y).realm==0);if(capital==null)return;
-  var near=gates.Where(g=>Distance(capital.x,capital.y,g.x,g.y)<=DimensionSettings.LegendReach).OrderBy(g=>Distance(capital.x,capital.y,g.x,g.y)).ThenBy(g=>g.y*Width+g.x).FirstOrDefault();if(near==null)return;int cell=near.y*Width+near.x;
+  if(owner==0&&OpenHints().Count>0)return;var near=gates.Where(g=>Distance(capital.x,capital.y,g.x,g.y)<=DimensionSettings.LegendReach).OrderBy(g=>Distance(capital.x,capital.y,g.x,g.y)).ThenBy(g=>g.y*Width+g.x).FirstOrDefault();if(near==null)return;int cell=near.y*Width+near.x;
+  // The player hears only which way to look (GateHints.cs).
+  if(owner==0){HearOfGate(near,"");return;}
   if(nations[owner].known!=null&&cell<nations[owner].known.Length)nations[owner].known[cell]=true;
-  if(owner==0){if(gatesFound==null)gatesFound=new List<int>();if(!gatesFound.Contains(cell))gatesFound.Add(cell);near.seen=true;dimensionNews.Add("Your people's oldest stories tell of an arch that leads elsewhere. Its place is now marked on your map, "+Distance(capital.x,capital.y,near.x,near.y)+" tiles from "+capital.name+".");}
  }
  // Word of a gateway travels (owner request, 12 Nov 2026: rivals must be able to compete). A civilisation at peace with one that
  // knows of a gateway, and not disliked by it, hears where it lies: one gateway every few turns. The player hears the same way.
@@ -199,8 +200,8 @@ public partial class World {
    if(o==owner||IsNativeNation(o)||!HasContact(owner,o)||AtWar(owner,o)||Opinion(o,owner)<0)continue;
    foreach(var g in HomeGates())
    {
-    if(!GateKnownTo(o,g)||GateKnownTo(owner,g))continue;int cell=g.y*Width+g.x;
-    if(owner==0){if(gatesFound==null)gatesFound=new List<int>();gatesFound.Add(cell);g.seen=true;if(nations[0].known!=null&&cell<nations[0].known.Length)nations[0].known[cell]=true;dimensionNews.Add("Travellers from "+NationName(o)+" speak of a gateway, now marked on your map.");}
+    if(!GateKnownTo(o,g)||GateKnownTo(owner,g)||owner==0&&(g.seen||GateHinted(g)))continue;int cell=g.y*Width+g.x;
+    if(owner==0)HearOfGate(g,NationName(o));
     else if(nations[owner].known!=null&&cell<nations[owner].known.Length)nations[owner].known[cell]=true;
     return;
    }

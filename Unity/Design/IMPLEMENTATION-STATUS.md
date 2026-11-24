@@ -2,6 +2,18 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 25 Nov: idle units, settler sites, gateways, rival Scouts, mini-map (no save version change)
+
+Implemented:
+
+- Idle units are selected and shown one after another; can be turned off in Settings.
+- Suggested city sites avoid land that another of your cities, or a Settler on its way, will also use.
+- The gateway discovery screen shows again. Word of an unseen gateway gives a direction and a rough distance only.
+- Home rivals train and use Scouts when they can afford them.
+- The mini-map is redrawn after Stellaris.
+
+Engine and graphics checks pass in Unity; the idle prompts and the gateway screen are probed in a build. Not hand-played.
+
 ## Owner request 24 Nov: Statecraft, stage 1 (no save version change)
 
 Implemented: the Centralised / Balanced / Expansive choice, dearer technology for large realms, the preview screen and rival choices; see [STATECRAFT-2026-11-24.md](STATECRAFT-2026-11-24.md) for rules and measurements. Planned, not built: army types and mercenaries (stage 2), autonomous cities and unions (stage 3). Not hand-played.

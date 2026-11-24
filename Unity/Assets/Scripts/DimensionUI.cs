@@ -41,6 +41,7 @@ public partial class RealmGame {
  void DrawGatewayList()
  {
   var gates=world.HomeGates().Where(g=>world.gatesFound!=null&&world.gatesFound.Contains(g.y*world.Width+g.x)).ToList();
+  foreach(var h in world.OpenHints())Line(world.HintText(h));
   if(gates.Count==0){Line("Your people have found no gateway yet. They are found by exploring, like anything else on the map.");return;}
   Small("Method of investigation your people would use now: "+GateMethod.Names[world.InvestigationMethod(0)]+". "+GateMethod.Texts[world.InvestigationMethod(0)]);
   foreach(var g in gates)

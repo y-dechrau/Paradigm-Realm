@@ -11,7 +11,7 @@ namespace ParadigmRealm {
 // [-probeMode 0 as built, 1 the two sizes with no Statecraft at all].
 public static class StatecraftProbe {
  static string Arg(string[] a,string key,string fallback){int i=Array.IndexOf(a,key);return i>=0&&i+1<a.Length?a[i+1]:fallback;}
- public static void Checks(){try{StatecraftChecks.Run();UnityEngine.Debug.Log("STATECRAFT CHECKS PASS");}catch(Exception e){UnityEngine.Debug.Log("STATECRAFT CHECKS FAIL "+e);}EditorApplication.Exit(0);}
+ public static void Checks(){try{NovemberRequestChecks.Run();StatecraftChecks.Run();UnityEngine.Debug.Log("STATECRAFT CHECKS PASS");}catch(Exception e){UnityEngine.Debug.Log("STATECRAFT CHECKS FAIL "+e);}EditorApplication.Exit(0);}
  public static void Run(){
   var args=Environment.GetCommandLineArgs();string outPath=Arg(args,"-probeOut","statecraft-probe.txt");int turns=int.Parse(Arg(args,"-probeTurns","250")),seeds=int.Parse(Arg(args,"-probeSeeds","6"));bool off=Arg(args,"-probeMode","0")=="1";
   var sb=new StringBuilder();var sums=new Dictionary<string,double[]>();int smallAhead=0,largeAhead=0;

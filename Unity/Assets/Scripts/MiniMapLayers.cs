@@ -16,12 +16,12 @@ namespace ParadigmRealm {
 public partial class RealmGame {
  static readonly string[] MiniLayerNames={"Terrain","Political","Religion","Trade routes","Diplomacy","Military","Traditions"};
  int miniLayer=-1,miniLayerBuilt=-1;bool miniLayerOpen,miniKeyAlways;// miniKeyAlways: -hudShot shows the key without a pointer
- int MiniLayer{get{if(miniLayer<0){try{miniLayer=Mathf.Clamp(PlayerPrefs.GetInt("MiniMapLayer",0),0,MiniLayerNames.Length-1);}catch{miniLayer=0;}}return miniLayer;}
-  set{miniLayer=value;try{PlayerPrefs.SetInt("MiniMapLayer",value);}catch{}}}
+ int MiniLayer{get{if(miniLayer<0){try{miniLayer=Mathf.Clamp(PlayerPrefs.GetInt("MiniMapLayer2",1),0,MiniLayerNames.Length-1);}catch{miniLayer=0;}}return miniLayer;}
+  set{miniLayer=value;try{PlayerPrefs.SetInt("MiniMapLayer2",value);}catch{}}}
  static Rect MiniLayerTab{get{return new Rect(MiniMap.x,MiniMap.y-26,MiniMap.width,24);}}
  static Rect MiniLayerList{get{return new Rect(MiniMap.x,MiniMap.y-26-MiniLayerNames.Length*24-4,MiniMap.width,MiniLayerNames.Length*24+4);}}
  readonly Dictionary<int,City> miniCityLand=new Dictionary<int,City>();
- static readonly Color MiniWater=new Color(.1f,.17f,.3f),MiniWild=new Color(.38f,.4f,.33f);
+ static Color MiniWater{get{return MiniSea;}}static Color MiniWild{get{return MiniLand;}}
  // Before the minimap is painted: which city each owned tile belongs to (the nearest of its owner's), for the religion layer.
  void PrepareMiniLayer(){
   miniCityLand.Clear();if(MiniLayer!=2&&MiniLayer!=6)return;var best=new Dictionary<int,int>();
@@ -35,14 +35,13 @@ public partial class RealmGame {
  Color MiniLayerColour(int cell,Tile t,Color terrain){
   bool water=PixelArt.IsWater(t.terrain)&&t.terrain!=7;
   switch(MiniLayer){
-   case 1:return water?MiniWater:t.owner>=0?Color.Lerp(NationInk(t.owner),Color.white,.12f):MiniWild;
-   case 2:{if(water)return MiniWater;if(t.owner<0)return MiniWild;City c;return miniCityLand.TryGetValue(cell,out c)?FaithColour(c.religion>=0?c.religion:-1):new Color(.55f,.55f,.58f);}
+   case 2:{if(t.owner<0)return water?MiniWater:MiniWild;City c;return miniCityLand.TryGetValue(cell,out c)?FaithColour(c.religion>=0?c.religion:-1):new Color(.55f,.55f,.58f);}
    case 3:{var basic=water?Dim(MiniWater,.8f):t.owner>=0?Dim(Color.Lerp(NationInk(t.owner),terrain,.5f),.55f):Dim(terrain,.45f);
     if(t.road||t.terrain==7&&t.owner>=0){bool linked=t.owner>=0&&world.OnTradeNetwork(t.owner,cell);return linked?new Color(1f,.82f,.3f):Color.Lerp(basic,new Color(.75f,.62f,.42f),.6f);}
     return basic;}
-   case 4:{if(water)return MiniWater;if(t.owner<0)return MiniWild;return DiplomacyInk(t.owner);}
+   case 4:{if(t.owner<0)return water?MiniWater:MiniWild;return Color.Lerp(MiniUnknown,DiplomacyInk(t.owner),.7f);}
    case 5:return water?Dim(MiniWater,.8f):t.owner>=0?Dim(Color.Lerp(NationInk(t.owner),terrain,.6f),.5f):Dim(terrain,.45f);
-   case 6:{if(water)return MiniWater;if(t.owner<0)return MiniWild;City c;if(!miniCityLand.TryGetValue(cell,out c)||!world.lifeways)return new Color(.55f,.55f,.58f);int way=world.WayOf(c).tradition;return way>=0?WayInk[way]:new Color(.55f,.55f,.58f);}
+   case 6:{if(t.owner<0)return water?MiniWater:MiniWild;City c;if(!miniCityLand.TryGetValue(cell,out c)||!world.lifeways)return new Color(.55f,.55f,.58f);int way=world.WayOf(c).tradition;return way>=0?WayInk[way]:new Color(.55f,.55f,.58f);}
   }
   return terrain;
  }
@@ -56,8 +55,8 @@ public partial class RealmGame {
  }
  // Marks painted after the cities: units on the Military layer.
  void PaintMiniOverlay(int tw,int th,int scale,int top){
-  if(MiniLayer!=5)return;int H=ViewRows;
-  Action<int,int,int,Color32> dot=(x,y,r,ink)=>{int cx=x*scale+scale/2,cy=(H-1-(y-top))*scale+scale/2;for(int dy=-r;dy<=r;dy++)for(int dx=-r;dx<=r;dx++){if(dx*dx+dy*dy>r*r)continue;int qx=cx+dx,qy=cy+dy;if(qx<0||qy<0||qx>=tw||qy>=th)continue;miniPixels[qy*tw+qx]=ink;}};
+  if(MiniLayer!=5)return;float rowPixels=scale*MiniRowShare();
+  Action<int,int,int,Color32> dot=(x,y,r,ink)=>{int cx=(int)((x+.5f+MiniShift(y))*scale),cy=th-1-(int)((y-top+.5f)*rowPixels);for(int dy=-r;dy<=r;dy++)for(int dx=-r;dx<=r;dx++){if(dx*dx+dy*dy>r*r)continue;int qx=cx+dx,qy=cy+dy;if(qx<0||qy<0||qx>=tw||qy>=th)continue;miniPixels[qy*tw+qx]=ink;}};
   int r0=Math.Max(1,scale/2+1);
   foreach(var u in world.units){var t=world.At(u.x,u.y);if(t==null||t.realm!=viewRealm||!(u.owner==0||world.Visible(u.x,u.y)))continue;
    Color ink=u.owner==0?InkYou:world.AtWar(0,u.owner)?InkWar:NationInk(u.owner);if(World.Power[u.type]==0)ink=Color.Lerp(ink,Color.white,.45f);dot(u.x,u.y,r0,ink);}
@@ -70,7 +69,7 @@ public partial class RealmGame {
   var e=Event.current;var tab=MiniLayerTab;
   // Trade: dotted gold lines from your capital to your commercial-pact partners' capitals that you have seen.
   if(MiniLayer==3){var home=world.CapitalCity(0);if(home!=null&&world.At(home.x,home.y).realm==viewRealm)for(int o=1;o<world.civCount;o++){if(!world.met[o]||!world.Pact(0,o,Pacts.Commercial))continue;var cap=world.CapitalCity(o);if(cap==null)continue;var ct=world.At(cap.x,cap.y);if(ct.realm!=viewRealm||!ct.seen)continue;
-   Vector2 a=new Vector2(drawn.x+(home.x+.5f)*sx,drawn.y+(home.y-ViewTop+.5f)*sy),b=new Vector2(drawn.x+(cap.x+.5f)*sx,drawn.y+(cap.y-ViewTop+.5f)*sy);float len=(b-a).magnitude;
+   Vector2 a=MiniPoint(drawn,home.x,home.y),b=MiniPoint(drawn,cap.x,cap.y);float len=(b-a).magnitude;
    for(float d=0;d<len;d+=5){var p=Vector2.Lerp(a,b,d/Math.Max(1,len));Fill(new Rect(p.x-1,p.y-1,3,3),new Color(1f,.85f,.35f,.95f));}}}
   // The tab.
   Fill(tab,new Color(.05f,.08f,.15f,.95f));Fill(new Rect(tab.x,tab.y,tab.width,1),UiGold);Fill(new Rect(tab.x,tab.yMax-1,tab.width,1),new Color(UiGold.r,UiGold.g,UiGold.b,.5f));
@@ -89,7 +88,7 @@ public partial class RealmGame {
  void DrawMiniKey(){
   var rows=new List<KeyValuePair<Color,string>>();
   switch(MiniLayer){
-   case 1:rows.Add(new KeyValuePair<Color,string>(MiniWild,"Unclaimed land"));break;
+   case 1:foreach(int o in world.cities.Where(c=>{var ct=world.At(c.x,c.y);return ct!=null&&ct.realm==viewRealm&&(c.owner==0||ct.seen);}).GroupBy(c=>c.owner).OrderBy(g=>g.Key==0?0:1).ThenByDescending(g=>g.Count()).Take(8).Select(g=>g.Key))rows.Add(new KeyValuePair<Color,string>(NationInk(o),o==0?world.NationName(0)+" (you)":world.met[o]?world.NationName(o):"An unknown people"));rows.Add(new KeyValuePair<Color,string>(MiniLand,"Unclaimed land"));break;
    case 2:{var seen=world.cities.Where(c=>{var t=world.At(c.x,c.y);return t!=null&&t.realm==viewRealm&&(c.owner==0||t.seen);}).GroupBy(c=>c.religion).OrderByDescending(g=>g.Count()).Take(6);
     foreach(var g in seen)rows.Add(new KeyValuePair<Color,string>(FaithColour(g.Key>=0?g.Key:-1),(g.Key>=0?world.FaithName(g.Key):"No main faith yet")+" ("+g.Count()+(g.Count()==1?" city)":" cities)")));break;}
    case 3:rows.Add(new KeyValuePair<Color,string>(new Color(1f,.82f,.3f),"Roads and rivers joining cities to their capital"));rows.Add(new KeyValuePair<Color,string>(new Color(.75f,.62f,.42f),"Other roads"));rows.Add(new KeyValuePair<Color,string>(new Color(1f,.85f,.35f),"Dotted: your commercial pacts"));break;
@@ -97,9 +96,9 @@ public partial class RealmGame {
    case 6:for(int way=0;way<Lifeways.Count;way++)rows.Add(new KeyValuePair<Color,string>(WayInk[way],Lifeways.Names[way]));rows.Add(new KeyValuePair<Color,string>(new Color(.55f,.55f,.58f),"No settled tradition"));break;
    case 5:rows.Add(new KeyValuePair<Color,string>(InkYou,"Your units"));rows.Add(new KeyValuePair<Color,string>(InkWar,"Enemies at war, barbarians"));rows.Add(new KeyValuePair<Color,string>(new Color(.85f,.85f,.85f),"Others' units (pale: civilians)"));break;
   }
-  if(rows.Count==0)return;var st=new GUIStyle(hudSmall){fontSize=12,alignment=TextAnchor.MiddleLeft,wordWrap=false};float w=24+rows.Max(r=>st.CalcSize(new GUIContent(r.Value)).x)+12,h=rows.Count*18+10;
+  if(rows.Count==0)return;var st=new GUIStyle(hudSmall){fontSize=12,alignment=TextAnchor.MiddleLeft,wordWrap=false,clipping=TextClipping.Overflow};float w=24+rows.Max(r=>st.CalcSize(new GUIContent(r.Value)).x)+12,h=rows.Count*20+10;
   var box=new Rect(MiniMap.xMax-w,MiniLayerTab.y-h-6,w,h);Fill(box,new Color(.04f,.06f,.12f,.95f));Fill(new Rect(box.x,box.y,box.width,1),UiGold);
-  for(int i=0;i<rows.Count;i++){Fill(new Rect(box.x+8,box.y+8+i*18,12,10),rows[i].Key);GUI.Label(new Rect(box.x+26,box.y+4+i*18,w-28,18),rows[i].Value,st);}
+  for(int i=0;i<rows.Count;i++){Fill(new Rect(box.x+8,box.y+10+i*20,12,10),rows[i].Key);GUI.Label(new Rect(box.x+26,box.y+5+i*20,w-28,20),rows[i].Value,st);}
  }
 }
 public partial class World {

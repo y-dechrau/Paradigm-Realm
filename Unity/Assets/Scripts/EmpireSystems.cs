@@ -120,7 +120,7 @@ public int GrowthLimit(City c){return ResourceGrowth(c)+(HasBuilding(c,41)?20+(H
     int UnknownAround(Tile t,bool[] known){int n=0;for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){var k=StepIn(t.x,t.y,dx,dy,2);if(k!=null&&!known[k.y*Width+k.x])n++;}return n;}
     Tile ExploreTarget(Unit u,HashSet<int> skip=null,List<Animal> beasts=null){
         if(exploreClaims==null)exploreClaims=new Dictionary<int,int>();
-        var others=units.Where(a=>a!=u&&a.owner==u.owner&&a.exploring&&IsNaval(a.type)==IsNaval(u.type)).ToList();
+        var others=units.Where(a=>a!=u&&a.owner==u.owner&&(a.exploring||a.owner!=0&&a.type==3&&u.type==3)&&IsNaval(a.type)==IsNaval(u.type)).ToList();
         var known=nations[u.owner].known;var seen=new HashSet<int>{u.y*Width+u.x};var queue=new Queue<Tile>();var depth=new Dictionary<int,int>{{u.y*Width+u.x,0}};queue.Enqueue(At(u.x,u.y));int budget=4000;
         Tile best=null;int bestScore=int.MinValue,firstDepth=-1;
         while(queue.Count>0&&budget-->0){
