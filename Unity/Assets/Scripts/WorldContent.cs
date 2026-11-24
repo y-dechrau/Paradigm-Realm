@@ -115,7 +115,7 @@ namespace ParadigmRealm
             for(int g=1;g<Governments.Length;g++)if(TechnologyCatalog.Index(GovernmentTech[g])==id)benefits.Add("Government: "+Governments[g]);
             foreach(string key in TechnologyCatalog.Folded[id])switch(key){
                 case "writing":benefits.Add("Sign research agreements: +2 science at your capital for each; both sides require Writing");break;
-                case "laws":benefits.Add("Sign defensive pacts; both sides require Code of Laws");break;
+                case "laws":benefits.Add("Sign defensive pacts; both sides require Code of Laws");benefits.Add("Choose a Statecraft");break;
                 case "agriculture":benefits.Add("Workers can build farms / pastures");break;
                 case "wheel":benefits.Add("Workers can build roads");break;
                 case "mining":benefits.Add("Workers can build mines");break;

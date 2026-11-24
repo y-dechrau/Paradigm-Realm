@@ -55,13 +55,14 @@ namespace ParadigmRealm
             if(detailsScreen=="Religion"&&world.lifeways&&!faithsView){DrawTraditionsScreen();return;}
             if(detailsScreen=="Religion"&&world.modernRules){DrawFaithScreen();return;}
             if(detailsScreen=="Economy"&&empireTab==2){detailsScreen="Military";militaryTab=0;empireTab=0;}
+            if(detailsScreen=="Economy"&&empireTab==3&&world.statecraft){DrawStatecraftScreen();return;}if(empireTab==3&&!world.statecraft)empireTab=0;
             if(detailsScreen=="Military"&&militaryTab==0&&world.nationalForces){DrawForcesScreen();return;}
             ChronicleStyles();GUI.Box(new Rect(24,100,1232,630),"");GUI.Label(new Rect(50,detailsScreen=="Chronicle"?107:115,800,detailsScreen=="Chronicle"?56:40),detailsScreen=="Atlas"?"Realms":detailsScreen=="Dimensions"?"Gates and colonies":detailsScreen=="Economy"?"Empire":detailsScreen,detailsScreen=="Chronicle"?chronicleTitle:title);
             if(GUI.Button(new Rect(1040,115,190,34),"Back",button)){detailsScreen="";GUI.FocusControl(null);GUIUtility.ExitGUI();}
             GUILayout.BeginArea(new Rect(55,175,1160,520));detailsScroll=GUILayout.BeginScrollView(detailsScroll);
             if(detailsScreen=="Identity"){detailsScreen="Economy";empireTab=1;}
             if(detailsScreen=="Economy"){
-                GUILayout.BeginHorizontal();if(GUILayout.Button((empireTab==0?"▸ ":"")+"Overview",button,GUILayout.Width(220)))empireTab=0;if(GUILayout.Button((empireTab==1?"▸ ":"")+"Flag and identity",button,GUILayout.Width(220))){empireTab=1;flagUndo=null;}GUILayout.EndHorizontal();GUILayout.Space(6);
+                GUILayout.BeginHorizontal();if(GUILayout.Button((empireTab==0?"▸ ":"")+"Overview",button,GUILayout.Width(220)))empireTab=0;if(GUILayout.Button((empireTab==1?"▸ ":"")+"Flag and identity",button,GUILayout.Width(220))){empireTab=1;flagUndo=null;}if(world.statecraft&&GUILayout.Button("Statecraft",button,GUILayout.Width(220))){empireTab=3;GUIUtility.ExitGUI();}GUILayout.EndHorizontal();GUILayout.Space(6);
                 if(empireTab==1)DrawIdentityPage();else{
                 var b=world.Budget(0);GUILayout.Label("Income +"+b[0]+" | Upkeep -"+b[1]+" | Net "+b[2],heading);
                 DrawEmpireBalance();

@@ -151,7 +151,8 @@ public partial class World {
  public bool SetChurchState(int owner,int state){if(ChurchReason(owner,state)!="")return false;var n=nations[owner];n.churchState=state;n.churchChanged=turn;var f=Record(StateReligion(owner));if(f!=null)f.authority=Math.Max(0,f.authority-10);if(owner==0)Note("The church is now: "+FaithCatalog.ChurchStates[state]+".");History(NationName(owner)+" chose "+FaithCatalog.ChurchStates[state].ToLower()+".");return true;}
  public bool SetPolicy(int owner,int policy){if(!modernRules||policy<0||policy>=FaithCatalog.Policies.Length)return false;nations[owner].religionPolicy=policy;if(owner==0)Note("Religious policy: "+FaithCatalog.Policies[policy]+".");return true;}
  void AuthorityTurn(){
-  foreach(var f in faithRecords){
+  // A schism founds a new faith in the middle of this walk, so it walks a copy (24 Nov 2026: End Turn failed on one).
+  foreach(var f in faithRecords.ToArray()){
    var holy=cities.Find(c=>c.id==f.holyCity);bool held=holy!=null&&f.founder>=0&&holy.owner==f.founder&&holy.religion==f.religion;
    if(f.holyHeld&&!held&&holy!=null&&f.founder>=0&&holy.owner!=f.founder){f.authority-=25;f.reform+=20;History(FaithName(f.religion)+" lost its holy city "+holy.name+" to "+NationName(holy.owner)+".");}
    f.holyHeld=held;int drift=0;

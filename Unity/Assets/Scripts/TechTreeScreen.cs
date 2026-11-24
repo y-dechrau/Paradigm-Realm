@@ -262,7 +262,7 @@ public partial class RealmGame {
   var adopted=Enumerable.Range(0,TechnologyCatalog.EraCount).Where(e=>world.nations[0].edicts!=null&&world.nations[0].edicts[e]>=0).Select(e=>World.EdictNames[e][world.nations[0].edicts[e]]).ToArray();
   if(adopted.Length>0){GUILayout.Label("YOUR EDICTS",head);GUILayout.Label(string.Join(", ",adopted),text);}
   GUILayout.Label("ABOUT",head);GUILayout.Label(TechnologyCatalog.Descriptions[i],text);
-  GUILayout.Label(world.ResearchCost(i)+" science"+(world.ResearchCost(i)<world.ResearchCost(i,-1)?" (a fifth off: two civilisations you know have it)":""),note);
+  GUILayout.Label(world.ResearchCost(i)+" science"+(world.WidelyKnown(i,0)?" (a fifth off: two civilisations you know have it)":"")+(world.SizeTechPercent(0)>0?" (+"+world.SizeTechPercent(0)+"% for the size of your realm)":""),note);
   GUILayout.Label("REQUIRES",head);if(World.Requirements[i].Length==0)GUILayout.Label("Nothing.",text);
   foreach(int pre in World.Requirements[i])if(Button((world.tech[pre]?"✓ ":"→ ")+World.TechNames[pre]))FocusTechnology(pre);
   GUILayout.Label("LEADS TO",head);foreach(int next in Enumerable.Range(0,TechnologyCatalog.Count).Where(t=>TechnologyCatalog.Active[t]&&World.Requirements[t].Contains(i)))if(Button(World.TechNames[next]))FocusTechnology(next);

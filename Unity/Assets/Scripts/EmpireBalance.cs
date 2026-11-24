@@ -253,7 +253,7 @@ public partial class World {
   // A big standing army costs more than the sum of its soldiers (as unit maintenance climbs in Civilization V): +1 gold for every three
   // soldiers beyond two per city.
   b.army+=Math.Max(0,soldiers-2*own.Count)/3;b.forceShortfall=ServiceShortfall(owner)*ForcesRules.ShortfallGold;b.roads=RoadUpkeep(owner);
-  if(modernRules){b.expansion=ExpansionCost(own.Count);foreach(var c in own)if(CutOff(c))b.cutOff+=CutOffGold;}
+  if(modernRules){b.expansion=StatecraftExpansion(owner,ExpansionCost(own.Count));foreach(var c in own)if(CutOff(c))b.cutOff+=CutOffGold;}
   b.civilians=Math.Max(0,free-FreeUnitsPerCity*own.Count-GovernmentSupport(owner));b.luxury=own.Count*nations[owner].luxury;
   b.routes=TradeIncome(owner);b.treaties=DiplomaticIncome(owner);b.tribute=VillageTribute(owner)+ReligionTithe(owner);b.treatyCost=DiplomaticExpense(owner);return b;
  }

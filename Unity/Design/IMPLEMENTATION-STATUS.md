@@ -2,6 +2,10 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner request 24 Nov: Statecraft, stage 1 (no save version change)
+
+Implemented: the Centralised / Balanced / Expansive choice, dearer technology for large realms, the preview screen and rival choices; see [STATECRAFT-2026-11-24.md](STATECRAFT-2026-11-24.md) for rules and measurements. Planned, not built: army types and mercenaries (stage 2), autonomous cities and unions (stage 3). Not hand-played.
+
 ## Owner requests 24 Nov: bridges, bargains with barbarians, reputation, Chronicle, river farms (save version 45)
 
 Implemented; rules, numbers and file names are in [BRIDGES-BARBARIANS-REPUTATION-2026-11-24.md](BRIDGES-BARBARIANS-REPUTATION-2026-11-24.md). The 11 Nov rule that a road on a river needs Engineering is replaced by Bridge Building. Not hand-played; balance untuned.

@@ -30,7 +30,7 @@ public partial class World {
  public int Flavour(int owner,int k){var e=Civ(owner);int b=e!=null&&e.Agenda>=0&&e.Agenda<DiplomacyFlavours.ByAgenda.GetLength(0)?DiplomacyFlavours.ByAgenda[e.Agenda,k]:5;int roll=(int)((((uint)(seed*7919+owner*131+k*31))>>4)%5u)-2;return Math.Max(1,Math.Min(10,b+roll));}
  // ---------- influence ----------
  // Influence buys claims on foreign cities. 2 a turn, +1 for each rival named (naming an enemy rallies the court).
- public int InfluencePerTurn(int owner){return 2+Math.Min(Pacts.MaxRivals,RivalCount(owner));}
+ public int InfluencePerTurn(int owner){return 2+Math.Min(Pacts.MaxRivals,RivalCount(owner))+StatecraftInfluence(owner);}
  // ---------- postures (a small finite state machine) ----------
  public int Posture(int owner){return modernRules&&owner>0&&owner<civCount?nations[owner].posture:DiplomacyFlavours.Builder;}
  int PostureAmbition(int a){switch(Posture(a)){case DiplomacyFlavours.Aggressor:return 15;case DiplomacyFlavours.Defensive:return -25;case DiplomacyFlavours.Builder:return -10;}return 0;}

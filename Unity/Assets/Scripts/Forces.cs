@@ -39,13 +39,13 @@ public partial class World {
  bool Formation(Unit u){return u!=null&&ForcesRules.Formation(u.type);}
  // ---- service capacity ----
  public int Citizens(int owner){int n=0;foreach(var c in cities)if(c.owner==owner)n+=c.pop;return n;}
- public int ServiceCapacity(int owner,bool mobilised){return ForcesRules.BaseService+Citizens(owner)*(mobilised?ForcesRules.MobilisedPercent:ForcesRules.PeacePercent)/100;}
+ public int ServiceCapacity(int owner,bool mobilised){return ForcesRules.BaseService+Citizens(owner)*(mobilised?ForcesRules.MobilisedPercent:PeaceServicePercent(owner))/100;}
  public int ServiceCapacity(int owner){return ServiceCapacity(owner,nations[owner].mobilised);}
  public int ServiceServing(int owner){int n=0;foreach(var u in units)if(u.owner==owner)n+=ForcesRules.Service[u.type];return n;}
  public int ServiceReserved(int owner){return Orders(owner).Sum(o=>o.service);}
  public int ServiceFree(int owner){return ServiceCapacity(owner)-ServiceServing(owner)-ServiceReserved(owner);}
  public int ServiceShortfall(int owner){return nationalForces?Math.Max(0,-ServiceFree(owner)):0;}
- public string ServiceText(int owner){return "Base "+ForcesRules.BaseService+" + "+Citizens(owner)+" citizens x "+(nations[owner].mobilised?ForcesRules.MobilisedPercent+"% (mobilised)":ForcesRules.PeacePercent+"% (peacetime)")+" = "+ServiceCapacity(owner);}
+ public string ServiceText(int owner){return "Base "+ForcesRules.BaseService+" + "+Citizens(owner)+" citizens x "+(nations[owner].mobilised?ForcesRules.MobilisedPercent+"% (mobilised)":PeaceServicePercent(owner)+"% (peacetime"+(PeaceServicePercent(owner)!=ForcesRules.PeacePercent?", Expansive":"")+")")+" = "+ServiceCapacity(owner);}
  // ---- horse support ----
  public int HorseSources(int owner){int n=0;foreach(int cell in Network(owner)){var t=tiles[cell];if(t.owner==owner&&t.resource==ForcesRules.HorseResource&&t.farm)n++;}if(ImportedResource(owner,ForcesRules.HorseResource))n++;return n;}
  public int HorseSupport(int owner){return HorseSources(owner)*ForcesRules.HorsesPerSource;}
@@ -162,7 +162,7 @@ public partial class World {
   if((c==null||!CanDeployAt(c,o.type))&&owner!=0){c=cities.Where(x=>x.owner==owner&&CanDeployAt(x,o.type)).OrderBy(x=>x.id==nations[owner].capital?0:1).FirstOrDefault();if(c!=null)o.city=c.id;}
   if(c==null||!CanDeployAt(c,o.type)){if(!o.held&&owner==0)Note("A new "+UnitNames[o.type]+" is ready but "+(c==null?"its city is no longer yours":c.name+" has no room")+"; choose another city on the Forces screen.");o.held=true;return;}
   var launch=IsNaval(o.type)?LaunchTile(c,o.type):At(c.x,c.y);var made=Add(owner,o.type,launch.x,launch.y);made.moves=0;made.homeCity=c.id;made.gear=GearFor(c,o.type);
-  if(HasBuilding(c,32)||OwnWonder(owner,63)||HasEdict(owner,3,2)||HasTrait(owner,TraitMilitaristic)){made.victories=2;made.promotion=1;}
+  if(HasBuilding(c,32)||OwnWonder(owner,63)||HasEdict(owner,3,2)||HasTrait(owner,TraitMilitaristic)||StatecraftOf(owner)==StatecraftRules.Centralised){made.victories=2;made.promotion=1;}
   Orders(owner).Remove(o);if(owner==0){Note(UnitNames[o.type]+" raised at "+c.name+".");AddBuildNotice(c,UnitBuild(o.type),false,"raised");}
  }
  bool CanDeployAt(City c,int type){if(DeployReason(c,type)!="")return false;var probe=new Unit{owner=c.owner,type=type,id=-1};var launch=IsNaval(type)?LaunchTile(c,type):At(c.x,c.y);return launch!=null&&Capacity(probe,launch.x,launch.y);}

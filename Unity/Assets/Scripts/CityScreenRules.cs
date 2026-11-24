@@ -14,15 +14,16 @@ public partial class World {
    parts.Add(new KeyValuePair<string,int>("City centre",centre[stat]));
    parts.Add(new KeyValuePair<string,int>("Worked land ("+worked.Count+(worked.Count==1?" tile)":" tiles)"),tiles));
    int eaten=stat==0&&!HasTech(c.owner,"uploading")?c.pop*2:0;if(eaten>0)parts.Add(new KeyValuePair<string,int>("Eaten by "+c.pop+(c.pop==1?" citizen":" citizens"),-eaten));
-   int rest=v[stat]-(centre[stat]+tiles-eaten);if(rest!=0)parts.Add(new KeyValuePair<string,int>(Disorder(c)&&stat==1?"Disorder: no shields":"Buildings, edicts and other bonuses",rest));
+   int rest=v[stat]-(centre[stat]+tiles-eaten);if(rest!=0)parts.Add(new KeyValuePair<string,int>(Disorder(c)&&stat==1?"Disorder: no shields":"Buildings, edicts and other bonuses"+(stat==1?StatecraftPart(c):""),rest));
   }else{
    int trade=Trade(c),share=stat==2?ScienceShare(c):GoldShare(c);
    string how=c.focus==3?(stat==2?"Science focus: all "+trade+" trade":"Science focus: no trade to gold"):c.focus==4?(stat==3?"Commerce focus: all "+trade+" trade":"Commerce focus: no trade to science"):"Trade "+trade+" at "+(stat==2?nations[c.owner].scienceRate+"% science":(100-nations[c.owner].scienceRate)+"% gold");
    parts.Add(new KeyValuePair<string,int>(how,share));
-   int rest=v[stat]-share;if(rest!=0)parts.Add(new KeyValuePair<string,int>(Disorder(c)&&stat==3?"Disorder: no gold":"Specialists, buildings and other bonuses",rest));
+   int rest=v[stat]-share;if(rest!=0)parts.Add(new KeyValuePair<string,int>(Disorder(c)&&stat==3?"Disorder: no gold":"Specialists, buildings and other bonuses"+StatecraftPart(c),rest));
   }
   return parts;
  }
+ string StatecraftPart(City c){int p=StatecraftPercent(c.owner);return p>0?" (Centralised +"+p+"%)":"";}
  // Turns until the next citizen, or -1 when the city is not growing (shortage, no surplus, or at its population limit).
  public int GrowthTurns(City c){if(Disorder(c))return -1;int net=Yield(c)[0]-c.ration;if(net<=0||c.pop>=GrowthLimit(c))return -1;return Math.Max(1,(FoodNeeded(c)-c.food+net-1)/net);}
  // Turns until each item of a production line is done: the item in progress first, then the queue in order.

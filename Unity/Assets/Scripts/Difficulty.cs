@@ -46,7 +46,7 @@ public partial class World {
  }
  int DifficultyResearch(int owner,int cost){if(owner==0)return Math.Max(1,cost*DifficultyTable.YourResearch[Level]/100);return ActiveRival(owner)?Math.Max(1,cost*DifficultyTable.RivalResearch[Level]/100):cost;}
  int DifficultyFood(City c,int food){return ActiveRival(c.owner)?Math.Max(1,food*DifficultyTable.RivalFood[Level]/100):food;}
- public int RivalTargetCities(int owner){return ActiveRival(owner)?DifficultyTable.RivalCities[Level]:4;}
+ public int RivalTargetCities(int owner){return (ActiveRival(owner)?DifficultyTable.RivalCities[Level]:4)+(statecraft&&!IsNativeNation(owner)&&nations[owner].statecraft==StatecraftRules.Expansive?(statecraftForced!=null?8:3):0);}
  public int PlayerGraceTurn{get{return DifficultyTable.PlayerGrace[Level];}}
  void ApplyDifficultyStart(){
   for(int o=1;o<civCount;o++){

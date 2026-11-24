@@ -105,7 +105,7 @@ namespace ParadigmRealm {
   }
   public bool ShouldTrainSettler(City c){
    if(ColonySettlerWanted(c))return true;
-   int owner=c.owner;return c.pop>=2&&Yield(c)[0]>0&&BuildReason(c,0)==""&&cities.Count(a=>a.owner==owner)<RivalTargetCities(owner)&&!units.Any(u=>u.owner==owner&&u.type==0)&&nations[owner].gold>=(cities.Count(a=>a.owner==owner)<2?5:Math.Max(15,12-Budget(owner)[2]*3));
+   int owner=c.owner;if(StatecraftStopsSettling(owner))return false;return c.pop>=2&&Yield(c)[0]>0&&BuildReason(c,0)==""&&cities.Count(a=>a.owner==owner)<RivalTargetCities(owner)&&!units.Any(u=>u.owner==owner&&u.type==0)&&nations[owner].gold>=(cities.Count(a=>a.owner==owner)<2?5:Math.Max(15,12-Budget(owner)[2]*3));
   }
   // A settler that found no site and no frontier rests before searching again (owner report, 21 Nov 2026: stuck settlers of the
   // parallel-world peoples searched the whole map every turn, about 100 ms each). Not saved; a loaded game simply searches once.
