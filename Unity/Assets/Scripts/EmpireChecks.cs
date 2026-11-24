@@ -250,8 +250,12 @@ public static class EmpireChecks {
   Check(CivilisationCatalog.Traits.All(t=>t.Length==2&&t[0]!=t[1])&&Enumerable.Range(0,CivilisationCatalog.FirstNative).Select(c=>CivilisationCatalog.Traits[c]).Select(t=>Math.Min(t[0],t[1])*100+Math.Max(t[0],t[1])).Distinct().Count()==CivilisationCatalog.FirstNative,"two different traits each, no two home civilisations alike");
   for(int t=0;t<CivilisationCatalog.TraitCount;t++)Check(CivilisationCatalog.Traits.Count(p=>p.Contains(t))>=2,"trait "+CivilisationCatalog.TraitNames[t]+" belongs to at least two civilisations");
   // Crystal Dominion (2) and Sylvan Court (6) are set aside; Jade Dynasty (15) and Serpent League (16) wait for portraits.
+  Check(!CivilisationCatalog.RealWorldOffered&&CivilisationCatalog.Offered().Count()==13&&!CivilisationCatalog.Offered().Any(CivilisationCatalog.IsReal)&&!CivilisationCatalog.Offered(true).Any(),"the real-world civilisations are set aside: 13 offered, none of them real");
+  for(int s=0;s<3;s++){var noneReal=World.New(210+s,"",0,1,1,0,3,1,8,0);Check(Enumerable.Range(0,noneReal.civCount).All(o=>!CivilisationCatalog.IsReal(noneReal.nations[o].civ))&&noneReal.Valid(),"and none of them is a rival, seed "+s);}
+  CivilisationCatalog.RealWorldOffered=true;try{
   var offered=CivilisationCatalog.Offered().ToList();Check(offered.Count==25&&!offered.Contains(2)&&!offered.Contains(6)&&!offered.Contains(15)&&!offered.Contains(16),"25 civilisations offered; set-aside and art-less ones hidden");
   for(int s=0;s<4;s++){var many=World.New(200+s,"",0,1,1,0,3,1,8,0);Check(Enumerable.Range(1,many.civCount-1).Where(o=>!many.IsNativeNation(o)).All(o=>offered.Contains(many.nations[o].civ))&&many.Valid(),"rivals only come from offered civilisations, seed "+s);}
+  }finally{CivilisationCatalog.RealWorldOffered=false;}
   Check(!World.New(93).SetPlayerCivilisation(2,"","",0,-1,-1),"a set-aside civilisation cannot be chosen");
   CivilisationCatalog.Enabled[15]=true;Check(CivilisationCatalog.Offered().Contains(15),"art arriving enables a waiting civilisation");CivilisationCatalog.Enabled[15]=false;
   // First contact queues the diplomacy screen, and the other leader greets according to relations.

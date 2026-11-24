@@ -184,9 +184,12 @@ namespace ParadigmRealm
             if(cardLabel==null)cardLabel=new GUIStyle(small){alignment=TextAnchor.UpperCenter,wordWrap=true};
             GUI.Label(new Rect(76,70,560,44),"Choose your civilisation",title);
             // Two groups (owner request): Fantasy Kingdoms and Real World Civilisations, each ending with a card to create your own.
+            // With the real-world group set aside there is nothing to choose between, so the two tabs are not shown.
+            if(!CivilisationCatalog.RealWorldOffered)civGroupReal=false;
+            else{
             if(GUI.Button(new Rect(660,78,270,32),(civGroupReal?"":"▸ ")+"Fantasy Kingdoms",button)&&civGroupReal){civGroupReal=false;SelectCivilisationGroup();}
             if(GUI.Button(new Rect(940,78,270,32),(civGroupReal?"▸ ":"")+"Real World Civilisations",button)&&!civGroupReal){civGroupReal=true;SelectCivilisationGroup();}
-            Fill(new Rect(civGroupReal?940:660,108,270,2),UiAccent);
+            Fill(new Rect(civGroupReal?940:660,108,270,2),UiAccent);}
             var e=Event.current;
             var cards=CivilisationCatalog.Offered(civGroupReal).Concat(new[]{CivilisationCatalog.Count}).ToList();
             if(setupCiv<CivilisationCatalog.Count&&(!CivilisationCatalog.Enabled[setupCiv]||CivilisationCatalog.IsReal(setupCiv)!=civGroupReal))setupCiv=cards[0];

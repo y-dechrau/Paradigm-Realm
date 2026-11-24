@@ -298,6 +298,7 @@ namespace ParadigmRealm
             viewAnimals.Clear();barbarianBars.Clear();if(world.animals!=null)foreach(var a in world.animals)viewAnimals[a.y*width+a.x]=a;
             if(Event.current.type==EventType.Repaint)UpdateGlides();
             if(Event.current.type==EventType.Repaint)BuildSuburbs();
+            BeginAmbient();int ambientRow=int.MinValue;
             // Diagonal view: tiles go back to front by diagonal (i + j), so raised scenery overlaps the tiles behind it.
             // R covers every tile whose diamond can touch the view, with a margin for tall scenery below the bottom edge.
             int R=(int)Math.Ceiling(MapW/tw+MapH/th)+3,ci=(int)Math.Round(camI),cj=(int)Math.Round(camJ);
@@ -321,6 +322,7 @@ namespace ParadigmRealm
             foreach(var cellAt in isoCells)
             {
                 int i=(int)cellAt.x,j=(int)cellAt.y;float sx=cellAt.z,sy=cellAt.w;
+                if(j!=ambientRow){if(ambientRow!=int.MinValue)FlushAmbientRow(ambientRow);ambientRow=j;}
                 var source=world.At(i,j);if(source==null||source.realm!=viewRealm)continue;
                 bool visible=world.Visible(source.x,source.y);Tile t=source;
                 if(source.seen&&!visible){if(pooled==knownPool.Count)knownPool.Add(new Tile());t=knownPool[pooled++];world.CopyKnown(source,t);}
@@ -345,6 +347,7 @@ namespace ParadigmRealm
                 if(world.barbarians)DrawBarbarianArt(source.x,source.y,sx,gy,s,visible);
                 if(shown!=null){var unitRect=new Rect(sx-20*s,gy-36*s,40*s,40*s);DrawUnitArt(shown,unitRect,count);isoUnitDraws.Add(new KeyValuePair<Unit,Rect>(shown,unitRect));isoUnitCounts.Add(count);}
             }
+            if(ambientRow!=int.MinValue)FlushAmbientRow(ambientRow);
             // Fog of war as dark mist (owner request): a thin drifting veil over land seen before but not watched now, and
             // thick dark banks (the cloud puffs, darkened) over unexplored land, spilling a little over the known world's edge.
             DrawGlides(tw,s);
@@ -357,6 +360,7 @@ namespace ParadigmRealm
             GUI.color=before;
             // A found gateway stands clear of the mist, so it stays on the map however far the fog closes in.
             for(int gi=0;gi<isoGates.Count;gi++){var g=isoGates[gi];if(gi<isoGateStyles.Count&&DrawGateArt(isoGateStyles[gi],false,g.x,g.y,s,gi<isoGateLand.Count?isoGateLand[gi]:0,gi<isoGateFit.Count?isoGateFit[gi]:1f))continue;Texture2D gateTex;if(!gateTextures.TryGetValue(PixelArt.SealedGate,out gateTex)){gateTex=PixelTexture(PixelArt.GatewaySprite(PixelArt.SealedGate));gateTextures[PixelArt.SealedGate]=gateTex;}GUI.DrawTexture(new Rect(g.x-PixelArt.AX*s,g.y-PixelArt.AY*s,64*s,64*s),gateTex);}isoGates.Clear();isoGateStyles.Clear();isoGateLand.Clear();isoGateFit.Clear();
+            DrawAmbientGates(s);
             // Units stand in front of the cloud banks of unexplored land next to them (owner request): drawn again over the mist.
             DrawBarbarianBars();for(int n=0;n<isoUnitDraws.Count;n++)DrawUnitArt(isoUnitDraws[n].Key,isoUnitDraws[n].Value,isoUnitCounts[n]);
             // Resource badges go on after every tile so the tiles in front can never cover them.
@@ -367,7 +371,7 @@ namespace ParadigmRealm
             var plates=new List<Rect>();
             for(int n=0;n<isoCityNames.Count;n++){var at=new Vector2(isoCityPos[n].x,isoCityPos[n].y+24*s);DrawCityPlate(isoCityRefs[n],isoCityNames[n],at,isoCityInk[n]);plates.Add(new Rect(at.x-120,at.y,240,36));}
             for(int n=0;n<isoUnitDraws.Count;n++){var ur=isoUnitDraws[n].Value;if(plates.Any(p=>p.x<ur.x+ur.width&&ur.x<p.x+p.width&&p.y<ur.y+ur.height&&ur.y<p.y+p.height))DrawUnitArt(isoUnitDraws[n].Key,ur,isoUnitCounts[n]);}
-            DrawIsoOverlay(s);
+            DrawIsoOverlay(s);ambientPass=false;
             compositeBudgetOn=false;
         }
         // One tile as the main map paints it: ground, farm, road, territory, trees or farmstead, improvements, resource, city and colony.
@@ -382,11 +386,13 @@ namespace ParadigmRealm
                 // and resource markers stand on the driest part of the tile, smaller where the room is tight.
                 Vector2 dry=Vector2.zero;float dryScale=1;
                 if(t.terrain==7){double dfx,dfy,room;PixelArt.DrySpot(world.Hex,RiverMaskOf(t),(t.x*7+t.y*3)%3,out dfx,out dfy,out room);dry=new Vector2((float)(dfx-.5)*ground.width,(float)(dfy-.5)*ground.height);dryScale=Mathf.Clamp((float)room/15f,.42f,1f);}
-                if(!water&&t.farm){var field=SpriteSlot("field-"+(IsoVariant(t.x,t.y)%3));if(t.terrain==7)GUI.DrawTexture(ground,RiverQuilt(t));else if(field!=null){float fw=ground.width*.86f,fh=fw*field.height/Mathf.Max(1,field.width);GUI.DrawTexture(new Rect(ground.center.x-fw/2,ground.center.y-fh/2,fw,fh),field,ScaleMode.StretchToFill,true);}else{var farm=IsoPicture(2,IsoVariant(t.x,t.y),0);if(farm!=null)GUI.DrawTexture(ground,farm);}}
+                if(!water&&t.farm){var field=SpriteSlot("field-"+(IsoVariant(t.x,t.y)%3));if(t.terrain==7)GUI.DrawTexture(ground,RiverQuilt(t));else if(field!=null){float fw=ground.width*.86f,fh=fw*field.height/Mathf.Max(1,field.width);GUI.DrawTexture(new Rect(ground.center.x-fw/2,ground.center.y-fh/2,fw,fh),field,ScaleMode.StretchToFill,true);}else{var farm=IsoPicture(2,IsoVariant(t.x,t.y),0);if(farm!=null)GUI.DrawTexture(ground,farm);}if(visible)DrawWheat(t,i,j,ground,s);}
                 if(t.road)
                 {
                     var road=RoadPicture(t);if(road!=null)GUI.DrawTexture(ground,road);
                 }
+                // The living countryside (AmbientLife.cs): marks on the current, and the demonstration valley's mill.
+                if(t.terrain==7){if(visible)DrawCurrent(t,ground,s);}
                 // Territory outline along edges that touch another owner or unknown ground.
                 if(t.owner>=0)
                 {
@@ -400,6 +406,8 @@ namespace ParadigmRealm
                     }
                     GUI.color=visible?old:Remembered;
                 }
+                // The valley's mill stands on its ground and its border, as the houses do.
+                if(world.valleyMill==source.y*width+source.x&&t.seen&&t.terrain==7){if(visible)ambientMill=ground;DrawMill(t,ground,s);}
                 // Grassland groves use eight variants so lone trees do not repeat in a pattern; none on farms, roads or cities.
                 // A farm replaces whatever stood on the tile (owner request), and cleared savanna or grassland has no trees left.
                 bool meadow=t.terrain==0;bool built=t.farm||t.road||viewCities.ContainsKey(t.y*width+t.x);bool bare=t.farm||t.cleared&&(meadow||t.terrain==16);
@@ -414,8 +422,8 @@ namespace ParadigmRealm
                 // Groves are drawn as a small cluster of three (owner request, 9 Nov 2026: denser), the back two first; farmsteads and ports
                 // are drawn a little smaller so they stay on their own tile.
                 if(sprite!=null&&meadow&&!hamlet&&portOf==null&&GroveVariant(t.x,t.y)<4){int v=GroveVariant(t.x,t.y);var back1=IsoPicture(1,0,(v+1)&3);var back2=IsoPicture(1,0,(v+2)&3);float bs=.42f;
-                    if(back1!=null)GUI.DrawTexture(new Rect(sx-13*s-PixelArt.AX*s*bs,gy-6*s-PixelArt.AY*s*bs,64*s*bs,64*s*bs),back1);if(back2!=null)GUI.DrawTexture(new Rect(sx+13*s-PixelArt.AX*s*bs,gy-5*s-PixelArt.AY*s*bs,64*s*bs,64*s*bs),back2);
-                    GUI.DrawTexture(new Rect(sx-PixelArt.AX*s*treeScale,gy+4*s-PixelArt.AY*s*treeScale,64*s*treeScale,64*s*treeScale),sprite);}
+                    if(back1!=null)DrawGrove(new Rect(sx-13*s-PixelArt.AX*s*bs,gy-6*s-PixelArt.AY*s*bs,64*s*bs,64*s*bs),back1,(v+1)&3,i,j,s,sx,visible);if(back2!=null)DrawGrove(new Rect(sx+13*s-PixelArt.AX*s*bs,gy-5*s-PixelArt.AY*s*bs,64*s*bs,64*s*bs),back2,(v+2)&3,i,j,s,sx,visible);
+                    DrawGrove(new Rect(sx-PixelArt.AX*s*treeScale,gy+4*s-PixelArt.AY*s*treeScale,64*s*treeScale,64*s*treeScale),sprite,v,i,j,s,sx,visible);}
                 else if(sprite!=null){if(portOf!=null)treeScale=.82f;else if(hamlet)treeScale=.5f;/* farmsteads at half size: their houses match the city's buildings (owner request, 9 Nov 2026) */
                     // No two hills are the same size or sit in quite the same place on their tile, so a range does not line up in rows
                     // (owner report, 10 Nov 2026).
@@ -433,9 +441,10 @@ namespace ParadigmRealm
                 if(source.ruin){var ruinArt=SpriteSlot("ruin-"+RuinStyle(t));float size=RuinSize*s*Mathf.Max(.7f,dryScale);if(ruinArt!=null)GUI.DrawTexture(riverTile?new Rect(sx+dry.x-size/2,gy+dry.y-size*.7f,size,size):new Rect(sx-size/2,gy+TileHalf()*s*.55f-size*.86f,size,size),ruinArt,ScaleMode.ScaleToFit,true);else{if(ruinTexture==null)ruinTexture=PixelTexture(PixelArt.Ruins());GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),ruinTexture);}}
                 // A sealed gateway the player has found keeps its name on the map (owner request).
                 {var story=world.livingWorld?world.StoryAt(source.x,source.y):null;if(story!=null&&story.deaths>=LivingCatalog.GraveyardAt){isoCityNames.Add("Graveyard");isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(.7f,.7f,.75f));isoCityRefs.Add(null);}}
-                if(source.gateLink>0&&source.realm==0&&world.gatesLocked&&!world.GateOpen(source)&&world.gatesFound!=null&&world.gatesFound.Contains(source.y*width+source.x)){isoGates.Add(new Vector2(sx+dry.x,gy+dry.y));isoGateStyles.Add(world.GateStyle(source));isoGateLand.Add(t.terrain);isoGateFit.Add(t.terrain==7?Mathf.Clamp(dryScale,.55f,.85f):1f);isoCityNames.Add("Sealed gateway");isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(1f,.82f,.25f));isoCityRefs.Add(null);}
+                if(source.gateLink>0&&source.realm==0&&world.gatesLocked&&!world.GateOpen(source)&&world.gatesFound!=null&&world.gatesFound.Contains(source.y*width+source.x)){isoGates.Add(new Vector2(sx+dry.x,gy+dry.y));isoGateStyles.Add(world.GateStyle(source));isoGateLand.Add(t.terrain);isoGateFit.Add(t.terrain==7?Mathf.Clamp(dryScale,.55f,.85f):1f);isoCityNames.Add("Sealed gateway");/* over the water below a gateway the plate would hide its reflection, so it goes above the arch */isoCityPos.Add(new Vector2(sx,GateOverWater(source)?gy-76*s:gy));isoCityInk.Add(new Color(1f,.82f,.25f));isoCityRefs.Add(null);}
                 if(source.gateLink>0&&DrawGateArt(world.GateStyle(source),world.GateOpen(source),sx+dry.x,gy+dry.y,s,t.terrain,t.terrain==7?Mathf.Clamp(dryScale,.55f,.85f):1f)){}
                 else if(source.gateLink>0){var twin=world.GateTwin(source);int kind=world.gatesLocked?PixelArt.SealedGate:source.realm>0?0:twin!=null&&world.RealmDiscovered(0,twin.realm)?twin.realm:0;Texture2D gateTex;if(!gateTextures.TryGetValue(kind,out gateTex)){gateTex=PixelTexture(PixelArt.GatewaySprite(kind));gateTextures[kind]=gateTex;}GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),gateTex);}
+                NoteAmbientGate(source,visible,sx+dry.x,gy+dry.y,t.terrain==7?Mathf.Clamp(dryScale,.55f,.85f):1f);
                 if(t.village&&visible){DrawArt(Art("village-camp")!=null?"village-camp":"village",improvement);if(t.villageOwner>=0){var pole=new Rect(sx+10*s,gy-26*s,Mathf.Max(1,1.5f*s),12*s);Fill(pole,new Color(.3f,.22f,.14f));Fill(new Rect(pole.xMax,pole.y,7*s,5*s),nations[t.villageOwner]);}}
                 if(!visible&&!string.IsNullOrEmpty(t.rememberedCity)){GUI.DrawTexture(SettlementRect(sx,gy,s),SettlementTexture(CityVisualEra(0),3,0,t.x+t.y),ScaleMode.ScaleToFit,true);isoCityNames.Add(t.rememberedCity);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(.6f,.62f,.66f));isoCityRefs.Add(null);}
                 GUI.color=old;
@@ -445,11 +454,11 @@ namespace ParadigmRealm
                 if(t.resource>0){var resInk=GUI.color;if(!visible)GUI.color=Remembered;float rx=sx+dry.x,ry=gy+dry.y-(t.terrain==7?10*s:0);DrawResource(t,new Rect(rx-36*s,ry+15*s-61*s,61*s,61*s));GUI.color=resInk;}
                 // A city founded on a river tile is built round the river (owner request, 11 Nov 2026): the town on the drier bank, an
                 // outlying quarter on the other where there is room, and the water left open between them.
-                if(c!=null&&t.terrain==7){float size=54*s*Mathf.Clamp(dryScale*1.05f,.5f,.74f);DrawCityArt(c,new Rect(sx+dry.x-size/2,gy+dry.y-size*.74f,size,size));
+                if(c!=null&&t.terrain==7){float size=54*s*Mathf.Clamp(dryScale*1.05f,.5f,.74f);DrawCityArt(c,new Rect(sx+dry.x-size/2,gy+dry.y-size*.74f,size,size));if(visible)DrawHearths(c,new Rect(sx+dry.x-size/2,gy+dry.y-size*.74f,size,size),s,i,j);
                     double bfx,bfy,broom;PixelArt.FarBank(world.Hex,RiverMaskOf(t),(t.x*7+t.y*3)%3,out bfx,out bfy,out broom);
                     if(broom>=4){float q=64*s*Mathf.Clamp((float)broom/22f,.24f,.4f),qx=sx+(float)(bfx-.5)*ground.width,qy=gy+(float)(bfy-.5)*ground.height;GUI.DrawTexture(new Rect(qx-q/2,qy-q*.7f,q,q),HamletTexture(c,t.x,t.y),ScaleMode.ScaleToFit,true);}
                     isoCityNames.Add(c.name);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(nations[c.owner]);isoCityRefs.Add(c);}
-                else if(c!=null){DrawCityArt(c,SettlementRect(sx,gy,s));isoCityNames.Add(c.name);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(nations[c.owner]);isoCityRefs.Add(c);}
+                else if(c!=null){DrawCityArt(c,SettlementRect(sx,gy,s));if(visible)DrawHearths(c,SettlementRect(sx,gy,s),s,i,j);isoCityNames.Add(c.name);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(nations[c.owner]);isoCityRefs.Add(c);}
                 // A colony beyond a gateway: a few houses, larger as it grows, under its owner's flag (Colonies.cs).
                 {Colony col;if(viewColonies.TryGetValue(cell,out col)&&(col.owner==0||visible)){float cs=64*s*(col.level<=0?.34f:col.level==1?.46f:.56f);GUI.DrawTexture(new Rect(sx-cs/2,gy+TileHalf()*s*.5f-cs*.8f,cs,cs),IsoPicture(6,CityVisualEra(col.owner),col.id&7),ScaleMode.ScaleToFit,true);
                     var pole=new Rect(sx+9*s,gy-24*s,Mathf.Max(1,1.5f*s),13*s);Fill(pole,new Color(.3f,.22f,.14f));Fill(new Rect(pole.xMax,pole.y,8*s,5*s),nations[col.owner]);isoCityNames.Add(col.name);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(nations[col.owner]);isoCityRefs.Add(null);}}

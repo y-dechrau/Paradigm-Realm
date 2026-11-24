@@ -15,7 +15,7 @@ namespace ParadigmRealm
         {
             var args=Environment.GetCommandLineArgs();int i;
             // A test run keeps its saves and autosaves in its own output folder, never among the player's saved games.
-            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot","-cheerShot","-dimShot","-speciesShot","-hudShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
+            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot","-cheerShot","-dimShot","-speciesShot","-hudShot","-valleyShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
             i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
             i=Array.IndexOf(args,"-frameProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FrameProbe(args[i+1],i+2<args.Length?int.Parse(args[i+2]):4,i+3<args.Length?int.Parse(args[i+3]):120));
@@ -34,6 +34,9 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-hudShot");if(i>=0&&i+1<args.Length)StartCoroutine(HudShot(args[i+1]));
             // "-granary": opens the First Granary scenario at once (a capital that cannot feed itself; Beliefs & Traditions, 23 Nov 2026).
             i=Array.IndexOf(args,"-granary");if(i>=0){string scenario=System.IO.Path.Combine(Application.temporaryCachePath,"granary-scenario.json");System.IO.File.WriteAllText(scenario,JsonUtility.ToJson(World.GranaryScenario()));LoadFile(scenario);activeSavePath=null;guide=false;tutorialOn=false;tutorialStep=-1;status="The First Granary: end the turn twice.";}
+            // "-valley": opens the river valley of the living countryside (Valley.cs, 26 Nov 2026); "-valley awaken" with its gateway stirring.
+            i=Array.IndexOf(args,"-valley");if(i>=0)OpenValley(i+1<args.Length&&args[i+1]=="awaken");
+            i=Array.IndexOf(args,"-valleyShot");if(i>=0&&i+1<args.Length)StartCoroutine(ValleyShot(args[i+1]));
             i=Array.IndexOf(args,"-resourceGallery");if(i>=0&&i+1<args.Length)StartCoroutine(ResourceGalleryRun(args[i+1]));
             i=Array.IndexOf(args,"-spriteCompare");if(i>=0&&i+1<args.Length)StartCoroutine(SpriteCompareRun(args[i+1]));
             i=Array.IndexOf(args,"-listCivs");if(i>=0&&i+1<args.Length)StartCoroutine(ListCivs(args[i+1]));

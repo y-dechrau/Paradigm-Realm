@@ -49,7 +49,10 @@ public static class CivilisationCatalog {
  // Offered and used as rivals. 2 and 6 hidden for now; 15 and 16 until their portrait art exists.
  public static readonly bool[] Enabled={true,true,false,true,true,true,false,true,true,true,true,true,true,true,true,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,false,false,false,false,false,false};
  public static bool[] AwaitingArt={false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false};
- public static IEnumerable<int> Offered(){return Enumerable.Range(0,Count).Where(i=>Enabled[i]);}
+ // The twelve real-world civilisations are set aside for now (owner request, 26 Nov 2026): not offered on New Game and never rivals.
+ // Their data and art stay, so saved games that have them play on; set this to true to bring them back.
+ public static bool RealWorldOffered=false;
+ public static IEnumerable<int> Offered(){return Enumerable.Range(0,Count).Where(i=>Enabled[i]&&(RealWorldOffered||!IsReal(i)));}
  // The New Game screen offers two groups (owner request): Fantasy Kingdoms (0-16) and Real World Civilisations (17 on).
  public const int FirstReal=17;
  public const int FirstNative=29;
