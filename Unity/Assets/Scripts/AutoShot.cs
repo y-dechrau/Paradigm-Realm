@@ -22,6 +22,7 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-unitProbe");if(i>=0&&i+2<args.Length)StartCoroutine(UnitProbe(args[i+1],args[i+2]));
             i=Array.IndexOf(args,"-routeProbe");if(i>=0&&i+1<args.Length)StartCoroutine(RouteProbe(args[i+1]));
             i=Array.IndexOf(args,"-turnProbe");if(i>=0&&i+2<args.Length){probeFolder=autoSaveFolder=args[i+2];Directory.CreateDirectory(probeFolder);StartCoroutine(TurnProbe(args[i+1],args[i+2]));}
+            i=Array.IndexOf(args,"-lifeShot");if(i>=0&&i+1<args.Length)StartCoroutine(LifeShot(args[i+1]));
             i=Array.IndexOf(args,"-inputProbe");if(i>=0&&i+1<args.Length)StartCoroutine(InputProbeRun(args[i+1]));
             i=Array.IndexOf(args,"-flickerProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FlickerProbe(args[i+1]));
             i=Array.IndexOf(args,"-walkProbe");if(i>=0&&i+1<args.Length)StartCoroutine(WalkProbe(args[i+1]));
@@ -313,6 +314,22 @@ namespace ParadigmRealm
         IEnumerator Send(Event e){if(e.isMouse)PostMouse(e);else probeEvent=e;yield return Frames(3);}
         static Event Mouse(EventType type,float x,float y,int button=0,int clicks=1){return new Event{type=type,mousePosition=new Vector2(x,y),button=button,clickCount=clicks};}
         IEnumerator ClickAt(float x,float y,int button=0,int clicks=1){yield return Send(Mouse(EventType.MouseDown,x,y,button,clicks));yield return Send(Mouse(EventType.MouseUp,x,y,button,clicks));}
+        // The New Game world screen: pictures of it as in the owner's mockup and in other states, and every control pressed for real.
+        IEnumerator SetupShots(string folder){
+            int keepOn=PlayerPrefs.GetInt("RealmTutorialOn",1),keepStep=PlayerPrefs.GetInt("RealmTutorialStep",-1);
+            mainMenu=false;nameSetup=true;setupPage=1;civGroupReal=false;setupCiv=FantasyKingdoms.First;proposedName=CivilisationCatalog.Names[setupCiv];
+            setupSpeed=1;setupLevel=1;setupShape=1;setupSize=3;setupMap=0;setupClimate=0;setupCivs=6;setupPeoples=10;setupAnimals=3;setupBarbarians=true;tutorialOn=true;seedText="";yield return Frames(20);
+            yield return Shot(folder,"setup-mockup.bmp");
+            Func<float,float,Vector2> on=(x,y)=>{var m=SetupMatrix();return m.MultiplyPoint3x4(new Vector3(x,y,0));};
+            Func<float,float,IEnumerator> press=(x,y)=>ClickAt(on(x,y).x,on(x,y).y);
+            yield return press(143,310);Probe("Quick",setupSpeed==0);yield return press(455,310);Probe("Long",setupSpeed==2);yield return press(127,585);Probe("Veteran",setupLevel==4);yield return press(475,585);Probe("Ascendant",setupLevel==7);
+            yield return press(690,225);Probe("Flat",setupShape==0);yield return press(650,341);Probe("Tiny",setupSize==0);yield return press(650,410);Probe("Colossal",setupSize==6);yield return press(805,541);Probe("Inland seas",setupMap==4);yield return press(805,673);Probe("Arid",setupClimate==4);
+            yield return press(1130,390);Probe("No animals",setupAnimals==0);yield return press(1097,473);Probe("Barbarians off",!setupBarbarians);yield return press(1200,552);Probe("Tutorial off",!tutorialOn);
+            yield return press(1090,320);Probe("the peoples slider ("+setupPeoples+")",setupPeoples<10);yield return press(1545,240);Probe("the civilisations slider ("+setupCivs+")",setupCivs>6);yield return press(1430,792);Probe("Competitive rivals",setupProfile==1);
+            yield return press(250,440);yield return Frames(3);seedText="8675309123";setupLevel=7;yield return Shot(folder,"setup-changed.bmp");
+            setupCiv=CivilisationCatalog.Count;proposedName="The Most Serene Republic of Verdalen";customLeader="Doge Alessandra";customTraitA=2;customTraitB=9;setupSize=3;setupCivs=12;for(int k=0;k<8;k+=2){setupLevel=k;yield return Shot(folder,"setup-level-"+k+".bmp");}
+            yield return press(1150,886);Probe("Back returns to the civilisations",setupPage==0);setupPage=1;setupCiv=4;setupSize=0;setupCivs=2;setupPeoples=1;seedText="421";yield return Frames(3);yield return press(470,886);yield return Frames(30);Probe("Begin starts the game",!nameSetup&&world!=null&&world.turn==1);
+            PlayerPrefs.SetInt("RealmTutorialOn",keepOn);PlayerPrefs.SetInt("RealmTutorialStep",keepStep);PlayerPrefs.Save();}
         void Probe(string name,bool ok){Debug.Log("PROBE "+(ok?"pass":"FAIL")+": "+name);}
         // Development aid: "-frameProbe <folder> <size> <turns>" plays the rivals forward, then measures frames and turns uncapped.
         IEnumerator FrameProbe(string folder,int size,int turns)
@@ -403,6 +420,18 @@ namespace ParadigmRealm
             yield return ClickAt(955,127);Probe("Zoom to city returns to the map on the city",!cityScreen&&isoWidth==128);yield return Shot(folder,"10d-zoomed-city.bmp");isoWidth=64;world.units.Remove(guard);
             // The wheel does nothing while the research prompt waits.
             world.researchPrompts.Add(TechnologyCatalog.Index("agriculture"));yield return Frames(3);int zoom=isoWidth;var wheel=new Event{type=EventType.ScrollWheel,mousePosition=new Vector2(200,500),delta=new Vector2(0,3)};yield return Send(wheel);Probe("the wheel is still while the research prompt waits",isoWidth==zoom);world.researchPrompts.Clear();yield return Frames(3);yield return Send(new Event{type=EventType.ScrollWheel,mousePosition=new Vector2(200,500),delta=new Vector2(0,3)});Probe("and works again afterwards",isoWidth!=zoom);isoWidth=64;
+            // The wheel over the mini-map zooms it alone, round the pointer; elsewhere it zooms the map alone.
+            {isoWidth=64;selected=-1;cityId=-1;FocusTile(city.x,city.y);yield return Frames(5);var d0=MiniDrawn();var at=MiniPoint(d0,city.x,city.y);
+             Func<float,Event> roll=dy=>new Event{type=EventType.ScrollWheel,mousePosition=at,delta=new Vector2(0,dy)};
+             yield return Shot(folder,"10z-mini-0.bmp");for(int k=0;k<5;k++){yield return Send(Mouse(EventType.MouseMove,at.x,at.y));yield return Send(roll(-3));};var d1=MiniDrawn();
+             Probe("the wheel over the mini-map zooms it ("+miniZoom.ToString("0.0")+")",miniZoom>2.5f);Probe("and not the map",isoWidth==64);Probe("round the pointer",(MiniPoint(d1,city.x,city.y)-at).magnitude<8);
+             yield return Frames(60);Probe("the zoomed window is painted sharp",miniDetail!=null&&miniDetailFrom==miniRepaints&&Covers(miniDetailAt,MiniWindow(MiniDrawn())));yield return Shot(folder,"10z-mini-1.bmp");
+             var aim=new Vector2(MiniInner.x+60,MiniInner.y+40);int wantX=Mathf.FloorToInt((aim.x-d1.x)/d1.width*world.Width),wantY=ViewTop+Mathf.FloorToInt((aim.y-d1.y)/d1.height*ViewRows);yield return ClickAt(aim.x,aim.y);Probe("a click on the zoomed mini-map goes to the tile under it ("+wantX+","+wantY+" view "+camI.ToString("0.0")+","+camJ.ToString("0.0")+")",world.Hex&&Mathf.Abs(camI-wantX)<1.6f);yield return Shot(folder,"10z-mini-2.bmp");
+             float keep=miniZoom;FocusTile(city.x,city.y);yield return Frames(5);Probe("the window follows the view",MiniInner.Contains(MiniPoint(MiniDrawn(),city.x,city.y))&&miniZoom==keep);
+             yield return Send(Mouse(EventType.MouseMove,640,400));yield return Send(new Event{type=EventType.ScrollWheel,mousePosition=new Vector2(640,400),delta=new Vector2(0,-3)});Probe("the wheel over the map zooms the map and not the mini-map",isoWidth>64&&miniZoom==keep);isoWidth=64;
+             MiniLayer=5;yield return Frames(90);yield return Shot(folder,"10z-mini-3.bmp");MiniLayer=0;yield return Frames(90);yield return Shot(folder,"10z-mini-4.bmp");MiniLayer=1;
+             for(int k=0;k<14;k++){yield return Send(Mouse(EventType.MouseMove,at.x,at.y));yield return Send(roll(-3));};Probe("the closest zoom stops at "+miniZoom.ToString("0.0"),Mathf.Approximately(miniZoom,MiniZoomMost()));yield return Frames(90);yield return Shot(folder,"10z-mini-5.bmp");
+             for(int k=0;k<20;k++){yield return Send(Mouse(EventType.MouseMove,at.x,at.y));yield return Send(roll(3));};var d2=MiniDrawn();Probe("and rolling back shows the whole world again",miniZoom==1&&(d2.position-d0.position).magnitude<.5f&&isoWidth==64);}
             // Realms: the Legends button, and the Close button of a people's page.
             detailsScreen="Atlas";viewRealm=0;legendsOpen=false;legendsPeople=-1;yield return Shot(folder,"10e-realms.bmp");yield return Send(Mouse(EventType.MouseDown,1030,458));Debug.Log("PROBEINFO hot "+GUIUtility.hotControl);yield return Send(Mouse(EventType.MouseUp,1030,458));Probe("the Legends button opens the book",legendsOpen);yield return Shot(folder,"10f-legends-empty.bmp");
             var gate=world.tiles.FirstOrDefault(t=>t.realm==0&&t.gateLink>0);if(gate!=null){gate.seen=true;int far=world.GateTwin(gate).realm;world.turn++;legendsWorld=far;var people=CivilisationCatalog.PeoplesOf(far).Where(c=>world.NationOfPeople(c)>=0).ToList();if(people.Count>1){world.nations[world.NationOfPeople(people[0])].intel=2;world.nations[world.NationOfPeople(people[1])].intel=3;}yield return Shot(folder,"10g-legends-known.bmp");

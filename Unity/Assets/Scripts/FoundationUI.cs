@@ -94,39 +94,6 @@ namespace ParadigmRealm
             }catch(Exception e){status="Could not load autosave: "+e.Message;}
         }
         static readonly string[] SpeedTexts={"Quick: research takes a third of a Long game (4 turns or more a technology); building costs half.","Standard: research takes two thirds of a Long game (7 turns or more).","Long: the slowest research (10 turns or more a technology); building costs half as much again."};
-        void DrawSetupOptions()
-        {
-            GUILayout.BeginArea(new Rect(88,128,342,496));
-            GUILayout.Label("Your game",heading);
-            GUILayout.Label("Playing as "+(setupCiv<CivilisationCatalog.Count?CivilisationCatalog.Names[setupCiv]:proposedName)+": "+CivilisationCatalog.TraitLine(setupCiv<CivilisationCatalog.Count?CivilisationCatalog.Traits[setupCiv]:new[]{customTraitA,customTraitB}),small);
-            GUILayout.Space(10);GUILayout.Label("Game speed",heading);
-            setupSpeed=GUILayout.SelectionGrid(setupSpeed,new[]{"Quick","Standard","Long"},3);
-            GUILayout.Label(SpeedTexts[Mathf.Clamp(setupSpeed,0,2)],small);
-            GUILayout.Space(10);GUILayout.Label("Seed (optional)",heading);seedText=GUILayout.TextField(seedText,11);
-            GUILayout.Label("The same number and settings make the same world again.",small);
-            GUILayout.Space(10);GUILayout.Label("Difficulty: "+DifficultyTable.Names[setupLevel],heading);setupLevel=GUILayout.SelectionGrid(setupLevel,DifficultyTable.Names,4);GUILayout.Label(DifficultyTable.Describe(setupLevel),small);
-            GUILayout.Space(6);GUILayout.Label("Rival behaviour: "+AiProfiles.Names[setupProfile],heading);setupProfile=GUILayout.SelectionGrid(setupProfile,AiProfiles.Names,2);GUILayout.Label(AiProfiles.Texts[setupProfile]+" Difficulty bonuses are set separately above.",small);
-            GUILayout.EndArea();
-            GUILayout.BeginArea(new Rect(469,128,342,496));
-            GUILayout.Label("Your world",heading);
-            GUILayout.Label("Shape",body);setupShape=GUILayout.SelectionGrid(setupShape,new[]{"Flat","Sphere"},2);
-            GUILayout.Label(setupShape==1?"A globe: travel wraps east to west and routes can cross the poles.":"A flat map with edges, as in older versions.",small);
-            GUILayout.Space(6);GUILayout.Label("Size",body);setupSize=GUILayout.SelectionGrid(setupSize,World.MapSizeNames,3);
-            {int hexes=World.HexTiles(setupShape==1?World.SphereWidths[setupSize]*World.SphereHeights[setupSize]:World.MapWidths[setupSize]*World.MapHeights[setupSize]),across=World.HexColumns(hexes);GUILayout.Label(across+" x "+hexes/across+" hexes. Bigger worlds take longer turns.",small);}
-            GUILayout.Space(6);GUILayout.Label("Land",body);setupMap=GUILayout.SelectionGrid(setupMap,World.LandTypeNames,3);GUILayout.Label(World.LandTypeTexts[setupMap],small);
-            GUILayout.Space(6);GUILayout.Label("Climate",body);setupClimate=GUILayout.SelectionGrid(setupClimate,World.ClimateNames,3);GUILayout.Label(World.ClimateTexts[setupClimate],small);
-            GUILayout.EndArea();
-            GUILayout.BeginArea(new Rect(850,128,342,496));
-            GUILayout.Label("Who shares it",heading);
-            int maxCivs=World.MaxCivsBySize[setupSize];if(setupCivs>maxCivs)setupCivs=maxCivs;if(setupCivs<2)setupCivs=2;
-            GUILayout.Space(6);GUILayout.Label("Civilisations: "+setupCivs+" (you and "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+"; up to "+maxCivs+" on this size), plus "+(setupPeoples*World.RealmCount)+" peoples in the sealed worlds",body);
-            setupCivs=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupCivs,2,maxCivs));
-            GUILayout.Space(6);GUILayout.Label("Peoples in each sealed world: "+setupPeoples+(setupPeoples>4?" (slower turns on large maps)":""),body);setupPeoples=Mathf.RoundToInt(GUILayout.HorizontalSlider(setupPeoples,1,10));
-            GUILayout.Space(10);GUILayout.Label("Wild animals: "+World.AnimalChoices[setupAnimals],body);setupAnimals=GUILayout.SelectionGrid(setupAnimals,World.AnimalChoices,5);GUILayout.Label(setupAnimals==0?"No wild animals at all.":"Three times as many until a civilisation passes the Medieval Age.",small);
-            GUILayout.Space(10);setupBarbarians=GUILayout.Toggle(setupBarbarians," Barbarians");GUILayout.Label(setupBarbarians?"War camps appear in unclaimed land from turn "+BarbarianRules.CampsFrom+" and send out raiders. Burn a camp for gold.":"No barbarians.",small);
-            GUILayout.Space(10);tutorialOn=GUILayout.Toggle(tutorialOn," Play with the tutorial");GUILayout.Label(GuideName+" talks you through the first turns.",small);
-            GUILayout.EndArea();
-        }
         string SetupSummary(){return (setupCiv<CivilisationCatalog.Count?CivilisationCatalog.Names[setupCiv]+" ("+CivilisationCatalog.Leaders[setupCiv]+")":(string.IsNullOrWhiteSpace(proposedName)?"Your civilisation":proposedName.Trim()))+" on a "+World.MapSizeNames[setupSize].ToLower()+" "+(setupShape==1?"sphere":"flat map")+" with "+(setupCivs-1)+" rival"+(setupCivs==2?"":"s")+", "+new[]{"quick","standard","long"}[Mathf.Clamp(setupSpeed,0,2)]+" speed.";}        void DrawFoundationPanel(Unit u)
         {
             if(u!=null){
@@ -167,6 +134,10 @@ namespace ParadigmRealm
             var e=Event.current;
             // While a prompt waits for an answer the map stays still (owner request).
             if(PromptOpen()){if(e.type==EventType.ScrollWheel)e.Use();return;}
+            // The wheel over the mini-map zooms the mini-map and nothing else (owner request, 25 Nov 2026); over the All Orders panel it
+            // scrolls that panel.
+            if(MiniInput(e))return;
+            if(e.type==EventType.ScrollWheel&&diamondView&&moreActions&&CardShown()&&MorePanel.Contains(e.mousePosition))return;
             // Consume the wheel before BeginScrollView can turn it into vertical panning.
             if(e.type==EventType.ScrollWheel&&diamondView&&MapView.Contains(e.mousePosition)){IsoZoom(e.delta.y>0?-1:1);ResetMapGesture();e.Use();}
             else if(e.type==EventType.ScrollWheel&&MapView.Contains(e.mousePosition)&&(globeZoom||e.delta.y>0&&tilePixels<=24&&GlobeZoomAllowed())){ClassicZoom(e.delta.y>0?-8:8);ResetMapGesture();e.Use();}

@@ -54,23 +54,26 @@ public partial class RealmGame {
   if(a==Attitudes.Wary||a==Attitudes.Threatened||a==Attitudes.Domineering)return InkWary;return InkNeutral;
  }
  // Marks painted after the cities: units on the Military layer.
- void PaintMiniOverlay(int tw,int th,int scale,int top){
-  if(MiniLayer!=5)return;float rowPixels=scale*MiniRowShare();
-  Action<int,int,int,Color32> dot=(x,y,r,ink)=>{int cx=(int)((x+.5f+MiniShift(y))*scale),cy=th-1-(int)((y-top+.5f)*rowPixels);for(int dy=-r;dy<=r;dy++)for(int dx=-r;dx<=r;dx++){if(dx*dx+dy*dy>r*r)continue;int qx=cx+dx,qy=cy+dy;if(qx<0||qy<0||qx>=tw||qy>=th)continue;miniPixels[qy*tw+qx]=ink;}};
-  int r0=Math.Max(1,scale/2+1);
+ void PaintMiniOverlay(Color32[] pixels,int tw,int th,float scale,float rowPixels,int top,float x0,float y0){
+  if(MiniLayer!=5)return;
+  Action<int,int,int,Color32> dot=(x,y,r,ink)=>{int cx=Mathf.FloorToInt((x+.5f+MiniShift(y)-x0)*scale),cy=th-1-Mathf.FloorToInt((y-top+.5f-y0)*rowPixels);for(int dy=-r;dy<=r;dy++)for(int dx=-r;dx<=r;dx++){if(dx*dx+dy*dy>r*r)continue;int qx=cx+dx,qy=cy+dy;if(qx<0||qy<0||qx>=tw||qy>=th)continue;pixels[qy*tw+qx]=ink;}};
+  int r0=Mathf.Clamp((int)(scale/2)+1,1,6);
   foreach(var u in world.units){var t=world.At(u.x,u.y);if(t==null||t.realm!=viewRealm||!(u.owner==0||world.Visible(u.x,u.y)))continue;
    Color ink=u.owner==0?InkYou:world.AtWar(0,u.owner)?InkWar:NationInk(u.owner);if(World.Power[u.type]==0)ink=Color.Lerp(ink,Color.white,.45f);dot(u.x,u.y,r0,ink);}
   if(world.barbarians&&viewRealm==0){
    if(world.camps!=null)foreach(var c in world.camps)if(c.seen||world.Visible(c.x,c.y)){dot(c.x,c.y,r0+1,new Color32(30,10,8,255));dot(c.x,c.y,r0,new Color32(150,30,24,255));}
    if(world.raiders!=null)foreach(var r in world.raiders)if(world.Visible(r.x,r.y))dot(r.x,r.y,r0,new Color32(150,30,24,255));}
  }
- // The tab, the list and the key, drawn with the minimap.
- void DrawMiniLayerControls(Rect drawn,float sx,float sy){
-  var e=Event.current;var tab=MiniLayerTab;
+ // Drawn inside the mini-map's group, so it is clipped to it.
+ void DrawMiniTrade(Rect drawn){
   // Trade: dotted gold lines from your capital to your commercial-pact partners' capitals that you have seen.
   if(MiniLayer==3){var home=world.CapitalCity(0);if(home!=null&&world.At(home.x,home.y).realm==viewRealm)for(int o=1;o<world.civCount;o++){if(!world.met[o]||!world.Pact(0,o,Pacts.Commercial))continue;var cap=world.CapitalCity(o);if(cap==null)continue;var ct=world.At(cap.x,cap.y);if(ct.realm!=viewRealm||!ct.seen)continue;
    Vector2 a=MiniPoint(drawn,home.x,home.y),b=MiniPoint(drawn,cap.x,cap.y);float len=(b-a).magnitude;
    for(float d=0;d<len;d+=5){var p=Vector2.Lerp(a,b,d/Math.Max(1,len));Fill(new Rect(p.x-1,p.y-1,3,3),new Color(1f,.85f,.35f,.95f));}}}
+ }
+ // The tab, the list and the key, drawn with the minimap.
+ void DrawMiniLayerControls(){
+  var e=Event.current;var tab=MiniLayerTab;
   // The tab.
   Fill(tab,new Color(.05f,.08f,.15f,.95f));Fill(new Rect(tab.x,tab.y,tab.width,1),UiGold);Fill(new Rect(tab.x,tab.yMax-1,tab.width,1),new Color(UiGold.r,UiGold.g,UiGold.b,.5f));
   GUI.Label(new Rect(tab.x+8,tab.y,tab.width-30,tab.height),"Map: "+MiniLayerNames[MiniLayer],new GUIStyle(hudSmall){fontSize=13,alignment=TextAnchor.MiddleLeft,wordWrap=false});

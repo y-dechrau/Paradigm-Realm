@@ -236,26 +236,30 @@ namespace ParadigmRealm
         // The known world in miniature with the visible area outlined; click or drag to move the view.
         void DrawMiniMap()
         {
-            GUI.Box(MiniMap,"");var inner=new Rect(MiniMap.x+4,MiniMap.y+4,MiniMap.width-8,MiniMap.height-8);
+            GUI.Box(MiniMap,"");var inner=MiniInner;
             if(atlasTexture==null||atlasWorld!=world||Time.realtimeSinceStartup-atlasBuilt>3f)BuildAtlasTexture();
-            // Staggered rows are a quarter of a tile width apart (16 of 64 pixels), so a row is a quarter as tall as a column is wide.
-            float aspect=world.Width/(world.Hex?ViewRows*PixelArt.HR/(float)PixelArt.HW:world.Staggered?ViewRows*.25f:(float)ViewRows),w=inner.width,h=w/aspect;if(h>inner.height){h=inner.height;w=h*aspect;}
-            var drawn=new Rect(inner.center.x-w/2,inner.center.y-h/2,w,h);Fill(inner,MiniUnknown);if(miniTexture==null||miniWorld!=world||miniRealm!=viewRealm||miniLayerBuilt!=MiniLayer||miniBuilt<0||!turnRunning&&Time.realtimeSinceStartup-miniBuilt>1f&&MiniSignature()!=miniSig)BuildMiniTexture();GUI.DrawTexture(drawn,miniTexture??atlasTexture,ScaleMode.StretchToFill);
+            Fill(inner,MiniUnknown);if(miniTexture==null||miniWorld!=world||miniRealm!=viewRealm||miniLayerBuilt!=MiniLayer||miniBuilt<0||!turnRunning&&Time.realtimeSinceStartup-miniBuilt>1f&&MiniSignature()!=miniSig)BuildMiniTexture();
             float vx,vy,vw,vh;
             if(diamondView&&world.Rows){float tw=isoWidth,rowH=RowPixels(tw);vx=camI-MapW/2/tw;vw=MapW/tw;vy=camJ-MapH/2/rowH;vh=MapH/rowH;}
             else if(diamondView){// The diagonal view covers a turned square of the grid; outline the grid rectangle around it.
                 float lo=float.MaxValue,hi=float.MinValue,top=float.MaxValue,bottom=float.MinValue;foreach(var p in new[]{new Vector2(0,0),new Vector2(MapW,0),new Vector2(0,MapH),new Vector2(MapW,MapH)}){float tw=isoWidth,th=tw*PixelArt.DH/PixelArt.DW,a=(p.x-IsoCentreX)/(tw/2),b=(p.y-IsoCentreY)/(th/2),gi=camI+(a+b)/2,gj=camJ+(b-a)/2;lo=Mathf.Min(lo,gi);hi=Mathf.Max(hi,gi);top=Mathf.Min(top,gj);bottom=Mathf.Max(bottom,gj);}
                 vx=lo;vy=top;vw=hi-lo;vh=bottom-top;}
             else{vx=mapScroll.x/tilePixels;vy=mapScroll.y/ClassicRowHeight();vw=MapW/tilePixels;vh=MapH/ClassicRowHeight();}
-            vy-=ViewTop;float sx=w/world.Width,sy=h/ViewRows;var view=new Rect(drawn.x+vx*sx,drawn.y+vy*sy,vw*sx,vh*sy);
-            DrawMiniMarks(drawn);DrawMiniLayerControls(drawn,sx,sy);
-            GUI.BeginGroup(drawn);var local=new Rect(view.x-drawn.x,view.y-drawn.y,view.width,view.height);var edge=new Color(1,1,1,.95f);
+            vy-=ViewTop;if(Event.current.type==EventType.Repaint)MiniFollow(new Rect(vx/world.Width,vy/ViewRows,vw/world.Width,vh/ViewRows));
+            var drawn=MiniDrawn();float sx=drawn.width/world.Width,sy=drawn.height/ViewRows;MiniDetailStep(drawn);
+            // Everything on the mini-map is clipped to its frame, whatever its own zoom (MiniMapZoom.cs).
+            GUI.BeginGroup(inner);var flat=new Rect(drawn.x-inner.x,drawn.y-inner.y,drawn.width,drawn.height);
+            GUI.DrawTexture(flat,miniTexture??atlasTexture,ScaleMode.StretchToFill);DrawMiniDetail(flat);DrawMiniTrade(flat);
+            {var seen=Rect.MinMaxRect(Mathf.Max(0,flat.x),Mathf.Max(0,flat.y),Mathf.Min(inner.width,flat.xMax),Mathf.Min(inner.height,flat.yMax));DrawMiniMarks(flat,seen);}
+            GUI.EndGroup();DrawMiniLayerControls();
+            var part=Rect.MinMaxRect(Mathf.Max(inner.x,drawn.x),Mathf.Max(inner.y,drawn.y),Mathf.Min(inner.xMax,drawn.xMax),Mathf.Min(inner.yMax,drawn.yMax));
+            GUI.BeginGroup(part);var local=new Rect(drawn.x+vx*sx-part.x,drawn.y+vy*sy-part.y,vw*sx,vh*sy);var edge=new Color(1,1,1,.95f);
             // What the map shows: a faint pane with bright corners, so the land inside it can still be read.
             Fill(local,new Color(1,1,1,.07f));var faint=new Color(1,1,1,.45f);Fill(new Rect(local.x,local.y,local.width,1),faint);Fill(new Rect(local.x,local.yMax-1,local.width,1),faint);Fill(new Rect(local.x,local.y,1,local.height),faint);Fill(new Rect(local.xMax-1,local.y,1,local.height),faint);
             {float cl=Mathf.Min(8,Mathf.Min(local.width,local.height)/3);foreach(int q in new[]{0,1,2,3}){float cx=(q&1)==0?local.x:local.xMax-cl,cy=q<2?local.y:local.yMax-2;Fill(new Rect(cx,cy,cl,2),edge);Fill(new Rect((q&1)==0?local.x:local.xMax-2,q<2?local.y:local.yMax-cl,2,cl),edge);}}
             GUI.EndGroup();DrawMiniTip(drawn);
             var e=Event.current;
-            if((e.type==EventType.MouseDown||e.type==EventType.MouseDrag)&&e.button==0&&drawn.Contains(e.mousePosition)&&GUI.enabled)
+            if((e.type==EventType.MouseDown||e.type==EventType.MouseDrag)&&e.button==0&&part.Contains(e.mousePosition)&&GUI.enabled)
             {int tx=Mathf.Clamp((int)((e.mousePosition.x-drawn.x)/sx),0,world.Width-1),ty=ViewTop+Mathf.Clamp((int)((e.mousePosition.y-drawn.y)/sy),0,ViewRows-1);globeZoom=false;FocusTile(tx,ty);e.Use();}
             float bh=(MiniButtons.height-8)/3;
             if(GUI.Button(new Rect(MiniButtons.x,MiniButtons.y,MiniButtons.width,bh),"")){if(diamondView)IsoZoom(1);else ClassicZoom(8);}DrawIcon(PixelArt.IconZoomIn,new Rect(MiniButtons.x+4,MiniButtons.y+bh/2-12,24,24));

@@ -23,7 +23,7 @@ public partial class RealmGame {
   if(!World.HillWoods(source))return;int kind=source.woods==2?11:1;int v=(source.x*7919+source.y*104729)&0x7fffffff;
   float[] ox={-15,14,-2},oy={3,5,9};float k=.34f;
   for(int i=0;i<3;i++){if(i==2&&v%3==0)continue;var pic=IsoPicture(1,kind,(v+i)&3);if(pic==null)continue;float x=cx+ox[i]*s,y=gy+oy[i]*s;
-   GUI.DrawTexture(new Rect(x-PixelArt.AX*s*k,y-PixelArt.AY*s*k,64*s*k,64*s*k),pic);}
+   var r=new Rect(x-PixelArt.AX*s*k,y-PixelArt.AY*s*k,64*s*k,64*s*k);if(ambientPass&&ambientLevel>=1&&world.Visible(source.x,source.y)){var place=AmbientPlace(source.x,source.y);DrawStand(r,pic,GustLean(place.x,place.y,.55f),1.3f*s);}else GUI.DrawTexture(r,pic);}
  }
 }
 }

@@ -2,6 +2,10 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 25 Nov, later: mini-map zoom, New Game world page, movement on every tile (no save version change)
+
+Implemented and tested in a running build: the mini-map's own zoom; the New Game world page after the owner's picture; movement on all 21 kinds of land and water, the two other farm crops and village camps (see "Every other tile" in [LIVING-COUNTRYSIDE-2026-11-26.md](LIVING-COUNTRYSIDE-2026-11-26.md)). Not hand-played.
+
 ## Owner report 25 Nov: All Orders panel in front (no save change)
 
 Implemented: where the All Orders panel (or another HUD panel drawn in front) covers the pointer, the left menu and cards behind it no longer light up or take the click. Tested with injected clicks in a running build (`-inputProbe`). Not hand-played.

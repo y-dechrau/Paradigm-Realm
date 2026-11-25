@@ -60,6 +60,28 @@ Pictures: `Documentation/River-Valley-2026-11-26`: the same valley with and with
 ## Not done, or to be judged by eye
 
 - Hand play on a real game, and at other screen sizes.
-- Wind on savanna, forests and farmstead trees; wheat on the two other field pictures.
+- Wind on farmstead trees.
 - Wakes at rocks (the map has no rocks in rivers) and at mill wheels outside the valley.
 - Carts on square maps; carts between cities.
+
+## Every other tile (owner request, 25 Nov 2026; `AmbientTerrain.cs`)
+
+| Tile | What moves |
+|---|---|
+| Grassland, hills, savanna, dry steppe, tundra, river banks | Grass bends as the one gust passes and settles; butterflies on some meadows, a circling hawk over some hills and peaks, a tumbling bush on some steppe |
+| Forest, jungle, arctic forest, savanna trees, mangrove, hill woods | The trees lean row by row; forest leaves fall, jungle mist rises, snow slips from arctic branches, small flocks cross |
+| Desert, desolate wasteland | Sand or dust runs before the wind; now and then a dust devil |
+| Ice sheet, glacier, tundra | Drifting snow and glints |
+| Mountains | Snow streams off the peak; a cloud passes beneath it |
+| Volcanic terrain | Smoke (the only mark kept at zoom 48), embers, a breathing glow |
+| Ocean | Crests rise and fall back; glints; gulls here and there |
+| Lake, coral reef, mangrove | Ripples, glints, cat's-paws under the gust, small fish on reefs |
+| River | Light going down the stream on its own line (rivers without a known outflow: glints) |
+| Bog | Bubbles that swell and burst, low mist, reeds that lean |
+| Rocky coastline | Spray on the edges that meet water |
+| Farms | All three field pictures answer the gust (wheat, green rows, pale rows) |
+| Village camps | Thin smoke from the fire |
+
+The marks are drawn in code; they are not authored art. Trees are the map's own pictures. Birds show only over land in sight. Test and pictures: `-lifeShot <folder>`.
+
+Measured on this PC, map drawing only: the valley at zoom 64 2.28 ms a frame without any of it and 2.66 with, at 128 1.11 and 1.44; a worst case with every terrain in sight across the whole screen, 2.61 and 4.22 at 64 (632 marks), 0.97 and 1.90 at 128. Pictures and a clip: `Documentation/World-Page-And-Movement-2026-11-25`.

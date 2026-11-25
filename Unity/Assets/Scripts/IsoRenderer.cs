@@ -393,6 +393,8 @@ namespace ParadigmRealm
                 }
                 // The living countryside (AmbientLife.cs): marks on the current, and the demonstration valley's mill.
                 if(t.terrain==7){if(visible)DrawCurrent(t,ground,s);}
+                // Grass, sand, snow and water move on every kind of tile (AmbientTerrain.cs).
+                if(visible&&t.seen&&!viewCities.ContainsKey(t.y*width+t.x))DrawGroundLife(t,i,j,ground,sx,sy,s,t.farm||t.road);
                 // Territory outline along edges that touch another owner or unknown ground.
                 if(t.owner>=0)
                 {
@@ -428,7 +430,7 @@ namespace ParadigmRealm
                     // No two hills are the same size or sit in quite the same place on their tile, so a range does not line up in rows
                     // (owner report, 10 Nov 2026).
                     float hillX=dry.x,hillY=dry.y;if(t.terrain==7)treeScale*=Mathf.Max(.8f,dryScale);if(t.terrain==2&&!hamlet&&portOf==null){int hv=(t.x*92821+t.y*68917)&0x7fffffff;treeScale=.9f+(hv%19)/100f;hillX=((hv/19%9)-4)*.9f*s;hillY=((hv/171%7)-3)*.7f*s;}
-                    GUI.DrawTexture(new Rect(sx-PixelArt.AX*s*treeScale+hillX,gy-PixelArt.AY*s*treeScale+hillY,64*s*treeScale,64*s*treeScale),sprite);
+                    DrawScenery(new Rect(sx-PixelArt.AX*s*treeScale+hillX,gy-PixelArt.AY*s*treeScale+hillY,64*s*treeScale,64*s*treeScale),sprite,t,i,j,s,visible&&t.seen,!hamlet&&portOf==null);
                     if(t.terrain==2&&!hamlet&&portOf==null&&t.seen)DrawHillWoods(source,sx+hillX,gy+hillY,s);}
                 if(portOf!=null&&!portOf.portLinked&&portOf.owner==0){var warn=new Rect(sx+8*s,gy-22*s,9*s,9*s);Fill(warn,new Color(.85f,.2f,.15f,.92f));GUI.Label(warn,"!",small);}
                 var improvement=new Rect(sx-18*s,gy-22*s,36*s,36*s);
@@ -445,7 +447,7 @@ namespace ParadigmRealm
                 if(source.gateLink>0&&DrawGateArt(world.GateStyle(source),world.GateOpen(source),sx+dry.x,gy+dry.y,s,t.terrain,t.terrain==7?Mathf.Clamp(dryScale,.55f,.85f):1f)){}
                 else if(source.gateLink>0){var twin=world.GateTwin(source);int kind=world.gatesLocked?PixelArt.SealedGate:source.realm>0?0:twin!=null&&world.RealmDiscovered(0,twin.realm)?twin.realm:0;Texture2D gateTex;if(!gateTextures.TryGetValue(kind,out gateTex)){gateTex=PixelTexture(PixelArt.GatewaySprite(kind));gateTextures[kind]=gateTex;}GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),gateTex);}
                 NoteAmbientGate(source,visible,sx+dry.x,gy+dry.y,t.terrain==7?Mathf.Clamp(dryScale,.55f,.85f):1f);
-                if(t.village&&visible){DrawArt(Art("village-camp")!=null?"village-camp":"village",improvement);if(t.villageOwner>=0){var pole=new Rect(sx+10*s,gy-26*s,Mathf.Max(1,1.5f*s),12*s);Fill(pole,new Color(.3f,.22f,.14f));Fill(new Rect(pole.xMax,pole.y,7*s,5*s),nations[t.villageOwner]);}}
+                if(t.village&&visible){DrawArt(Art("village-camp")!=null?"village-camp":"village",improvement);DrawCampSmoke(t,improvement,s);if(t.villageOwner>=0){var pole=new Rect(sx+10*s,gy-26*s,Mathf.Max(1,1.5f*s),12*s);Fill(pole,new Color(.3f,.22f,.14f));Fill(new Rect(pole.xMax,pole.y,7*s,5*s),nations[t.villageOwner]);}}
                 if(!visible&&!string.IsNullOrEmpty(t.rememberedCity)){GUI.DrawTexture(SettlementRect(sx,gy,s),SettlementTexture(CityVisualEra(0),3,0,t.x+t.y),ScaleMode.ScaleToFit,true);isoCityNames.Add(t.rememberedCity);isoCityPos.Add(new Vector2(sx,gy));isoCityInk.Add(new Color(.6f,.62f,.66f));isoCityRefs.Add(null);}
                 GUI.color=old;
                 int cell=t.y*width+t.x;City c;viewCities.TryGetValue(cell,out c);if(c!=null&&!(c.owner==0||visible))c=null;

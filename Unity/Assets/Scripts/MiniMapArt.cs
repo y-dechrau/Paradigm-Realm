@@ -21,37 +21,41 @@ public partial class RealmGame {
   if(miniTexture==null||miniTexture.width!=tw||miniTexture.height!=th){if(miniTexture!=null)Destroy(miniTexture);miniTexture=new Texture2D(tw,th,TextureFormat.RGBA32,true){filterMode=FilterMode.Trilinear,wrapMode=TextureWrapMode.Clamp,anisoLevel=2};miniPixels=new Color32[tw*th];miniKey=new int[tw*th];}
   PrepareMiniLayer();
   // What every tile shows: its kind (0 unknown, 1 water, 2 land), the group its land belongs to, and its colour on this layer.
-  var key=new int[W*H];var ink=new Color[W*H];
+  var key=miniTileKey=new int[W*H];var ink=miniTileInk=new Color[W*H];
   for(int y=0;y<H;y++)for(int x=0;x<W;x++){int at=y*W+x,cell=(y+top)*W+x;var t=world.KnownTile(world.tiles[cell]);if(!t.seen){key[at]=0;ink[at]=MiniUnknown;continue;}
    bool water=PixelArt.IsWater(t.terrain)&&t.terrain!=7;key[at]=t.owner>=0?10+t.owner:water?1:2;ink[at]=MiniTileColour(cell,t,water);}
-  float rowPixels=scale*share;bool wrap=world.Sphere;float reach=1.18f*scale;
-  for(int py=0;py<th;py++){float fy=(py+.5f)/rowPixels-.5f;int r0=Mathf.FloorToInt(fy-1.2f/share*.75f),r1=Mathf.CeilToInt(fy+1.2f/share*.75f);
+  bool wrap=world.Sphere;for(int py=0;py<th;py++)PaintMiniRow(py,tw,th,scale,scale*share,0,0,miniPixels,miniKey);
+  miniPixels=EdgeMini(miniPixels,miniKey,tw,th,wrap);if(devRun)Debug.Log("PROBEINFO minimap "+tw+"x"+th+" painted in "+((Time.realtimeSinceStartup-began)*1000).ToString("0")+" ms");
+  PaintMiniOverlay(miniPixels,tw,th,scale,scale*share,top,0,0);miniSig=MiniSignature();miniRepaints++;
+  miniTexture.SetPixels32(miniPixels);miniTexture.Apply(true);miniWorld=world;miniBuilt=Time.realtimeSinceStartup;miniRealm=viewRealm;miniLayerBuilt=MiniLayer;
+ }
+ // One row of pixels of a picture whose corner is at column x0, row y0 of the world, scale pixels a column and rowPixels a row.
+ void PaintMiniRow(int py,int tw,int th,float scale,float rowPixels,float x0,float y0,Color32[] pixels,int[] keys){
+  int W=world.Width,H=ViewRows,top=ViewTop;float share=rowPixels/scale,reach=1.18f*scale;bool wrap=world.Sphere;var key=miniTileKey;var ink=miniTileInk;
+  {float fy=(py+.5f)/rowPixels-.5f+y0;int r0=Mathf.FloorToInt(fy-1.2f/share*.75f),r1=Mathf.CeilToInt(fy+1.2f/share*.75f);
    for(int px=0;px<tw;px++){
     // The tiles round this pixel vote for their group; near tiles count most.
     int n=0;float nearest=float.MaxValue;int nearAt=-1;
-    for(int ry=Math.Max(0,r0);ry<=Math.Min(H-1,r1);ry++){float shift=MiniShift(ry+top),dy=(ry-fy)*rowPixels;if(dy>reach||dy<-reach)continue;float fx=(px+.5f)/scale-.5f-shift;int c=Mathf.RoundToInt(fx);
+    for(int ry=Math.Max(0,r0);ry<=Math.Min(H-1,r1);ry++){float shift=MiniShift(ry+top),dy=(ry-fy)*rowPixels;if(dy>reach||dy<-reach)continue;float fx=(px+.5f)/scale-.5f-shift+x0;int c=Mathf.RoundToInt(fx);
      for(int k=c-1;k<=c+1;k++){int qx=k;if(qx<0||qx>=W){if(!wrap)continue;qx=(qx%W+W)%W;}float dx=(k-fx)*scale,d=dx*dx+dy*dy;if(d>reach*reach)continue;
       int at=ry*W+qx;if(d<nearest){nearest=d;nearAt=at;}float weight=reach-Mathf.Sqrt(d);weight*=weight;int g=key[at],slot=0;while(slot<n&&voteKey[slot]!=g)slot++;if(slot==n){if(n>=voteKey.Length)continue;n++;voteKey[slot]=g;voteSum[slot]=0;voteAt[slot]=at;voteNear[slot]=float.MaxValue;}
       voteSum[slot]+=weight;if(d<voteNear[slot]){voteNear[slot]=d;voteAt[slot]=at;}}}
     int best=-1;for(int s=0;s<n;s++)if(best<0||voteSum[s]>voteSum[best])best=s;
-    int to=(th-1-py)*tw+px;if(best<0){miniKey[to]=0;miniPixels[to]=MiniUnknown;continue;}
-    miniKey[to]=voteKey[best];miniPixels[to]=ink[voteAt[best]];}}
-  EdgeMini(tw,th,wrap);if(devRun)Debug.Log("PROBEINFO minimap "+tw+"x"+th+" painted in "+((Time.realtimeSinceStartup-began)*1000).ToString("0")+" ms");
-  PaintMiniOverlay(tw,th,scale,top);miniSig=MiniSignature();miniRepaints++;
-  miniTexture.SetPixels32(miniPixels);miniTexture.Apply(true);miniWorld=world;miniBuilt=Time.realtimeSinceStartup;miniRealm=viewRealm;miniLayerBuilt=MiniLayer;
+    int to=(th-1-py)*tw+px;if(best<0){keys[to]=0;pixels[to]=MiniUnknown;continue;}
+    keys[to]=voteKey[best];pixels[to]=ink[voteAt[best]];}}
  }
  static readonly int[] voteKey=new int[12],voteAt=new int[12];static readonly float[] voteSum=new float[12],voteNear=new float[12];
  // Borders: two bright pixels inside a civilisation's land, a dark one outside it, and a fine line where known land meets water.
- void EdgeMini(int tw,int th,bool wrap){
-  var made=(Color32[])miniPixels.Clone();
-  for(int y=0;y<th;y++)for(int x=0;x<tw;x++){int at=y*tw+x,k=miniKey[at];int near=0;bool otherOwner=false,land=false;
-   for(int d=1;d<=2&&near==0;d++)for(int q=0;q<4;q++){int nx=x+(q==0?d:q==1?-d:0),ny=y+(q==2?d:q==3?-d:0);if(ny<0||ny>=th)continue;if(nx<0||nx>=tw){if(!wrap)continue;nx=(nx+tw)%tw;}int o=miniKey[ny*tw+nx];if(o==k)continue;
+ Color32[] EdgeMini(Color32[] pixels,int[] keys,int tw,int th,bool wrap){
+  var made=(Color32[])pixels.Clone();
+  for(int y=0;y<th;y++)for(int x=0;x<tw;x++){int at=y*tw+x,k=keys[at];int near=0;bool otherOwner=false,land=false;
+   for(int d=1;d<=2&&near==0;d++)for(int q=0;q<4;q++){int nx=x+(q==0?d:q==1?-d:0),ny=y+(q==2?d:q==3?-d:0);if(ny<0||ny>=th)continue;if(nx<0||nx>=tw){if(!wrap)continue;nx=(nx+tw)%tw;}int o=keys[ny*tw+nx];if(o==k)continue;
      if(k>=10){near=d;break;}
      if(o>=10&&d==1)otherOwner=true;if(d==1&&(k==1&&o==2||k==2&&o==1))land=true;}
    if(k>=10&&near>0){var ink=BorderInk(k-10);made[at]=Color.Lerp(ink,Color.white,near==1?.38f:.12f);}
-   else if(otherOwner)made[at]=Color.Lerp(miniPixels[at],Color.black,.7f);
-   else if(land)made[at]=Color.Lerp(miniPixels[at],MiniCoast,.75f);}
-  miniPixels=made;
+   else if(otherOwner)made[at]=Color.Lerp(pixels[at],Color.black,.7f);
+   else if(land)made[at]=Color.Lerp(pixels[at],MiniCoast,.75f);}
+  return made;
  }
  // On the Diplomacy, Religion and other layers the border keeps the colour the layer gives that people.
  Color BorderInk(int owner){return MiniLayer==4?DiplomacyInk(owner):NationInk(owner);}
@@ -77,7 +81,8 @@ public partial class RealmGame {
   t.SetPixels32(px);t.Apply(true);themeTextures.Add(t);miniMarks[kind]=t;return t;}
  void Mark(string kind,Vector2 at,float size,Color ink){var old=GUI.color;GUI.color=ink;GUI.DrawTexture(new Rect(at.x-size/2,at.y-size/2,size,size),MiniMark(kind),ScaleMode.StretchToFill,true);GUI.color=old;}
  Vector2 MiniPoint(Rect drawn,int x,int y){float sx=drawn.width/world.Width,sy=drawn.height/ViewRows;return new Vector2(drawn.x+(x+.5f+MiniShift(y))*sx,drawn.y+(y-ViewTop+.5f)*sy);}
- void DrawMiniMarks(Rect drawn){
+ // drawn: the whole world in the current group; seen: the part of the group that shows.
+ void DrawMiniMarks(Rect drawn,Rect seen){
   if(Event.current.type!=EventType.Repaint)return;
   var dark=new Color(0,0,0,.85f);
   foreach(var c in world.cities){var t=world.At(c.x,c.y);if(t==null||t.realm!=viewRealm||!(c.owner==0||t.seen))continue;var at=MiniPoint(drawn,c.x,c.y);bool capital=world.nations[c.owner].capital==c.id&&(c.owner==0||world.met[c.owner]);var ink=c.owner==0?Color.white:Color.Lerp(NationInk(c.owner),Color.white,.55f);
@@ -85,14 +90,14 @@ public partial class RealmGame {
    else{Mark("dot",at,c.owner==0?6.5f:5.5f,dark);Mark("dot",at,c.owner==0?4.4f:3.5f,ink);}}
   if(viewRealm==0&&world.gatesFound!=null)foreach(int cell in world.gatesFound){var g=world.tiles[cell];var at=MiniPoint(drawn,g.x,g.y);Mark("diamond",at,10,dark);Mark("diamond",at,7.5f,world.GateOpen(g)?new Color(.5f,.9f,1f):new Color(1f,.82f,.25f));}
   // Where to look for a gateway you have only heard of: the way, not the place.
-  if(viewRealm==0){var home=world.CapitalCity(0);if(home!=null&&world.At(home.x,home.y).realm==0){var from=MiniPoint(drawn,home.x,home.y);var told=new HashSet<int>();
+  if(viewRealm==0){var home=world.CapitalCity(0);if(home!=null&&world.At(home.x,home.y).realm==0){var from=MiniPoint(drawn,home.x,home.y);if(seen.Contains(from)){var told=new HashSet<int>();
     foreach(var h in world.OpenHints()){if(!told.Add(h.direction))continue;float a=h.direction*Mathf.PI/4;var way=new Vector2(Mathf.Sin(a),-Mathf.Cos(a));float pulse=.65f+.35f*Mathf.Sin(Time.realtimeSinceStartup*2.5f);var at=from+way*17;
-     if(!drawn.Contains(at))at=new Vector2(Mathf.Clamp(at.x,drawn.x+5,drawn.xMax-5),Mathf.Clamp(at.y,drawn.y+5,drawn.yMax-5));
-     string arrow="arrow"+(h.direction&7);Mark(arrow,at,16,dark);Mark(arrow,at,12.5f,new Color(1f,.82f,.25f,pulse));}}}
+     if(!seen.Contains(at))at=new Vector2(Mathf.Clamp(at.x,seen.x+5,seen.xMax-5),Mathf.Clamp(at.y,seen.y+5,seen.yMax-5));
+     string arrow="arrow"+(h.direction&7);Mark(arrow,at,16,dark);Mark(arrow,at,12.5f,new Color(1f,.82f,.25f,pulse));}}}}
  }
  // Whose land the pointer is over, beside it.
  void DrawMiniTip(Rect drawn){
-  var m=Event.current.mousePosition;if(!drawn.Contains(m)||miniLayerOpen)return;int row=Mathf.Clamp((int)((m.y-drawn.y)/(drawn.height/ViewRows)),0,ViewRows-1),y=ViewTop+row;int x=Mathf.FloorToInt((m.x-drawn.x)/(drawn.width/world.Width)-MiniShift(y));if(x<0||x>=world.Width)return;
+  var m=Event.current.mousePosition;if(!drawn.Contains(m)||!MiniInner.Contains(m)||miniLayerOpen)return;int row=Mathf.Clamp((int)((m.y-drawn.y)/(drawn.height/ViewRows)),0,ViewRows-1),y=ViewTop+row;int x=Mathf.FloorToInt((m.x-drawn.x)/(drawn.width/world.Width)-MiniShift(y));if(x<0||x>=world.Width)return;
   var t=world.KnownTile(world.tiles[y*world.Width+x]);string s=!t.seen?"Unexplored":t.owner<0?World.TerrainNames[t.terrain]:t.owner==0||world.met[t.owner]?world.NationName(t.owner):"An unknown people";
   var city=t.seen?world.cities.Find(c=>(c.owner==0||world.At(c.x,c.y).seen)&&world.At(c.x,c.y).realm==viewRealm&&(MiniPoint(drawn,c.x,c.y)-m).sqrMagnitude<30):null;if(city!=null)s=city.name+" • "+(city.owner==0||world.met[city.owner]?world.NationName(city.owner):"An unknown people");
   var st=new GUIStyle(hudSmall){fontSize=12,wordWrap=false,alignment=TextAnchor.MiddleLeft};var size=st.CalcSize(new GUIContent(s));var r=new Rect(Mathf.Min(m.x-size.x/2-6,MiniMap.xMax-size.x-12),MiniMap.yMax-23,size.x+12,20);r.x=Mathf.Max(MiniMap.x,r.x);

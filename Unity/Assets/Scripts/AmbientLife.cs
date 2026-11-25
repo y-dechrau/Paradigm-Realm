@@ -21,13 +21,14 @@ public partial class RealmGame {
  // 2 close, 1 ordinary play, 0 strategic (smoke only), -1 nothing.
  int AmbientDetail(){return isoWidth>=96?2:isoWidth>=64?1:isoWidth>=48?0:-1;}
  bool ambientPass;int ambientLevel=-1;float ambientNow;internal int ambientDraws;internal readonly Dictionary<string,int> ambientCounts=new Dictionary<string,int>();
- void Count(string what){ambientDraws++;int n;ambientCounts.TryGetValue(what,out n);ambientCounts[what]=n+1;}
+ bool ambientTally=devRun0;static readonly bool devRun0=Environment.GetCommandLineArgs().Any(a=>a.EndsWith("Shot"));
+ void Count(string what){ambientDraws++;if(!ambientTally)return;int n;ambientCounts.TryGetValue(what,out n);ambientCounts[what]=n+1;}
  readonly Dictionary<string,Texture2D> ambientArt=new Dictionary<string,Texture2D>();
  Texture2D Amb(string name){Texture2D t;if(ambientArt.TryGetValue(name,out t))return t;var raw=Resources.Load<Texture2D>("Visuals/Ambient/"+name);if(raw!=null){try{var cv=new PixelCanvas(raw.width,raw.height);Array.Copy(ReadArtPixels(raw),cv.p,cv.p.Length);t=SoftTexture(cv);themeTextures.Add(t);}catch(Exception){t=raw;}}ambientArt[name]=t;return t;}
  static float H01(int a,int b,int c=0){unchecked{int h=a*374761393+b*668265263+c*982451653;h=(h^(h>>13))*1274126177;h^=h>>16;return (h&0xFFFF)/65535f;}}
  // Called before the tiles are drawn.
  void BeginAmbient(){
-  ambientNow=Time.realtimeSinceStartup;ambientDraws=0;ambientCounts.Clear();ambientLevel=AmbientOn&&world.Hex&&viewRealm>=0?AmbientDetail():-1;ambientPass=ambientLevel>=0;ambientGates.Clear();
+  ambientNow=Time.realtimeSinceStartup;ambientDraws=0;ambientCounts.Clear();ambientLevel=AmbientOn&&world.Hex&&viewRealm>=0?AmbientDetail():-1;ambientPass=ambientLevel>=0;ambientGates.Clear();rowAir.Clear();highAir.Clear();
   if(ambientWorld!=world){ambientWorld=world;carts.Clear();hearthBorn.Clear();hearthKnown.Clear();foreach(var c in world.cities)hearthKnown.Add(c.id);cartsChecked=-9;wheelTurn=0;wheelSpeed=0;}
   if(!ambientPass){if(!AmbientOn)carts.Clear();return;}
   foreach(var c in world.cities)if(hearthKnown.Add(c.id))hearthBorn[c.id]=ambientNow+.25f;
@@ -48,14 +49,14 @@ public partial class RealmGame {
  // Ripe wheat on a worked-looking field: at rest it is the painted field alone; as a gust passes, clumps at different depths rise out of
  // the furrows, lean, pause and settle back into them, pale-tipped, so the gust is a pale band crossing the field. Roots stay still.
  void DrawWheat(Tile t,int i,int j,Rect ground,float s){
-  if(!ambientPass||ambientLevel<1||IsoVariant(t.x,t.y)!=0)return;int want=ambientLevel==2?23:13;var place=AmbientPlace(i,j);float hw=.36f*ground.width,hh=hw*.5f;bool river=t.terrain==7;int mask=river?RiverMaskOf(t):0,variant=(t.x*7+t.y*3)%3;
+  if(!ambientPass||ambientLevel<1)return;int crop=IsoVariant(t.x,t.y)%3;int want=ambientLevel==2?23:13;var place=AmbientPlace(i,j);float hw=.36f*ground.width,hh=hw*.5f;bool river=t.terrain==7;int mask=river?RiverMaskOf(t):0,variant=(t.x*7+t.y*3)%3;
   for(int row=0;row<5;row++)for(int n=0;n<(want+2)/5;n++){
    // Rows run with the painted furrows: places on the field's own slanted grid, nudged.
    float a=-.8f+row*.4f+(H01(t.x*31+row,t.y,n)-.5f)*.2f,b=-.8f+(n+.5f)*1.6f/((want+2)/5)+(H01(t.x,t.y*17+row,n+9)-.5f)*.34f;float fx=(a+b)*.5f*hw,fy=(b-a)*.5f*hh;if(Mathf.Abs(fx)/hw+Mathf.Abs(fy)/hh>.9f)continue;
    float px=ground.center.x+fx,py=ground.center.y+fy;
    if(river){int x2=(int)((px-ground.x)/ground.width*PixelArt.HW*2),y2=(int)((py-ground.y)/ground.height*PixelArt.HH*2);bool wet=false;for(int q=-4;q<=4&&!wet;q+=4)for(int w=-4;w<=4&&!wet;w+=4)wet=x2+q>=0&&y2+w>=0&&x2+q<PixelArt.HW*2&&y2+w<PixelArt.HH*2&&PixelArt.HexRiverWet(mask,variant,x2+q,y2+w);if(wet)continue;}
    float strength,u=GustPhase(place.x+fx/ground.width,place.y+fy/ground.width,H01(t.x+n,t.y+row,3)*.22f,out strength);if(u<0)continue;int frame=GustFrame(u,8);if(strength<.7f&&frame==4)frame=3;
-   var art=Amb("wheat-"+frame);if(art==null)return;float size=(7.2f+1.3f*H01(t.x,t.y+row,n))*s;var ink=GUI.color;GUI.color=new Color(ink.r,ink.g,ink.b,ink.a*Mathf.Clamp01(Mathf.Min(u,1-u)*5.5f));GUI.DrawTexture(new Rect(px-size/2,py-size*.97f,size,size),art,ScaleMode.StretchToFill,true);GUI.color=ink;Count("wheat");}}
+   var art=crop==0?Amb("wheat-"+frame):AmbientMark(Tufts[Mathf.Clamp((int)(Swell(u)*5),0,4)]);if(art==null)return;float size=(7.2f+1.3f*H01(t.x,t.y+row,n))*s;var ink=GUI.color;var dye=crop==0?Color.white:crop==1?new Color(.42f,.66f,.28f):new Color(.84f,.86f,.5f);GUI.color=new Color(ink.r*dye.r,ink.g*dye.g,ink.b*dye.b,ink.a*Mathf.Clamp01(Mathf.Min(u,1-u)*5.5f));GUI.DrawTexture(new Rect(px-size/2,py-size*.97f,size,size),art,ScaleMode.StretchToFill,true);GUI.color=ink;Count("wheat");}}
  // A crown leaning a pixel or two: the trunk and roots are drawn as they are, the upper part in slices that lean more towards the top.
  void DrawSway(Rect r,Texture2D tex,float lean,float amount){
   if(lean<=.03f){GUI.DrawTexture(r,tex);return;}
@@ -153,6 +154,7 @@ public partial class RealmGame {
  // Drawn once every tile of a row is down, so no neighbour's ground cuts it; the next row's trees and roofs still cover it, and the
  // houses of the city it has reached are laid over it again.
  void FlushAmbientRow(int row){
+  FlushRowAir();
   if(!ambientPass||ambientLevel<1||carts.Count==0)return;
   foreach(var c in carts){float along,solid;bool outward,loaded,rolling;if(!CartNow(c,out along,out outward,out loaded,out solid,out rolling))continue;
    Vector2 p=c.path[0],way=Vector2.right;int tile=0;float left=along;for(int q=1;q<c.path.Count;q++){var d=c.path[q]-c.path[q-1];float l=d.magnitude;tile=c.at[q];if(l>0&&left<=l){p=c.path[q-1]+d*(left/l);way=d/l;break;}left-=l;p=c.path[q];if(l>0)way=d/l;}
@@ -195,6 +197,7 @@ public partial class RealmGame {
  bool GateWakes(Tile g){var study=world.StudyOf(0,g);return study!=null&&study.known&&study.approach!=GateApproach.None;}
  static float Beat(float t,float rise,float hold,float fall){return t<0?0:t<rise?Mathf.SmoothStep(0,1,t/rise):t<rise+hold?1:t<rise+hold+fall?Mathf.SmoothStep(1,0,(t-rise-hold)/fall):0;}
  void DrawAmbientGates(float s){
+  FlushHighAir();
   if(!ambientPass||ambientLevel<1)return;var old=GUI.color;
   foreach(var g in ambientGates){
    bool wakes=GateWakes(g.tile);float w=64*s*GateScale*g.fit,foot=g.fit>=1?g.at.y+TileHalf()*s*.5f:g.at.y+w*.16f;var open=SpriteSlot("gate-open-"+world.GateStyle(g.tile));

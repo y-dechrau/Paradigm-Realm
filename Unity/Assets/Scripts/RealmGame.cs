@@ -170,14 +170,9 @@ namespace ParadigmRealm
         bool CustomValid(){return setupCiv<CivilisationCatalog.Count||(!string.IsNullOrWhiteSpace(proposedName)&&customTraitA!=customTraitB);}
         void DrawNameSetup()
         {
+            if(setupPage!=0){DrawWorldSetup();return;}
             GUI.Box(new Rect(56,60,1168,680),"");
-            if(setupPage==0){DrawCivilisationChoice();return;}
-            GUI.Label(new Rect(76,70,900,44),"New game — the world",title);
-            GUI.Box(new Rect(76,120,366,510),"");GUI.Box(new Rect(457,120,366,510),"");GUI.Box(new Rect(838,120,366,510),"");
-            DrawSetupOptions();
-            GUI.Label(new Rect(76,636,1128,40),SetupSummary(),body);
-            if(GUI.Button(new Rect(76,680,556,46),"Begin civilisation",button)){StartGame();GUIUtility.ExitGUI();}
-            if(GUI.Button(new Rect(648,680,556,46),"Back: civilisation",button)){setupPage=0;GUIUtility.ExitGUI();}
+            DrawCivilisationChoice();
         }
         void DrawCivilisationChoice()
         {
