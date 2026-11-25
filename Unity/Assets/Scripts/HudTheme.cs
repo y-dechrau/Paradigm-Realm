@@ -40,6 +40,12 @@ namespace ParadigmRealm
         void FitLabel(Rect r,string text,GUIStyle style,int minimum=9){var s=new GUIStyle(style){wordWrap=false,clipping=TextClipping.Overflow};while(s.fontSize>minimum&&s.CalcSize(new GUIContent(text)).x>r.width)s.fontSize--;GUI.Label(r,text,s);}
         // Clicks and the mouse wheel reach the map only where no widget is drawn over it.
         bool OverHud(Vector2 p){foreach(var r in hudRects)if(r.Contains(p))return true;return false;}
+        bool hudCovered;
+        bool UnderFrontPanel(Vector2 p){
+            if(CardShown()){if(UnitCard.Contains(p)||moreActions&&MorePanel.Contains(p))return true;Rect site;if(SiteCard(Selected(),out site,out _,out _)&&site.Contains(p))return true;}
+            if(NoticeShown()&&NoticeRect.Contains(p)||CallShown()&&CallRect.Contains(p))return true;
+            if(TutorialShown()){var t=TutorialRect();t.x+=MidShift;if(t.Contains(p))return true;}
+            return false;}
         bool InMap(Vector2 p){return MapView.Contains(p)&&!OverHud(p);}
         // The interface is laid out and drawn several times a frame; what it reads from the world is worked out at most once a frame,
         // and the costly totals a few times a second.
@@ -113,7 +119,11 @@ namespace ParadigmRealm
         void DrawHud()
         {
             bool idle=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen()&&!turnRunning;GUI.enabled=idle;
+            // Panels drawn later lie in front, but a control drawn first takes a click first: where one of them covers the pointer,
+            // the menu and cards behind neither light up nor take the press (owner report, 25 Nov 2026).
+            hudCovered=UnderFrontPanel(Event.current.mousePosition);if(hudCovered&&Event.current.type==EventType.MouseDown)GUI.enabled=false;
             DrawRail();DrawResearchCard();DrawLeaders();DrawNotices();DrawMiniMap();
+            hudCovered=false;GUI.enabled=idle;
             if(CardShown()){if(moreActions)DrawMoreActions();DrawUnitCard();DrawSiteCard(Selected());}else moreActions=false;
             DrawTileCard();DrawBuildNotice();DrawRivalCall();
 
@@ -177,7 +187,7 @@ namespace ParadigmRealm
             var railLabel=new GUIStyle(hudLabel){fontSize=14,alignment=TextAnchor.MiddleLeft};if(displayFont!=null)railLabel.font=displayFont;
             for(int i=0;i<RailScreens.Length;i++)
             {
-                var r=new Rect(rail.x+5,rail.y+5+i*RailItem,rail.width-10,RailItem-3);bool over=r.Contains(Event.current.mousePosition)&&GUI.enabled;
+                var r=new Rect(rail.x+5,rail.y+5+i*RailItem,rail.width-10,RailItem-3);bool over=r.Contains(Event.current.mousePosition)&&GUI.enabled&&!hudCovered;
                 DrawButtonFace(r,over);var art=RailScreens[i]=="Religion"?UiTex("icon-religion"):UiIcon(RailIcons[i]);
                 var iconRect=new Rect(r.x+14,r.y+5,r.height-10,r.height-10);if(art!=null)GUI.DrawTexture(iconRect,art,ScaleMode.ScaleToFit,true);else DrawIcon(RailIcons[i],iconRect);
                 railLabel.normal.textColor=over?new Color(1f,.9f,.6f):UiText;FitLabel(new Rect(iconRect.xMax+6,r.y,r.xMax-iconRect.xMax-30,r.height),RailLabels[i],railLabel,10);

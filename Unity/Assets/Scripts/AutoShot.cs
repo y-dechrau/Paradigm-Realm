@@ -390,8 +390,15 @@ namespace ParadigmRealm
             // Right-click cancels a chosen building, though greyed out; then the building list.
             cityBuildingTab=true;int pot=TechnologyCatalog.Index("pottery");bool hadPot=world.tech[pot];world.tech[pot]=true;world.tech[TechnologyCatalog.Index("writing")]=true;var opts=World.BuildingIds.Where(b=>world.TechAllows(city,b)).ToList();city.buildingProject=opts[0];city.buildingQueue.Clear();if(opts.Count>1)city.buildingQueue.Add(opts[1]);buildingQueueScroll=Vector2.zero;
             foreach(var u in new[]{2,3,4,7,2,3,2,3})city.queue.Add(World.UnitBuild(u));city.build=World.UnitBuild(2);yield return Shot(folder,"10b-building-greyed.bmp");
-            yield return ClickAt(1000,336,1);Probe("right click cancels a chosen building",city.buildingProject!=opts[0]);
+            yield return ClickAt(1000,470,1);Probe("right click cancels a chosen building",city.buildingProject!=opts[0]);
             cityBuildingTab=false;yield return Shot(folder,"10c-unit-queue.bmp");city.queue.Clear();city.build=-1;
+            // The All Orders panel lies over the left menu: a click on it must reach the order, never the menu behind.
+            {bool wasScreen=cityScreen;int wasCity=cityId;cityScreen=false;detailsScreen="";isoWidth=64;var tile=world.tiles.First(t=>t.realm==0&&t.owner==0&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&world.Distance(t.x,t.y,city.x,city.y)==1);
+             var hand=world.Add(0,1,tile.x,tile.y);selected=hand.id;cityId=-1;moreActions=true;FocusTile(hand.x,hand.y);bool hit=false,leak=false;string opened="";yield return Frames(5);yield return Shot(folder,"10y-all-orders.bmp");
+             for(float y=252;y<480;y+=9){selected=hand.id;moreActions=true;yield return ClickAt(80,y);if(hand.autoWork){hit=true;hand.autoWork=false;}if(detailsScreen!=""||researchScreen||faithsView||cityScreen){leak=true;opened+=" "+detailsScreen+"@"+y;detailsScreen="";researchScreen=false;cityScreen=false;}}
+             Probe("no click on All Orders opens a menu tab behind it"+opened,!leak);Probe("and the orders over the menu take the click",hit);
+             selected=hand.id;moreActions=false;yield return Frames(3);yield return ClickAt(80,289);Probe("with the panel closed the menu works as before ("+detailsScreen+")",detailsScreen!=""||researchScreen);detailsScreen="";researchScreen=false;
+             moreActions=false;selected=-1;world.units.Remove(hand);cityScreen=wasScreen;cityId=wasCity;}
             // Zoom to city.
             yield return ClickAt(955,127);Probe("Zoom to city returns to the map on the city",!cityScreen&&isoWidth==128);yield return Shot(folder,"10d-zoomed-city.bmp");isoWidth=64;world.units.Remove(guard);
             // The wheel does nothing while the research prompt waits.

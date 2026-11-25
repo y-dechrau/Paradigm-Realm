@@ -2,6 +2,10 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner report 25 Nov: All Orders panel in front (no save change)
+
+Implemented: where the All Orders panel (or another HUD panel drawn in front) covers the pointer, the left menu and cards behind it no longer light up or take the click. Tested with injected clicks in a running build (`-inputProbe`). Not hand-played.
+
 ## Owner requests 26 Nov: real-world civilisations set aside; the living countryside, first pass (no save version change)
 
 Implemented: the twelve real-world civilisations are no longer offered or used as rivals (saves keep them). The river valley and its ambient pass are built and tested in a running build; see [LIVING-COUNTRYSIDE-2026-11-26.md](LIVING-COUNTRYSIDE-2026-11-26.md) for what is finished, what is decoration and what is still to be judged by eye. Not hand-played.
