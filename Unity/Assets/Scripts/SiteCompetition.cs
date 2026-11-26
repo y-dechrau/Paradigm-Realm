@@ -126,6 +126,7 @@ public partial class World {
   foreach(var t in TilesAround(u.x,u.y,5)){if(t.owner==u.owner||known!=null&&!known[t.y*Width+t.x]||CampSiteReason(u.owner,t)!="")continue;int k=CampKind(u.owner,t);int g=CampBenefit(u.owner,t,k,Distance(u.x,u.y,t.x,t.y)+CampWork+1);if(g>gain){gain=g;best=t;}}
   if(best==null)return false;if(best.x==u.x&&best.y==u.y)return StartJob(u,CampJob);bool ok=Order(u,best.x,best.y);if(ok)u.nextJob=CampJob;return ok;
  }
+ public bool CampAIForProbe(Unit u){return CampAI(u);}
  // A worker ordered to a camp site starts the camp when it gets there.
  void StartPendingCamps(int owner){foreach(var u in units.Where(a=>a.owner==owner&&a.type==1&&a.job==0&&a.nextJob==CampJob&&!a.hasOrder&&a.moves>0).ToList()){u.nextJob=0;if(CampReason(u)=="")StartJob(u,CampJob);}}
  public string SendWorkerToCamp(int owner,Tile t){var worker=units.Where(u=>u.owner==owner&&u.type==1).OrderBy(u=>u.job>0?1:0).ThenBy(u=>Distance(u.x,u.y,t.x,t.y)).FirstOrDefault();if(worker==null)return "You have no Worker.";string why=CampSiteReason(owner,t);if(why!="")return why;

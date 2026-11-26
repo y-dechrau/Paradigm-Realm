@@ -34,7 +34,7 @@ public partial class RealmGame {
   while(true){
    long stepStart=clock.ElapsedTicks;
    bool more;try{more=steps.MoveNext();}catch(Exception e){Debug.LogException(e);status="The turn could not finish: "+e.Message;more=false;}
-   int stepNow=more?steps.Current%10000:0,stepPart=more?steps.Current/10000:0;
+   int stepNow=more?steps.Current%10000:0,stepPart=more?steps.Current/10000:0;if(more)FreezeWatch.Step("after "+stepNow+" part "+stepPart+" (turn "+world.turn+")");else FreezeWatch.Step("");
    if(turnStepLog!=null)turnStepLog.Add(new KeyValuePair<string,double>((more?"step after "+stepNow+" part "+stepPart+" ("+(stepNow<world.civCount?world.NationName(stepNow):"world")+")":"final"),(clock.ElapsedTicks-stepStart)*1000.0/System.Diagnostics.Stopwatch.Frequency));
    if(!more)break;turnStep=stepNow;if(clock.ElapsedMilliseconds>=slice){var frame=System.Diagnostics.Stopwatch.StartNew();yield return null;slice=TurnSlice(frame.Elapsed.TotalMilliseconds);clock.Reset();clock.Start();}
   }

@@ -14,6 +14,8 @@ namespace ParadigmRealm
         void Start()
         {
             var args=Environment.GetCommandLineArgs();int i;
+            // "-freezeTest": stalls the main thread for 6 s once the menu is up, to prove the freeze recorder (FreezeWatch) reports it, then quits.
+            if(Array.IndexOf(args,"-freezeTest")>=0){StartCoroutine(FreezeTest());}
             // A test run keeps its saves and autosaves in its own output folder, never among the player's saved games.
             foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot","-cheerShot","-dimShot","-speciesShot","-hudShot","-valleyShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
             i=Array.IndexOf(args,"-autoShot");
@@ -300,6 +302,7 @@ namespace ParadigmRealm
             yield return Frames(90);Probe("glides finish and units stand",unitGlides.Count==0);log.AppendLine("gliding after 1.5 s: "+unitGlides.Count);
             File.WriteAllText(Path.Combine(folder,"walk.txt"),log.ToString());Application.Quit();
         }
+        IEnumerator FreezeTest(){yield return Frames(60);FreezeWatch.Where("freeze test");System.Threading.Thread.Sleep(6000);yield return Frames(60);Application.Quit();}
         IEnumerator Frames(int n){for(int k=0;k<n;k++)yield return null;}
         // Real input for the autoShot run: the next OnGUI handles this event as if the player had done it.
         Event probeEvent;

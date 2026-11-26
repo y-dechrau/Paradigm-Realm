@@ -18,7 +18,7 @@ namespace ParadigmRealm
         static Color[] MoreInks(Color[] first){var all=new Color[World.MaxNations];for(int i=0;i<all.Length;i++)all[i]=i<first.Length?first[i]:Color.HSVToRGB((i*.618034f)%1,.55f+(i%3)*.15f,.95f-(i%2)*.15f);return all;}
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot(){if(FindFirstObjectByType<RealmGame>()==null)new GameObject("Paradigm Realm").AddComponent<RealmGame>();}
-        void Awake(){zoomSensitivity=PlayerPrefs.GetFloat("RealmZoomSensitivity",2f);LoadTutorialSettings();tooltips=PlayerPrefs.GetInt("RealmTooltips",1)!=0;var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=UiBackground;camera.orthographic=true;Application.targetFrameRate=60;QualitySettings.vSyncCount=1;world=World.New(Environment.TickCount&int.MaxValue,hex:true,wild:true,rations:true);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
+        void Awake(){FreezeWatch.Start(Application.persistentDataPath);zoomSensitivity=PlayerPrefs.GetFloat("RealmZoomSensitivity",2f);LoadTutorialSettings();tooltips=PlayerPrefs.GetInt("RealmTooltips",1)!=0;var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=UiBackground;camera.orthographic=true;Application.targetFrameRate=60;QualitySettings.vSyncCount=1;world=World.New(Environment.TickCount&int.MaxValue,hex:true,wild:true,rations:true);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
         Unit Selected(){return world.units.Find(u=>u.owner==0&&u.id==selected);}
         void Center(){var u=Selected();if(u!=null&&diamondView){FocusTile(u.x,u.y);return;}if(u!=null)FocusTile(u.x,u.y);}
         string SavePath {get{return Path.Combine(probeFolder??Application.persistentDataPath,"earth-save.json");}}
@@ -38,7 +38,7 @@ namespace ParadigmRealm
         Matrix4x4 wideMatrix=Matrix4x4.identity,centredMatrix=Matrix4x4.identity;
         void Wide(){GUI.matrix=wideMatrix;centredNow=false;}
         void Centred(){GUI.matrix=centredMatrix;centredNow=true;}
-        void OnGUI(){guiClock.Start();guiPasses++;try{DrawInterface();}finally{guiClock.Stop();mapClock.Stop();hudClock.Stop();}}
+        void OnGUI(){if(Event.current.type!=EventType.Layout&&Event.current.type!=EventType.Repaint)FreezeWatch.Where(Event.current.type+" at "+Event.current.mousePosition+" on "+(cityScreen?"city screen":researchScreen?"research":detailsScreen!=""?detailsScreen:mainMenu?"main menu":"map")+(turnRunning?" during End Turn":"")+", turn "+(world!=null?world.turn:0));guiClock.Start();guiPasses++;try{DrawInterface();}finally{guiClock.Stop();mapClock.Stop();hudClock.Stop();}}
         void DrawInterface()
         {
             if(world!=null)world.EndVisibilityCache();compositeBudgetOn=false;
@@ -81,6 +81,7 @@ namespace ParadigmRealm
         // inside OnGUI, so the screen never changes between Unity's layout and repaint passes.
         void Update()
         {
+            FreezeWatch.Beat();
             if(turnRunning||world==null||mainMenu||nameSetup||pauseMenu||guide||confirmNew||pendingUnit!=-1||cityScreen||researchScreen||detailsScreen!=""||world.result!="")return;
             if(gateScene==null&&world.gatesLocked){var found=world.NextNewGate();if(found!=null)StartGateScene(found);}
             // A seal one of your investigators has just read opens the gateway panel.

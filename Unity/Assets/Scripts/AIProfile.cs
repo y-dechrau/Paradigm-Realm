@@ -7,7 +7,7 @@ namespace ParadigmRealm {
 public partial class World {
  public static Dictionary<string,double> decisionTimes;
  static void AddProfile(string k,long t0){double ms=(Stopwatch.GetTimestamp()-t0)*1000.0/Stopwatch.Frequency;double had;decisionTimes.TryGetValue(k,out had);decisionTimes[k]=had+ms;}
- bool P(string k,Func<bool> f){if(decisionTimes==null)return f();long t0=Stopwatch.GetTimestamp();bool r=f();AddProfile(k,t0);return r;}
- void P(string k,Action f){if(decisionTimes==null){f();return;}long t0=Stopwatch.GetTimestamp();f();AddProfile(k,t0);}
+ bool P(string k,Func<bool> f){FreezeWatch.Decision(k);if(decisionTimes==null)return f();long t0=Stopwatch.GetTimestamp();bool r=f();AddProfile(k,t0);return r;}
+ void P(string k,Action f){FreezeWatch.Decision(k);if(decisionTimes==null){f();return;}long t0=Stopwatch.GetTimestamp();f();AddProfile(k,t0);}
 }
 }
