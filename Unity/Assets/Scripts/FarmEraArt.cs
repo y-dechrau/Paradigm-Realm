@@ -14,8 +14,10 @@ public partial class RealmGame {
  int farmEraFrame=-1;readonly Dictionary<int,int> farmEraMemo=new Dictionary<int,int>();
  int FarmAge(int owner){if(farmAgeForShots>=0)return farmAgeForShots;if(Time.frameCount!=farmEraFrame){farmEraMemo.Clear();farmEraFrame=Time.frameCount;}if(owner<0)owner=0;int e;if(!farmEraMemo.TryGetValue(owner,out e)){e=Mathf.Clamp(world.Era(owner),0,FarmDesigns.Length-1);farmEraMemo[owner]=e;}return e;}
  Texture2D FarmPicture(Tile t){int age=FarmAge(t.owner);int n=FarmDesigns[age];int pick;unchecked{pick=((t.x*92821)^(t.y*68917)^(t.x*t.y*131))&0x7fffffff;}return SpriteSlot("farm-"+age+"-"+(pick%n));}
- // The farm stands on the tile: as wide as the tile, its foot on the tile's lower edge, buildings rising above it.
- bool DrawFarmPicture(Tile t,Rect ground){var pic=FarmPicture(t);if(pic==null)return false;float w=ground.width*1.08f,h=w*pic.height/Mathf.Max(1,pic.width);
-  GUI.DrawTexture(new Rect(ground.center.x-w/2,ground.yMax+ground.height*.04f-h,w,h),pic,ScaleMode.StretchToFill,true);return true;}
+ // The pictures are reshaped to the map's hexagon (owner request, 26 Nov 2026: conform to the hex grid): the flat ground of each
+ // farm was warped from its diamond onto a 64 x 40 hexagon at the foot of the picture, buildings rising above. So the picture is drawn
+ // exactly as wide as the tile, its lowest point on the tile's lowest point, and its ground fills the tile's hexagon.
+ bool DrawFarmPicture(Tile t,Rect ground){var pic=FarmPicture(t);if(pic==null)return false;float w=ground.width,h=w*pic.height/Mathf.Max(1,pic.width);
+  GUI.DrawTexture(new Rect(ground.center.x-w/2,ground.yMax-h,w,h),pic,ScaleMode.StretchToFill,true);return true;}
 }
 }
