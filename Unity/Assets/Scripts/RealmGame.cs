@@ -26,7 +26,7 @@ namespace ParadigmRealm
         bool HasSavedGame(){return File.Exists(SavePath)||NamedSaves().Length>0;}
         string[] NamedSaves(){try{return Directory.GetFiles(Application.persistentDataPath,"earth-named-*.json").OrderByDescending(File.GetLastWriteTimeUtc).ToArray();}catch{return new string[0];}}
         void Load(){var candidates=NamedSaves().Concat(File.Exists(SavePath)?new[]{SavePath}:new string[0]);LoadFile(activeSavePath??candidates.OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault()??SavePath);}
-        void LoadFile(string path){try{var next=JsonUtility.FromJson<World>(File.ReadAllText(path));if(next!=null)next.UpgradeSave();if(next==null||!next.Valid())throw new Exception("Invalid or incompatible save.");world=next;world.dormantWorlds=true;world.lifeways=true;world.EnableStatecraft();world.ForgetRumouredGates();world.EnableMaterials();ResetDiplomacyUI();renameText=world.civilisationName;selected=world.units.Where(u=>u.owner==0).Select(u=>u.id).DefaultIfEmpty(-1).First();cityId=-1;cityScreen=false;researchScreen=false;detailsScreen="";pauseMenu=false;loadScreen=false;Center();hasSession=true;mainMenu=false;activeSavePath=Path.GetFileName(path).StartsWith("earth-auto-")?null:path;status="Game loaded.";}catch(Exception e){status="Could not load: "+e.Message;}}
+        void LoadFile(string path){try{var next=JsonUtility.FromJson<World>(File.ReadAllText(path));if(next!=null)next.UpgradeSave();if(next==null||!next.Valid())throw new Exception("Invalid or incompatible save.");world=next;world.dormantWorlds=true;world.lifeways=true;world.EnableStatecraft();world.ForgetRumouredGates();world.RetireMegatheriums();world.EnableMaterials();ResetDiplomacyUI();renameText=world.civilisationName;selected=world.units.Where(u=>u.owner==0).Select(u=>u.id).DefaultIfEmpty(-1).First();cityId=-1;cityScreen=false;researchScreen=false;detailsScreen="";pauseMenu=false;loadScreen=false;Center();hasSession=true;mainMenu=false;activeSavePath=Path.GetFileName(path).StartsWith("earth-auto-")?null:path;status="Game loaded.";}catch(Exception e){status="Could not load: "+e.Message;}}
         void NextUnit(){idleDue=false;ShowIdle(true);}
         void EndTurn(){if(turnRunning||world.result!="")return;turnRunning=true;StartCoroutine(RunTurn());}
         void Styles(){if(title!=null)return;title=new GUIStyle(GUI.skin.label){fontSize=26,fontStyle=FontStyle.Bold};heading=new GUIStyle(GUI.skin.label){fontSize=17,fontStyle=FontStyle.Bold};body=new GUIStyle(GUI.skin.label){fontSize=14,wordWrap=true};small=new GUIStyle(body){fontSize=12};button=new GUIStyle(GUI.skin.button){fontSize=13,wordWrap=true};}
@@ -70,11 +70,11 @@ namespace ParadigmRealm
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen()&&!turnRunning;
             FollowGateArrival();mapClock.Start();DrawMap();mapClock.Stop();hudClock.Start();DrawHud();hudClock.Stop();DrawRealmBanner();
             // Prompts, the tutorial and the guide keep their 1280 design, centred on the display.
-            if(tilePicker&&gateScene==null&&gatePanel==null&&!CampPanelOpen()&&foundStage<=0)DrawTilePicker();
+            if(tilePicker&&gateScene==null&&gatePanel==null&&!CampPanelOpen()&&!SitePanelOpen()&&foundStage<=0)DrawTilePicker();
             Centred();if(!guide)DrawTutorial();
             if(guide)DrawGuide();if(confirmNew){GUI.Box(new Rect(420,270,440,190),"");GUILayout.BeginArea(new Rect(445,290,390,145));GUILayout.Label("Start a new world?",heading);GUILayout.Label("Save first if you want to keep your current game.",body);if(Button("Start new game")){confirmNew=false;nameSetup=true;GUIUtility.ExitGUI();}if(Button("Cancel"))confirmNew=false;GUILayout.EndArea();}
             if(pendingUnit!=-1){DrawWarPrompt();return;}
-            if(gateScene!=null)DrawGateScene();else if(gatePanel!=null)DrawGatePanel();else if(CampPanelOpen())DrawCampPanel();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker){}else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();else if(WayPromptOpen())DrawWayPrompt();
+            if(gateScene!=null)DrawGateScene();else if(gatePanel!=null)DrawGatePanel();else if(CampPanelOpen())DrawCampPanel();else if(SitePanelOpen())DrawSitePanel();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker){}else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();else if(WayPromptOpen())DrawWayPrompt();
             DrawSaveToast();
         }
         // Meeting a civilisation opens Diplomacy with them straight away, one meeting at a time. This runs between frames, not
@@ -414,6 +414,8 @@ namespace ParadigmRealm
             if(own.Count>0){int i=own.FindIndex(u=>u.id==selected);selected=own[(i+1)%own.Count].id;cityId=-1;return;}
             // A barbarian camp you have found, or its raiders, will hear an offer.
             if(OpenCampAt(x,y))return;
+            // A woodland, hills or a timber or stone resource beyond your borders: what it would do for you (SiteCompetition.cs).
+            if(OpenSiteAt(x,y))return;
             // Left-clicking an empty tile only selects; orders are given with the right button.
         }
         void DrawGuide()

@@ -386,7 +386,7 @@ namespace ParadigmRealm
                 // and resource markers stand on the driest part of the tile, smaller where the room is tight.
                 Vector2 dry=Vector2.zero;float dryScale=1;
                 if(t.terrain==7){double dfx,dfy,room;PixelArt.DrySpot(world.Hex,RiverMaskOf(t),(t.x*7+t.y*3)%3,out dfx,out dfy,out room);dry=new Vector2((float)(dfx-.5)*ground.width,(float)(dfy-.5)*ground.height);dryScale=Mathf.Clamp((float)room/15f,.42f,1f);}
-                if(!water&&t.farm){var field=SpriteSlot("field-"+(IsoVariant(t.x,t.y)%3));if(t.terrain==7)GUI.DrawTexture(ground,RiverQuilt(t));else if(field!=null){float fw=ground.width*.86f,fh=fw*field.height/Mathf.Max(1,field.width);GUI.DrawTexture(new Rect(ground.center.x-fw/2,ground.center.y-fh/2,fw,fh),field,ScaleMode.StretchToFill,true);}else{var farm=IsoPicture(2,IsoVariant(t.x,t.y),0);if(farm!=null)GUI.DrawTexture(ground,farm);}if(visible)DrawWheat(t,i,j,ground,s);}
+                if(!water&&t.farm){var field=SpriteSlot("field-"+(IsoVariant(t.x,t.y)%3));if(t.terrain==7)GUI.DrawTexture(ground,RiverQuilt(t));else if(DrawFarmPicture(t,ground)){}else if(field!=null){float fw=ground.width*.86f,fh=fw*field.height/Mathf.Max(1,field.width);GUI.DrawTexture(new Rect(ground.center.x-fw/2,ground.center.y-fh/2,fw,fh),field,ScaleMode.StretchToFill,true);}else{var farm=IsoPicture(2,IsoVariant(t.x,t.y),0);if(farm!=null)GUI.DrawTexture(ground,farm);}if(visible)DrawWheat(t,i,j,ground,s);}
                 if(t.road)
                 {
                     var road=RoadPicture(t);if(road!=null)GUI.DrawTexture(ground,road);
@@ -415,7 +415,7 @@ namespace ParadigmRealm
                 bool meadow=t.terrain==0;bool built=t.farm||t.road||viewCities.ContainsKey(t.y*width+t.x);bool bare=t.farm||t.cleared&&(meadow||t.terrain==16);
                 // Dry steppe shows its own ground and no picture (its supplied picture left straight lines; owner request, 9 Nov 2026).
                 var sprite=water||bare||meadow&&built||t.terrain==20||source.gateLink>0?null:IsoPicture(1,t.terrain,meadow?GroveVariant(t.x,t.y):IsoVariant(t.x,t.y));
-                City suburbOf;bool hamlet=false;if(!water&&suburbCells.TryGetValue(t.y*width+t.x,out suburbOf)&&(visible||suburbOf.owner==0)){sprite=HamletTexture(suburbOf,t.x,t.y);hamlet=true;}
+                City suburbOf;bool hamlet=false;if(!water&&!(t.farm&&t.terrain!=7&&FarmPicture(t)!=null)&&suburbCells.TryGetValue(t.y*width+t.x,out suburbOf)&&(visible||suburbOf.owner==0)){sprite=HamletTexture(suburbOf,t.x,t.y);hamlet=true;}
                 City portOf=null;if(!water&&portCells.TryGetValue(t.y*width+t.x,out portOf)&&(visible||portOf.owner==0))sprite=IsoPicture(7,0,0);else portOf=null;
                 // Savanna acacias are drawn at 60% so they read as scattered trees on grassland, not woodland (owner request).
                 // Grassland grove pictures hold two or three large trees; at 55% they match the trees in the forest pictures
@@ -439,6 +439,7 @@ namespace ParadigmRealm
                 // On a river tile the picture's footing (about two thirds of the way down it) is set on the dry spot.
                 bool riverTile=t.terrain==7;if(riverTile)improvement=new Rect(improvement.x+dry.x,improvement.y+dry.y+8*s,improvement.width,improvement.height);
                 if(t.mine){var art=SpriteSlot("improve-mine");float size=42*s*dryScale;if(art!=null)GUI.DrawTexture(riverTile?new Rect(sx+dry.x-size/2,gy+dry.y-size*.7f,size,size):new Rect(sx-21*s,gy+TileHalf()*s-44*s,42*s,42*s),art,ScaleMode.ScaleToFit,true);else DrawArt("mine",improvement);}
+                if(visible||t.seen){var camp=world.OutpostAt(t.x,t.y);if(camp!=null)DrawOutpost(camp,sx,gy+TileHalf()*s,s);}
                 if(t.fort){var art=SpriteSlot("improve-fort");float size=46*s*dryScale;if(art!=null)GUI.DrawTexture(riverTile?new Rect(sx+dry.x-size/2,gy+dry.y-size*.7f,size,size):new Rect(sx-23*s,gy+TileHalf()*s-48*s,46*s,46*s),art,ScaleMode.ScaleToFit,true);else DrawArt("fort",improvement);}
                 if(source.ruin){var ruinArt=SpriteSlot("ruin-"+RuinStyle(t));float size=RuinSize*s*Mathf.Max(.7f,dryScale);if(ruinArt!=null)GUI.DrawTexture(riverTile?new Rect(sx+dry.x-size/2,gy+dry.y-size*.7f,size,size):new Rect(sx-size/2,gy+TileHalf()*s*.55f-size*.86f,size,size),ruinArt,ScaleMode.ScaleToFit,true);else{if(ruinTexture==null)ruinTexture=PixelTexture(PixelArt.Ruins());GUI.DrawTexture(new Rect(sx-PixelArt.AX*s,gy-PixelArt.AY*s,64*s,64*s),ruinTexture);}}
                 // A sealed gateway the player has found keeps its name on the map (owner request).

@@ -348,7 +348,7 @@ public partial class RealmGame {
   if(diplomacyDiscuss){
    // The inbox, the full record and the finer details, in a scrolling page across the whole width.
    var wide=new Rect(8,72,1264,672);GoldFrame(wide);
-   GUILayout.BeginArea(new Rect(wide.x+28,wide.y+22,wide.width-56,wide.height-90));detailsScroll=GUILayout.BeginScrollView(detailsScroll,false,false,GUIStyle.none,GUIStyle.none);detailsScroll.x=0;DrawAdvancedDiplomacy();GUILayout.EndScrollView();GUILayout.EndArea();
+   GUILayout.BeginArea(new Rect(wide.x+28,wide.y+58,wide.width-56,wide.height-126));detailsScroll=GUILayout.BeginScrollView(detailsScroll,false,false,GUIStyle.none,GUIStyle.none);detailsScroll.x=0;DrawAdvancedDiplomacy();GUILayout.EndScrollView();GUILayout.EndArea();
    if(CourtButton(new Rect(wide.x+28,wide.yMax-60,wide.width-56,40),"scroll","Back to the talks",CourtNavy))diplomacyDiscuss=false;
    if(CourtButton(new Rect(wide.x+28,wide.y+18,180,30),"","◂ All leaders",CourtNavy)){diplomacyDiscuss=false;diplomacyChooser=true;}
    DrawOpenDropdown();return;}

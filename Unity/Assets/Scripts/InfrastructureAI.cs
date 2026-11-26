@@ -36,6 +36,8 @@ namespace ParadigmRealm {
    if(gatesLocked&&IsNativeNation(u.owner)&&(turn+u.id)%4!=0)return;
    // Home rivals likewise, once the early rush of building is over: one turn in three.
    if(u.owner!=0&&turn>80&&(turn+u.id)%3!=0)return;
+   // Short of timber or stone, a rival worker may set up a camp where it saves the most (SiteCompetition.cs), now and then.
+   if(u.owner!=0&&(turn+u.id)%5==0&&P("camps",()=>CampAI(u)))return;
    // What the whole empire works and needs is the same for each of its workers this turn, so it is found once.
    if(u.owner==0||aiWorkOwner!=u.owner||aiWorkTurn!=turn){aiWorkOwner=u.owner;aiWorkTurn=turn;var empire=cities.Where(c=>c.owner==u.owner).ToList();aiWorked=new HashSet<Tile>(empire.SelectMany(Worked));aiHunger=empire.Any(c=>Yield(c)[0]<=0);aiPortRoads=PortRoadNeeds(u.owner);aiRoadOk=Budget(u.owner)[2]>=(modernRules&&empire.Any(CutOff)?0:3)&&RoadTiles(u.owner)<empire.Count*RoadsPerCity;aiOwnTiles=TilesOwnedBy(u.owner).Where(t=>nations[u.owner].known[t.y*Width+t.x]&&!Barren(t.terrain)).ToList();}
    var worked=aiWorked;

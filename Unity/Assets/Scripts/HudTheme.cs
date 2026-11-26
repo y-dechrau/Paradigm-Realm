@@ -45,6 +45,7 @@ namespace ParadigmRealm
             if(CardShown()){if(UnitCard.Contains(p)||moreActions&&MorePanel.Contains(p))return true;Rect site;if(SiteCard(Selected(),out site,out _,out _)&&site.Contains(p))return true;}
             if(NoticeShown()&&NoticeRect.Contains(p)||CallShown()&&CallRect.Contains(p))return true;
             if(TutorialShown()){var t=TutorialRect();t.x+=MidShift;if(t.Contains(p))return true;}
+            if(materialsPanel&&world.buildingMaterials&&MaterialsPanelRect.Contains(p))return true;
             return false;}
         bool InMap(Vector2 p){return MapView.Contains(p)&&!OverHud(p);}
         // The interface is laid out and drawn several times a frame; what it reads from the world is worked out at most once a frame,
@@ -55,7 +56,7 @@ namespace ParadigmRealm
         void RefreshHudNumbers(){
             if(hudWorld==world&&hudTurn==world.turn&&Time.realtimeSinceStartup-hudAt<.3f)return;hudWorld=world;hudTurn=world.turn;hudAt=Time.realtimeSinceStartup;
             hudBudget=world.Budget(0)[2];hudOwnCities=0;hudCalm=0;hudScience=0;foreach(var c in world.cities)if(c.owner==0){hudOwnCities++;if(!world.Disorder(c))hudCalm++;hudScience+=world.Yield(c)[2];}
-            int need;hudFood=world.FoodBalance(0,out need);hudFaith=world.FaithPerTurn(0);if(world.buildingMaterials){var mat=world.MaterialIncome(0);hudTimber=mat[0];hudStone=mat[1];}hudResearchTurns=world.research>=0?world.ResearchTurns(world.research,0):-1;hudEra=world.Era(0);
+            int need;hudFood=world.FoodBalance(0,out need);hudFaith=world.FaithPerTurn(0);if(world.buildingMaterials){var mat=world.MaterialIncome(0);hudTimber=mat[0];hudStone=mat[1];var net=world.MaterialNetNext(0);hudTimberNet=net[0];hudStoneNet=net[1];}hudResearchTurns=world.research>=0?world.ResearchTurns(world.research,0):-1;hudEra=world.Era(0);
         }
         Rect LeaderRect(int i){return new Rect(1274+RightShift-(i+1)*80,46,74,96);}
         // The current message (what just happened or why an order failed) leads, then the newest log entries of this turn and last.
@@ -70,7 +71,7 @@ namespace ParadigmRealm
         {
             hudRects.Clear();if(world==null)return;
             hudRects.Add(TopBar);hudRects.Add(RailRect);hudRects.Add(ResearchCard);hudRects.Add(MiniMap);hudRects.Add(MiniButtons);hudRects.Add(MiniLayerTab);if(miniLayerOpen)hudRects.Add(MiniLayerList);hudRects.Add(EndTurnRect);hudRects.Add(TileCard);
-            if(CardShown())hudRects.Add(UnitCard);if(moreActions&&CardShown())hudRects.Add(MorePanel);
+            if(materialsPanel&&world.buildingMaterials)hudRects.Add(MaterialsPanelRect);if(CardShown())hudRects.Add(UnitCard);if(moreActions&&CardShown())hudRects.Add(MorePanel);
             for(int i=0;i<MetRivals().Count;i++)hudRects.Add(LeaderRect(i));
             for(int i=0;i<RecentNotes().Count;i++)hudRects.Add(NoteRect(i));
             {Rect site;if(CardShown()&&SiteCard(Selected(),out site,out _,out _))hudRects.Add(site);}
@@ -135,7 +136,7 @@ namespace ParadigmRealm
             {int waiting=IdleCount();if(waiting>0)GUI.Label(new Rect(EndTurnRect.x+8,EndTurnRect.yMax-21,120,16),waiting+" idle",new GUIStyle(keyCapStyle){alignment=TextAnchor.MiddleLeft,clipping=TextClipping.Overflow});}
             var cap=new Rect(EndTurnRect.xMax-50,EndTurnRect.yMax-21,42,16);Fill(cap,new Color(.12f,.08f,.03f,.75f));GUI.Label(cap,"Enter",keyCapStyle);}
             GUI.enabled=true;
-            DrawTopBar();
+            DrawTopBar();DrawMaterialsPanel();
             // Full tile details (movement, settlement advice, units present) while Alt is held.
             if(tooltips&&Event.current.alt&&idle)DrawTileTooltip();
         }
@@ -169,9 +170,10 @@ namespace ParadigmRealm
                 x+=18;Fill(new Rect(x-10,9,1,20),new Color(UiGold.r,UiGold.g,UiGold.b,.45f));
             }
             // Timber and stone, the building materials (21 Nov 2026), with the resource pictures as icons.
-            if(world.buildingMaterials)for(int mat=0;mat<2;mat++){float start=x;var tex=SpriteSlot(mat==0?"res-53":"res-69");if(tex!=null)GUI.DrawTexture(new Rect(x,4,30,30),tex,ScaleMode.ScaleToFit,true);x+=34;string have=(mat==0?world.nations[0].timber:world.nations[0].stone).ToString(),inc="+"+(mat==0?hudTimber:hudStone);
-                float w1=amount.CalcSize(new GUIContent(have)).x;GUI.Label(new Rect(x,8,w1+4,24),have,amount);x+=w1+6;float w2=deltaUp.CalcSize(new GUIContent(inc)).x;GUI.Label(new Rect(x,11,w2+4,20),inc,deltaUp);x+=w2+4;
-                if(new Rect(start,2,x-start,34).Contains(mouse))hoverTip=(mat==0?"Timber":"Stone")+" for buildings, and the gain each turn: every city +1, worked "+(mat==0?"woodland":"hills")+" +1 each, worked "+(mat==0?"Timber":"Stone")+" +2 (+1 "+(mat==0?"with a road":"with a mine")+").";x+=18;Fill(new Rect(x-10,9,1,20),new Color(UiGold.r,UiGold.g,UiGold.b,.45f));}
+            if(world.buildingMaterials)for(int mat=0;mat<2;mat++){float start=x;var tex=SpriteSlot(mat==0?"res-53":"res-69");if(tex!=null)GUI.DrawTexture(new Rect(x,4,30,30),tex,ScaleMode.ScaleToFit,true);x+=34;if(mat==0)materialsAnchor=x;int net=mat==0?hudTimberNet:hudStoneNet;string have=(mat==0?world.nations[0].timber:world.nations[0].stone).ToString(),inc=(net>=0?"+":"−")+Math.Abs(net);
+                float w1=amount.CalcSize(new GUIContent(have)).x;GUI.Label(new Rect(x,8,w1+4,24),have,amount);x+=w1+6;var deltaStyle=net>=0?deltaUp:deltaDown;float w2=deltaStyle.CalcSize(new GUIContent(inc)).x;GUI.Label(new Rect(x,11,w2+4,20),inc,deltaStyle);x+=w2+4;
+                {var hit=new Rect(start,2,x-start,34);if(hit.Contains(mouse)&&!materialsPanel)hoverTip=(mat==0?"Timber":"Stone")+": "+(mat==0?world.nations[0].timber:world.nations[0].stone)+" in store; next turn "+(mat==0?hudTimber:hudStone)+" produced, "+((mat==0?hudTimber:hudStone)-net)+" drawn by work under way, "+(net>=0?"+":"")+net+" added to storage. Click for where it comes from and goes.";
+                 if(Event.current.type==EventType.MouseDown&&Event.current.button==0&&hit.Contains(Event.current.mousePosition)&&!cityScreen&&detailsScreen==""){materialsPanel=!materialsPanel;Event.current.Use();}}x+=18;Fill(new Rect(x-10,9,1,20),new Color(UiGold.r,UiGold.g,UiGold.b,.45f));}
             if(hoverTip!=null){var size=hudSmall.CalcSize(new GUIContent(hoverTip));var tr=new Rect(Mathf.Min(mouse.x,1270+shift-size.x-12),40,size.x+12,size.y+6);Fill(tr,new Color(.05f,.08f,.16f,.95f));Fill(new Rect(tr.x,tr.yMax-1,tr.width,1),UiGold);GUI.Label(new Rect(tr.x+6,tr.y+3,size.x+2,size.y),hoverTip,hudSmall);}
             {float tx=Math.Max(x,1036+shift);DrawIcon(PixelArt.IconTurn,new Rect(tx,8,22,22));GUI.Label(new Rect(tx+26,9,1192+shift-tx-26,22),"Turn "+world.turn+"  •  "+world.Calendar(),hudLabel);}
             bool enabled=GUI.enabled;GUI.enabled=!confirmNew&&pendingUnit==-1&&!turnRunning;
@@ -373,7 +375,7 @@ namespace ParadigmRealm
                 if(world.WorkerInCity(u))GUI.enabled=false;
                 if(u.type==1&&Button("Road to a destination [R, then right-drag]"))RoadKey(u);
                 // Every worker activity stays listed; those needing an unknown technology are greyed out and say which (owner request).
-                if(u.type==1){GUILayout.Label("Worker activities",body);int team=world.WorkerTeam(u).Count;foreach(int job in new[]{1,2,3,5,4}){if(job==5&&!World.Wooded(world.At(u.x,u.y)))continue;string missing=world.JobTechMissing(u.owner,job);bool was=GUI.enabled;GUI.enabled=was&&missing=="";bool clearFirst=missing==""&&world.ClearsFirst(u,job);string label=World.JobNames[job]+(missing!=""?" — "+missing:clearFirst?" (clears the trees first: "+((world.JobWork(u,5)+team-1)/team)+" + "+((world.JobWork(u,job)+team-1)/team)+" turns)":" ("+((world.JobWork(u,job)+team-1)/team)+" turns)");if(Button(label)){string reason=world.WorkerTeam(u).Select(a=>world.JobReason(a,job)).FirstOrDefault(r=>r!="")??"";if(!world.StartJob(u,job))status=reason;}GUI.enabled=was;}}
+                if(u.type==1){GUILayout.Label("Worker activities",body);int team=world.WorkerTeam(u).Count;foreach(int job in new[]{1,2,3,5,4,World.CampJob}){if(job==5&&!World.Wooded(world.At(u.x,u.y)))continue;if(job==World.CampJob&&(world.At(u.x,u.y).owner==u.owner||world.CampKind(u.owner,world.At(u.x,u.y))<0&&!World.Wooded(world.At(u.x,u.y))))continue;string missing=world.JobTechMissing(u.owner,job);bool was=GUI.enabled;GUI.enabled=was&&missing=="";bool clearFirst=missing==""&&world.ClearsFirst(u,job);string label=World.JobNames[job]+(missing!=""?" — "+missing:clearFirst?" (clears the trees first: "+((world.JobWork(u,5)+team-1)/team)+" + "+((world.JobWork(u,job)+team-1)/team)+" turns)":" ("+((world.JobWork(u,job)+team-1)/team)+" turns)");if(Button(label)){string reason=world.WorkerTeam(u).Select(a=>world.JobReason(a,job)).FirstOrDefault(r=>r!="")??"";if(!world.StartJob(u,job))status=reason;}GUI.enabled=was;}}
                 GUI.enabled=enabled&&world.result=="";
                 if(u.hasOrder){GUILayout.Label("Destination: "+u.destinationX+", "+u.destinationY,body);if(Button("Cancel movement order [X]"))world.CancelActivity(u);}
                 GUI.enabled=enabled;

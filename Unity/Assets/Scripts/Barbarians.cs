@@ -20,11 +20,14 @@ public partial class World {
  void EnsureBarbarianLists(){if(camps==null)camps=new List<BarbarianCamp>();if(raiders==null)raiders=new List<Raider>();}
  public Raider RaiderAt(int x,int y){if(raiders==null)return null;foreach(var r in raiders)if(r.x==x&&r.y==y&&r.hp>0)return r;return null;}
  public BarbarianCamp CampAt(int x,int y){if(camps==null)return null;foreach(var c in camps)if(c.x==x&&c.y==y&&c.hp>0)return c;return null;}
- // The most advanced home civilisation's age sets their strength: a Dawn raider has attack 2 and defence 1, then +1 each every two ages.
- int BarbarianEra(){int e=0;for(int o=0;o<civCount;o++)if(!IsNativeNation(o))e=Math.Max(e,Era(o));return e;}
- public int RaiderAttack(Raider r){return 2+BarbarianEra()/2+(r.mounted>0?1:0);}
+ // Their strength follows the home civilisations' average age, rounded down (owner request, 26 Nov 2026: barbarians were far
+ // stronger than everyone's soldiers; they followed the most advanced civilisation, struck at 2 and camps defended at 3). A Dawn
+ // raider is now a Warrior's match (attack 1, defence 1; horse raiders attack 2), +1 each every two ages; a camp defends at 2.
+ [NonSerialized] int barbarianEraTurn=-1,barbarianEraMemo;
+ int BarbarianEra(){if(barbarianEraTurn==turn)return barbarianEraMemo;int sum=0,n=0;var living=new HashSet<int>(cities.Select(c=>c.owner));for(int o=0;o<civCount;o++)if(!IsNativeNation(o)&&(o==0||living.Contains(o))){sum+=Era(o);n++;}barbarianEraMemo=n==0?0:sum/n;barbarianEraTurn=turn;return barbarianEraMemo;}
+ public int RaiderAttack(Raider r){return 1+BarbarianEra()/2+(r.mounted>0?1:0);}
  public int RaiderDefence(Raider r){var t=At(r.x,r.y);return 1+BarbarianEra()/2+(t!=null?TerrainDefence(t.terrain):0);}
- public int CampDefence(BarbarianCamp c){var t=At(c.x,c.y);return 3+BarbarianEra()/2+(t!=null?TerrainDefence(t.terrain):0);}
+ public int CampDefence(BarbarianCamp c){var t=At(c.x,c.y);return 2+BarbarianEra()/2+(t!=null?TerrainDefence(t.terrain):0);}
  public int CampReward(){return 25+15*BarbarianEra();}
  bool BarbarianGround(Tile t){return t!=null&&t.realm==0&&!IsWater(t.terrain)&&!IsImpassable(t.terrain)&&!Barren(t.terrain)&&t.gateLink==0&&!CityCentres().Contains(t.y*Width+t.x);}
  bool OpenToRaider(Tile t){return BarbarianGround(t)&&RaiderAt(t.x,t.y)==null&&(animals==null||AnimalAt(t.x,t.y)==null)&&!units.Any(u=>u.x==t.x&&u.y==t.y);}

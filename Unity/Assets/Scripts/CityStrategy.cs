@@ -125,7 +125,7 @@ namespace ParadigmRealm {
    if(c.owner==0&&previous<threshold&&c.food>=threshold&&c.pop==oldPop)Note(c.name+": "+GrowthStatus(c));
   }
   public int PreferredBuilding(City c){
-   var available=Choices(c).Where(b=>BuildUnit(b)<0).ToList();var v=Yield(c);
+   var available=Choices(c).Where(b=>BuildUnit(b)<0&&MaterialsInReach(c.owner,b)).ToList();var v=Yield(c);
    var priority=new List<int>();
    if(Happiness(c)<1)priority.AddRange(new[]{36,33,42});
    if(c.pop>=GrowthLimit(c)-1)priority.AddRange(new[]{37,41});

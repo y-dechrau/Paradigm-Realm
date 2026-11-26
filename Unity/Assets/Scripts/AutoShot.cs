@@ -34,6 +34,7 @@ namespace ParadigmRealm
             i=Array.IndexOf(args,"-speciesShot");if(i>=0&&i+1<args.Length)StartCoroutine(SpeciesShot(args[i+1]));
             i=Array.IndexOf(args,"-hudShot");if(i>=0&&i+1<args.Length)StartCoroutine(HudShot(args[i+1]));
             // "-granary": opens the First Granary scenario at once (a capital that cannot feed itself; Beliefs & Traditions, 23 Nov 2026).
+            i=Array.IndexOf(args,"-woodland");if(i>=0){string scenario=System.IO.Path.Combine(Application.temporaryCachePath,"woodland-scenario.json");System.IO.File.WriteAllText(scenario,JsonUtility.ToJson(World.WoodlandScenario()));LoadFile(scenario);activeSavePath=null;guide=false;tutorialOn=false;tutorialStep=-1;var ws=world.WoodlandSite();if(ws!=null)FocusTile(ws.x,ws.y);status="The woodland: click the woods your Scout stands in.";}
             i=Array.IndexOf(args,"-granary");if(i>=0){string scenario=System.IO.Path.Combine(Application.temporaryCachePath,"granary-scenario.json");System.IO.File.WriteAllText(scenario,JsonUtility.ToJson(World.GranaryScenario()));LoadFile(scenario);activeSavePath=null;guide=false;tutorialOn=false;tutorialStep=-1;status="The First Granary: end the turn twice.";}
             // "-valley": opens the river valley of the living countryside (Valley.cs, 26 Nov 2026); "-valley awaken" with its gateway stirring.
             i=Array.IndexOf(args,"-valley");if(i>=0)OpenValley(i+1<args.Length&&args[i+1]=="awaken");

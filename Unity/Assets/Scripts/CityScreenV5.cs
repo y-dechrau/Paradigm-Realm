@@ -147,11 +147,11 @@ public partial class RealmGame {
    if(building)DrawIcon(new Rect(r.x+6,r.y+5,27,27),12+Array.IndexOf(World.BuildingIds,p));else GUI.DrawTexture(new Rect(r.x+4,r.y+3,31,31),people[World.BuildUnit(p)],ScaleMode.ScaleToFit,true);
    int cost=world.CostFor(c,p),t=Math.Max(1,(cost+output-1)/output);
    GUI.Label(new Rect(r.x+40,r.y+2,r.width-120,20),world.BuildNameFor(c.owner,p),new GUIStyle(body){wordWrap=false,clipping=TextClipping.Clip});
-   GUI.Label(new Rect(r.x+40,r.y+20,r.width-44,19),ordered?"Ordered":reason!=""?reason:building?(world.buildingMaterials&&world.BuildingPriceText(p)!=""?world.BuildingPriceText(p)+" · ":"")+World.BuildingEffect(p):UnitLine(p),new GUIStyle(cityTiny){wordWrap=false,clipping=TextClipping.Clip});
+   FitLabel(new Rect(r.x+40,r.y+20,r.width-44,19),ordered?"Ordered":reason!=""?reason:building?(world.buildingMaterials&&world.BuildingPriceText(p)!=""?world.BuildingPriceText(p)+" · ":"")+World.BuildingEffect(p):(world.UnitTimber(World.BuildUnit(p))>0?world.UnitTimber(World.BuildUnit(p))+" timber · ":"")+UnitLine(p),cityTiny,8);
    GUI.Label(new Rect(r.xMax-82,r.y+2,76,20),cost+" • "+t+"t",cityRight);GUI.color=keep;
-   if(r.Contains(lm)&&inList){if(building)cityHoverProjectNext=p;SetCityTip(PickTip(c,p,building,reason,ordered,cost,t));}
+   if(r.Contains(lm)&&inList){if(building)cityHoverProjectNext=p;string pv=!ordered&&reason==""?MaterialPreviewMemo(c,p):"";SetCityTip((pv!=""?pv+"\n":"")+PickTip(c,p,building,reason,ordered,cost,t));}
   }
-  if(holy.Length>0){float hy=options.Length*Row+2;GUI.Label(new Rect(4,hy,rw,24),"Religious — from "+world.nations[0].faith+" faith (+"+world.FaithPerTurn(0)+" a turn)",heading);hy+=26;
+  if(holy.Length>0){float hy=options.Length*Row+2;FitLabel(new Rect(4,hy,rw-8,24),"Religious — from "+world.nations[0].faith+" faith (+"+world.FaithPerTurn(0)+" a turn)",heading,9);hy+=26;
    for(int i=0;i<holy.Length;i++){int b=holy[i];var r=new Rect(0,hy+i*Row,rw,Row-3);string reason=world.FaithBuildReason(c,b);bool was=GUI.enabled;GUI.enabled=was&&reason==""&&world.result=="";
     if(GUI.Button(r,"",button)){status=world.BuildWithFaith(c,b)?World.FaithBuildingName(b)+" consecrated.":world.FaithBuildReason(c,b);GUIUtility.ExitGUI();}
     GUI.enabled=was;DrawIcon(PixelArt.IconFaith,new Rect(r.x+6,r.y+5,27,27));GUI.Label(new Rect(r.x+40,r.y+2,r.width-120,20),World.FaithBuildingName(b),new GUIStyle(body){wordWrap=false,clipping=TextClipping.Clip});
@@ -179,7 +179,9 @@ public partial class RealmGame {
   int cost=world.CostFor(c,current),price=world.RushPrice(c,building);string reason=world.BuildReason(c,current);if(reason==""&&building&&world.buildingMaterials&&c.paidFor!=current)reason=world.PayReason(c,current);
   GUI.Label(new Rect(x+38,y,w-130,20),world.BuildNameFor(c.owner,current),new GUIStyle(body){wordWrap=false,clipping=TextClipping.Clip});
   DrawBar(new Rect(x+38,y+21,w-130,8),progress/(float)Math.Max(1,cost),building?new Color(.55f,.62f,.85f):new Color(.9f,.6f,.3f));
-  GUI.Label(new Rect(x+38,y+29,w-130,16),reason!=""?"Paused: "+reason:progress+" / "+cost+"  •  "+(turns.Count>0?turns[0]:0)+(turns.Count>0&&turns[0]==1?" turn":" turns"),new GUIStyle(cityTiny){wordWrap=false,clipping=TextClipping.Clip});
+  {string mat=reason==""?MaterialBrief(c,building):"";var lineRect=new Rect(x+38,y+29,w-130,16);
+   FitLabel(lineRect,reason!=""?"Paused: "+reason:mat.StartsWith("Waiting")?mat:progress+" / "+cost+"  •  "+(turns.Count>0?turns[0]:0)+(turns.Count>0&&turns[0]==1?" turn":" turns")+(mat!=""?"  •  "+mat:""),cityTiny,8);
+   if(mat!=""&&new Rect(x+38,y,w-130,46).Contains(m))SetCityTip(MaterialLineMemo(c,building));}
   {var buy=new Rect(x+w-86,y+2,86,30);bool was=GUI.enabled;bool can=price>0&&world.gold>=price&&reason==""&&!World.IsProject(current)&&world.result=="";GUI.enabled=was&&can;
    if(GUI.Button(buy,"Buy "+price+"g",button)){status=world.Rush(c,building)?"Bought: "+world.BuildNameFor(c.owner,current)+" completes next turn.":"Cannot buy it now.";GUIUtility.ExitGUI();}GUI.enabled=was;
    if(buy.Contains(m))SetCityTip(World.IsProject(current)?"Projects cannot be bought.":price<=0?"Already paid for.":world.gold<price?"Buying costs "+price+" gold; you have "+world.gold+".":"Pay "+price+" gold to finish it next turn (double the price if nothing has been put into it yet).");}

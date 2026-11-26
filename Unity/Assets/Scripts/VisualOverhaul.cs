@@ -205,7 +205,7 @@ namespace ParadigmRealm {
   readonly Dictionary<string,Texture2D[]> workFrames=new Dictionary<string,Texture2D[]>();
   Texture2D WorkPose(Unit u){
    if(u==null||u.type!=1||u.job<=0||u.hasOrder||SpeciesSprite(u)!=null)return null;
-   string tool=u.job==5?"chop":u.job==3?"mine":"dig";Texture2D[] frames;
+   string tool=u.job==5?"chop":u.job==3?"mine":u.job==World.CampJob?(world.CampKind(u.owner,world.At(u.x,u.y))==1?"mine":"chop"):"dig";Texture2D[] frames;
    if(!workFrames.TryGetValue(tool,out frames)){var list=new List<Texture2D>();for(int k=0;k<16;k++){var f=Resources.Load<Texture2D>("Visuals/Work/worker-"+tool+"-"+k.ToString("00"));if(f==null)break;list.Add(f);}frames=MatchStanding(1,list);workFrames[tool]=frames;}
    if(frames.Length==0)return null;
    // Each worker keeps its own beat, so a team does not swing in step.

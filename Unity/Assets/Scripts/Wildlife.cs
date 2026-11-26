@@ -9,8 +9,14 @@ namespace ParadigmRealm {
 [Serializable] public class Animal {public int id,kind,x,y,hp=10;}
 public static class AnimalCatalog {
  public static readonly string[] Names={"Cave lion","Smilodon","Cave bear","Dire wolf","Megatherium","Woolly mammoth","Woolly rhinoceros"};
- // Half the strength they had (owner request, 7 Nov 2026; was attack 3,4,3,2,2,4,5 and defence 2,2,3,1,4,5,4).
- public static readonly int[] Attack={2,2,2,1,1,2,3},Defence={1,1,2,1,2,3,2},Steps={3,3,2,3,1,2,2};
+ // Half the strength they had (owner request, 7 Nov 2026; was attack 3,4,3,2,2,4,5 and defence 2,2,3,1,4,5,4). Rebalanced
+ // 26 Nov 2026 (owner: animals far too strong beside a civilisation's soldiers; was attack 2,2,2,1,1,2,3, defence 1,1,2,1,2,3,2):
+ // no beast is stronger than a Warrior, only the smilodon strikes harder, and soldiers have HuntBonus against all of them.
+ // The Megatherium (4) is no longer placed (owner request, 26 Nov 2026); its number stays so older saves still read.
+ public static readonly int[] Attack={1,2,1,1,1,1,2},Defence={1,1,2,0,1,2,1},Steps={3,3,2,3,1,2,2};
+ // A civilisation's soldiers know how to hunt: +1 strength in every fight with a wild animal, attacking or defending.
+ public const int HuntBonus=1;
+ public const int Megatherium=4;
  public static readonly bool[] Carnivore={true,true,true,true,false,false,false};
  public const int Sense=7;
  // Where each is most at home; any open land will do at a pinch.
@@ -18,6 +24,8 @@ public static class AnimalCatalog {
 }
 public partial class World {
  public bool wildlife;public List<Animal> animals=new List<Animal>();
+ // Older saves lose their Megatheriums (owner request, 26 Nov 2026).
+ public void RetireMegatheriums(){if(animals!=null)animals.RemoveAll(a=>a.kind==AnimalCatalog.Megatherium);}
  internal void SpawnAnimalsForChecks(){SpawnAnimals(new Random(seed+turn));}
  internal void TickAnimalsForChecks(bool spawn){if(!spawn)keepAnimalsFromSpawning=true;turn++;AnimalsTurn();keepAnimalsFromSpawning=false;}
  bool keepAnimalsFromSpawning;
@@ -43,7 +51,7 @@ public partial class World {
  // Grazers outnumber hunters three to one (owner request, 7 Nov 2026), as large plant-eaters always outnumber the beasts that hunt them.
  public const int GrazersPerHunter=3;
  // Mammoths and woolly rhinoceroses are rarer than ground sloths (owner request, 9 Nov 2026): one in six grazers each.
- static readonly int[] HunterKinds={0,1,2,3},GrazerKinds={4,4,4,4,5,6};
+ static readonly int[] HunterKinds={0,1,2,3},GrazerKinds={5,5,6};
  void SpawnAnimal(Random r){
   int hunters=animals.Count(a=>AnimalCatalog.Carnivore[a.kind]),grazers=animals.Count-hunters;
   var pool=grazers<hunters*GrazersPerHunter+GrazersPerHunter?GrazerKinds:HunterKinds;int kind=pool[r.Next(pool.Length)];var homes=AnimalCatalog.Homes[kind];
@@ -61,7 +69,7 @@ public partial class World {
  // The strongest defender on the tile takes the blow, as in any battle. A unit in a city is safe, and so is one on water.
  Unit AnimalPrey(int x,int y){var t=At(x,y);if(t==null||IsWater(t.terrain)||t.owner>=0||cities.Any(c=>c.x==x&&c.y==y))return null;return units.Where(u=>u.x==x&&u.y==y).OrderByDescending(u=>Power[u.type]>0).ThenByDescending(u=>Strength(u,null,true)).ThenByDescending(u=>u.hp).ThenBy(u=>u.id).FirstOrDefault();}
  void AnimalAttacks(Animal a,Unit prey){
-  int atk=AnimalCatalog.Attack[a.kind],def=Strength(prey,null,true);prey.hp-=Damage(atk,def);if(Power[prey.type]>0)a.hp-=Damage(def,atk);string name=AnimalCatalog.Names[a.kind];
+  int atk=AnimalCatalog.Attack[a.kind],def=Strength(prey,null,true)+(Power[prey.type]>0?AnimalCatalog.HuntBonus:0);prey.hp-=Damage(atk,def);if(Power[prey.type]>0)a.hp-=Damage(def,atk);string name=AnimalCatalog.Names[a.kind];
   // A unit under orders keeps going after the warning (owner request, 8 Nov 2026): one on a route carries on along it unless the
   // player orders otherwise, and an explorer gets away from the beast, heals if hurt, then explores on (ExploreStep). Only
   // sentries and fortified or working units are shaken out of what they were doing.
@@ -120,7 +128,7 @@ public partial class World {
   if(g.hp<=0){animals.Remove(g);if(a.hp>0)a.hp=Math.Min(10,a.hp+4);}
  }
  // A unit attacks an animal by moving onto it. Civilians cannot. Combat has no dice, so the result can be known in advance.
- public void AnimalExchange(Unit u,Animal a,out int dealt,out int taken){int own=Strength(u,null,false);dealt=Damage(own,AnimalCatalog.Defence[a.kind]);taken=IsRanged(u.type)?0:Damage(AnimalCatalog.Defence[a.kind],own);}
+ public void AnimalExchange(Unit u,Animal a,out int dealt,out int taken){int own=Strength(u,null,false)+AnimalCatalog.HuntBonus;dealt=Damage(own,AnimalCatalog.Defence[a.kind]);taken=IsRanged(u.type)?0:Damage(AnimalCatalog.Defence[a.kind],own);}
  bool FightAnimal(Unit u,Animal a){
   if(Power[u.type]==0)return false;int dealt,taken;AnimalExchange(u,a,out dealt,out taken);LogStrike(u,a.x,a.y);a.hp-=dealt;u.hp-=taken;u.moves=0;string name=AnimalCatalog.Names[a.kind];
   if(u.owner==0)Note(UnitName(u)+" fights a "+name+".");

@@ -33,13 +33,13 @@ public static void Run(){
     DimensionChecks.Run();
     SpeciesChecks();
     ResourceCatalogueChecks();
-    BarbarianChecks.Run();
+    BarbarianChecks.Run();WildBalanceChecks.Run();
     CityScreenChecks.Run();
     FantasyKingdomChecks.Run();
     ForcesChecks.Run();
     HillWoodsChecks.Run();
     DormantChecks.Run();
-    BuildingMaterialsChecks.Run();
+    BuildingMaterialsChecks.Run();MaterialEconomyChecks.Run();SiteChecks.Run();
     NegotiationChecks.Run();LifewaysChecks.Run();StatecraftChecks.Run();NovemberRequestChecks.Run();AmbientChecks.Run();
     SiegeChecks();
     var cold=World.New(3);var settler=cold.units.First(u=>u.owner==0&&u.type==0);cold.At(settler.x,settler.y).terrain=8;cold.tech[K("fire")]=false;Check(cold.Found(settler)==null,"cold settlement needs Fire");cold.tech[K("fire")]=true;Check(cold.Found(settler)!=null,"Fire (Stone Tools) permits cold settlement");
@@ -308,7 +308,7 @@ static void PacingAndPopulationChecks(){
     {var w=World.New(262,"Wild",0,1,1,0,2,2,4,hex:true,natives:false,wild:true,rations:true);w.animals.Clear();for(int k=0;k<80;k++)w.SpawnAnimalsForChecks();int hunters=w.animals.Count(a=>AnimalCatalog.Carnivore[a.kind]),grazers=w.animals.Count-hunters;Check(hunters>0&&grazers>=hunters*2,"grazers outnumber hunters ("+grazers+" to "+hunters+")");
      var open=w.tiles.Where(t=>t.owner<0&&t.realm==0&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&!w.units.Any(u=>w.Distance(u.x,u.y,t.x,t.y)<9)&&!w.cities.Any(c=>w.Distance(c.x,c.y,t.x,t.y)<9)).ToList();
      Tile Beside(Tile t){for(int k=0;k<6;k++){var n=w.Step(t.x,t.y,World.HexDi[k],World.HexDj[k]);if(n!=null&&open.Contains(n))return n;}return null;}
-     var spot=open.First(t=>Beside(t)!=null&&w.animals.All(a=>w.Distance(a.x,a.y,t.x,t.y)>12));var next=Beside(spot);w.animals.Clear();
+     var spot=open.First(t=>Beside(t)!=null);var next=Beside(spot);w.animals.Clear();
      var lion=new Animal{id=9001,kind=0,x=spot.x,y=spot.y};var mammoth=new Animal{id=9002,kind=5,x=next.x,y=next.y};w.animals.Add(lion);w.animals.Add(mammoth);w.TickAnimalsForChecks(false);Check(mammoth.hp<10||!w.animals.Contains(mammoth),"a hunter attacks a grazer beside it");
      w.animals.Clear();var wolf=new Animal{id=9003,kind=3,x=next.x,y=next.y};lion.hp=10;lion.x=spot.x;lion.y=spot.y;w.animals.Add(lion);w.animals.Add(wolf);w.TickAnimalsForChecks(false);Check(lion.hp<10||wolf.hp<10||w.Distance(lion.x,lion.y,wolf.x,wolf.y)>1,"rival hunters forced together fight, or part");}
 }
@@ -596,7 +596,7 @@ static void NinthNovemberChecks(){
       if(outside!=null){w.animals.Add(new Animal{id=9100,kind=0,x=outside.x,y=outside.y});w.turn=Math.Max(w.turn,World.HuntersFrom+1);int hp=guard.hp;w.TickAnimalsForChecks(false);Check(guard.hp==hp,"an animal does not attack a unit inside borders");}w.units.Remove(guard);w.animals.Clear();}}
     // Mammoths and rhinoceroses are rarer than sloths.
     {var g=World.New(512,"Wild",0,1,1,0,1,2,3,hex:true,rations:true);g.wildlife=true;g.animals.Clear();for(int k=0;k<12;k++)g.SpawnAnimalsForChecks();
-     int sloths=g.animals.Count(a=>a.kind==4),big=g.animals.Count(a=>a.kind==5||a.kind==6);Check(g.animals.Count==0||sloths>=big,"sloths outnumber mammoths and rhinoceroses ("+sloths+" against "+big+")");}
+     int sloths=g.animals.Count(a=>a.kind==4);Check(sloths==0,"no Megatherium is placed any more (owner request, 26 Nov 2026)");}
 }
 // Sieges and stacks (owner request, 9 Nov 2026): 3:1 for a city's defenders, 2:1 from a hill unless the city is on one, a stack's
 // combined strength with shared damage, Skirmish for a lone attacker; faith buildings paid from the civilisation's faith.
@@ -809,7 +809,7 @@ static void SixthRequestChecks(){
      n.gold=0;w.gold=0;n.scienceRate=0;n.militaryRate=0;var before=w.units.Count(u=>u.owner==0);for(int k=0;k<12;k++)w.Add(0,6,city.x,city.y);for(int t=0;t<4;t++){w.gold=0;w.nations[0].gold=0;w.EndTurn();}Check(w.nations[0].arrears>=2&&w.units.Count(u=>u.owner==0)<before+12,"soldiers desert when they go unpaid");Check(w.DebtState(0)!="","and the player is told why");}
     foreach(var u in w.units.Where(u=>u.owner==0).ToList())w.units.Remove(u);
     // Animals keep out of borders and are half as strong.
-    Check(AnimalCatalog.Attack[5]==2&&AnimalCatalog.Defence[5]==3,"animals have half their old strength");
+    Check(AnimalCatalog.Attack[5]==1&&AnimalCatalog.Defence[5]==2,"animals are weaker than before (rebalanced 26 Nov 2026)");
     {var g=World.New(272,"Wild",0,1,1,0,1,2,4,hex:true,natives:false,wild:true,rations:true);g.Found(g.units.First(u=>u.owner==0&&u.type==0));g.RebuildTerritory();g.turn=20;for(int k=0;k<40;k++)g.TickAnimalsForChecks(true);Check(g.animals.Count>0&&g.animals.All(a=>g.At(a.x,a.y).owner<0),"no animal stands inside a border ("+g.animals.Count+")");
      var inside=g.units.FirstOrDefault(u=>u.owner==0&&g.At(u.x,u.y).owner==0);if(inside!=null){var spot=g.tiles.FirstOrDefault(t=>t.owner<0&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&g.Distance(t.x,t.y,inside.x,inside.y)==1);if(spot!=null){g.animals.Clear();g.animals.Add(new Animal{id=99,kind=1,x=spot.x,y=spot.y});int hp=inside.hp;g.TickAnimalsForChecks(false);Check(inside.hp==hp,"a unit inside its borders is safe from hunters");}}}
     // The faith tree.

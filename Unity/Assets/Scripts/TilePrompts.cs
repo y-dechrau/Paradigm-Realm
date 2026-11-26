@@ -8,7 +8,7 @@ namespace ParadigmRealm {
 public partial class RealmGame {
  int foundStage,foundUnit=-1;string foundName="",foundProblem="";
  bool tilePicker;int pickerX,pickerY;Vector2 pickerAt;
- bool PromptOpen(){return gateScene!=null||gatePanel!=null||CampPanelOpen()||foundStage>0||tilePicker||GuidePromptOpen()||FaithPromptOpen()||WayPromptOpen()||(tutorialOn&&tutorialStep==0&&!tutorialMinimised&&world!=null&&world.result=="");}
+ bool PromptOpen(){return gateScene!=null||gatePanel!=null||CampPanelOpen()||SitePanelOpen()||foundStage>0||tilePicker||GuidePromptOpen()||FaithPromptOpen()||WayPromptOpen()||(tutorialOn&&tutorialStep==0&&!tutorialMinimised&&world!=null&&world.result=="");}
  void Found(){
   var u=Selected();string reason=world.FoundReason(u);
   if(u==null||reason!=""){status=reason==""?"Select a Settler first.":reason;return;}

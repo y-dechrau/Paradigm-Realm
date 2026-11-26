@@ -9,11 +9,12 @@ namespace ParadigmRealm { public partial class RealmGame {
   Directory.CreateDirectory(folder);yield return Frames(5);
   // New Game with the Zarevan Crown chosen among the Fantasy Kingdoms, and its lore page (18 Nov 2026).
   if(System.Environment.GetCommandLineArgs().Contains("-setupOnly")){yield return SetupShots(folder);Application.Quit();yield break;}
+  if(System.Environment.GetCommandLineArgs().Contains("-woodOnly")){yield return WoodlandShots(folder);yield break;}
   mainMenu=false;nameSetup=true;setupPage=0;civGroupReal=false;setupCiv=FantasyKingdoms.First;proposedName=CivilisationCatalog.Names[setupCiv];yield return Frames(15);yield return Shot(folder,"hud-newgame-zarevan.bmp");
   civLoreOpen=true;yield return Frames(10);yield return Shot(folder,"hud-lore-zarevan.bmp");civLoreOpen=false;setupCiv=0;
   seedText="421";mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;
   yield return Frames(10);
-  world.Note("A Megatherium attacked your Warrior; it is getting away and will explore on.");world.Note("Azurehold grew to population 6.");
+  world.Note("A Woolly mammoth attacked your Warrior; it is getting away and will explore on.");world.Note("Azurehold grew to population 6.");
   var settler=world.units.FirstOrDefault(u=>u.owner==0&&u.type==0);
   if(settler!=null){selected=settler.id;cityId=-1;FocusTile(settler.x,settler.y);}
   // The Chronicle of Discovery fills the display with every border inside it (18 Nov 2026).
@@ -127,7 +128,7 @@ namespace ParadigmRealm { public partial class RealmGame {
    world.WayResolve(world.NextWayChoice(),0);for(int k=0;k<Lifeways.RememberAfter;k++){world.turn++;world.LifewaysTurn();}yield return Frames(10);yield return Shot(folder,"hud-way-remember.bmp");
    world.WayResolve(world.NextWayChoice(),0);var feast=world.practices[0];gc.food=0;world.turn=feast.nextDue;world.LifewaysTurn();yield return Frames(10);yield return Shot(folder,"hud-way-lean.bmp");
    world.WayResolve(world.NextWayChoice(),1);world.met[1]=true;world.Relation(0,1).contact=true;foreach(var c in world.cities.Where(c=>c.owner==0)){var l=world.WayOf(c);l.adherence[Lifeways.Remembrance]=Mathf.Max(l.adherence[Lifeways.Remembrance],62);l.tradition=Lifeways.Remembrance;l.conviction=55;l.cause="it grew out of the relief of turn 2";}
-   world.TakeCommitment(0,Lifeways.Remembrance);world.DeclareVow(0,2,gc.id,-1,20);detailsScreen="Religion";faithsView=false;yield return Frames(15);yield return Shot(folder,"hud-traditions.bmp");detailsScreen="";}
+   world.TakeCommitment(0,Lifeways.Remembrance);world.DeclareVow(0,2,gc.id,-1,20);detailsScreen="Religion";faithsView=false;religionDetail=false;yield return Frames(15);yield return Shot(folder,"hud-religion.bmp");religionDetail=true;yield return Frames(15);yield return Shot(folder,"hud-traditions.bmp");religionDetail=false;detailsScreen="";}
   Application.Quit();
  }
 }}

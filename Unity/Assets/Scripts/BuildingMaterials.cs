@@ -11,11 +11,12 @@ namespace ParadigmRealm {
 // (each nation is given a starting stockpile, and buildings already under way count as paid).
 public static class MaterialRules {
  // Timber and stone per building: about a sixth of its shield cost, split by what it is built of (timber thirds, the rest stone).
- public const int CostDivisor=6,WonderMultiple=2,Minimum=3;
+ // A third of the shield cost since 26 Nov 2026 (was a sixth): drawn as the work goes, materials now decide what can be built at once.
+ public const int CostDivisor=3,WonderMultiple=2,Minimum=3;
  public const int CityTimber=1,CityStone=1,WoodedTile=1,HillTile=1,ResourceTile=2,DevelopedBonus=1;
  public const int TimberResource=53,StoneResource=69;
  public const int StartStock=10,StartStockPerCity=5;
- static readonly Dictionary<int,int> TimberThirds=new Dictionary<int,int>{{7,2},{8,1},{9,0},{30,2},{31,2},{32,1},{33,1},{34,1},{35,1},{37,0},{38,1},{39,0},{40,1},{41,0},{42,0},{43,3},{44,2},{60,1},{61,1},{62,1},{63,1},{64,1}};
+ static readonly Dictionary<int,int> TimberThirds=new Dictionary<int,int>{{7,2},{8,1},{9,0},{30,2},{31,2},{32,1},{33,1},{34,1},{35,1},{37,0},{38,1},{39,0},{40,1},{41,0},{42,0},{43,1},{44,2},{60,1},{61,1},{62,1},{63,1},{64,1}};
  public static int Timber(int b,int total){int t;if(!TimberThirds.TryGetValue(b,out t))t=1;return total*t/3;}
 }
 public partial class World {
@@ -27,14 +28,15 @@ public partial class World {
  // What is missing to start building b in city c now ("" when it can be paid, or is already paid for).
  public string PayReason(City c,int b){
   if(!buildingMaterials||BuildUnit(b)>=0||c.paidFor==b)return "";var n=nations[c.owner];var miss=new List<string>();
-  int g=BuildingGold(b),t=BuildingTimber(b),s=BuildingStone(b);if(n.gold<g)miss.Add((g-n.gold)+" more gold");if(n.timber<t)miss.Add((t-n.timber)+" more timber");if(n.stone<s)miss.Add((s-n.stone)+" more stone");
+  // Since 26 Nov 2026 only the gold is paid at the start; timber and stone are drawn as the work goes (MaterialEconomy.cs).
+  int g=BuildingGold(b);if(n.gold<g)miss.Add((g-n.gold)+" more gold");
   return miss.Count==0?"":"Needs "+string.Join(", ",miss.ToArray())+" to start";
  }
  // Pays for the building at the front of the line if it is not paid for yet. False when the nation cannot afford it.
  public bool TryPayBuilding(City c){
   if(!buildingMaterials)return true;int b=c.buildingProject;if(b<0||c.paidFor==b)return true;RefundBuilding(c);if(PayReason(c,b)!="")return false;
-  var n=nations[c.owner];int g=BuildingGold(b),t=BuildingTimber(b),s=BuildingStone(b);n.gold-=g;n.timber-=t;n.stone-=s;if(c.owner==0)gold=n.gold;
-  c.paidFor=b;c.paidGold=g;c.paidTimber=t;c.paidStone=s;return true;
+  var n=nations[c.owner];int g=BuildingGold(b);n.gold-=g;if(c.owner==0)gold=n.gold;
+  c.paidFor=b;c.paidGold=g;c.paidTimber=0;c.paidStone=0;return true;
  }
  // An unfinished building that was paid for and is no longer the one in progress gives its payment back.
  void RefundBuilding(City c){
@@ -45,13 +47,16 @@ public partial class World {
  public void SettleBuilding(City c){if(!buildingMaterials||c==null)return;RefundBuilding(c);TryPayBuilding(c);}
  void ConsumeBuildingPayment(City c){c.paidFor=-1;c.paidGold=c.paidTimber=c.paidStone=0;}
  // Timber and stone a nation gathers in a turn: {timber, stone}.
- public int[] MaterialIncome(int owner){
+ [NonSerialized] public int[] incomeForChecks;
+ public int[] MaterialIncome(int owner){if(incomeForChecks!=null)return (int[])incomeForChecks.Clone();
   int timber=0,stone=0;
   foreach(var c in cities){if(c.owner!=owner)continue;timber+=MaterialRules.CityTimber;stone+=MaterialRules.CityStone;
    foreach(var t in Worked(c)){
     if(Wooded(t))timber+=MaterialRules.WoodedTile;if(t.terrain==2)stone+=MaterialRules.HillTile;
     if(t.resource==MaterialRules.TimberResource&&ResourceKnown(owner,t.resource))timber+=MaterialRules.ResourceTile+(t.road?MaterialRules.DevelopedBonus:0);
     if(t.resource==MaterialRules.StoneResource&&ResourceKnown(owner,t.resource))stone+=MaterialRules.ResourceTile+(t.mine?MaterialRules.DevelopedBonus:0);}}
+  // Outlying camps (SiteCompetition.cs) send their timber or stone home while the way is open.
+  {var camp=OutpostIncome(owner,null);timber+=camp[0];stone+=camp[1];}
   return new[]{timber,stone};
  }
  void MaterialsTurn(int owner,int turns){if(!buildingMaterials)return;var inc=MaterialIncome(owner);var n=nations[owner];n.timber+=inc[0]*turns;n.stone+=inc[1]*turns;}

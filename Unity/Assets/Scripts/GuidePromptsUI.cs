@@ -22,17 +22,21 @@ public partial class RealmGame {
  bool PantheonDue(){var n=world.nations[0];return n.pantheon<0&&n.faith>=World.PantheonCost&&world.PantheonReason(0)=="";}
  bool GuidePromptOpen(){return world!=null&&!turnRunning&&world.result==""&&!guide&&!confirmNew&&pendingUnit==-1&&((world.researchPrompts!=null&&world.researchPrompts.Count>0)||PantheonDue()||world.NextBuildPrompt()!=null);}
  // The End Turn button runs the turn a little at a time, so the map keeps moving and never freezes.
- bool turnRunning;int turnStep;const long TurnSliceMs=12;string autoSaveFolder;
+ // The turn runs in slices with a frame drawn between them. The interface is locked meanwhile, so a slice grows with how long a
+ // frame takes (owner report, 26 Nov 2026: with many animals and barbarians in view the frames between slices made turns long):
+ // about three times the last frame, from 12 to 45 ms, so drawing is at most about a quarter of the wait.
+ bool turnRunning;int turnStep;const long TurnSliceMs=12,TurnSliceMaxMs=45;
+ static long TurnSlice(double frameMs){return Math.Max(TurnSliceMs,Math.Min(TurnSliceMaxMs,(long)(frameMs*3)));}string autoSaveFolder;
  // Development aid: when set (by -frameProbe), how long each step of the turn took.
  List<KeyValuePair<string,double>> turnStepLog;
  System.Collections.IEnumerator RunTurn(){
-  var clock=System.Diagnostics.Stopwatch.StartNew();var steps=world.TurnSteps().GetEnumerator();turnStep=0;
+  var clock=System.Diagnostics.Stopwatch.StartNew();var steps=world.TurnSteps().GetEnumerator();turnStep=0;long slice=TurnSliceMs;
   while(true){
    long stepStart=clock.ElapsedTicks;
    bool more;try{more=steps.MoveNext();}catch(Exception e){Debug.LogException(e);status="The turn could not finish: "+e.Message;more=false;}
    int stepNow=more?steps.Current%10000:0,stepPart=more?steps.Current/10000:0;
    if(turnStepLog!=null)turnStepLog.Add(new KeyValuePair<string,double>((more?"step after "+stepNow+" part "+stepPart+" ("+(stepNow<world.civCount?world.NationName(stepNow):"world")+")":"final"),(clock.ElapsedTicks-stepStart)*1000.0/System.Diagnostics.Stopwatch.Frequency));
-   if(!more)break;turnStep=stepNow;if(clock.ElapsedMilliseconds>=TurnSliceMs){yield return null;clock.Reset();clock.Start();}
+   if(!more)break;turnStep=stepNow;if(clock.ElapsedMilliseconds>=slice){var frame=System.Diagnostics.Stopwatch.StartNew();yield return null;slice=TurnSlice(frame.Elapsed.TotalMilliseconds);clock.Reset();clock.Start();}
   }
   steps.Dispose();turnStep=world.civCount;
   if(AutoSaveDue()){string path=System.IO.Path.Combine(autoSaveFolder??Application.persistentDataPath,"earth-auto-"+(world.turn%3)+".json");var job=System.Threading.Tasks.Task.Run(()=>AtomicSave(path));while(!job.IsCompleted)yield return null;if(job.Exception!=null)world.Note("Autosave failed: "+job.Exception.GetBaseException().Message);}

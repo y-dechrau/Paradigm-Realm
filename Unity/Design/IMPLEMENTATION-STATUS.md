@@ -2,6 +2,10 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 26 Nov, evening: timber and stone as work goes, contested sites, simpler religion, wild balance, faster turns, farms by age (no save version change)
+
+Implemented and checked by the engine checks (`MaterialEconomyChecks`, including the owner's acceptance and shortage scenarios; `SiteChecks`, the woodland scenario; `WildBalanceChecks`). The built game was driven at 1280 x 800 with `-hudShot <folder> -woodOnly`, which clicks the woodland to open the site panel, clicks the timber figure to open the ledger, and plays until the camp stands; every PROBE passed. `-inputProbe` gave 25 passes and no failures. End Turn on the owner's turn-76 save went from 1.45-1.91 s to 1.24-1.57 s on screen. Planned and not built (gateway trade, timber grades, masonry bridges, materials for Forces units, haggling over shipments): see [TIMBER-STONE-AND-SITES-2026-11-26.md](TIMBER-STONE-AND-SITES-2026-11-26.md). Not hand-played.
+
 ## Owner requests 25 Nov, later: mini-map zoom, New Game world page, movement on every tile (no save version change)
 
 Implemented and tested in a running build: the mini-map's own zoom; the New Game world page after the owner's picture; movement on all 21 kinds of land and water, the two other farm crops and village camps (see "Every other tile" in [LIVING-COUNTRYSIDE-2026-11-26.md](LIVING-COUNTRYSIDE-2026-11-26.md)). Not hand-played.
