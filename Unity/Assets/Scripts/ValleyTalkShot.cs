@@ -39,7 +39,21 @@ public partial class RealmGame {
   }
   // Your own terms (27 Nov 2026): the composer with a place named, then a timber purchase; and a plain pact answered in the call box.
   {valleyTalk=-1;world.rivalCalls.Clear();var home=world.cities.First(c=>c.owner==0);var place=world.tiles.First(t=>t.realm==0&&!PixelArt.IsWater(t.terrain)&&world.Distance(t.x,t.y,home.x,home.y)==4);
-   OpenCompose(1);composeKind=0;composeSite=place.y*world.Width+place.x;composeGold=20;isoWidth=96;FocusTile(place.x,place.y);yield return Frames(20);Probe("compose: the composer is open",ComposeOpen());yield return Shot(folder,"valley-compose-place.bmp",20);
+   OpenCompose(1);composeKind=0;composeGold=20;isoWidth=96;FocusTile(home.x,home.y);yield return Frames(20);
+   // Paint the land with a real drag: press "Mark on map", then drag across a row of tiles and back down the next.
+   composePicking=true;yield return Frames(10);
+   {var pts=new System.Collections.Generic.List<Vector2>();System.Func<int,int,Vector2> at=(tx,ty)=>{float sx,sy;IsoScreen(tx,ty,out sx,out sy);return wideMatrix.MultiplyPoint3x4(new Vector3(MapX+sx,MapY+sy,0));};
+    // Round the city through the land beside it, in screen order, as a player would sweep the pointer.
+    var ring=world.KeepTiles(home.y*world.Width+home.x,1).Where(t=>!PixelArt.IsWater(t.terrain)).ToList();var c0=at(home.x,home.y);ring=ring.OrderBy(t=>{var p=at(t.x,t.y)-c0;return Mathf.Atan2(p.y,p.x);}).ToList();
+    foreach(var t in ring)pts.Add(at(t.x,t.y));
+    yield return DragThrough(pts);yield return Frames(5);Debug.Log("PROBE compose: painted "+composeArea.Count+" tiles of "+ring.Count+" land tiles swept");Probe("compose: a drag paints every land tile it crosses",composeArea.Count>=ring.Count&&ring.Count>=3);
+    yield return Shot(folder,"valley-compose-painting.bmp",10);
+    // Starting a drag on a painted tile removes tiles.
+    int before=composeArea.Count;yield return DragThrough(new System.Collections.Generic.List<Vector2>{at(ring[0].x,ring[0].y),at(ring[1].x,ring[1].y)});yield return Frames(3);Probe("compose: dragging over marked land removes it ("+before+" to "+composeArea.Count+")",composeArea.Count<before);
+    var bar=ComposeBarRect;var done=wideMatrix.MultiplyPoint3x4(new Vector3(bar.xMax-60,bar.y+27,0));yield return ClickAt(done.x,done.y);yield return Frames(5);Probe("compose: Done returns to the proposal",ComposeOpen()&&composeSite>=0);}
+   Probe("compose: the composer is open",ComposeOpen());yield return Shot(folder,"valley-compose-place.bmp",20);
+   {bool ok;string said=world.JudgeProposal(1,0,composeArea,0,0,400,out ok);Debug.Log("PROBE compose answer: "+said);if(ok){world.gold=world.nations[0].gold=600;world.MakeProposal(1,0,composeArea,0,0,400);var a=world.valleyAccords.Last();var inside=world.tiles[composeArea[0]];var outside=world.tiles.First(t=>t.realm==0&&!composeArea.Contains(t.y*world.Width+t.x)&&world.Distance(t.x,t.y,world.tiles[a.site].x,world.tiles[a.site].y)==4);
+     Probe("compose: the promise covers the painted tiles and not others",world.AccordCovers(a,inside.x,inside.y)&&!world.AccordCovers(a,outside.x,outside.y)&&a.area.Count==composeArea.Count);}}
    composeKind=3;composeAmount=3;composeTurns=8;composeGold=12;yield return Frames(5);yield return Shot(folder,"valley-compose-timber.bmp",10);composeWith=-1;
    foreach(var o in world.offers.Where(o=>o.to==0&&o.status==0))o.status=2;
    var pact=new DiplomaticOffer{id=world.nextDiplomaticId++,from=1,to=0,kind=Pacts.Kind[Pacts.NonAggression],created=world.turn,expires=world.turn+5,status=0};world.offers.Add(pact);

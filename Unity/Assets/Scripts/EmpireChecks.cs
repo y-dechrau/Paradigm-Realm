@@ -35,7 +35,8 @@ public static class EmpireChecks {
   var w=Setup();var c=w.cities.First(a=>a.owner==0);w.speed=1;Grant(w,0,"agriculture");
   c.pop=1;Check(w.BuildReason(c,0)!="","Settler needs city size 2");
   c.pop=2;Check(w.BuildReason(c,0)==""&&w.ChooseProject(c,0,false),"Settler buildable at size 2");
-  int settlers=w.units.Count(u=>u.owner==0&&u.type==0);w.Produce(c,w.Cost(0));Check(c.pop==1&&w.units.Count(u=>u.owner==0&&u.type==0)==settlers+1,"Settler costs 1 population");
+  int settlers=w.units.Count(u=>u.owner==0&&u.type==0);c.food=w.FoodNeeded(c);w.Produce(c,w.Cost(0));Check(c.pop==1&&w.units.Count(u=>u.owner==0&&u.type==0)==settlers+1,"Settler costs 1 population");
+  Check(c.food==0,"and takes the stores with it, so a full city does not grow the citizen back the next turn ("+c.food+" of "+w.FoodNeeded(c)+")");
   w.units.RemoveAll(u=>u.owner==0);int free=World.FreeUnitsPerCity+w.GovernmentSupport(0);
   for(int i=0;i<free;i++)w.Add(0,1,c.x,c.y);int expense=w.Budget(0)[1];
   w.Add(0,1,c.x,c.y);Check(w.Budget(0)[1]==expense+1,"each civilian beyond 3 per city plus government support costs 1 gold");
@@ -200,7 +201,7 @@ public static class EmpireChecks {
   // The idle stand-in player is kept out of war: rivals now conquer a civilisation that never defends itself, and this measures rivals.
   for(int t=0;t<200&&g.result=="";t++){for(int o=1;o<g.civCount;o++)g.Relation(0,o).pacts|=1<<Pacts.NonAggression;g.EndTurn();for(int o=1;o<g.civCount;o++)if(eraOne[o]==0&&g.Era(o)>=1)eraOne[o]=g.turn;}
   Check(g.result=="","no rival wins before turn 200 in a standard Small game ("+g.result+")");
-  Check(Enumerable.Range(1,g.civCount-1).Where(o=>!g.IsNativeNation(o)).All(o=>eraOne[o]>=50&&eraOne[o]<=130),"home rivals complete the first era between turns 50 and 130, research costing double (all, natives included: "+string.Join(", ",Enumerable.Range(1,g.civCount-1).Select(o=>eraOne[o]))+")");
+  Check(Enumerable.Range(1,g.civCount-1).Where(o=>!g.IsNativeNation(o)).All(o=>eraOne[o]>=50&&eraOne[o]<=145),"home rivals complete the first era between turns 50 and 145 (130 until 27 Nov 2026, when Settlers began taking their city's food stores and the slowest rival moved from under 130 to 141), research costing double (all, natives included: "+string.Join(", ",Enumerable.Range(1,g.civCount-1).Select(o=>eraOne[o]))+")");
   // Behind the locked gates the native peoples keep step with the home world.
   {int pace=g.HomeTechPace();var natives=Enumerable.Range(1,g.civCount-1).Where(g.IsNativeNation).ToList();Check(natives.All(o=>eraOne[o]>0&&Math.Abs(g.nations[o].tech.Count(a=>a)-pace)<=12),"native peoples track the home world's technology (home "+pace+"; natives "+string.Join(", ",natives.Select(o=>g.nations[o].tech.Count(a=>a)))+")");}
  }

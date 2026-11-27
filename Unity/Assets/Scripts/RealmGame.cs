@@ -69,7 +69,7 @@ namespace ParadigmRealm
             if(cityScreen){DrawTopBar();Centred();DrawCityScreen();DrawSaveToast();return;}
             NavigationInput();
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen()&&!turnRunning;
-            FollowGateArrival();mapClock.Start();DrawMap();mapClock.Stop();hudClock.Start();DrawHud();hudClock.Stop();DrawRealmBanner();
+            FollowGateArrival();mapClock.Start();DrawMap();mapClock.Stop();hudClock.Start();DrawHud();hudClock.Stop();DrawRealmBanner();DrawComposePickBar();
             // Prompts, the tutorial and the guide keep their 1280 design, centred on the display.
             if(tilePicker&&gateScene==null&&gatePanel==null&&!CampPanelOpen()&&!SitePanelOpen()&&!ValleyTalkOpen()&&!ComposeOpen()&&foundStage<=0)DrawTilePicker();
             Centred();if(!guide)DrawTutorial();
@@ -362,6 +362,7 @@ namespace ParadigmRealm
             if(moveMode&&e.type==EventType.MouseDown&&e.button==0&&inside){var mover=Selected();moveMode=false;if(mover!=null&&!(mover.x==x&&mover.y==y))IssueOrder(mover,x,y);e.Use();return;}
             if(moveMode&&e.type==EventType.MouseDown&&e.button==1){moveMode=false;e.Use();return;}
             if(roadMode&&PlotRoadInput(e,inside,x,y))return;
+            if(ComposeAreaInput(e,inside,x,y))return;// painting the land for your own proposal (ValleyTalksUI.cs)
             // Owner request (31 Oct): the left button selects, the right button directs. Right-click a tile, or hold the right
             // button and drag to it, to send the selected unit there (a worker in road mode builds a road along the way).
             if(e.type==EventType.MouseDown&&e.button==0&&inside){

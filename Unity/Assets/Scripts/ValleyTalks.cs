@@ -18,7 +18,10 @@ namespace ParadigmRealm {
 // place and what was paid. A settled issue is not raised again unless the need has changed a good deal.
 [Serializable] public class ValleyIssue{public int id,owner,other=0,site=-1,motive,kind,amount,gold,raised,status,need,shortfall,answered=-1;public string why="",opening="";}
 // keepTurns: how long a promise to leave the place unsettled lasts from the start; supplyDone: every delivery made.
-[Serializable] public class ValleyAccord{public int id,a,b,site=-1,radius=ValleyTuning.KeepRadius,keeper=-1,supplier=-1,receiver=-1,perTurn,turns,start,delivered,missed,goldEach,goldOnce,status,lastTurn=-1,issue,keepTurns;public bool supplyDone;public string terms="",place="";}
+[Serializable] public class ValleyAccord{public int id,a,b,site=-1,radius=ValleyTuning.KeepRadius,keeper=-1,supplier=-1,receiver=-1,perTurn,turns,start,delivered,missed,goldEach,goldOnce,status,lastTurn=-1,issue,keepTurns;public bool supplyDone;public string terms="",place="";
+ // The exact tiles of a promise you painted on the map (27 Nov 2026); empty in older saves and for the leaders' own talks, which
+ // mean every tile within radius of site.
+ public List<int> area=new List<int>();}
 [Serializable] public class SupplyRecord{public int receiver,supplier,delivered,missed,broken;}
 public static class ValleyTuning{
  public const int Horizon=12,LongHorizon=24,SmallShort=8,KeepRadius=3,EvidenceReach=3,CityEvidence=5,LandMargin=20,FoodMargin=2,RaiseEvery=3,RaiseAgain=15,GoldPerTurnSaved=6,PricePerTimber=3,MissLimit=2,MinGain=1;
@@ -38,7 +41,7 @@ public partial class World {
  // Named for you, the reader (owner report, 27 Nov 2026: "the north-eastern woods" said nothing about where): what the place is,
  // then how far and which way from your nearest town, e.g. "the woods 3 tiles north-east of Shamsira".
  public string PlaceName(int owner,int cell){if(cell<0)return "that land";var t=tiles[cell];
-  {var mine=cities.Where(c=>c.owner==0).OrderBy(c=>Distance(c.x,c.y,t.x,t.y)).FirstOrDefault();if(mine!=null&&Distance(mine.x,mine.y,t.x,t.y)<=14){bool f=TilesAround(t.x,t.y,1).Any(n=>n.terrain==7);int wd=TilesAround(t.x,t.y,1).Count(Wooded);int d=Distance(mine.x,mine.y,t.x,t.y);
+  {var mine=cities.Where(c=>c.owner==0).OrderBy(c=>Distance(c.x,c.y,t.x,t.y)).FirstOrDefault();if(mine!=null&&Distance(mine.x,mine.y,t.x,t.y)<=14){bool f=TilesAround(t.x,t.y,1).Any(n=>n.terrain==7);int wd=TilesAround(t.x,t.y,1).Count(Wooded);int d=Distance(mine.x,mine.y,t.x,t.y);if(d==0)return mine.name;
    return "the "+(f?"ford":wd>=3?"woods":"land")+" "+d+(d==1?" tile ":" tiles ")+CompassWord(mine.x,mine.y,t.x,t.y)+" of "+mine.name;}}
   var cap=CapitalOf(owner)??cities.FirstOrDefault(c=>c.owner==owner);
   string dir="";if(cap!=null){int dx=DeltaX(cap.x,t.x),dy=t.y-cap.y;dir=Math.Abs(dx)>=Math.Abs(dy)*2?(dx>0?"eastern ":"western "):Math.Abs(dy)>=Math.Abs(dx)*2?(dy>0?"southern ":"northern "):(dy>0?"south":"north")+(dx>0?"-eastern ":"-western ");}
@@ -196,7 +199,8 @@ public partial class World {
   Record(victim,breaker).broken++;DiplomacyEvent(breaker,victim,NationName(breaker)+" broke the agreement over "+a.place+": "+what+(paid>0?" after "+paid+" gold was paid":"")+".");
  }
  // A promise to leave a place unsettled, as a warning on any site within it (every settler, yours and theirs, reads this).
- public ValleyAccord KeepPromiseAt(int owner,int x,int y){foreach(var a in Accords())if(a.status==0&&a.keeper==owner&&a.site>=0&&Distance(tiles[a.site].x,tiles[a.site].y,x,y)<=a.radius)return a;return null;}
+ public ValleyAccord KeepPromiseAt(int owner,int x,int y){foreach(var a in Accords())if(a.status==0&&a.keeper==owner&&AccordCovers(a,x,y))return a;return null;}
+ public bool AccordCovers(ValleyAccord a,int x,int y){if(a.area!=null&&a.area.Count>0)return a.area.Contains(y*Width+x);return a.site>=0&&Distance(tiles[a.site].x,tiles[a.site].y,x,y)<=a.radius;}
  public string KeepPromiseWarning(int owner,int x,int y){var a=KeepPromiseAt(owner,x,y);if(a==null)return "";int other=a.keeper==a.a?a.b:a.a;return "You promised "+NationName(other)+" to leave "+a.place+" unsettled ("+a.terms+") Settling here breaks that promise.";}
  // Founding inside a promise breaks it, scaled to what the other side gave for it.
  void ValleyOnFound(City c){var a=KeepPromiseAt(c.owner,c.x,c.y);if(a==null)return;BreakAccord(a,c.owner,"founded "+c.name+" inside it");if(c.owner==0)Note("You broke your promise to "+NationName(a.keeper==a.a?a.b:a.a)+" by founding "+c.name+" at "+a.place+". They will remember.");}

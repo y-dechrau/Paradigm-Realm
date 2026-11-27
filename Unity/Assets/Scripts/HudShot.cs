@@ -13,6 +13,8 @@ namespace ParadigmRealm { public partial class RealmGame {
   if(System.Environment.GetCommandLineArgs().Contains("-valleyOnly")){yield return ValleyTalkShots(folder);yield break;}
   if(System.Environment.GetCommandLineArgs().Contains("-raiderOnly")){yield return RaiderShots(folder);yield break;}
   if(System.Environment.GetCommandLineArgs().Contains("-forcesOnly")){yield return ForcesShots(folder);yield break;}
+  if(System.Environment.GetCommandLineArgs().Contains("-courtOnly")){yield return CourtShots(folder);yield break;}
+  if(System.Environment.GetCommandLineArgs().Contains("-roadOnly")){yield return RoadShots(folder);yield break;}
   mainMenu=false;nameSetup=true;setupPage=0;civGroupReal=false;setupCiv=FantasyKingdoms.First;proposedName=CivilisationCatalog.Names[setupCiv];yield return Frames(15);yield return Shot(folder,"hud-newgame-zarevan.bmp");
   civLoreOpen=true;yield return Frames(10);yield return Shot(folder,"hud-lore-zarevan.bmp");civLoreOpen=false;setupCiv=0;
   seedText="421";mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;

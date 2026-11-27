@@ -17,7 +17,7 @@ namespace ParadigmRealm
             // "-freezeTest": stalls the main thread for 6 s once the menu is up, to prove the freeze recorder (FreezeWatch) reports it, then quits.
             if(Array.IndexOf(args,"-freezeTest")>=0){StartCoroutine(FreezeTest());}
             // A test run keeps its saves and autosaves in its own output folder, never among the player's saved games.
-            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot","-cheerShot","-dimShot","-speciesShot","-hudShot","-valleyShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);}}
+            foreach(string probe in new[]{"-autoShot","-frameProbe","-inputProbe","-flickerProbe","-walkProbe","-dipShot","-mapShot","-lookShot","-cheerShot","-dimShot","-speciesShot","-hudShot","-valleyShot"}){i=Array.IndexOf(args,probe);if(i>=0&&i+1<args.Length){probeFolder=autoSaveFolder=args[i+1];Directory.CreateDirectory(probeFolder);Application.runInBackground=true;}}// a test run carries on behind another window (27 Nov 2026: it stalled while the owner played)
             i=Array.IndexOf(args,"-autoShot");
             if(i>=0&&i+1<args.Length)StartCoroutine(AutoShot(args[i+1]));
             i=Array.IndexOf(args,"-frameProbe");if(i>=0&&i+1<args.Length)StartCoroutine(FrameProbe(args[i+1],i+2<args.Length?int.Parse(args[i+2]):4,i+3<args.Length?int.Parse(args[i+3]):120));
@@ -311,13 +311,33 @@ namespace ParadigmRealm
         [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool PostMessage(IntPtr h,uint m,IntPtr w,IntPtr l);
         [System.Runtime.InteropServices.DllImport("user32.dll",CharSet=System.Runtime.InteropServices.CharSet.Unicode)] static extern IntPtr FindWindow(string c,string t);
         [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr GetActiveWindow();
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h,out uint pid);
+        // This game's own window only (27 Nov 2026): looking a window up by title could find another copy of the game the owner is
+        // playing, and send it the probe's clicks. With no window of our own the input is simply not sent.
+        static IntPtr ownWindow;
+        static IntPtr OwnWindow(){
+            if(ownWindow!=IntPtr.Zero)return ownWindow;uint me=(uint)System.Diagnostics.Process.GetCurrentProcess().Id,pid;
+            var h=GetActiveWindow();if(h!=IntPtr.Zero){GetWindowThreadProcessId(h,out pid);if(pid==me)return ownWindow=h;}
+            h=System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;if(h!=IntPtr.Zero){GetWindowThreadProcessId(h,out pid);if(pid==me)return ownWindow=h;}
+            return IntPtr.Zero;}
         // Mouse events cannot be injected into OnGUI (groups forget the position), so they go to this game's own window as Windows messages.
-        void PostMouse(Event e){var h=GetActiveWindow();if(h==IntPtr.Zero)h=FindWindow(null,Application.productName);var at=new IntPtr(((int)e.mousePosition.y<<16)|((int)e.mousePosition.x&0xffff));PostMessage(h,0x0200,IntPtr.Zero,at);bool left=e.button==0;uint msg=e.type==EventType.MouseDown?(left?0x0201u:0x0204u):(left?0x0202u:0x0205u);PostMessage(h,msg,new IntPtr(e.type==EventType.MouseDown?(left?1:2):0),at);}
+        void PostMouse(Event e){var h=OwnWindow();if(h==IntPtr.Zero)return;var at=new IntPtr(((int)e.mousePosition.y<<16)|((int)e.mousePosition.x&0xffff));PostMessage(h,0x0200,IntPtr.Zero,at);bool left=e.button==0;uint msg=e.type==EventType.MouseDown?(left?0x0201u:0x0204u):(left?0x0202u:0x0205u);PostMessage(h,msg,new IntPtr(e.type==EventType.MouseDown?(left?1:2):0),at);}
 #else
         void PostMouse(Event e){probeEvent=e;}
 #endif
         IEnumerator Send(Event e){if(e.isMouse)PostMouse(e);else probeEvent=e;yield return Frames(3);}
         static Event Mouse(EventType type,float x,float y,int button=0,int clicks=1){return new Event{type=type,mousePosition=new Vector2(x,y),button=button,clickCount=clicks};}
+        // A held left-button drag through screen points (window pixels), as the player paints land on the map.
+        IEnumerator DragThrough(System.Collections.Generic.List<Vector2> pts){
+            yield return Send(Mouse(EventType.MouseDown,pts[0].x,pts[0].y));
+            for(int k=1;k<pts.Count;k++){
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+                var h=OwnWindow();if(h==IntPtr.Zero)yield break;PostMessage(h,0x0200,new IntPtr(1),new IntPtr(((int)pts[k].y<<16)|((int)pts[k].x&0xffff)));
+#else
+                probeEvent=Mouse(EventType.MouseDrag,pts[k].x,pts[k].y);
+#endif
+                yield return Frames(2);}
+            yield return Send(Mouse(EventType.MouseUp,pts[pts.Count-1].x,pts[pts.Count-1].y));}
         IEnumerator ClickAt(float x,float y,int button=0,int clicks=1){yield return Send(Mouse(EventType.MouseDown,x,y,button,clicks));yield return Send(Mouse(EventType.MouseUp,x,y,button,clicks));}
         // The New Game world screen: pictures of it as in the owner's mockup and in other states, and every control pressed for real.
         IEnumerator SetupShots(string folder){

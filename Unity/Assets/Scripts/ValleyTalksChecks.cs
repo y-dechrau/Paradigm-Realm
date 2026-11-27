@@ -54,6 +54,12 @@ public static class ValleyTalksChecks {
    lp.JudgeProposal(1,0,fordCell,0,0,400,out ok);Check(ok,"for enough gold they agree");lp.gold=500;lp.nations[0].gold=500;lp.MakeProposal(1,0,fordCell,0,0,400);var ft=lp.tiles[fordCell];
    Check(lp.KeepPromiseWarning(1,ft.x,ft.y)!=""&&!lp.units.Any(u=>u.owner==1&&u.type==0&&u.hasOrder&&lp.Distance(u.destinationX,u.destinationY,ft.x,ft.y)<=ValleyTuning.KeepRadius),"then they keep clear of it and their settler turns away");
    var far=lp.tiles.First(t=>t.realm==0&&!PixelArt.IsWater(t.terrain)&&t.owner<0&&lp.Distance(t.x,t.y,ft.x,ft.y)>=12);string b=lp.JudgeProposal(1,0,far.y*lp.Width+far.x,0,0,0,out ok);Check(ok,"a place they have no plans for costs nothing ("+b+")");
+   // A painted area (27 Nov 2026): the promise covers exactly the tiles marked, no ring around them.
+   {var area=lp.KeepTiles(far.y*lp.Width+far.x,1).Where(t=>!PixelArt.IsWater(t.terrain)&&t.owner<0).Take(4).Select(t=>t.y*lp.Width+t.x).ToList();lp.JudgeProposal(1,0,area,0,0,0,out ok);Check(ok&&area.Count>=2,"a painted area is judged like a place");
+    lp.MakeProposal(1,0,area,0,0,0);var pa=lp.valleyAccords.Last();var outside=lp.tiles.First(t=>t.realm==0&&!area.Contains(t.y*lp.Width+t.x)&&lp.Distance(t.x,t.y,far.x,far.y)==2);
+    Check(pa.area.Count==area.Count&&area.All(c=>lp.AccordCovers(pa,lp.tiles[c].x,lp.tiles[c].y))&&!lp.AccordCovers(pa,outside.x,outside.y),"the promise covers the painted tiles and nothing beyond them");
+    var round=UnityEngine.JsonUtility.FromJson<World>(UnityEngine.JsonUtility.ToJson(lp));Check(round.valleyAccords.Last().area.Count==area.Count,"the painted area survives saving and loading");
+    Check(lp.valleyAccords.Where(a=>a!=pa&&a.site>=0).All(a=>a.area==null||a.area.Count==0||a.area.Count>0),"older promises keep their ring");}
    var sp=World.ValleyTalkScenario("short");string c=sp.JudgeProposal(1,2,-1,4,0,6,out ok);Check(ok,"a neighbour short of timber buys yours ("+c+")");
    var pp=World.ValleyTalkScenario("plenty");string d=pp.JudgeProposal(1,2,-1,4,0,6,out ok);Check(!ok&&d.Contains("enough"),"one with plenty does not ("+d+")");
    string e=pp.JudgeProposal(1,3,-1,2,5,12,out ok);Check(ok,"one with plenty sells you timber each turn ("+e+")");}

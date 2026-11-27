@@ -103,12 +103,17 @@ namespace ParadigmRealm
         //  5 Dimensional Age: a seamless pale causeway edged with strips of light.
         // The line itself is laid out as a road is: two arms join in one smooth bend through the tile, and any others branch from it.
         public const int RoadEras=6;
-        const double RoadWidth=1.05; // roads are drawn this much wider than their design, so their surface can be read on the map
+        // Roads are drawn at this share of their design width. 1.05 until 27 Nov 2026, then a third narrower (owner request: "they're too
+        // imposing on the landscape"); the pattern along the road (paving slabs, dashes, rails) keeps its old spacing (RoadPattern).
+        const double RoadWidth=.70,RoadPattern=1.05;
         // Thinner, and moving with the land (owner request, 11 Nov 2026, later): the line wanders from side to side as a road does
         // that follows the lie of the ground, in one of four ways chosen by its tile (look bits 0-1), and still meets the next tile at
         // the middle of the shared edge. On a river tile (look bit 2) the road runs straight and the stretch over the middle of the
         // tile is a bridge with rails: timber in the Dawn Age, stone until the Industrial Age, steel after.
         public const int RoadBridge=4;
+        // A town's own tile (owner request, 27 Nov 2026: "roads should not cross over cities"): each road arrives from its edge and
+        // stops at the outskirts, under the edge of the town picture; nothing runs through the middle.
+        public const int RoadStub=8;
         static PixelCanvas PaintRoad(int w,int h,double cx,double cy,double[] ex,double[] ey,int mask,int era,double squash,int look=0,PixelCanvas river=null,double[] riverDist=null,Func<int,int,bool> onTile=null,double dryX=0,double dryY=0,bool ford=false)
         {
             var cv=new PixelCanvas(w,h);var arms=new List<int>();for(int k=0;k<ex.Length;k++)if((mask&(1<<k))!=0)arms.Add(k);
@@ -134,6 +139,7 @@ namespace ParadigmRealm
                     foreach(int k in arms)if(k!=a0&&k!=a1)line(BankPath(riverDist,onTile,w,h,ex[k],ey[k],mid[0],mid[1],squash));
                 }
             }
+            else if((look&RoadStub)!=0){foreach(int k in arms){double tx=ex[k]+(cx-ex[k])*.3,ty=ey[k]+(cy-ey[k])*.3;curve(ex[k],ey[k],(ex[k]+tx)/2,(ey[k]+ty)/2,tx,ty);}}
             else if(arms.Count==0)curve(cx-3,cy,cx,cy,cx+3,cy);
             else if(arms.Count==1)curve(ex[arms[0]],ey[arms[0]],(ex[arms[0]]+cx)/2,(ey[arms[0]]+cy)/2,cx,cy);
             else
@@ -148,7 +154,7 @@ namespace ParadigmRealm
             {
                 double best=99,along=0,side=1;
                 for(int i=0;i<px.Count;i++){double dx=x+.5-px[i],dy=(y+.5-py[i])*squash,d=dx*dx+dy*dy;if(d<best){best=d;along=pa[i];side=Math.Cos(pt[i])*dy-Math.Sin(pt[i])*dx>=0?1:-1;}}
-                if(best>30)continue;double dd=Math.Sqrt(best)/RoadWidth;uint c=RoadPixel(era,dd,side,along/RoadWidth,x,y);
+                if(best>30)continue;double dd=Math.Sqrt(best)/RoadWidth;uint c=RoadPixel(era,dd,side,along/RoadPattern,x,y);
                 // A ford (no Bridge Building yet): the road stops at each bank and a line of stepping stones crosses the water.
                 if(ford&&river!=null&&riverDist[y*w+x]<=1.2){if((river.Get(x,y)>>24)!=0&&dd<=1.5&&((int)Math.Floor(along/1.7)&1)==0)cv.Set(x,y,dd<=.8?Rgb(172,168,158):Rgb(116,114,110));continue;}
                 if(river!=null?riverDist[y*w+x]<=1.7:(look&RoadBridge)!=0){double bx=(x+.5-cx)/11.0,by=(y+.5-cy)*squash/9.0;if((river!=null||bx*bx+by*by<=1)&&dd<=3.4){

@@ -86,9 +86,9 @@ namespace ParadigmRealm
         Texture2D RoadPicture(Tile t)
         {
             int mask=0;
-            if(world.Hex){for(int k=0;k<6;k++)if(world.RoadConnects(t,World.HexDi[k],World.HexDj[k]))mask|=1<<k;if(t.terrain==7){var bank=RiverRoadPicture(t,mask);if(bank!=null)return bank;}return IsoPicture(11,mask,RoadEra(t)|RoadLook(t)<<3);}
+            if(world.Hex){for(int k=0;k<6;k++)if(world.RoadConnects(t,World.HexDi[k],World.HexDj[k]))mask|=1<<k;if(t.terrain==7&&RoadLook(t)!=PixelArt.RoadStub){var bank=RiverRoadPicture(t,mask);if(bank!=null)return bank;}return IsoPicture(11,mask,RoadEra(t)|RoadLook(t)<<3);}
             for(int k=0;k<8;k++)if(world.RoadConnects(t,RoadDx[k],RoadDy[k]))mask|=1<<k;
-            if(t.terrain==7){var bank=RiverRoadPicture(t,mask);if(bank!=null)return bank;}
+            if(t.terrain==7&&RoadLook(t)!=PixelArt.RoadStub){var bank=RiverRoadPicture(t,mask);if(bank!=null)return bank;}
             return IsoPicture(3,mask,RoadEra(t)|RoadLook(t)<<3);
         }
         // Roads follow the age of whoever owns the land they cross, and your own age on unclaimed land (owner request, 11 Nov 2026;
@@ -108,7 +108,7 @@ namespace ParadigmRealm
         }
         // How the road lies on this tile: one of four wanderings by place, or a straight bridge on a river tile once the land's owner
         // has Bridge Building.
-        int RoadLook(Tile t){return t.terrain==7&&world.Bridged(t)?PixelArt.RoadBridge:((t.x*73856093^t.y*19349663)&0x7fffffff)%4;}
+        int RoadLook(Tile t){if(viewCities!=null&&viewCities.ContainsKey(t.y*world.Width+t.x))return PixelArt.RoadStub;return t.terrain==7&&world.Bridged(t)?PixelArt.RoadBridge:((t.x*73856093^t.y*19349663)&0x7fffffff)%4;}
         int[] roadEras;int roadErasTurn=-1,roadEraProbe=-1;World roadErasWorld;
         int RoadEra(Tile t)
         {

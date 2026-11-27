@@ -13,6 +13,9 @@ public partial class RealmGame {
   valleyTalk=issue.id;valleyWhy=false;valleyReply="";valleyMarked=false;detailsScreen="";var n=world.AssessValley(partner);counterPer=Mathf.Clamp((n.shortfall+5)/6,1,6);counterTurns=8;ResetMapGesture();}
  // The land in question, outlined on the map while the talk is open or marked.
  void DrawValleyTiles(float s){
+  if(composeWith>0&&composeArea.Count>0&&(composePicking||ComposeOpen())){var old2=GUI.color;float p2=.6f+.4f*Mathf.Sin(Time.realtimeSinceStartup*3f);
+   foreach(int c in composeArea){var t=world.tiles[c];if(t.realm!=viewRealm)continue;float sx,sy;IsoScreen(t.x,t.y,out sx,out sy);sy-=Lift(t.x,t.y,s);GUI.color=new Color(1f,.85f,.3f,composePicking?.45f+.4f*p2:.6f);GUI.DrawTexture(TileRect(sx,sy,s),SelectionPicture());}
+   GUI.color=old2;return;}
   int markSite=composeWith>0&&composeSite>=0?composeSite:-1;
   if(markSite<0){if(!ValleyTalkOpen()&&!valleyMarked)return;var issue=world.IssueById(ValleyTalkOpen()?valleyTalk:valleyMarkId);if(issue==null||issue.site<0)return;markSite=issue.site;}var old=GUI.color;float pulse=.6f+.4f*Mathf.Sin(Time.realtimeSinceStartup*3f);
   foreach(var t in world.KeepTiles(markSite,ValleyTuning.KeepRadius)){float sx,sy;IsoScreen(t.x,t.y,out sx,out sy);sy-=Lift(t.x,t.y,s);GUI.color=t.y*world.Width+t.x==markSite?new Color(1f,.85f,.3f,.55f+.45f*pulse):new Color(1f,.85f,.3f,.35f);GUI.DrawTexture(TileRect(sx,sy,s),SelectionPicture());}
@@ -52,7 +55,7 @@ public partial class RealmGame {
    if(DipButton(new Rect(box.x+28,box.yMax-56,180,38),"Decline",red)){world.DeclineValley(issue);valleyReply=world.NationName(o)+": “Then we will do as we must.”";GUIUtility.ExitGUI();}
   }
   if(DipButton(new Rect(box.xMax-28-180,box.yMax-56,180,38),"Close",navy)){valleyTalk=-1;GUIUtility.ExitGUI();}
-  if(DipButton(new Rect(box.xMax-28-180-200,box.yMax-56,190,38),"Your own terms",navy)){OpenCompose(o);composeSite=issue.site;GUIUtility.ExitGUI();}
+  if(DipButton(new Rect(box.xMax-28-180-200,box.yMax-56,190,38),"Your own terms",navy)){OpenCompose(o);composeSite=issue.site;composeArea=world.ProposalArea(issue.site,null);GUIUtility.ExitGUI();}
  }
 }
 }
@@ -68,10 +71,46 @@ namespace ParadigmRealm {
 // read the leader's answer before committing, then propose. Opened from Court > Land and timber, or from a talk in progress.
 public partial class RealmGame {
  int composeWith=-1,composeKind,composeSite=-1,composeAmount=3,composeTurns=8,composeGold=20;bool composePicking;string composeReply="";
+ // The land you deal for is painted on the map (owner request, 27 Nov 2026): press on a tile and drag across the land you want;
+ // starting on a chosen tile and dragging removes tiles instead. Land only, at most ProposalKinds.MaxArea tiles. Right-click,
+ // Done or Escape finishes; the middle button still pans the map and the wheel still zooms.
+ System.Collections.Generic.List<int> composeArea=new System.Collections.Generic.List<int>();bool composePainting,composeErase;Vector2 composeLastMouse;
+ string composeJudgeKey,composeJudged;bool composeJudgedOk;
+ Rect ComposeBarRect{get{return new Rect(MapW/2-300,140,600,54);}}
+ bool ComposeAreaInput(Event e,bool inside,int x,int y){
+  if(!composePicking||composeWith<=0)return false;
+  if(!composePainting&&ComposeBarRect.Contains(e.mousePosition))return true;// the bar's own buttons take it
+  if(e.type==EventType.MouseDown&&e.button==1){FinishComposeArea();e.Use();return true;}
+  if(e.type==EventType.MouseDown&&e.button==0){if(inside){composeErase=composeArea.Contains(y*world.Width+x);composePainting=true;composeLastMouse=e.mousePosition;PaintCompose(x,y);}e.Use();return true;}
+  if(composePainting&&e.type==EventType.MouseDrag&&e.button==0){
+   // Sampled along the stroke, so a quick drag leaves no gaps.
+   var from=composeLastMouse;var to=e.mousePosition;int steps=Mathf.Max(1,Mathf.CeilToInt((to-from).magnitude/5f));
+   for(int k=1;k<=steps;k++){int tx,ty;if(MapTileAt(Vector2.Lerp(from,to,k/(float)steps),out tx,out ty))PaintCompose(tx,ty);}composeLastMouse=to;e.Use();return true;}
+  if(e.type==EventType.MouseUp&&e.button==0){composePainting=false;e.Use();return true;}
+  return false;
+ }
+ void PaintCompose(int x,int y){
+  var t=world.At(x,y);if(t==null||t.realm!=viewRealm)return;int c=y*world.Width+x;
+  if(composeErase){composeArea.Remove(c);return;}
+  if(composeArea.Contains(c))return;if(PixelArt.IsWater(t.terrain)){status="Only land can be marked.";return;}
+  if(world.nations[0].known!=null&&!world.nations[0].known[c]){status="You have not seen that land.";return;}
+  if(composeArea.Count>=ProposalKinds.MaxArea){status="At most "+ProposalKinds.MaxArea+" tiles in one proposal.";return;}
+  composeArea.Add(c);}
+ void FinishComposeArea(){composePicking=false;composePainting=false;composeSite=world.AreaCentre(composeArea);composeJudgeKey=null;status=composeArea.Count==0?"No land marked.":"Marked: "+world.AreaName(composeWith,composeArea)+".";}
+ // Shown over the map while you paint.
+ void DrawComposePickBar(){
+  if(!composePicking||composeWith<=0)return;DiplomacyStyles();Wide();var r=ComposeBarRect;bool was=GUI.enabled;GUI.enabled=true;
+  Fill(new Rect(r.x-2,r.y-2,r.width+4,r.height+4),new Color(.86f,.7f,.39f,.9f));Fill(r,new Color(.04f,.06f,.13f,.97f));
+  var st=new GUIStyle(dipRow){fontSize=14,wordWrap=true,alignment=TextAnchor.MiddleLeft};
+  GUI.Label(new Rect(r.x+12,r.y+4,r.width-230,r.height-8),"Drag across the land you want: "+composeArea.Count+" of "+ProposalKinds.MaxArea+" tiles. Drag over marked tiles to remove them.",st);
+  Color navy=new Color(.1f,.16f,.3f),teal=new Color(.07f,.38f,.4f);
+  if(DipButton(new Rect(r.xMax-212,r.y+10,96,34),"Clear",navy)){composeArea.Clear();composeJudgeKey=null;}
+  if(DipButton(new Rect(r.xMax-108,r.y+10,96,34),"Done",teal)){FinishComposeArea();GUIUtility.ExitGUI();}
+  GUI.enabled=was;}
  bool ComposeOpen(){return composeWith>0&&world!=null&&!composePicking;}
- void OpenCompose(int partner){composeWith=partner;composePicking=false;composeReply="";valleyTalk=-1;detailsScreen="";ResetMapGesture();}
+ void OpenCompose(int partner){composeWith=partner;composePicking=false;composePainting=false;composeArea.Clear();composeSite=-1;composeJudgeKey=null;composeReply="";valleyTalk=-1;detailsScreen="";ResetMapGesture();}
  // A left click on the map while choosing a place names it (Click calls this first).
- bool ComposePick(int x,int y){if(!composePicking)return false;var t=world.At(x,y);if(t==null)return true;composeSite=y*world.Width+x;composePicking=false;status="Place chosen: "+world.PlaceName(composeWith,composeSite)+".";return true;}
+ bool ComposePick(int x,int y){return composePicking;}// painting is handled by ComposeAreaInput; a stray click while marking does nothing else
  void DrawCompose(){
   GUI.enabled=true;DiplomacyStyles();HudStyles();int o=composeWith;var nation=world.nations[o];
   Fill(FullCanvas,new Color(0,0,0,.45f));var box=new Rect(150,70,980,660);DipPanel(box,.98f);
@@ -82,8 +121,8 @@ public partial class RealmGame {
   // What kind.
   float kw=(w-30)/4;for(int k=0;k<4;k++){var kr=new Rect(x+k*(kw+10),y,kw,40);if(DipButton(kr,"",composeKind==k?teal:navy)){composeKind=k;composeReply="";}var ks=new GUIStyle(text){fontSize=13,alignment=TextAnchor.MiddleCenter};GUI.Label(kr,ProposalKinds.Names[k],ks);}
   y+=52;
-  if(composeKind<=1){GUI.Label(new Rect(x,y,w-200,30),"Place: "+(composeSite>=0?world.PlaceName(o,composeSite)+" and every tile within "+ValleyTuning.KeepRadius:"none chosen"),text);
-   if(DipButton(new Rect(x+w-190,y,190,32),"Choose on map",navy)){composePicking=true;status="Left-click the place on the map.";GUIUtility.ExitGUI();}y+=40;
+  if(composeKind<=1){{var pr=new Rect(x,y,w-200,32);var ps=new GUIStyle(text);string pt="Land: "+(composeArea.Count>0?world.AreaName(o,composeArea)+", marked on the map":"none marked yet");while(ps.fontSize>11&&ps.CalcHeight(new GUIContent(pt),pr.width)>pr.height)ps.fontSize--;GUI.Label(pr,pt,ps);}
+   if(DipButton(new Rect(x+w-190,y,190,32),composeArea.Count>0?"Change on map":"Mark on map",navy)){composePicking=true;composePainting=false;status="Drag across the land you want.";var c0=composeArea.Count>0?world.tiles[world.AreaCentre(composeArea)]:null;if(c0!=null)FocusTile(c0.x,c0.y);GUIUtility.ExitGUI();}y+=40;
    GUI.Label(new Rect(x,y,w,40),composeKind==0?"They promise to leave the place unsettled for 48 turns; you pay the gold now. It does not make the land yours.":"You promise to leave the place unsettled for 48 turns; they pay the gold now. Settling there would break your word.",new GUIStyle(text){fontSize=13});y+=44;}
   else{GUI.Label(new Rect(x,y,120,32),composeKind==2?"Timber now":"Timber a turn",text);
    if(DipButton(new Rect(x+130,y,32,32),"-",navy))composeAmount=Mathf.Max(1,composeAmount-1);GUI.Label(new Rect(x+166,y,60,32),composeAmount.ToString(),new GUIStyle(text){alignment=TextAnchor.MiddleCenter});if(DipButton(new Rect(x+230,y,32,32),"+",navy))composeAmount=Mathf.Min(60,composeAmount+(composeKind==2?5:1));
@@ -92,10 +131,13 @@ public partial class RealmGame {
   GUI.Label(new Rect(x,y,140,32),composeKind==1||composeKind==2?"They pay":composeKind==3?"You pay each":"You pay",text);
   if(DipButton(new Rect(x+150,y,32,32),"-",navy))composeGold=Mathf.Max(0,composeGold-5);GUI.Label(new Rect(x+186,y,80,32),composeGold+" gold",new GUIStyle(text){alignment=TextAnchor.MiddleCenter});if(DipButton(new Rect(x+270,y,32,32),"+",navy))composeGold=Mathf.Min(500,composeGold+5);
   y+=46;Fill(new Rect(x,y,w,1),new Color(.86f,.7f,.39f,.6f));y+=10;
-  bool ok;string answer=world.JudgeProposal(o,composeKind,composeSite,composeAmount,composeTurns,composeGold,out ok);
+  // Judged again only when a term changes (a painted area can hold many town sites to weigh).
+  string key=o+"|"+composeKind+"|"+string.Join(",",composeArea.Select(c=>c.ToString()).ToArray())+"|"+composeAmount+"|"+composeTurns+"|"+composeGold+"|"+world.turn+"|"+world.gold;
+  if(key!=composeJudgeKey){composeJudged=world.JudgeProposal(o,composeKind,composeArea,composeAmount,composeTurns,composeGold,out composeJudgedOk);composeJudgeKey=key;}
+  bool ok=composeJudgedOk;string answer=composeJudged;
   {var jr=new Rect(x,y,w,80);var js=new GUIStyle(said);while(js.fontSize>11&&js.CalcHeight(new GUIContent(answer),jr.width)>jr.height)js.fontSize--;GUI.Label(jr,(ok?"They would agree. ":"")+answer,js);y+=88;}
   if(composeReply!=""){var rr=new Rect(x,y,w,60);GUI.Label(rr,composeReply,new GUIStyle(text){fontSize=14});}
-  if(DipButton(new Rect(x+w-220,box.yMax-56,220,38),"Propose",ok?teal:navy)&&ok){composeReply=world.MakeProposal(o,composeKind,composeSite,composeAmount,composeTurns,composeGold);status=composeReply;GUIUtility.ExitGUI();}
+  if(DipButton(new Rect(x+w-220,box.yMax-56,220,38),"Propose",ok?teal:navy)&&ok){composeReply=world.MakeProposal(o,composeKind,composeArea,composeAmount,composeTurns,composeGold);composeJudgeKey=null;status=composeReply;GUIUtility.ExitGUI();}
   if(DipButton(new Rect(box.x+28,box.yMax-56,180,38),"Close",navy)){composeWith=-1;GUIUtility.ExitGUI();}
  }
 }
