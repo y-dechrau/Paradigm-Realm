@@ -80,3 +80,18 @@ public partial class RealmGame {
  }
 }
 }
+namespace ParadigmRealm {
+// Development aid (27 Nov 2026): "-hudShot <folder> -treasuryOnly" empties the treasury, ends a turn and photographs the treasurer.
+public partial class RealmGame {
+ System.Collections.IEnumerator TreasuryShots(string folder){
+  System.IO.Directory.CreateDirectory(folder);tutorialOn=false;tutorialStep=-1;guide=false;
+  string scenario=System.IO.Path.Combine(Application.temporaryCachePath,"treasury-shot.json");System.IO.File.WriteAllText(scenario,JsonUtility.ToJson(World.ValleyTalkScenario("plenty")));LoadFile(scenario);activeSavePath=null;mainMenu=false;nameSetup=false;viewRealm=0;
+  world.valleyIssues.Clear();var n=world.nations[0];n.militaryRate=20;n.luxury=1;{var away=world.tiles.First(t=>t.realm==0&&t.owner<0&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain));world.Add(0,2,away.x,away.y);world.Add(0,7,away.x,away.y);}
+  world.gold=n.gold=0;n.arrears=1;EndTurn();while(turnRunning)yield return null;yield return Frames(10);world.rivalCalls.Clear();if(world.researchPrompts!=null)world.researchPrompts.Clear();if(world.buildPrompts!=null)world.buildPrompts.Clear();if(world.wayChoices!=null)world.wayChoices.Clear();
+  if(!DebtAdviserOpen()){world.gold=n.gold=0;n.arrears=Math.Max(1,n.arrears);CheckTreasurer();}
+  Probe("treasury: the treasurer opens when the treasury is empty",DebtAdviserOpen());yield return Shot(folder,"treasurer.bmp",20);
+  debtAdviserOpen=false;detailsScreen="Economy";empireTab=0;yield return Frames(10);yield return Shot(folder,"treasurer-empire.bmp",10);
+  Application.Quit();
+ }
+}
+}

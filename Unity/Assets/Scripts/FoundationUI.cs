@@ -34,7 +34,7 @@ namespace ParadigmRealm
             else if(pauseMenu)pauseMenu=false;
             else if(legendsOpen){legendsOpen=false;legendsPeople=-1;civLoreOpen=false;}else if(detailsScreen=="Diplomacy"&&DiplomacyEscape()){}else if(researchScreen||detailsScreen!=""){researchScreen=false;detailsScreen="";}
             // Esc first lets go of the selected unit (and any pending move); with nothing selected it opens the pause menu.
-            else if(gateScene!=null)gateScene=null;else if(gatePanel!=null)gatePanel=null;else if(CampPanelOpen())campPanel=-1;else if(SitePanelOpen())sitePanel=-1;else if(ValleyTalkOpen())valleyTalk=-1;else if(ComposeOpen())composeWith=-1;else if(composePicking)FinishComposeArea();
+            else if(gateScene!=null)gateScene=null;else if(gatePanel!=null)gatePanel=null;else if(CampPanelOpen())campPanel=-1;else if(SitePanelOpen())sitePanel=-1;else if(ValleyTalkOpen())valleyTalk=-1;else if(ComposeOpen())composeWith=-1;else if(composePicking)FinishComposeArea();else if(DebtAdviserOpen())debtAdviserOpen=false;
             else if(roadMode){roadMode=false;roadBends.Clear();status="Road plan cancelled.";}
             else if(!cityScreen&&(selected>=0||moveMode)){selected=-1;moveMode=false;moreActions=false;status="";}
             else {guide=false;confirmNew=false;pendingUnit=-1;pauseMenu=true;}

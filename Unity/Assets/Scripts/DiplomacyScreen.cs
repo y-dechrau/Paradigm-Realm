@@ -306,13 +306,18 @@ public partial class RealmGame {
  void DrawCourtScene(int partner,Rect scene){
   // The picture sits inside the trim, clear of the corner scrolls (owner report, 16 Nov 2026: it covered them).
   var pn=world.nations[partner];GoldFrame(scene);var inner=new Rect(scene.x+46,scene.y+46,scene.width-92,scene.height-92);
+  // The owner's redesigned courts (27 Nov 2026; CourtPaintings.cs): the leader's own hall fills the frame, under its corner scrolls,
+  // with the live flag and name plate where the painting had them. Leaders without one keep the portrait over the shared backdrop.
+  Rect paintedPlate=default(Rect),paintedFlag=default(Rect);bool painted=pn.civ>=0&&DrawCourtPainting(pn.civ,new Rect(scene.x+10,scene.y+10,scene.width-20,scene.height-20),out paintedPlate,out paintedFlag);
+  if(painted)GoldFrame(scene,true);else{
   var backdrop=Art("diplomacy-backdrop");if(backdrop!=null)DrawCropped(inner,backdrop,BackdropAspect);else Fill(inner,new Color(.3f,.28f,.36f));
-  var face=Portrait(pn.portrait,world.Era(partner));if(face!=null){float h=inner.height-6,w2=Mathf.Min(inner.width-40,h*.9f);DrawPortrait(new Rect(inner.center.x-w2/2,inner.y+6,w2,h),face);}
-  {var flag=FlagTexture(partner);if(flag!=null){var fr=new Rect(inner.x+10,inner.y+10,84,56);Fill(new Rect(fr.x-3,fr.y-3,fr.width+6,fr.height+6),new Color(.16f,.11f,.05f));Fill(new Rect(fr.x-2,fr.y-2,fr.width+4,fr.height+4),CourtGold);GUI.DrawTexture(fr,flag,ScaleMode.StretchToFill,true);}}
+  var face=Portrait(pn.portrait,world.Era(partner));if(face!=null){float h=inner.height-6,w2=Mathf.Min(inner.width-40,h*.9f);DrawPortrait(new Rect(inner.center.x-w2/2,inner.y+6,w2,h),face);}}
+  {var flag=FlagTexture(partner);if(flag!=null){var fr=painted?paintedFlag:new Rect(inner.x+10,inner.y+10,84,56);Fill(new Rect(fr.x-3,fr.y-3,fr.width+6,fr.height+6),new Color(.16f,.11f,.05f));Fill(new Rect(fr.x-2,fr.y-2,fr.width+4,fr.height+4),CourtGold);GUI.DrawTexture(fr,flag,ScaleMode.StretchToFill,true);}}
   // The name plate across the foot of the picture, laurels either side.
   // The name plate across the foot of the picture, laurels either side; it grows upward when the leader's name needs two lines.
-  string who=(string.IsNullOrEmpty(pn.leader)?world.NationName(partner):pn.leader).ToUpperInvariant();float whoH;var whoStyle=FitName(who,460-132,new GUIStyle(courtCaps){alignment=TextAnchor.MiddleCenter,normal={textColor=CourtCream}},24,16,12,out whoH);float nameRow=Mathf.Max(38,whoH+4);
-  var plate=new Rect(inner.center.x-230,inner.yMax-74-(nameRow-38),460,70+(nameRow-38));Fill(new Rect(plate.x-4,plate.y-4,plate.width+8,plate.height+8),new Color(.16f,.11f,.05f,.9f));Fill(plate,new Color(.05f,.08f,.15f,.97f));
+  float plateW=painted?paintedPlate.width:460;
+  string who=(string.IsNullOrEmpty(pn.leader)?world.NationName(partner):pn.leader).ToUpperInvariant();float whoH;var whoStyle=FitName(who,plateW-132,new GUIStyle(courtCaps){alignment=TextAnchor.MiddleCenter,normal={textColor=CourtCream}},24,16,12,out whoH);float nameRow=Mathf.Max(38,whoH+4);
+  var plate=painted?new Rect(paintedPlate.x,paintedPlate.y-(nameRow-38),paintedPlate.width,paintedPlate.height+(nameRow-38)):new Rect(inner.center.x-230,inner.yMax-74-(nameRow-38),460,70+(nameRow-38));Fill(new Rect(plate.x-4,plate.y-4,plate.width+8,plate.height+8),new Color(.16f,.11f,.05f,.9f));Fill(plate,new Color(.05f,.08f,.15f,.97f));
   var e=CourtGold;Fill(new Rect(plate.x,plate.y,plate.width,2),e);Fill(new Rect(plate.x,plate.yMax-2,plate.width,2),e);Fill(new Rect(plate.x,plate.y,2,plate.height),e);Fill(new Rect(plate.xMax-2,plate.y,2,plate.height),e);
   DrawDipIcon("laurel",new Rect(plate.x+8,plate.center.y-26,52,52));DrawDipIcon("laurel",new Rect(plate.xMax-60,plate.center.y-26,52,52));
   GUI.Label(new Rect(plate.x+66,plate.y+2,plate.width-132,nameRow),who,whoStyle);

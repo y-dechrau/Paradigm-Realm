@@ -2,6 +2,10 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 27 Nov, late night: unit limits, redesigned Imperial Courts, no stale hint on research, camps and villages under borders, the treasurer (no save version change)
+
+Implemented and checked by `LimitsAndTreasuryChecks` (thirty auto-managed turns stay within every limit; a limit blocks a city and lifts again; a camp with its raiders and a village under new borders disappear, the village adding a citizen; the treasurer's advice is ordered by gain and leaves the priorities as they were). In the built game: `-courtOnly` photographs the 15 redesigned courts, `-treasuryOnly` opens the treasurer. Planned, not built: the other worlds' peoples have no court painting yet and keep the portrait over the backdrop. Not hand-played.
+
 ## Owner requests 27 Nov, night: narrower roads, roads stop at towns, Settlers take the food stores, painted land for proposals (no save version change)
 
 Implemented and checked by the engine checks (`EmpireChecks`: a Settler costs 1 citizen and the stores; the first-age pacing bound widened from 130 to 145 because of it; `ValleyTalksChecks`: a painted area, its promise and its save round trip). In the built game: `-roadOnly` photographs roads round a town at two zooms; `-valleyOnly` paints land with a real drag (7 of 7 land tiles), removes two with a second drag, presses Done and checks the promise (15 probes pass). Not hand-played.

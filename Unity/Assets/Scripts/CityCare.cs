@@ -73,7 +73,7 @@ public partial class World {
    if(workers<own&&choices.Contains(UnitBuild(1)))want=UnitBuild(1);
    else if(ShouldTrainSettler(c)&&choices.Contains(UnitBuild(0)))want=UnitBuild(0);
    else if(!units.Any(u=>u.owner==c.owner&&Power[u.type]>0&&u.x==c.x&&u.y==c.y)){
-    var guards=choices.Where(b=>Power[BuildUnit(b)]>0&&!IsNaval(BuildUnit(b))).OrderByDescending(b=>Defence[BuildUnit(b)]).ThenBy(b=>UnitCosts[BuildUnit(b)]).ToList();if(guards.Count>0)want=guards[0];}
+    var guards=choices.Where(b=>Power[BuildUnit(b)]>0&&!IsNaval(BuildUnit(b))&&BuildUnit(b)!=3)/* a Scout walks off to explore, so it never guards (27 Nov 2026: one city after another trained them) */.OrderByDescending(b=>Defence[BuildUnit(b)]).ThenBy(b=>UnitCosts[BuildUnit(b)]).ToList();if(guards.Count>0)want=guards[0];}
    if(want>=0&&!UnitAffordable(c,BuildUnit(want)))want=-1;
    c.build=want;
   }

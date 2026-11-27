@@ -66,6 +66,8 @@ namespace ParadigmRealm
                 if(empireTab==1)DrawIdentityPage();else{
                 var b=world.Budget(0);GUILayout.Label("Income +"+b[0]+" | Upkeep -"+b[1]+" | Net "+b[2],heading);
                 DrawEmpireBalance();
+                // The treasurer's advice whenever the treasury is empty or about to be (DebtAdviser.cs).
+                if(world.NeedsTreasurer(0)){GUILayout.Label("Your treasurer: "+(world.nations[0].arrears>0?world.DebtState(0):"the treasury will be empty after this turn."),heading);foreach(var a in world.DebtAdvice(0).Take(5))GUILayout.Label("• "+a.text+(a.gain>0?"  (+"+a.gain+" gold a turn)":""),body);}
                 for(int r=2;r<World.ResourceNames.Length;r++){if(r>19&&!world.HasResource(0,r))continue;/* the catalogue's resources appear once connected */GUILayout.Label(World.ResourceNames[r]+": "+(world.HasResource(0,r)?"connected":"not connected"),body);}
             GUILayout.Label(world.AgeLine(0),body);
             DrawEmpireEconomy();}
@@ -323,7 +325,7 @@ namespace ParadigmRealm
                     GUI.enabled=enabled;int faithTurns=world.FaithTurns(c,b);GUI.Label(new Rect(37,y+34,area.width-78,31),(reason!=""?reason+(faithTurns>0&&reason.StartsWith("Needs ")&&reason.Contains("faith in")?" — about "+faithTurns+" turns":""):"Ready")+" | "+World.FaithBuildingTexts[Array.IndexOf(World.FaithBuildingIds,b)],small);}}
             GUI.EndScrollView();if(building)buildingQueueScroll=scroll;else unitQueueScroll=scroll;
         }
-        void DrawResearchScreen(){DrawExpandedResearch();}
+        void DrawResearchScreen(){GUI.tooltip="";DrawExpandedResearch();}// only this screen's own hints (27 Nov 2026: the flag designer's "Tricolour" followed the pointer here)
         // Distinct original 8x8 pixel glyphs, drawn with the existing code-based art system.
         static readonly string[] IconPatterns={
             "...#..../.#.#.#../..###.../.#.##.#./..###.../...#..../...#..../..###...", // wheat
