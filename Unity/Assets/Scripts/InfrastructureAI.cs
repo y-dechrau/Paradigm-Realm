@@ -8,7 +8,7 @@ namespace ParadigmRealm {
    var available=AvailableTech(owner);if(available.Count==0)return -1;
    var wanted=new List<int>();var own=cities.Where(c=>c.owner==owner).ToList();
    if(!HasTech(owner,"agriculture"))wanted.Add(TechnologyCatalog.Index("agriculture"));
-   if(!HasTech(owner,"wheel"))wanted.Add(TechnologyCatalog.Index("wheel"));
+   if(!HasTech(owner,"wheel")){wanted.Add(TechnologyCatalog.Index("wheel"));if(own.Count>=2){wanted.Add(TechnologyCatalog.Index("wheel"));wanted.Add(TechnologyCatalog.Index("wheel"));}}// with a second town, roads to join them come first (27 Nov 2026)
    if(!HasTech(owner,"mining"))wanted.Add(TechnologyCatalog.Index("mining"));
    if(own.Any(c=>c.pop>=GrowthLimit(c)-1))wanted.Add(BuildingTech[Array.IndexOf(BuildingIds,own.Any(c=>!HasBuilding(c,37))?37:41)]);
    if(own.Any(c=>Happiness(c)<1))wanted.Add(TechnologyCatalog.Index("mysticism"));
@@ -29,7 +29,7 @@ namespace ParadigmRealm {
   // One walk over the map each turn sorts the tiles by owner, instead of one walk for every civilisation with a worker.
   [NonSerialized] Dictionary<int,List<Tile>> ownedTiles;[NonSerialized] int ownedTilesTurn=-1;
   List<Tile> TilesOwnedBy(int owner){if(ownedTiles==null||ownedTilesTurn!=turn){ownedTiles=new Dictionary<int,List<Tile>>();ownedTilesTurn=turn;foreach(var t in tiles){if(t.owner<0)continue;List<Tile> list;if(!ownedTiles.TryGetValue(t.owner,out list)){list=new List<Tile>();ownedTiles[t.owner]=list;}list.Add(t);}}List<Tile> found;return ownedTiles.TryGetValue(owner,out found)?found:new List<Tile>();}
-  [NonSerialized] bool aiRoadOk;const int RoadsPerCity=8;
+  [NonSerialized] bool aiRoadOk,aiCityRoadOk;[NonSerialized] HashSet<int> aiCityRoads=new HashSet<int>();const int RoadsPerCity=8;
   void ImproveAI(Unit u){
    if(u.moves<=0)return;
    // Idle sealed workers look for work one turn in four: nobody can see them, and the search is the costliest part of a crowded turn.
@@ -39,24 +39,37 @@ namespace ParadigmRealm {
    // Short of timber or stone, a rival worker may set up a camp where it saves the most (SiteCompetition.cs), now and then.
    if(u.owner!=0&&(turn+u.id)%5==0&&P("camps",()=>CampAI(u)))return;
    // What the whole empire works and needs is the same for each of its workers this turn, so it is found once.
-   if(u.owner==0||aiWorkOwner!=u.owner||aiWorkTurn!=turn){aiWorkOwner=u.owner;aiWorkTurn=turn;var empire=cities.Where(c=>c.owner==u.owner).ToList();aiWorked=new HashSet<Tile>(empire.SelectMany(Worked));aiHunger=empire.Any(c=>Yield(c)[0]<=0);aiPortRoads=PortRoadNeeds(u.owner);aiRoadOk=Budget(u.owner)[2]>=(modernRules&&empire.Any(CutOff)?0:3)&&RoadTiles(u.owner)<empire.Count*RoadsPerCity;aiOwnTiles=TilesOwnedBy(u.owner).Where(t=>nations[u.owner].known[t.y*Width+t.x]&&!Barren(t.terrain)).ToList();}
+   if(u.owner==0||aiWorkOwner!=u.owner||aiWorkTurn!=turn){aiWorkOwner=u.owner;aiWorkTurn=turn;var empire=cities.Where(c=>c.owner==u.owner).ToList();aiWorked=new HashSet<Tile>(empire.SelectMany(Worked));aiHunger=empire.Any(c=>Yield(c)[0]<=0);aiPortRoads=PortRoadNeeds(u.owner);aiCityRoads=u.owner==0?new HashSet<int>():CityRoadNeeds(u.owner);aiCityRoadOk=Budget(u.owner)[2]>=0||nations[u.owner].gold>=40;aiRoadOk=Budget(u.owner)[2]>=(modernRules&&empire.Any(CutOff)?0:3)&&RoadTiles(u.owner)<empire.Count*RoadsPerCity;aiOwnTiles=TilesOwnedBy(u.owner).Where(t=>nations[u.owner].known[t.y*Width+t.x]&&!Barren(t.terrain)).ToList();}
    var worked=aiWorked;
+   // Joining towns by road comes first while the treasury can carry it (RivalRoads.cs): the nearest planned tile no other worker has
+   // taken. A tile that cannot be reached or worked is dropped from the plan, so no worker stands waiting on it.
+   if(u.owner!=0&&aiCityRoadOk&&aiCityRoads.Count>0&&!hungerNow(u.owner)){
+    var claimed=new HashSet<int>();foreach(var a in units)if(a.owner==u.owner&&a.type==1&&a.id!=u.id){if(a.job>0)claimed.Add(a.y*Width+a.x);if(a.hasOrder)claimed.Add(a.destinationY*Width+a.destinationX);}
+    foreach(int cell in aiCityRoads.Where(i=>!claimed.Contains(i)).OrderBy(i=>Distance(tiles[i].x,tiles[i].y,u.x,u.y)).Take(4).ToList()){var t=tiles[cell];
+     if(t.road){aiCityRoads.Remove(cell);continue;}
+     if(u.x==t.x&&u.y==t.y){if(StartJob(u,1)){u.autoJob=1;return;}aiCityRoads.Remove(cell);continue;}
+     if(Distance(u.x,u.y,t.x,t.y)>12)break;
+     if(Order(u,t.x,t.y)){u.autoJob=1;return;}aiCityRoads.Remove(cell);}
+   }
    // Tiles another of this people's workers has taken, and whether any enemy is in play at all, are worked out once.
    var taken=new HashSet<int>();foreach(var a in units)if(a.owner==u.owner&&a.type==1&&a.id!=u.id){if(a.job>0)taken.Add(a.y*Width+a.x);if(a.hasOrder)taken.Add(a.destinationY*Width+a.destinationX);}
    bool enemies=AtWarWithAnyone(u.owner);var threats=enemies?units.Where(a=>AtWar(u.owner,a.owner)&&VisibleTo(u.owner,a.x,a.y)).ToList():null;var nearNet=NearNetwork(u.owner);
    bool hunger=aiHunger;
-   Tile target=null;int chosenJob=0,best=int.MinValue;var portRoads=aiPortRoads;
+   Tile target=null;int chosenJob=0,best=int.MinValue;var portRoads=aiPortRoads;int homeLand=u.owner!=0?Landmass(u.x,u.y):-1;
    // Your auto-developing workers never stand idle while anything in your territory can still be improved (owner request, 9 Nov 2026):
    // a second pass takes any remaining job, roads included, even where a road would not pay for itself.
    for(int pass=0;pass<(u.owner==0?2:1)&&target==null;pass++)
    foreach(var tile in aiOwnTiles){
     if(taken.Contains(tile.y*Width+tile.x))continue;
+    // Only land it can walk to (27 Nov 2026: a worker that chose a tile on another island stood idle, choosing it again each time).
+    if(u.owner!=0&&Landmass(tile.x,tile.y)!=homeLand)continue;
     if(enemies&&threats.Any(a=>Distance(tile.x,tile.y,a.x,a.y)<=2))continue;
     var probe=new Unit{owner=u.owner,type=1,x=tile.x,y=tile.y,moves=u.moves};
     // Each job is scored first; the costly check that it is allowed is made only for one that would beat the best so far.
     foreach(int job in WorkerJobs){
      // Roads cost upkeep, so they are built only where they pay: to a port or an improved resource, while the treasury can bear it.
-     if(pass==0&&job==1&&!aiRoadOk&&!portRoads.Contains(tile.y*Width+tile.x)&&!((tile.farm||tile.mine)&&tile.resource>0))continue;
+     bool joinsTowns=job==1&&aiCityRoadOk&&aiCityRoads.Contains(tile.y*Width+tile.x);
+     if(pass==0&&job==1&&!aiRoadOk&&!joinsTowns&&!portRoads.Contains(tile.y*Width+tile.x)&&!((tile.farm||tile.mine)&&tile.resource>0))continue;
      // Clearing woodland is worth a little less than the farm it makes room for.
      int value=job==1?4:job==5?(worked.Contains(tile)?18:6):worked.Contains(tile)?24:10;
      if(job==2&&hunger)value+=20;
@@ -65,6 +78,8 @@ namespace ParadigmRealm {
      if(job==1&&(tile.farm||tile.mine)&&tile.resource>0)value+=30;
      // A port only works while a road joins it to its city.
      if(job==1&&portRoads.Contains(tile.y*Width+tile.x))value+=60;
+     // A road that joins a town to its capital (RivalRoads.cs): trade between them, and soldiers and settlers move faster.
+     if(joinsTowns)value+=40;
      // Grow the existing road network rather than scattering isolated road tiles.
      if(job==1&&nearNet.Contains(tile.y*Width+tile.x))value+=10;
      value-=Distance(u.x,u.y,tile.x,tile.y)*2;

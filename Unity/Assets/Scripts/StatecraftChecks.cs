@@ -37,8 +37,8 @@ public static class StatecraftChecks {
   // Rivals choose, change seldom, and a game with it saves.
   {var g=World.New(422,"Whole",0,1,1,0,1,2,5,hex:true,natives:false,wild:true,rations:true);g.nationalForces=true;g.EnableStatecraft();g.Found(g.units.First(u=>u.owner==0&&u.type==0));
    for(int o=1;o<g.civCount;o++)Learn(g,o);int changes=0;var last=new int[g.civCount];
-   for(int t=0;t<120&&g.result=="";t++){foreach(int o in Enumerable.Range(1,g.civCount-1))g.Relation(0,o).peaceUntil=g.turn+10;g.EndTurn();for(int o=1;o<g.civCount;o++){if(g.nations[o].statecraft!=last[o])changes++;last[o]=g.nations[o].statecraft;}}
-   Check(Enumerable.Range(1,g.civCount-1).Any(o=>g.nations[o].statecraft!=0),"some rival chooses");Check(changes<=g.civCount*5,"and they change seldom ("+changes+" times)");Check(g.Valid(),"the game stays valid");
+   for(int t=0;t<120&&g.result=="";t++){for(int a=0;a<g.civCount;a++)for(int o=a+1;o<g.civCount;o++){var rel=g.Relation(a,o);if(rel!=null)rel.peaceUntil=g.turn+10;}/* everyone at peace: a rival at war never changes how it governs (27 Nov 2026: with roads the rivals fought among themselves in this game) */g.EndTurn();for(int o=1;o<g.civCount;o++){if(g.nations[o].statecraft!=last[o])changes++;last[o]=g.nations[o].statecraft;}}
+   Check(Enumerable.Range(1,g.civCount-1).Any(o=>g.nations[o].statecraft!=0),"some rival chooses (turn "+g.turn+(g.result!=""?", ended: "+g.result:"")+"; "+string.Join("; ",Enumerable.Range(1,g.civCount-1).Select(o=>g.NationName(o)+" towns "+g.cities.Count(c=>c.owner==o)+" posture "+g.Posture(o)+" wants "+g.StatecraftWanted(o)).ToArray())+")");Check(changes<=g.civCount*5,"and they change seldom ("+changes+" times)");Check(g.Valid(),"the game stays valid");
    var copy=UnityEngine.JsonUtility.FromJson<World>(UnityEngine.JsonUtility.ToJson(g));Check(copy.statecraft&&Enumerable.Range(0,g.civCount).All(o=>copy.nations[o].statecraft==g.nations[o].statecraft&&copy.nations[o].statecraftSince==g.nations[o].statecraftSince),"choices are saved");}
  }
 }
