@@ -17,7 +17,7 @@ public partial class RealmGame {
    Debug.Log("PROBE "+variant+" reasoning: "+world.ValleyReasoningText(1));
    var s=world.tiles[issue.site];FocusTile(s.x,s.y);yield return Frames(20);yield return Shot(folder,"valley-"+variant+"-call.bmp",20);
    // Answer the call with a real click.
-   var call=CallRect;yield return ClickAt(call.x+62+75,call.y+46+12);yield return Frames(15);Probe(variant+": clicking Answer opens the talk",ValleyTalkOpen());
+   var call=CallRect;yield return ClickAt(call.x+64+60,call.y+66+12);yield return Frames(15);Probe(variant+": clicking Answer opens the talk",ValleyTalkOpen());
    yield return Shot(folder,"valley-"+variant+"-talk.bmp",20);
    valleyWhy=true;yield return Frames(10);Debug.Log("PROBE "+variant+" why: "+world.ValleyWhy(issue));yield return Shot(folder,"valley-"+variant+"-why.bmp",20);
    if(variant=="lasting"){
@@ -37,7 +37,17 @@ public partial class RealmGame {
     counterPer=5;counterTurns=20;yield return Frames(10);yield return Shot(folder,"valley-farmland-counter.bmp",20);valleyTalk=-1;
    }
   }
+  // Your own terms (27 Nov 2026): the composer with a place named, then a timber purchase; and a plain pact answered in the call box.
+  {valleyTalk=-1;world.rivalCalls.Clear();var home=world.cities.First(c=>c.owner==0);var place=world.tiles.First(t=>t.realm==0&&!PixelArt.IsWater(t.terrain)&&world.Distance(t.x,t.y,home.x,home.y)==4);
+   OpenCompose(1);composeKind=0;composeSite=place.y*world.Width+place.x;composeGold=20;isoWidth=96;FocusTile(place.x,place.y);yield return Frames(20);Probe("compose: the composer is open",ComposeOpen());yield return Shot(folder,"valley-compose-place.bmp",20);
+   composeKind=3;composeAmount=3;composeTurns=8;composeGold=12;yield return Frames(5);yield return Shot(folder,"valley-compose-timber.bmp",10);composeWith=-1;
+   foreach(var o in world.offers.Where(o=>o.to==0&&o.status==0))o.status=2;
+   var pact=new DiplomaticOffer{id=world.nextDiplomaticId++,from=1,to=0,kind=Pacts.Kind[Pacts.NonAggression],created=world.turn,expires=world.turn+5,status=0};world.offers.Add(pact);
+   world.rivalCalls.Add(new RivalCall{from=1,offer=pact.id,text="offers a non-aggression pact."});yield return Frames(10);Probe("call: a plain pact is answered in the box",World.PlainPact(pact));yield return Shot(folder,"valley-call-pact.bmp",10);
+   var call=CallRect;yield return ClickAt(call.x+64+40,call.y+66+12);yield return Frames(5);Probe("call: Accept agrees the pact ("+pact.status+")",pact.status==1&&world.Pact(0,1,Pacts.NonAggression));
+   yield return Shot(folder,"valley-call-pact-accepted.bmp",10);}
   Application.Quit();
  }
 }
 }
+

@@ -21,12 +21,12 @@ public static class DiplomacyStrategyChecks {
   return null;}
  public static void Run(){
   // ---- Memory: gifts cannot wash out a betrayal; the betrayal fades in the end; a long friendship steadies opinion. ----
-  {var w=Setup();w.turn=50;Bond(w,0,1,Pacts.Defensive,40);int before=w.Opinion(1,0);Check(w.LongFriendship(1,0)==5&&w.OpinionLines(1,0).Any(l=>l.Key=="A long friendship"&&l.Value==5),"forty turns of a pact are worth +5 as a long friendship");
+  {var w=Setup();w.turn=50;Bond(w,0,1,Pacts.Defensive,40);int before=w.Opinion(1,0);{int lf=Math.Min(OpinionTuning.Friendship,40/OpinionTuning.FriendshipTurns);Check(w.LongFriendship(1,0)==lf&&w.OpinionLines(1,0).Any(l=>l.Key=="A long friendship"&&l.Value==lf),"forty turns of a pact are worth +"+lf+" as a long friendship");}
    Check(w.EndTreaty(0,1,TreatyKind.Defensive)&&w.OpinionMod(1,0,OpinionMods.Broken)==-25,"ending a defensive pact is remembered as a broken word");
    for(int i=0;i<6;i++){w.gold=500;w.GiftGold(1);}Check(w.OpinionMod(1,0,OpinionMods.Gifts)<=OpinionMods.GiftCap,"gifts never add more than +"+OpinionMods.GiftCap);
    Check(w.Opinion(1,0)<before,"six gifts do not undo a broken defensive pact");
-   var mem=w.MemoryLines(1,0);Check(mem.Any(l=>l.text=="Broke an agreement"&&l.turnsLeft==100),"the screen can say how long the broken word will be remembered (25 points at 1 every 4 turns)");
-   Next(w,101);Check(w.OpinionMod(1,0,OpinionMods.Broken)==0,"and in time it is forgiven: betrayal is lasting but recoverable");
+   var mem=w.MemoryLines(1,0);Check(mem.Any(l=>l.text=="Broke an agreement"&&l.turnsLeft==25*OpinionMods.FadeEvery[OpinionMods.Broken]),"the screen can say how long the broken word will be remembered (25 points at 1 every "+OpinionMods.FadeEvery[OpinionMods.Broken]+" turns)");
+   Next(w,25*OpinionMods.FadeEvery[OpinionMods.Broken]+1);Check(w.OpinionMod(1,0,OpinionMods.Broken)==0,"and in time it is forgiven: betrayal is lasting but recoverable");
    Check(w.ImproveTips(1,0).Count>0,"the player is told how to mend relations");}
   // ---- Scenario 1: a defensive war ends with reparations and a withdrawal, not annexation. ----
   {var w=Setup(614);int cities=w.cities.Count;Check(w.DeclareWar(1,0)&&w.AtWar(0,1)&&w.Relation(0,1).lastDeclarer==1,"rival 1 attacks the player");
@@ -56,12 +56,12 @@ public static class DiplomacyStrategyChecks {
     var r=w.ProposeRequest(new DiplomaticRequest{from=1,to=0,kind=RequestKinds.DefendGate,gate=gate.y*w.Width+gate.x,duration=6,gold=30});Check(r.status==RequestStatus.Pending,"an ally's request for help at its gateway reaches the player ("+r.answer+")");
     Check(w.RespondToRequest(r.id,true)&&r.status==RequestStatus.Active,"the player accepts a specific commitment");
     var post=w.tiles.First(t=>t.realm==gate.realm&&w.Distance(t.x,t.y,gate.x,gate.y)==1&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain));var guard=w.Add(0,2,post.x,post.y);
-    int trust=w.Trust(1,0),gold=w.gold;Next(w,6);Check(r.status==RequestStatus.Fulfilled&&w.gold==gold+30&&w.OpinionMod(1,0,OpinionMods.KeptWord)>0&&w.TrustCap(1,0)==Pacts.TrustCap[Pacts.Defensive],"guarding the gateway fulfils the commitment, pays the incentive and is remembered");
+    int trust=w.Trust(1,0),gold=w.gold;Next(w,6);Check(r.status==RequestStatus.Fulfilled&&w.gold==gold+30&&w.OpinionMod(1,0,OpinionMods.KeptWord)>0&&w.TrustCap(1,0)>Pacts.TrustCap[Pacts.Defensive],"guarding the gateway fulfils the commitment, pays the incentive and is remembered (and kept word raises how far they can trust you)");
     var r2=w.ProposeRequest(new DiplomaticRequest{from=1,to=0,kind=RequestKinds.DefendGate,gate=gate.y*w.Width+gate.x,duration=6});w.RespondToRequest(r2.id,true);w.units.Remove(guard);int broken=w.OpinionMod(1,0,OpinionMods.Broken);Next(w,6);
     Check(r2.status==RequestStatus.Failed&&w.OpinionMod(1,0,OpinionMods.Broken)<broken&&w.OpinionMod(1,0,OpinionMods.Abandoned)<0,"leaving the gateway unguarded breaks the word and abandons the ally");}}
   // ---- Scenario 3: a request protects a weaker nation. ----
   {var w=Setup(618);w.turn=60;w.DeclareWar(1,2);var home=w.cities.First(c=>c.owner==0);for(int i=0;i<12;i++)w.Add(0,2,home.x,home.y);foreach(var u in w.units.Where(u=>u.owner==0))w.At(u.x,u.y).seen=true;
-   w.AddOpinion(1,0,OpinionMods.Dealings,30);w.AddExhaustion(1,2,30);
+   w.AddOpinion(1,0,OpinionMods.KeptWord,30);w.AddExhaustion(1,2,30);
    var stop=new DiplomaticRequest{from=0,to=1,kind=RequestKinds.StopWar,target=2,duration=15,gold=50,consequence=RequestConsequence.Rivalry};
    Check(w.RequestProblem(stop)=="","the request is valid");int score=w.RequestScore(stop,null);Check(w.RequestLines(stop).Any(l=>l.Key.StartsWith("Fear of your anger")||l.Key.StartsWith("Your threat")),"the threat's credibility is weighed");
    var sent=w.ProposeRequest(stop);Check(score>=0==(sent.status==RequestStatus.Fulfilled),"the answer follows the shown reckoning");
@@ -72,19 +72,19 @@ public static class DiplomacyStrategyChecks {
   // ---- Scenario 5: a scarce resource can be had by trade, or at the peace table. ----
   {var w=Setup(619);var second=SecondCity(w,1);Check(second!=null,"room for a second rival city");{var t=w.At(second.x,second.y);t.resource=2;t.mine=true;t.road=true;w.nations[0].tech[TechnologyCatalog.Index("iron")]=true;w.nations[1].tech[TechnologyCatalog.Index("iron")]=true;w.tech=w.nations[0].tech;Connect(w,1,second);
     Check(!w.HasResource(0,2)&&w.HasDomesticResource(1,2),"only the rival has Iron");
-    w.AddOpinion(1,0,OpinionMods.Dealings,40);var buy=w.Propose(new DiplomaticOffer{from=0,to=1,kind=TreatyKind.Trade,duration=10,givePerTurn=6,askResource=2});Check(buy.status==1&&w.HasResource(0,2),"by trade: Iron imported for gold: "+buy.answer+" "+w.HasResource(0,2));
+    w.AddOpinion(1,0,OpinionMods.KeptWord,40);var buy=w.Propose(new DiplomaticOffer{from=0,to=1,kind=TreatyKind.Trade,duration=10,givePerTurn=6,askResource=2});Check(buy.status==1&&w.HasResource(0,2),"by trade: Iron imported for gold: "+buy.answer+" "+w.HasResource(0,2));
     var w2=Setup(619);var second2=SecondCity(w2,1);var t2=w2.At(second2.x,second2.y);t2.resource=2;t2.mine=true;t2.road=true;foreach(int o in new[]{0,1})w2.nations[o].tech[TechnologyCatalog.Index("iron")]=true;w2.tech=w2.nations[0].tech;w2.DeclareWar(1,0);w2.turn+=8;w2.AddExhaustion(1,0,90);Beaten(w2,1,0,second2);
     var cede=w2.Propose(new DiplomaticOffer{from=0,to=1,kind=TreatyKind.Peace,askCity=second2.id});Check(cede.status==1&&second2.owner==0,"or by peace terms: the city with the Iron is handed over");Connect(w2,0,second2);Check(w2.HasDomesticResource(0,2),"and once joined by road its Iron is the player's own");}}
   // ---- Scenario 5, a third way: asked for, and shared for a term. ----
   {var w=Setup(624);var home1=w.cities.First(c=>c.owner==1);var t=w.At(home1.x,home1.y);t.resource=2;t.mine=true;t.road=true;foreach(int o in new[]{0,1,2})w.nations[o].tech[TechnologyCatalog.Index("iron")]=true;w.tech=w.nations[0].tech;w.RebuildTerritory();
    Check(!w.HasResource(0,2)&&w.HasDomesticResource(1,2),"only rival 1 has Iron");
-   w.AddOpinion(1,0,OpinionMods.Dealings,40);
+   w.AddOpinion(1,0,OpinionMods.KeptWord,40);
    var ask=new DiplomaticRequest{from=0,to=1,kind=RequestKinds.Resource,resource=2,duration=10,gold=50};Check(w.RequestProblem(ask)=="","the request is valid ("+w.RequestProblem(ask)+")");
    var got=w.ProposeRequest(ask);Check(got.status==RequestStatus.Fulfilled&&w.HasResource(0,2)&&w.contracts.Any(c=>c.from==1&&c.to==0&&c.giveResource==2)&&w.gold==450,"asked politely and paid on delivery, rival 1 shares its Iron for the term ("+got.answer+")");
    Check(w.RequestProblem(new DiplomaticRequest{from=0,to=1,kind=RequestKinds.Resource,resource=2,duration=10})!="","no second share while the first runs");
    t.mine=false;w.RebuildTerritory();w.ProcessDiplomacyPayments();Check(!w.HasResource(0,2)&&w.OpinionMod(0,1,OpinionMods.Broken)==0,"a lost mine ends the share with no blame");
    // A rival that knows Iron Working and lacks Iron asks a neighbour who has it.
-   var w2=Setup(625);var h0=w2.cities.First(c=>c.owner==0);var t0=w2.At(h0.x,h0.y);t0.resource=2;t0.mine=true;t0.road=true;foreach(int o in new[]{0,1,2})w2.nations[o].tech[TechnologyCatalog.Index("iron")]=true;w2.tech=w2.nations[0].tech;w2.RebuildTerritory();w2.AddOpinion(1,0,OpinionMods.Dealings,20);w2.nations[1].gold=200;
+   var w2=Setup(625);var h0=w2.cities.First(c=>c.owner==0);var t0=w2.At(h0.x,h0.y);t0.resource=2;t0.mine=true;t0.road=true;foreach(int o in new[]{0,1,2})w2.nations[o].tech[TechnologyCatalog.Index("iron")]=true;w2.tech=w2.nations[0].tech;w2.RebuildTerritory();w2.AddOpinion(1,0,OpinionMods.KeptWord,20);w2.nations[1].gold=200;
    w2.turn=6;w2.DiplomacyAI();var asked=w2.requests.FirstOrDefault(r=>r.from==1&&r.to==0&&r.kind==RequestKinds.Resource);
    Check(asked!=null&&asked.resource==2&&asked.status==RequestStatus.Pending,"a rival short of Iron asks the player to share it");
    int before=w2.ResourceNeed(1,2);w2.RespondToRequest(asked.id,false);Check(w2.ResourceNeed(1,2)>before,"refused, it values Iron more in later trade ("+before+" to "+w2.ResourceNeed(1,2)+")");Check(w2.Valid(),"valid after resource requests");}
@@ -93,7 +93,7 @@ public static class DiplomacyStrategyChecks {
     foreach(var t in w.tiles)if(t.realm==gate.realm&&w.Distance(t.x,t.y,gate.x,gate.y)<=4)t.owner=1;
     var far=w.tiles.First(t=>t.owner==1&&w.Distance(t.x,t.y,gate.x,gate.y)==4);
     Check(!w.CanEnter(0,gate)&&!w.CanEnter(0,far),"without an agreement the gateway is closed to you");
-    w.AddOpinion(1,0,OpinionMods.Dealings,60);var o=w.Propose(new DiplomaticOffer{from=0,to=1,kind=TreatyKind.GateAccess});
+    w.AddOpinion(1,0,OpinionMods.KeptWord,60);var o=w.Propose(new DiplomaticOffer{from=0,to=1,kind=TreatyKind.GateAccess});
     Check(o.status==1&&w.Pact(0,1,Pacts.GateAccess),"gate access is signed ("+o.answer+")");
     Check(w.CanEnter(0,gate)&&!w.CanEnter(0,far)&&!w.HasAccess(0,1),"with gate access your units may reach the gateway, but the rest of their land stays closed");
     Check(w.AcceptanceLines(new DiplomaticOffer{from=2,to=1,kind=TreatyKind.GateAccess}).Count>0,"rivals weigh gate access by their interest in it");}}

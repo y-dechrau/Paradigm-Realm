@@ -47,7 +47,7 @@ public partial class RealmGame {
  // Called once per repaint before the map is drawn: takes in new steps and moves every glide on.
  void UpdateGlides(){
   if(world==null)return;
-  if(glideWorld!=world){unitGlides.Clear();animalGlides.Clear();animalLast.Clear();glideWorld=world;if(world.moveLog!=null)world.moveLog.Clear();}
+  if(glideWorld!=world){unitGlides.Clear();animalGlides.Clear();animalLast.Clear();raiderGlides.Clear();raiderLast.Clear();glideWorld=world;if(world.moveLog!=null)world.moveLog.Clear();}
   float now=Time.realtimeSinceStartup,dt=glideClock<0?0:Mathf.Min(.1f,now-glideClock);glideClock=now;
   if(world.moveLog!=null&&world.moveLog.Count>0){
    foreach(var m in world.moveLog){
@@ -66,7 +66,7 @@ public partial class RealmGame {
     if(animalLast.TryGetValue(a.id,out was)&&was!=now2&&(world.Visible(a.x,a.y)||world.Visible(was.x,was.y))&&world.Distance(was.x,was.y,a.x,a.y)<=4){var g=new Glide();g.path.Add(was);g.path.Add(now2);animalGlides[a.id]=g;}
     animalLast[a.id]=now2;}
   }
-  Advance(unitGlides,dt);Advance(animalGlides,dt);UpdateStrikes(dt);
+  Advance(unitGlides,dt);Advance(animalGlides,dt);UpdateRaiderGlides(dt);UpdateStrikes(dt);
  }
  static void Advance(Dictionary<int,Glide> glides,float dt){
   List<int> done=null;
@@ -90,7 +90,7 @@ public partial class RealmGame {
  }
  // Drawn after the tiles, so a moving figure is never hidden by the tile it is entering.
  void DrawGlides(float tw,float s){
-  if(unitGlides.Count==0&&animalGlides.Count==0)return;
+  DrawRaiderGlides(tw,s);if(unitGlides.Count==0&&animalGlides.Count==0)return;
   glideUnits.Clear();foreach(var u in world.units)if(unitGlides.ContainsKey(u.id))glideUnits[u.id]=u;
   foreach(var kv in unitGlides){Unit u;if(!glideUnits.TryGetValue(kv.Key,out u))continue;Vector2 at;if(!GlidePoint(kv.Value,tw,s,out at))continue;
    // Turn toward the step being taken; a step straight up or down keeps the facing it had.

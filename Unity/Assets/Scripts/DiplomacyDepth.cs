@@ -69,7 +69,7 @@ public partial class World {
   if(has(LivingCatalog.Paranoid)&&them()>me())Part(lines,ref sum,who+" (paranoid) fears your army",-8);
   if(has(LivingCatalog.Ambitious)&&cities.Count(c=>c.owner==t)>cities.Count(c=>c.owner==o))Part(lines,ref sum,who+" (ambitious) envies your size",-6);
   if(has(LivingCatalog.Loyal)&&Friends(o,t))Part(lines,ref sum,who+" (loyal) stands by friends",8);
-  if(has(LivingCatalog.Honest))Part(lines,ref sum,Grievances(o,t)>=12?who+" (honest) despises broken promises":who+" (honest) trusts plain dealing",Grievances(o,t)>=12?-6:3);
+  if(has(LivingCatalog.Honest)){bool broke=Mods(o,t)[OpinionMods.Broken]<0;Part(lines,ref sum,broke?who+" (honest) despises broken promises":who+" (honest) trusts plain dealing",broke?-6:3);}// only real broken word counts (27 Nov 2026; it counted every grievance, even turned-down offers)
   if(has(LivingCatalog.Pious)){var mine=CapitalOf(o);var theirs=CapitalOf(t);if(mine!=null&&theirs!=null&&mine.religion>=0&&theirs.religion>=0)Part(lines,ref sum,mine.religion==theirs.religion?who+" (pious) shares your faith":who+" (pious) scorns your faith",mine.religion==theirs.religion?6:-4);}
   if(has(LivingCatalog.Brave)&&them()>=me())Part(lines,ref sum,who+" (brave) respects a strong army",4);
   if(has(LivingCatalog.Greedy)&&contracts.Any(c=>SamePair(c.from,c.to,o,t)))Part(lines,ref sum,who+" (greedy) likes your trade",4);

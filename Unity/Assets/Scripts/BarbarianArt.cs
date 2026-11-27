@@ -16,10 +16,9 @@ public partial class RealmGame {
   var camp=world.CampAt(x,y);
   if(camp!=null&&(visible||camp.seen)){var tex=Art("barbarian-camp");var r=new Rect(sx-30*s,gy-40*s,60*s,52*s);if(tex!=null)GUI.DrawTexture(r,tex,ScaleMode.ScaleToFit,true);else Fill(new Rect(sx-8*s,gy-12*s,16*s,12*s),new Color(.5f,.15f,.1f));
    if(visible&&camp.hp<10)barbarianBars.Add(new Vector4(sx,gy-42*s,s,camp.hp));}
-  if(!visible)return;var raider=world.RaiderAt(x,y);if(raider==null)return;
+  if(!visible)return;var raider=world.RaiderAt(x,y);if(raider==null||RaiderGliding(raider))return;
   // Drawn as DrawUnitArt draws every unit: 1.6 times its 40-unit box, feet on the box's floor (owner report, 21 Nov 2026: too small).
-  var pic=RaiderPicture();float size=40*s*1.6f;var feet=new Vector2(sx,gy+4*s);var at=new Rect(feet.x-size/2,feet.y-size*62f/64f,size,size);
-  if(pic!=null)GUI.DrawTexture(at,pic,ScaleMode.ScaleToFit,true);else Fill(new Rect(sx-5*s,gy-20*s,10*s,18*s),new Color(.55f,.2f,.12f));
+  DrawRaiderFigure(raider,new Vector2(sx,gy+4*s),s,RaiderPicture());
 
   if(raider.hp<10)barbarianBars.Add(new Vector4(sx,gy-47*s,s,raider.hp));
  }

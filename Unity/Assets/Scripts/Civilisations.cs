@@ -121,7 +121,7 @@ public partial class World {
  {
   var r=new Random(seed^0x5eed);
   // Rivals come from the same group as the player first (Real World or Fantasy), then from the other group if more are needed.
-  var pool=CivilisationCatalog.Offered(realWorld).Where(i=>i!=nations[0].civ).OrderBy(i=>r.Next()).Concat(CivilisationCatalog.Offered(!realWorld).OrderBy(i=>r.Next())).ToList();
+  var pool=CivilisationCatalog.Offered(realWorld).Where(i=>i!=nations[0].civ).OrderBy(i=>r.Next()).Concat(CivilisationCatalog.Offered(!realWorld).Where(i=>i!=nations[0].civ).OrderBy(i=>r.Next())).Distinct().ToList();// never the player's own civilisation, from either group (owner report, 27 Nov 2026)
   for(int o=1;o<civCount;o++)
   {
    var n=nations[o];

@@ -35,9 +35,15 @@ public partial class World {
  SupplyRecord Record(int receiver,int supplier){if(supplyRecords==null)supplyRecords=new List<SupplyRecord>();var r=supplyRecords.Find(x=>x.receiver==receiver&&x.supplier==supplier);if(r==null){r=new SupplyRecord{receiver=receiver,supplier=supplier};supplyRecords.Add(r);}return r;}
  public ValleyIssue OpenIssue(int owner){return Issues().Find(i=>i.owner==owner&&i.status==0);}
  // ---- Where a place is, in words a leader would use ----
- public string PlaceName(int owner,int cell){if(cell<0)return "that land";var t=tiles[cell];var cap=CapitalOf(owner)??cities.FirstOrDefault(c=>c.owner==owner);
+ // Named for you, the reader (owner report, 27 Nov 2026: "the north-eastern woods" said nothing about where): what the place is,
+ // then how far and which way from your nearest town, e.g. "the woods 3 tiles north-east of Shamsira".
+ public string PlaceName(int owner,int cell){if(cell<0)return "that land";var t=tiles[cell];
+  {var mine=cities.Where(c=>c.owner==0).OrderBy(c=>Distance(c.x,c.y,t.x,t.y)).FirstOrDefault();if(mine!=null&&Distance(mine.x,mine.y,t.x,t.y)<=14){bool f=TilesAround(t.x,t.y,1).Any(n=>n.terrain==7);int wd=TilesAround(t.x,t.y,1).Count(Wooded);int d=Distance(mine.x,mine.y,t.x,t.y);
+   return "the "+(f?"ford":wd>=3?"woods":"land")+" "+d+(d==1?" tile ":" tiles ")+CompassWord(mine.x,mine.y,t.x,t.y)+" of "+mine.name;}}
+  var cap=CapitalOf(owner)??cities.FirstOrDefault(c=>c.owner==owner);
   string dir="";if(cap!=null){int dx=DeltaX(cap.x,t.x),dy=t.y-cap.y;dir=Math.Abs(dx)>=Math.Abs(dy)*2?(dx>0?"eastern ":"western "):Math.Abs(dy)>=Math.Abs(dx)*2?(dy>0?"southern ":"northern "):(dy>0?"south":"north")+(dx>0?"-eastern ":"-western ");}
   bool ford=TilesAround(t.x,t.y,1).Any(n=>n.terrain==7);int woods=TilesAround(t.x,t.y,1).Count(Wooded);return "the "+dir+(ford?"ford":woods>=3?"woods":"valley");}
+ string CompassWord(int fx,int fy,int tx,int ty){int dx=DeltaX(fx,tx),dy=ty-fy;double a=Math.Atan2(-dy,dx*1.0)*180/Math.PI;string[] names={"east","north-east","north","north-west","west","south-west","south","south-east"};int k=(int)Math.Round(((a%360)+360)%360/45.0)%8;return names[k];}
  public List<Tile> KeepTiles(int site,int radius){if(site<0)return new List<Tile>();var s=tiles[site];return TilesAround(s.x,s.y,radius).Where(t=>Distance(t.x,t.y,s.x,s.y)<=radius).ToList();}
  // ---- 1-4: the rival's own reckoning ----
  public ValleyNeed AssessValley(int owner,int other=0){
@@ -119,7 +125,7 @@ public partial class World {
   issue.opening=n.kind==1?"Our builders are short of timber: "+n.amount+" by turn "+(turn+(n.shortAt>0?n.shortAt:ValleyTuning.Horizon))+". You have woods to spare. Will you sell us "+n.amount+" timber for "+n.offerGold+" gold?":
    (n.evidence&&units.Any(u=>u.owner==0&&u.type==0&&Distance(u.x,u.y,tiles[n.site].x,tiles[n.site].y)<=ValleyTuning.EvidenceReach&&VisibleTo(o,u.x,u.y))?"Your settlers are near "+place+". Do you mean to stay? ":"Your people are close to "+place+". ")+
    "We had hoped to found a town there. Leave it to us and we will pay "+n.offerGold+" gold.";
-  Issues().Add(issue);AddRivalCall(o,0,"wishes to talk about "+place+".");DiplomacyEvent(o,0,n.kind==1?"Asked to buy "+n.amount+" timber for "+issue.gold+" gold.":"Asked you to leave "+place+" unsettled, for "+issue.gold+" gold"+(n.motive==1?" (for its farmland).":" (for its timber)."));return issue;
+  Issues().Add(issue);AddRivalCall(o,0,"wants to talk about "+place+".");DiplomacyEvent(o,0,n.kind==1?"Asked to buy "+n.amount+" timber for "+issue.gold+" gold.":"Asked you to leave "+place+" unsettled, for "+issue.gold+" gold"+(n.motive==1?" (for its farmland).":" (for its timber)."));return issue;
  }
  // ---- Your answers ----
  // "Why?" The answer reveals what moves them; how much depends on the leader's candour (loyal, ungreedy leaders say more).
@@ -179,7 +185,7 @@ public partial class World {
      if(a.supplier==0&&a.delivered==a.turns)Note("You have delivered all "+a.perTurn*a.turns+" timber to "+NationName(a.receiver)+". They remember it.");}
     else{a.missed++;Record(a.receiver,a.supplier).missed++;if(a.supplier==0)Note("You could not deliver "+a.perTurn+" timber to "+NationName(a.receiver)+" this turn ("+s.timber+" in store). Missing "+ValleyTuning.MissLimit+" deliveries breaks the agreement.");
      if(a.missed>=ValleyTuning.MissLimit){BreakAccord(a,a.supplier,"missed "+a.missed+" deliveries of timber");continue;}}
-    if(a.delivered>=a.turns){a.supplyDone=true;if(a.keeper<0)a.status=1;AddOpinion(a.receiver,a.supplier,OpinionMods.KeptWord,Math.Min(8,2+a.delivered/2));DiplomacyEvent(a.supplier,a.receiver,"Timber agreement fulfilled: "+a.delivered+" deliveries.");}}
+    if(a.delivered>=a.turns){a.supplyDone=true;if(a.keeper<0)a.status=1;AddOpinion(a.receiver,a.supplier,OpinionMods.KeptWord,Math.Min(OpinionTuning.FulfilledOpinion,2+a.delivered/2));if(a.receiver>0)SetTrust(a.receiver,a.supplier,Math.Min(TrustCap(a.receiver,a.supplier),Trust(a.receiver,a.supplier)+OpinionTuning.FulfilledTrust));DiplomacyEvent(a.supplier,a.receiver,"Timber agreement fulfilled: "+a.delivered+" deliveries.");}}
    // A promise to leave the place unsettled runs its own term, after the deliveries.
    if(a.status==0&&a.keeper>=0&&a.keepTurns>0&&turn-a.start>=a.keepTurns){a.status=1;DiplomacyEvent(a.a,a.b,"The promise over "+a.place+" has run its term.");}
   }

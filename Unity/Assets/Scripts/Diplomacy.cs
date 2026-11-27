@@ -29,13 +29,14 @@ public static class Pacts {
   "If either is attacked, the other joins the war. Includes open borders.",
   "Units of both sides may cross land within 2 tiles of the other's gateways and pass through them; nothing else of their land opens."};
  // How high trust can grow under each agreement, and how reluctant a leader is to sign it before opinion is counted.
- public static readonly int[] TrustCap={20,50,40,40,100,30};
+ // How far trust can grow from an agreement standing, without anything proved (27 Nov 2026: was 20,50,40,40,100,30).
+ public static readonly int[] TrustCap={5,10,10,10,20,5};
  public static readonly int[] Reluctance={10,-15,-20,-25,-50,-5};
  // Standing opinion each agreement adds while it lasts.
  public static readonly int[] Worth={5,10,5,5,20,5};
  public static readonly TreatyKind[] Kind={TreatyKind.Access,TreatyKind.NonAggression,TreatyKind.Commercial,TreatyKind.Research,TreatyKind.Defensive,TreatyKind.GateAccess};
  public static int Of(TreatyKind k){for(int i=0;i<Count;i++)if(Kind[i]==k)return i;return -1;}
- public const int MinTurns=10,Notice=10,Truce=10,CauseDelay=3,EnvoyCap=30,EnvoyTrust=20,MaxRivals=2,MaxClaims=3,InfluenceCap=200;
+ public const int MinTurns=10,Notice=10,Truce=10,CauseDelay=3,EnvoyCap=OpinionTuning.Envoy,EnvoyTrust=10,MaxRivals=2,MaxClaims=3,InfluenceCap=200;
 }
 // Marks that deeds leave on one leader's opinion of another. Each fades toward nothing.
 public static class OpinionMods {
@@ -44,13 +45,14 @@ public static class OpinionMods {
  public static readonly string[] Names={"Past dealings","Gifts","Grievances","Declared war on us","Took our cities","Settled against our borders","Their envoy at our court","Broke an agreement","Helped us","Kept their word","Abandoned us","Attacked those we protect","Turned us down"};
  // How many turns pass for each point a mark fades (a forgiving leader halves it). Help and kept words fade slowest: a long
  // record of good faith is what makes a relationship hard to shake. Envoy (1) is handled on its own.
- public static readonly int[] FadeEvery={3,3,2,2,4,2,1,4,6,6,4,3,4};
+ // Meaningful history fades slowly and routine contact quickly (27 Nov 2026: broken 4->8, aid 6->10, kept word 6->12, abandoned 4->8, protected 3->8).
+ public static readonly int[] FadeEvery={3,3,2,2,4,2,1,8,10,12,8,8,4};
  // Save version 45 (owner request, 24 Nov 2026): turning down what another civilisation offers or asks lowers its opinion of you.
  // Letting a proposal lapse counts as turning it down. A counteroffer is haggling, so refusing one costs a single point, and
  // refusing a request costs most. The mark never passes DeclinedCap, so being asked often cannot ruin a friendship by itself.
  public const int OfferDeclined=-3,CounterDeclined=-1,RequestRefused=-5,DeclinedCap=-20;
  // Gifts can never add more than this, however many are sent.
- public const int GiftCap=20;
+ public const int GiftCap=OpinionTuning.Gifts;
 }
 public static class Attitudes {
  public const int Hostile=0,Unfriendly=1,Wary=2,Neutral=3,Cordial=4,Friendly=5,Loyal=6,Threatened=7,Domineering=8,Rival=9,AtWar=10;
@@ -154,7 +156,7 @@ public partial class World {
   bool good=kind==OpinionMods.Gifts||kind==OpinionMods.Aid||kind==OpinionMods.KeptWord;
   // Each gift is worth less as gifts pile up, and together they never pass GiftCap: gold cannot wash out a betrayal.
   if(kind==OpinionMods.Gifts&&amount>0){if(m[kind]>=OpinionMods.GiftCap)return;amount=Math.Max(1,amount*(OpinionMods.GiftCap-m[kind])/OpinionMods.GiftCap);m[kind]=Clamp(m[kind]+amount,0,OpinionMods.GiftCap);return;}
-  m[kind]=Clamp(m[kind]+amount,kind==OpinionMods.Declined?OpinionMods.DeclinedCap:either||!good?-100:0,either||good?100:0);}
+  m[kind]=Clamp(m[kind]+amount,kind==OpinionMods.Declined?OpinionMods.DeclinedCap:either||!good?-100:0,kind==OpinionMods.Dealings?OpinionTuning.Dealings:either||good?100:0);}
  // One civilisation turned down what another offered or asked. The player keeps no opinion marks of its own, so only a rival minds.
  public static int DeclineCost(DiplomaticOffer o){return o.counterOf>0?OpinionMods.CounterDeclined:OpinionMods.OfferDeclined;}
  void TurnedDown(int asker,int refuser,int amount){if(asker==0||Relation(asker,refuser)==null)return;AddOpinion(asker,refuser,OpinionMods.Declined,amount);if(refuser==0&&met[asker])Note("Turning "+NationName(asker)+" down has lowered your reputation with them ("+amount+" opinion).");}
@@ -166,7 +168,8 @@ public partial class World {
  // The highest trust the observer can come to feel: set by the strongest agreement, or by the other's envoy at its court.
  public int TrustCap(int observer,int other){var p=Relation(observer,other);if(p==null||AtWar(observer,other))return 0;int cap=0;for(int k=0;k<Pacts.Count;k++)if((p.pacts&(1<<k))!=0)cap=Math.Max(cap,Pacts.TrustCap[k]);if(Envoy(other,observer))cap=Math.Max(cap,Pacts.EnvoyTrust);
   // A partner who has kept its word or helped in need is trusted ten points further than any paper allows.
-  var m=Mods(observer,other);if(m[OpinionMods.KeptWord]>0||m[OpinionMods.Aid]>0)cap=Math.Min(100,cap+10);return cap;}
+  // Trust is earned by what was proved: kept word and help in need raise the ceiling, each mark of either counting three.
+  var m=Mods(observer,other);cap=Math.Min(100,cap+Math.Min(OpinionTuning.ProvenTrust,3*(Math.Max(0,m[OpinionMods.KeptWord])+Math.Max(0,m[OpinionMods.Aid]))));return cap;}
  public int Threat(int observer,int target){var p=Relation(observer,target);return p==null?0:observer==p.a?p.alarmA:p.alarmB;}
  internal void SetThreat(int observer,int target,int v){var p=Relation(observer,target);if(p==null)return;v=Clamp(v,0,100);if(observer==p.a)p.alarmA=v;else p.alarmB=v;}
  // Scaled by how much the observer hates warmongers (5 = as given).
@@ -181,8 +184,12 @@ public partial class World {
  int OpinionSum(int o,int t,List<KeyValuePair<string,int>> lines){
   var p=Relation(o,t);if(p==null)return 0;int sum=0;var m=o==p.a?p.modsA:p.modsB;
   for(int k=0;k<OpinionMods.Count;k++)Part(lines,ref sum,OpinionMods.Names[k],m[k]);
-  Part(lines,ref sum,"Trust ("+Trust(o,t)+")",Trust(o,t)/2);
-  {int bonds=0,n=0;for(int k=0;k<Pacts.Count;k++)if((p.pacts&(1<<k))!=0){bonds+=Pacts.Worth[k];n++;}if(n>0)Part(lines,ref sum,n==1?"An agreement between us":n+" agreements between us",bonds);}
+  // Rebalanced 27 Nov 2026 (owner: +80 from routine contact): trust is its own judgement and no longer adds to opinion; living at
+  // peace is worth at most OpinionTuning.Coexistence, a commercial pact OpinionTuning.Trade and an alliance OpinionTuning.Alliance.
+  {bool has(int k)=>(p.pacts&(1<<k))!=0;int peace=0;foreach(int k in new[]{Pacts.Borders,Pacts.NonAggression,Pacts.Research,Pacts.GateAccess})if(has(k))peace+=OpinionTuning.PerPeacePact;
+   if(peace>0)Part(lines,ref sum,"Living at peace with us",Math.Min(OpinionTuning.Coexistence,peace));
+   if(has(Pacts.Commercial))Part(lines,ref sum,"Trade between us",OpinionTuning.Trade);
+   if(has(Pacts.Defensive))Part(lines,ref sum,"Our alliance",OpinionTuning.Alliance);}
   Part(lines,ref sum,"A long friendship",LongFriendship(o,t));
   if(AtWar(o,t))Part(lines,ref sum,"At war",-50);
   if(Rival(t,o))Part(lines,ref sum,"Named us a rival",-30);
@@ -192,8 +199,8 @@ public partial class World {
   {bool war=false,rival=false,fear=false;for(int x=0;x<civCount;x++){if(x==o||x==t)continue;if(AtWar(o,x)&&AtWar(t,x))war=true;if(Rival(o,x)&&Rival(t,x))rival=true;if(Threat(o,x)>=40&&Threat(t,x)>=40)fear=true;}
    if(war)Part(lines,ref sum,"Fighting the same enemy",10);if(rival)Part(lines,ref sum,"Rival of our rival",15);if(fear)Part(lines,ref sum,"We fear the same power",15);}
   Part(lines,ref sum,"Old grudges",-GrudgePenalty(o,t));
-  if(nations[o].government==nations[t].government)Part(lines,ref sum,"Same government",5);
-  if(t==0&&ActiveRival(o))Part(lines,ref sum,"Wary of you (difficulty)",DifficultyTable.Attitude[Level]);
+  if(nations[o].government==nations[t].government)Part(lines,ref sum,"Same government",OpinionTuning.SameGovernment);
+  if(t==0&&ActiveRival(o)){int d=DifficultyTable.Attitude[Level]/2;if(d!=0)Part(lines,ref sum,d>0?"Well disposed to you (easier difficulty)":"Wary of you (harder difficulty)",d);}
   {var e=Civ(o);int core=AgendaCore(o,t);if(core!=0&&e!=null&&e.Agenda>=0)Part(lines,ref sum,"Agenda: "+CivLore.AgendaNames[e.Agenda],core);}
   if(o!=t&&CivId(t)==33&&CivId(o)!=33)Part(lines,ref sum,"Distrusts demons",-10);
   sum+=RulerOpinion(o,t,lines);

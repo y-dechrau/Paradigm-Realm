@@ -22,16 +22,27 @@ public partial class RealmGame {
   if(FitButton(new Rect(r.xMax-10-okW,y,okW,28),"OK")){world.buildNotices.RemoveAt(0);GUIUtility.ExitGUI();}
  }
  // Another leader calling: the portrait, what they want, and the way to answer.
- static Rect CallRect{get{return new Rect(452+MidShift,170,380,76);}}
+ static Rect CallRect{get{return new Rect(432+MidShift,170,420,98);}}
  bool CallShown(){return world!=null&&world.result==""&&world.NextRivalCall()!=null;}
  void DrawRivalCall(){
   var call=world.NextRivalCall();if(call==null||world.result!="")return;var r=CallRect;GUI.Box(r,"");Fill(new Rect(r.x,r.y,r.width,2),GlowGold);
-  var n=world.nations[call.from];var face=n.portrait>=0?Portrait(n.portrait):null;if(face!=null)DrawPortrait(new Rect(r.x+8,r.y+8,45,60),face);
-  int more=world.rivalCalls.Count-1;GUI.Label(new Rect(r.x+62,r.y+6,r.width-70,24),world.NationName(call.from)+(more>0?"  (+"+more+" more)":""),hudCaption);
-  GUI.Label(new Rect(r.x+62,r.y+26,r.width-70,20),(string.IsNullOrEmpty(n.leader)?"Their leader":n.leader)+" "+call.text,small);
+  var n=world.nations[call.from];var face=n.portrait>=0?Portrait(n.portrait):null;if(face!=null)DrawPortrait(new Rect(r.x+8,r.y+8,48,64),face);
+  int more=world.rivalCalls.Count-1;GUI.Label(new Rect(r.x+64,r.y+6,r.width-72,22),world.NationName(call.from)+(more>0?"  (+"+more+" more)":""),hudCaption);
+  // The whole sentence, on up to two lines, shrinking rather than cut (owner report, 27 Nov 2026).
+  {string said=(string.IsNullOrEmpty(n.leader)?"Their leader":n.leader)+" "+call.text;var st=new GUIStyle(small){wordWrap=true,clipping=TextClipping.Overflow};var tr=new Rect(r.x+64,r.y+27,r.width-72,36);while(st.fontSize>9&&st.CalcHeight(new GUIContent(said),tr.width)>tr.height)st.fontSize--;GUI.Label(tr,said,st);}
   bool talk=world.OpenIssue(call.from)!=null;// a leader who wants to talk about land opens the talk itself (ValleyTalksUI.cs)
-  if(GUI.Button(new Rect(r.x+62,r.y+46,150,24),call.offer>0||talk?"Answer":"Open Diplomacy",button)){world.rivalCalls.Remove(call);if(talk){OpenValleyTalk(call.from);GUIUtility.ExitGUI();}diplomacyPartner=call.from;diplomacyChooser=false;diplomacyDiscuss=false;detailsScreen="Diplomacy";researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();GUIUtility.ExitGUI();}
-  if(GUI.Button(new Rect(r.x+218,r.y+46,90,24),"Later",button)){world.rivalCalls.Remove(call);GUIUtility.ExitGUI();}
+  // A plain pact with nothing asked or given beside it can be answered here (owner request, 27 Nov 2026).
+  var offer=call.offer>0?world.offers.Find(o=>o.id==call.offer&&o.to==0&&o.status==0):null;bool plain=offer!=null&&World.PlainPact(offer);
+  float by=r.y+66,bx=r.x+64,bw=(r.width-72-18)/4;
+  if(plain){
+   if(GUI.Button(new Rect(bx,by,bw,24),"Accept",button)){world.rivalCalls.Remove(call);status=world.RespondToOffer(offer.id,true)?"Agreed: "+World.OfferName(offer.kind).ToLowerInvariant()+" with "+world.NationName(call.from)+".":"That offer has lapsed.";GUIUtility.ExitGUI();}
+   if(GUI.Button(new Rect(bx+bw+6,by,bw,24),"Decline",button)){world.rivalCalls.Remove(call);if(world.RespondToOffer(offer.id,false))status="Declined. "+world.NationName(call.from)+" thinks a little less of you.";GUIUtility.ExitGUI();}
+   if(GUI.Button(new Rect(bx+2*(bw+6),by,bw,24),"Details",button)){world.rivalCalls.Remove(call);diplomacyPartner=call.from;diplomacyChooser=false;diplomacyDiscuss=false;detailsScreen="Diplomacy";researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();GUIUtility.ExitGUI();}
+   if(GUI.Button(new Rect(bx+3*(bw+6),by,bw,24),"Later",button)){world.rivalCalls.Remove(call);GUIUtility.ExitGUI();}
+   return;}
+  float bw2=(r.width-72-6)/2;
+  if(GUI.Button(new Rect(bx,by,bw2,24),call.offer>0||talk?"Answer":"Open Diplomacy",button)){world.rivalCalls.Remove(call);if(talk){OpenValleyTalk(call.from);GUIUtility.ExitGUI();}diplomacyPartner=call.from;diplomacyChooser=false;diplomacyDiscuss=false;detailsScreen="Diplomacy";researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();GUIUtility.ExitGUI();}
+  if(GUI.Button(new Rect(bx+bw2+6,by,bw2,24),"Later",button)){world.rivalCalls.Remove(call);GUIUtility.ExitGUI();}
  }
  // A glowing outline: gold on a technology you know, silver on the one you are researching. It breathes slowly.
  static readonly Color GlowGold=new Color(1f,.82f,.32f),GlowSilver=new Color(.84f,.88f,.96f);

@@ -171,13 +171,13 @@ public static class DimensionChecks {
   var w=Fresh();Tile gate;City home;var mine=Planted(w,out gate,out home);Rich(w,0);Rich(w,1);w.met[1]=true;
   // Recognition of colonial claims: a complete exchange with a rival.
   var far=w.GateTwin(gate);var theirSite=w.ColonySites(1,far.realm).First();var theirSettler=w.Add(1,0,theirSite.x,theirSite.y);theirSettler.moves=4;var theirs=w.FoundColony(theirSettler);Check(theirs!=null&&theirs.owner==1,"a rival founds a colony by the same rule");
-  w.AddOpinion(1,0,OpinionMods.Dealings,30);int influence=w.nations[0].influence,opinion=w.Opinion(1,0);
+  w.AddOpinion(1,0,OpinionMods.KeptWord,30);int influence=w.nations[0].influence,opinion=w.Opinion(1,0);
   Check(w.ClaimsReason(0,1)==""&&w.RecogniseClaims(0,1)&&w.HasAccord(0,1,AccordCatalog.Claims)&&w.nations[0].influence==influence-AccordCatalog.ClaimInfluence&&w.Opinion(1,0)>opinion,"colonial claims are recognised for influence, and both think better of each other");
   var near=w.tiles.Where(t=>t.realm==far.realm&&t.gateLink==0&&w.Distance(t.x,t.y,theirs.x,theirs.y)==ColonyCatalog.MinSpacing&&!PixelArt.IsWater(t.terrain)&&!World.IsImpassable(t.terrain)&&w.Distance(t.x,t.y,mine.x,mine.y)>=ColonyCatalog.MinSpacing).FirstOrDefault();
   if(near!=null){var squatter=w.Add(0,0,near.x,near.y);squatter.moves=4;Check(w.ColonyReason(squatter).Contains("recognised"),"a recognised claim is kept: no colony beside theirs ("+w.ColonyReason(squatter)+")");w.units.Remove(squatter);}
   w.DeclareWar(0,1);w.DimensionsTurnForCheck(0);Check(!w.HasAccord(0,1,AccordCatalog.Claims),"war ends the recognition");w.MakePeaceForCheck(0,1);
   // Joint investigation.
-  var other=Gate(w,GateCondition.Sealed);w.StudyOfForCheck(1,other).known=true;w.AddOpinion(1,0,OpinionMods.Dealings,200);Check(!w.AtWar(0,1)&&w.JointStudyReason(0,1,other)=="","joint investigation is open to those on terms: "+w.JointStudyReason(0,1,other));int gold=w.gold,theirGold=w.nations[1].gold;
+  var other=Gate(w,GateCondition.Sealed);w.StudyOfForCheck(1,other).known=true;w.AddOpinion(1,0,OpinionMods.KeptWord,200);Check(!w.AtWar(0,1)&&w.JointStudyReason(0,1,other)=="","joint investigation is open to those on terms: "+w.JointStudyReason(0,1,other));int gold=w.gold,theirGold=w.nations[1].gold;
   Check(w.JointStudyPartners(0,other).Contains(1)&&w.JointStudy(0,1,other)&&w.StudyOf(0,other).known&&w.gold==gold-AccordCatalog.JointGold&&w.nations[1].gold==theirGold+AccordCatalog.JointGold,"a rival that has read a seal shares the reading for gold");
   // Passage: a gateway on a rival's land needs open borders.
   var st=Gate(w,GateCondition.Dormant);w.OpenGateForCheck(st);st.owner=1;Check(w.GateBlock(0,st).Contains("open borders"),"a gateway on another civilisation's land needs an open borders agreement");
@@ -186,7 +186,7 @@ public static class DimensionChecks {
   int native=-1;for(int o=0;o<w.civCount;o++)if(w.IsNativeNation(o)&&CivilisationCatalog.NativeRealm(w.nations[o].civ)==far.realm&&w.cities.Any(x=>x.owner==o))native=o;
   if(native>=0)
   {
-   w.met[native]=true;if(w.Opinion(native,0)<World.LocalLessonOpinion)Check(w.LessonReason(0,native).Contains("trust"),"a local people teaches only those it trusts ("+w.LessonReason(0,native)+")");w.AddOpinion(native,0,OpinionMods.Dealings,40);
+   w.met[native]=true;if(w.Opinion(native,0)<World.LocalLessonOpinion)Check(w.LessonReason(0,native).Contains("trust"),"a local people teaches only those it trusts ("+w.LessonReason(0,native)+")");w.AddOpinion(native,0,OpinionMods.KeptWord,40);
    int pts=w.AdaptationOf(0,DimensionFamily.Ember,true).points;Check(w.LocalPeoples(0,far.realm).Contains(native)&&w.LocalLesson(0,native)&&w.AdaptationOf(0,DimensionFamily.Ember).points==pts+World.LocalLessonPoints,"then its lessons count toward local discoveries");
    mine.stock=0;Check(w.LocalSupply(0,native,mine)&&mine.stock==AccordCatalog.SupplyAmount,"and it will sell a colony supplies with no gateway at all");
   }
@@ -220,7 +220,7 @@ public static class DimensionChecks {
   Check(crossed&&raider.x==mine.x&&raider.y==mine.y,"at war, a rival soldier goes through the gateway and marches on your colony ("+raider.x+","+raider.y+")");
   int held=0;while(mine.owner==0&&held<12){w.DimensionsTurnForCheck(0);held++;}Check(mine.owner==1&&w.colonies.Contains(mine),"an ungarrisoned colony falls to it after "+held+" turns; a garrison would have stopped it");
   // Word of a gateway travels between civilisations on terms.
-  var w2=Fresh();w2.met[1]=true;w2.AddOpinion(0,1,OpinionMods.Dealings,20);w2.AddOpinion(1,0,OpinionMods.Dealings,20);var g2=w2.HomeGates().First();w2.gatesFound=new List<int>{g2.y*w2.Width+g2.x};w2.nations[0].known[g2.y*w2.Width+g2.x]=true;
+  var w2=Fresh();w2.met[1]=true;w2.AddOpinion(0,1,OpinionMods.KeptWord,20);w2.AddOpinion(1,0,OpinionMods.KeptWord,20);var g2=w2.HomeGates().First();w2.gatesFound=new List<int>{g2.y*w2.Width+g2.x};w2.nations[0].known[g2.y*w2.Width+g2.x]=true;
   for(int k=0;k<8;k++){w2.turn++;w2.DimensionsTurnForCheck(1);}Check(w2.nations[1].known[g2.y*w2.Width+g2.x],"a rival on terms with you hears of a gateway you have found");
  }
  // The whole loop. Returns {production to investigate, gateway loads, production gained at home}.

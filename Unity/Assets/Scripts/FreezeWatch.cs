@@ -10,6 +10,9 @@ namespace ParadigmRealm {
 // game itself, so it cannot cause or worsen a freeze.
 public static class FreezeWatch {
  public const double FreezeSeconds=4;
+ // While the window is in the background Unity stops drawing on purpose; that is not a freeze (owner's report of 27 Nov 2026 was
+ // full of such pauses, taken while screenshots were made), so the watch sleeps until the window has focus again.
+ static volatile bool focused=true;public static void Focus(bool on){focused=on;Beat();}
  static long beat=Stopwatch.GetTimestamp();static volatile string where="starting",step="",decision="";static string folder;static Thread watcher;
  public static void Start(string saveFolder){if(watcher!=null)return;folder=saveFolder;watcher=new Thread(Watch){IsBackground=true,Name="FreezeWatch"};watcher.Start();}
  public static void Beat(){Interlocked.Exchange(ref beat,Stopwatch.GetTimestamp());}
@@ -19,7 +22,7 @@ public static class FreezeWatch {
  static void Watch(){
   bool frozen=false;long since=0;
   while(true){
-   Thread.Sleep(500);long now=Stopwatch.GetTimestamp();double idle=(now-Interlocked.Read(ref beat))/(double)Stopwatch.Frequency;
+   Thread.Sleep(500);if(!focused){Beat();continue;}long now=Stopwatch.GetTimestamp();double idle=(now-Interlocked.Read(ref beat))/(double)Stopwatch.Frequency;
    if(!frozen&&idle>=FreezeSeconds){frozen=true;since=Interlocked.Read(ref beat);Write("FREEZE: no frame for "+idle.ToString("0.0")+" s. Last: "+where+(step!=""?"; turn step "+step:"")+(decision!=""?"; decision "+decision:""));}
    else if(frozen&&idle<1){frozen=false;Write("FREEZE ended after "+((now-since)/(double)Stopwatch.Frequency).ToString("0.0")+" s. Last: "+where+(step!=""?"; turn step "+step:"")+(decision!=""?"; decision "+decision:""));}
   }

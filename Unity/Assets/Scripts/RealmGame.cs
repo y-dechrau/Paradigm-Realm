@@ -18,6 +18,7 @@ namespace ParadigmRealm
         static Color[] MoreInks(Color[] first){var all=new Color[World.MaxNations];for(int i=0;i<all.Length;i++)all[i]=i<first.Length?first[i]:Color.HSVToRGB((i*.618034f)%1,.55f+(i%3)*.15f,.95f-(i%2)*.15f);return all;}
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot(){if(FindFirstObjectByType<RealmGame>()==null)new GameObject("Paradigm Realm").AddComponent<RealmGame>();}
+        void OnApplicationFocus(bool on){FreezeWatch.Focus(on);}
         void Awake(){FreezeWatch.Start(Application.persistentDataPath);zoomSensitivity=PlayerPrefs.GetFloat("RealmZoomSensitivity",2f);LoadTutorialSettings();tooltips=PlayerPrefs.GetInt("RealmTooltips",1)!=0;var cameraObject=new GameObject("World Camera");var camera=cameraObject.AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=UiBackground;camera.orthographic=true;Application.targetFrameRate=60;QualitySettings.vSyncCount=1;world=World.New(Environment.TickCount&int.MaxValue,hex:true,wild:true,rations:true);selected=world.units.First(u=>u.owner==0).id;MakeArt();Center();}
         Unit Selected(){return world.units.Find(u=>u.owner==0&&u.id==selected);}
         void Center(){var u=Selected();if(u!=null&&diamondView){FocusTile(u.x,u.y);return;}if(u!=null)FocusTile(u.x,u.y);}
@@ -26,7 +27,7 @@ namespace ParadigmRealm
         bool HasSavedGame(){return File.Exists(SavePath)||NamedSaves().Length>0;}
         string[] NamedSaves(){try{return Directory.GetFiles(Application.persistentDataPath,"earth-named-*.json").OrderByDescending(File.GetLastWriteTimeUtc).ToArray();}catch{return new string[0];}}
         void Load(){var candidates=NamedSaves().Concat(File.Exists(SavePath)?new[]{SavePath}:new string[0]);LoadFile(activeSavePath??candidates.OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault()??SavePath);}
-        void LoadFile(string path){try{var next=JsonUtility.FromJson<World>(File.ReadAllText(path));if(next!=null)next.UpgradeSave();if(next==null||!next.Valid())throw new Exception("Invalid or incompatible save.");world=next;world.dormantWorlds=true;world.lifeways=true;world.EnableStatecraft();world.ForgetRumouredGates();world.RetireMegatheriums();world.EnableMaterials();ResetDiplomacyUI();renameText=world.civilisationName;selected=world.units.Where(u=>u.owner==0).Select(u=>u.id).DefaultIfEmpty(-1).First();cityId=-1;cityScreen=false;researchScreen=false;detailsScreen="";pauseMenu=false;loadScreen=false;Center();hasSession=true;mainMenu=false;activeSavePath=Path.GetFileName(path).StartsWith("earth-auto-")?null:path;status="Game loaded.";}catch(Exception e){status="Could not load: "+e.Message;}}
+        void LoadFile(string path){try{var next=JsonUtility.FromJson<World>(File.ReadAllText(path));if(next!=null)next.UpgradeSave();if(next==null||!next.Valid())throw new Exception("Invalid or incompatible save.");world=next;world.dormantWorlds=true;world.lifeways=true;world.EnableStatecraft();world.ForgetRumouredGates();world.RetireMegatheriums();world.RebalanceOpinion();world.EnableMaterials();ResetDiplomacyUI();renameText=world.civilisationName;selected=world.units.Where(u=>u.owner==0).Select(u=>u.id).DefaultIfEmpty(-1).First();cityId=-1;cityScreen=false;researchScreen=false;detailsScreen="";pauseMenu=false;loadScreen=false;Center();hasSession=true;mainMenu=false;activeSavePath=Path.GetFileName(path).StartsWith("earth-auto-")?null:path;status="Game loaded.";}catch(Exception e){status="Could not load: "+e.Message;}}
         void NextUnit(){idleDue=false;ShowIdle(true);}
         void EndTurn(){if(turnRunning||world.result!="")return;turnRunning=true;StartCoroutine(RunTurn());}
         void Styles(){if(title!=null)return;title=new GUIStyle(GUI.skin.label){fontSize=26,fontStyle=FontStyle.Bold};heading=new GUIStyle(GUI.skin.label){fontSize=17,fontStyle=FontStyle.Bold};body=new GUIStyle(GUI.skin.label){fontSize=14,wordWrap=true};small=new GUIStyle(body){fontSize=12};button=new GUIStyle(GUI.skin.button){fontSize=13,wordWrap=true};}
@@ -70,11 +71,11 @@ namespace ParadigmRealm
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen()&&!turnRunning;
             FollowGateArrival();mapClock.Start();DrawMap();mapClock.Stop();hudClock.Start();DrawHud();hudClock.Stop();DrawRealmBanner();
             // Prompts, the tutorial and the guide keep their 1280 design, centred on the display.
-            if(tilePicker&&gateScene==null&&gatePanel==null&&!CampPanelOpen()&&!SitePanelOpen()&&!ValleyTalkOpen()&&foundStage<=0)DrawTilePicker();
+            if(tilePicker&&gateScene==null&&gatePanel==null&&!CampPanelOpen()&&!SitePanelOpen()&&!ValleyTalkOpen()&&!ComposeOpen()&&foundStage<=0)DrawTilePicker();
             Centred();if(!guide)DrawTutorial();
             if(guide)DrawGuide();if(confirmNew){GUI.Box(new Rect(420,270,440,190),"");GUILayout.BeginArea(new Rect(445,290,390,145));GUILayout.Label("Start a new world?",heading);GUILayout.Label("Save first if you want to keep your current game.",body);if(Button("Start new game")){confirmNew=false;nameSetup=true;GUIUtility.ExitGUI();}if(Button("Cancel"))confirmNew=false;GUILayout.EndArea();}
             if(pendingUnit!=-1){DrawWarPrompt();return;}
-            if(gateScene!=null)DrawGateScene();else if(gatePanel!=null)DrawGatePanel();else if(CampPanelOpen())DrawCampPanel();else if(SitePanelOpen())DrawSitePanel();else if(ValleyTalkOpen())DrawValleyTalk();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker){}else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();else if(WayPromptOpen())DrawWayPrompt();
+            if(gateScene!=null)DrawGateScene();else if(gatePanel!=null)DrawGatePanel();else if(CampPanelOpen())DrawCampPanel();else if(SitePanelOpen())DrawSitePanel();else if(ValleyTalkOpen())DrawValleyTalk();else if(ComposeOpen())DrawCompose();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker){}else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();else if(WayPromptOpen())DrawWayPrompt();
             DrawSaveToast();
         }
         // Meeting a civilisation opens Diplomacy with them straight away, one meeting at a time. This runs between frames, not
@@ -172,8 +173,7 @@ namespace ParadigmRealm
         void DrawNameSetup()
         {
             if(setupPage!=0){DrawWorldSetup();return;}
-            GUI.Box(new Rect(56,60,1168,680),"");
-            DrawCivilisationChoice();
+            DrawCivSetup();// the owner's picture of 27 Nov 2026 (SetupCivUI.cs); DrawCivilisationChoice is the older page
         }
         void DrawCivilisationChoice()
         {
@@ -408,6 +408,7 @@ namespace ParadigmRealm
         }
         void Click(int x,int y)
         {
+            if(ComposePick(x,y))return;// choosing a place for your own proposal (ValleyTalksUI.cs)
             var own=world.units.Where(u=>u.owner==0&&u.x==x&&u.y==y).ToList();var c=world.cities.Find(a=>a.owner==0&&a.x==x&&a.y==y);
             // Your city and your units on one tile: ask which is meant (owner request).
             if(c!=null&&own.Count>0){OpenTilePicker(x,y);return;}
@@ -415,8 +416,6 @@ namespace ParadigmRealm
             if(own.Count>0){int i=own.FindIndex(u=>u.id==selected);selected=own[(i+1)%own.Count].id;cityId=-1;return;}
             // A barbarian camp you have found, or its raiders, will hear an offer.
             if(OpenCampAt(x,y))return;
-            // A woodland, hills or a timber or stone resource beyond your borders: what it would do for you (SiteCompetition.cs).
-            if(OpenSiteAt(x,y))return;
             // Left-clicking an empty tile only selects; orders are given with the right button.
         }
         void DrawGuide()

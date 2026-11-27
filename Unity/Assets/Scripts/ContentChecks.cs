@@ -39,7 +39,7 @@ public static void Run(){
     ForcesChecks.Run();
     HillWoodsChecks.Run();
     DormantChecks.Run();
-    BuildingMaterialsChecks.Run();MaterialEconomyChecks.Run();SiteChecks.Run();ValleyTalksChecks.Run();
+    BuildingMaterialsChecks.Run();MaterialEconomyChecks.Run();SiteChecks.Run();ValleyTalksChecks.Run();OpinionBalanceChecks.Run();
     NegotiationChecks.Run();LifewaysChecks.Run();StatecraftChecks.Run();NovemberRequestChecks.Run();AmbientChecks.Run();
     SiegeChecks();
     var cold=World.New(3);var settler=cold.units.First(u=>u.owner==0&&u.type==0);cold.At(settler.x,settler.y).terrain=8;cold.tech[K("fire")]=false;Check(cold.Found(settler)==null,"cold settlement needs Fire");cold.tech[K("fire")]=true;Check(cold.Found(settler)!=null,"Fire (Stone Tools) permits cold settlement");
@@ -385,7 +385,7 @@ static void GateExpeditionChecks(){
     Check(g.BeginApproach(0,b,GateApproach.Force)&&g.GateOpen(b)&&guard.hp==10-loss,"a forced gateway opens at once and its guardians strike as foretold");
     // Negotiate: a partner pays half and gains open borders.
     var c=gates[2];g.Add(0,3,c.x,c.y);g.GateExpeditionTurn();g.GateExpeditionTurn();rich();g.met[1]=true;g.nations[1].gold=500;
-    Check(!g.GatePartners(0,c).Contains(1)||g.Opinion(1,0)>=GateApproach.PartnerOpinion,"a partner must think well of you");g.AddOpinion(1,0,OpinionMods.Dealings,60);
+    Check(!g.GatePartners(0,c).Contains(1)||g.Opinion(1,0)>=GateApproach.PartnerOpinion,"a partner must think well of you");g.AddOpinion(1,0,OpinionMods.KeptWord,60);
     if(g.cities.Any(x=>x.owner==1)){Check(g.GatePartners(0,c).Contains(1)&&g.ApproachReason(0,c,GateApproach.Negotiate,1)=="","a friendly civilisation with the gold will share the cost");
      var cn=g.GateNeed(c);gold=g.gold;int theirs=g.nations[1].gold;Check(g.BeginApproach(0,c,GateApproach.Negotiate,1)&&g.gold==gold-(cn.gold+1)/2&&g.nations[1].gold==theirs-(cn.gold+1)/2&&g.Pact(0,1,Pacts.Borders),"each pays half the gold and the partner gains open borders");
      g.turn+=GateApproach.NegotiateTurns;g.GateExpeditionTurn();Check(g.GateOpen(c),"a negotiated gateway opens when its time is up ("+GateApproach.NegotiateTurns+" turns)");}

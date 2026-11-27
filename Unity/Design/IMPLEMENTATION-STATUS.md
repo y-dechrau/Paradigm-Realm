@@ -2,6 +2,10 @@
 
 > **Planned design, not implemented:** see [CORE-DESIGN-16BIT.md](CORE-DESIGN-16BIT.md) for the agreed 16-bit core design and draft balance formulas, and [IMPLEMENTATION-PLAN-16BIT.md](IMPLEMENTATION-PLAN-16BIT.md) for the staged plan (including map sizes from Tiny to Massive), and [WORLD-AND-LOOK-DESIGN.md](WORLD-AND-LOOK-DESIGN.md) for the planned spherical world, realistic biomes and new terrain art.
 
+## Owner requests 27 Nov, later: opinion rebalanced, your own proposals, raiders walk, New Game and Military pages after the owner's pictures (no save version change)
+
+Implemented: [DIPLOMACY-REBALANCE-2026-11-27.md](DIPLOMACY-REBALANCE-2026-11-27.md) (causes of the owner's +34 / +83, the caps, three judgements, portrait issue line, measurements). Verified by `OpinionBalanceChecks` (idle, fulfilled and broken over 50 turns; rivals among themselves; save and load), `ValleyTalksChecks` section 7 (your own proposals) and `GraphicsChecks` (raider walking frames). The built game was driven at 1422 x 800: `-hudShot <folder> -setupOnly` (both New Game pages, every control pressed, 20 probes pass), `-forcesOnly` (Military screen, Units and Back pressed), `-raiderOnly` (glide, walking frames, facing), `-valleyOnly` (call wording, composer, quick pact Accept). Planned, not built: the Units tab of the Military screen keeps its older look. Not hand-played.
+
 ## Owner brief 27 Nov: early diplomacy over a place (no save version change)
 
 Implemented: [VALLEY-TALKS-2026-11-27.md](VALLEY-TALKS-2026-11-27.md). Verified by `ValleyTalksChecks`: the five map variants (only the neighbour's timber access, plus farmland) give five different decisions from its own reckoning; a counteroffer moves its settler to another site; agreements, issues and the delivery record survive saving; turns and reloads do not repeat offers or deliveries; a broken promise is remembered with the place and payment; a withdrawn offer says why. The built game was driven with `-valleyOnly`: the call answered by a real click, the reason given, the counteroffer accepted, 12 deliveries made, the neighbour founding Kingsport 5 tiles from your town at the ford. Not hand-played.

@@ -48,6 +48,15 @@ public static class ValleyTalksChecks {
   // 6. A withdrawn offer explains what changed.
   var s=World.ValleyTalkScenario("short");var si=s.AskAboutValley(1);Check(si!=null&&si.kind==1,"asked from the Court, the small shortage becomes a purchase");
   s.nations[1].timber+=60;s.EndTurn();Check(si.status==3&&si.why.Contains("no longer lack timber"),"given timber elsewhere, it withdraws and says why ("+si.why+")");
+  // 7. Your own proposals, judged from their stake.
+  {var lp=World.ValleyTalkScenario("lasting");var ford=lp.valleyIssues.Count;int fordCell=lp.AssessValley(1).site;
+   string a=lp.JudgeProposal(1,0,fordCell,0,0,0,out ok);Check(!ok,"asking them to leave the ford they need, for nothing, is refused ("+a+")");
+   lp.JudgeProposal(1,0,fordCell,0,0,400,out ok);Check(ok,"for enough gold they agree");lp.gold=500;lp.nations[0].gold=500;lp.MakeProposal(1,0,fordCell,0,0,400);var ft=lp.tiles[fordCell];
+   Check(lp.KeepPromiseWarning(1,ft.x,ft.y)!=""&&!lp.units.Any(u=>u.owner==1&&u.type==0&&u.hasOrder&&lp.Distance(u.destinationX,u.destinationY,ft.x,ft.y)<=ValleyTuning.KeepRadius),"then they keep clear of it and their settler turns away");
+   var far=lp.tiles.First(t=>t.realm==0&&!PixelArt.IsWater(t.terrain)&&t.owner<0&&lp.Distance(t.x,t.y,ft.x,ft.y)>=12);string b=lp.JudgeProposal(1,0,far.y*lp.Width+far.x,0,0,0,out ok);Check(ok,"a place they have no plans for costs nothing ("+b+")");
+   var sp=World.ValleyTalkScenario("short");string c=sp.JudgeProposal(1,2,-1,4,0,6,out ok);Check(ok,"a neighbour short of timber buys yours ("+c+")");
+   var pp=World.ValleyTalkScenario("plenty");string d=pp.JudgeProposal(1,2,-1,4,0,6,out ok);Check(!ok&&d.Contains("enough"),"one with plenty does not ("+d+")");
+   string e=pp.JudgeProposal(1,3,-1,2,5,12,out ok);Check(ok,"one with plenty sells you timber each turn ("+e+")");}
   Check(w.Valid()&&copy.Valid()&&f.Valid()&&s.Valid(),"every game stays valid");
  }
 }

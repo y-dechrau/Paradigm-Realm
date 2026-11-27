@@ -82,6 +82,8 @@ public partial class World {
   else{int w=OfferWillingness(o);o.status=2;o.answer="Declined ("+w+").";DiplomacyEvent(o.from,o.to,OfferName(o.kind)+" declined.");o.answer=AnswerReasons(o);if(o.kind==TreatyKind.Trade&&o.from==0){var counter=CounterFor(o);if(counter!=null){counter.id=nextDiplomaticId++;counter.created=turn;counter.expires=turn+DiplomacyTuning.AnswerTurns;counter.answer="Counteroffer.";offers.Add(counter);o.counterOf=counter.id;Record(RecordKinds.Counter,o.to,0,NationName(o.to)+" answered with a counteroffer: "+TermsText(counter)+".");}}}
   offers.RemoveAll(x=>x.status!=0&&x.created<turn-10);return o;
  }
+ // A pact and nothing else: no gold, goods, cities, passage or gateway either way (answered from the leader's call, 27 Nov 2026).
+ public static bool PlainPact(DiplomaticOffer o){return o!=null&&Pacts.Of(o.kind)>=0&&o.giveGold==0&&o.askGold==0&&o.givePerTurn==0&&o.askPerTurn==0&&o.giveResource<=0&&o.askResource<=0&&o.giveCity<0&&o.askCity<0&&!o.givePassage&&!o.askPassage&&o.giveGate<=0&&o.askGate<=0;}
  public static string OfferName(TreatyKind kind){int k=Pacts.Of(kind);return k>=0?Pacts.Names[k]:kind==TreatyKind.Trade?"Trade deal":kind==TreatyKind.Peace?"Peace":"Proposal";}
  bool AcceptOffer(DiplomaticOffer o){string reason=OfferProblem(o);if(reason!=""){o.status=2;o.answer=reason;return false;}AddDiplomaticGold(o.from,o.askGold-o.giveGold);AddDiplomaticGold(o.to,o.giveGold-o.askGold);int until=turn+o.duration;
   int k=Pacts.Of(o.kind);if(k>=0)SetPact(o.from,o.to,k,true);else if(o.kind==TreatyKind.Peace){MakePeace(o.from,o.to);ApplyPeaceTerms(o);}
@@ -116,7 +118,7 @@ public partial class World {
   bool forgiving=Flavour(observer,DiplomacyFlavours.Forgiveness)>=7;
   for(int k=0;k<m.Length;k++){
    if(k==OpinionMods.Envoy){if(envoyPresent){if(m[k]<Pacts.EnvoyCap)m[k]++;}else if(m[k]>0)m[k]--;else if(m[k]<0)m[k]++;continue;}
-   int every=OpinionMods.FadeEvery[k];
+   int every=Math.Max(1,OpinionMods.FadeEvery[k]*SpeedPercent()/100);
    if(m[k]<0){if(forgiving)every/=2;if(every<=1||turn%every==0)m[k]++;}
    else if(m[k]>0&&turn%every==0)m[k]--;}}
  public void AdvanceDiplomacy(){
@@ -198,6 +200,8 @@ public partial class World {
  // exhaustion of each war under way. Border promises, joint wars, embassies and coalitions are gone.
  internal void UpgradeDiplomacy40(){
   if(claims==null)claims=new List<Claim>();if(diplomacy==null)return;
+  try{UpgradeDiplomacy40Body();}finally{RebalanceOpinion();}}
+ void UpgradeDiplomacy40Body(){
   foreach(var p in diplomacy){if(p==null)continue;
    if(p.pactSince==null||p.pactSince.Length!=Pacts.Count)p.pactSince=new int[Pacts.Count];
    p.modsA=Grow(p.modsA??new int[0],OpinionMods.Count);p.modsB=Grow(p.modsB??new int[0],OpinionMods.Count);

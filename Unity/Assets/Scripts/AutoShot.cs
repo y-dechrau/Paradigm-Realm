@@ -322,18 +322,26 @@ namespace ParadigmRealm
         // The New Game world screen: pictures of it as in the owner's mockup and in other states, and every control pressed for real.
         IEnumerator SetupShots(string folder){
             int keepOn=PlayerPrefs.GetInt("RealmTutorialOn",1),keepStep=PlayerPrefs.GetInt("RealmTutorialStep",-1);
+            // The civilisation page (owner's picture, 27 Nov 2026): Frostpeak Realm chosen, a click on another card, Create your own, the lore.
+            {mainMenu=false;nameSetup=true;setupPage=0;civGroupReal=false;int frost=Array.IndexOf(CivilisationCatalog.Names,"Frostpeak Realm");setupCiv=frost>=0?frost:0;proposedName=CivilisationCatalog.Names[setupCiv];civLoreOpen=false;yield return Frames(20);
+             yield return Shot(folder,"setup-civ.bmp");
+             Func<float,float,Vector2> at=(x,y)=>{var m=SetupMatrix();return m.MultiplyPoint3x4(new Vector3(x,y,0));};
+             {var p=at(180,200);yield return ClickAt(p.x,p.y);}Probe("clicking the first card chooses it ("+setupCiv+")",setupCiv==CivilisationCatalog.Offered(false).First());
+             setupCiv=CivilisationCatalog.Count;proposedName="The Most Serene Republic of Verdalen";customLeader="Doge Alessandra";customTraitA=2;customTraitB=9;yield return Frames(5);yield return Shot(folder,"setup-civ-custom.bmp");
+             setupCiv=frost>=0?frost:0;proposedName=CivilisationCatalog.Names[setupCiv];yield return Frames(3);{var p=at(1480,560);yield return ClickAt(p.x,p.y);}yield return Frames(5);Probe("History and lore opens",civLoreOpen);yield return Shot(folder,"setup-civ-lore.bmp");civLoreOpen=false;
+             {var p=at(474,858);yield return ClickAt(p.x,p.y);}yield return Frames(3);Probe("Next opens the world page",setupPage==1);}
             mainMenu=false;nameSetup=true;setupPage=1;civGroupReal=false;setupCiv=FantasyKingdoms.First;proposedName=CivilisationCatalog.Names[setupCiv];
             setupSpeed=1;setupLevel=1;setupShape=1;setupSize=3;setupMap=0;setupClimate=0;setupCivs=6;setupPeoples=10;setupAnimals=3;setupBarbarians=true;tutorialOn=true;seedText="";yield return Frames(20);
             yield return Shot(folder,"setup-mockup.bmp");
             Func<float,float,Vector2> on=(x,y)=>{var m=SetupMatrix();return m.MultiplyPoint3x4(new Vector3(x,y,0));};
             Func<float,float,IEnumerator> press=(x,y)=>ClickAt(on(x,y).x,on(x,y).y);
-            yield return press(143,310);Probe("Quick",setupSpeed==0);yield return press(455,310);Probe("Long",setupSpeed==2);yield return press(127,585);Probe("Veteran",setupLevel==4);yield return press(475,585);Probe("Ascendant",setupLevel==7);
-            yield return press(690,225);Probe("Flat",setupShape==0);yield return press(650,341);Probe("Tiny",setupSize==0);yield return press(650,410);Probe("Colossal",setupSize==6);yield return press(805,541);Probe("Inland seas",setupMap==4);yield return press(805,673);Probe("Arid",setupClimate==4);
-            yield return press(1130,390);Probe("No animals",setupAnimals==0);yield return press(1097,473);Probe("Barbarians off",!setupBarbarians);yield return press(1200,552);Probe("Tutorial off",!tutorialOn);
-            yield return press(1090,320);Probe("the peoples slider ("+setupPeoples+")",setupPeoples<10);yield return press(1545,240);Probe("the civilisations slider ("+setupCivs+")",setupCivs>6);yield return press(1430,792);Probe("Competitive rivals",setupProfile==1);
-            yield return press(250,440);yield return Frames(3);seedText="8675309123";setupLevel=7;yield return Shot(folder,"setup-changed.bmp");
+            yield return press(133,274);Probe("Quick",setupSpeed==0);yield return press(462,274);Probe("Long",setupSpeed==2);yield return press(115,548);Probe("Veteran",setupLevel==4);yield return press(484,548);Probe("Ascendant",setupLevel==7);
+            yield return press(711,203);Probe("Flat",setupShape==0);yield return press(672,318);Probe("Tiny",setupSize==0);yield return press(672,388);Probe("Colossal",setupSize==6);yield return press(836,512);Probe("Inland seas",setupMap==4);yield return press(836,640);Probe("Arid",setupClimate==4);
+            yield return press(1168,361);Probe("No animals",setupAnimals==0);yield return press(1200,434);Probe("Barbarians off",!setupBarbarians);yield return press(1250,509);Probe("Tutorial off",!tutorialOn);
+            yield return press(1140,295);Probe("the peoples slider ("+setupPeoples+")",setupPeoples<10);yield return press(1600,215);Probe("the civilisations slider ("+setupCivs+")",setupCivs>6);yield return press(1508,766);Probe("Competitive rivals",setupProfile==1);
+            yield return press(250,404);yield return Frames(3);seedText="8675309123";setupLevel=7;yield return Shot(folder,"setup-changed.bmp");
             setupCiv=CivilisationCatalog.Count;proposedName="The Most Serene Republic of Verdalen";customLeader="Doge Alessandra";customTraitA=2;customTraitB=9;setupSize=3;setupCivs=12;for(int k=0;k<8;k+=2){setupLevel=k;yield return Shot(folder,"setup-level-"+k+".bmp");}
-            yield return press(1150,886);Probe("Back returns to the civilisations",setupPage==0);setupPage=1;setupCiv=4;setupSize=0;setupCivs=2;setupPeoples=1;seedText="421";yield return Frames(3);yield return press(470,886);yield return Frames(30);Probe("Begin starts the game",!nameSetup&&world!=null&&world.turn==1);
+            yield return press(1186,857);Probe("Back returns to the civilisations",setupPage==0);setupPage=1;setupCiv=4;setupSize=0;setupCivs=2;setupPeoples=1;seedText="421";yield return Frames(3);yield return press(485,857);yield return Frames(30);Probe("Begin starts the game",!nameSetup&&world!=null&&world.turn==1);
             PlayerPrefs.SetInt("RealmTutorialOn",keepOn);PlayerPrefs.SetInt("RealmTutorialStep",keepStep);PlayerPrefs.Save();}
         void Probe(string name,bool ok){Debug.Log("PROBE "+(ok?"pass":"FAIL")+": "+name);}
         // Development aid: "-frameProbe <folder> <size> <turns>" plays the rivals forward, then measures frames and turns uncapped.

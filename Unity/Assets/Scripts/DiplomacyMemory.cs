@@ -30,12 +30,14 @@ public partial class World {
 
  // ---------- memory ----------
  // Years of standing agreements make a relationship steady: +1 for every 8 turns of the oldest agreement, at most +15.
- public int LongFriendship(int o,int t){var p=Relation(o,t);if(p==null||AtWar(o,t)||p.pacts==0)return 0;int age=0;for(int k=0;k<Pacts.Count;k++)if((p.pacts&(1<<k))!=0)age=Math.Max(age,turn-p.pactSince[k]);return Math.Min(15,age/8);}
+ public int LongFriendship(int o,int t){var p=Relation(o,t);if(p==null||AtWar(o,t)||p.pacts==0)return 0;int age=0;for(int k=0;k<Pacts.Count;k++)if((p.pacts&(1<<k))!=0)age=Math.Max(age,turn-p.pactSince[k]);return Math.Min(OpinionTuning.Friendship,age*100/Math.Max(1,OpinionTuning.FriendshipTurns*SpeedPercent()));}
+ // Memories and friendships run on the game's clock: Quick 67%, Standard 100%, Long 150% (27 Nov 2026).
+ public int SpeedPercent(){return speed==0?67:speed==2?150:100;}
  public sealed class MemoryLine { public string text; public int value,turnsLeft; }
  // Every mark the observer holds of the other, with how long it will take to fade away (assuming nothing new happens).
  public List<MemoryLine> MemoryLines(int observer,int other){
   var list=new List<MemoryLine>();var p=Relation(observer,other);if(p==null)return list;var m=Mods(observer,other);bool forgiving=Flavour(observer,DiplomacyFlavours.Forgiveness)>=7;
-  for(int k=0;k<m.Length;k++){if(m[k]==0)continue;int every=OpinionMods.FadeEvery[k];if(m[k]<0&&forgiving)every=Math.Max(1,every/2);
+  for(int k=0;k<m.Length;k++){if(m[k]==0)continue;int every=Math.Max(1,OpinionMods.FadeEvery[k]*SpeedPercent()/100);if(m[k]<0&&forgiving)every=Math.Max(1,every/2);
    int left=k==OpinionMods.Envoy&&Envoy(other,observer)?-1:Math.Abs(m[k])*every;list.Add(new MemoryLine{text=OpinionMods.Names[k],value=m[k],turnsLeft=left});}
   return list.OrderBy(l=>l.value).ToList();}
  // What the player could do now to improve the other leader's view of them, in order of how much it would help.

@@ -136,7 +136,7 @@ namespace ParadigmRealm
             {int waiting=IdleCount();if(waiting>0)GUI.Label(new Rect(EndTurnRect.x+8,EndTurnRect.yMax-21,120,16),waiting+" idle",new GUIStyle(keyCapStyle){alignment=TextAnchor.MiddleLeft,clipping=TextClipping.Overflow});}
             var cap=new Rect(EndTurnRect.xMax-50,EndTurnRect.yMax-21,42,16);Fill(cap,new Color(.12f,.08f,.03f,.75f));GUI.Label(cap,"Enter",keyCapStyle);}
             GUI.enabled=true;
-            DrawTopBar();DrawMaterialsPanel();
+            DrawTopBar();DrawMaterialsPanel();DrawLeaderTip();
             // Full tile details (movement, settlement advice, units present) while Alt is held.
             if(tooltips&&Event.current.alt&&idle)DrawTileTooltip();
         }
@@ -211,17 +211,24 @@ namespace ParadigmRealm
             if(clicked){researchScreen=true;detailsScreen="";ResetMapGesture();GUI.FocusControl(null);GUIUtility.ExitGUI();}
         }
         // Leaders you have met, with how they feel about you; click to open Diplomacy with them.
+        string leaderTip;
+        // The portrait's reasons, drawn last so nothing covers it: a wrapped box left of the portraits.
+        void DrawLeaderTip(){if(string.IsNullOrEmpty(leaderTip))return;var st=new GUIStyle(hudSmall){wordWrap=true};float w=360,h=st.CalcHeight(new GUIContent(leaderTip),w-12)+8;var m=Event.current.mousePosition;var tr=new Rect(Mathf.Clamp(m.x-w-12,8,MapW-w-8),Mathf.Clamp(m.y+12,40,780-h),w,h);Fill(tr,new Color(.05f,.08f,.16f,.96f));Fill(new Rect(tr.x,tr.y,tr.width,1),UiGold);Fill(new Rect(tr.x,tr.yMax-1,tr.width,1),UiGold);GUI.Label(new Rect(tr.x+6,tr.y+4,w-12,h-8),leaderTip,st);leaderTip=null;}
         void DrawLeaders()
         {
             var met=MetRivals();
             for(int i=0;i<met.Count;i++)
             {
                 int o=met[i];var r=LeaderRect(i);bool clicked=GUI.Button(r,"");var n=world.nations[o];
-                var face=new Rect(r.x+4,r.y+4,r.width-8,r.height-30);var art=Portrait(n.portrait,world.Era(o));
+                var face=new Rect(r.x+4,r.y+4,r.width-8,r.height-40);var art=Portrait(n.portrait,world.Era(o));
                 if(art!=null)DrawPortrait(face,art);else{Fill(face,nations[o%nations.Length]*.6f);GUI.Label(face,world.NationName(o).Substring(0,1),hudTitle);}
                 if(world.AtWar(0,o)){Fill(new Rect(r.x,r.y,r.width,2),new Color(.85f,.2f,.15f));Fill(new Rect(r.x,r.yMax-2,r.width,2),new Color(.85f,.2f,.15f));}
+                // The attitude in a word and what is on their mind (owner brief, 27 Nov 2026: two masks alike at +33 and +80 said nothing);
+                // the reasons, trust history and interest on hover.
                 int opinion=world.Opinion(o,0);Color mood=opinion>10?new Color(.35f,.8f,.4f):opinion<-10?new Color(.9f,.3f,.25f):new Color(.95f,.78f,.3f);
-                DrawIcon(opinion>10?PixelArt.IconMoodGood:opinion<-10?PixelArt.IconMoodBad:PixelArt.IconMoodNeutral,new Rect(r.x+6,r.yMax-24,20,20));var score=new GUIStyle(hudLabel);score.normal.textColor=mood;GUI.Label(new Rect(r.x+30,r.yMax-23,r.width-34,20),(opinion>0?"+":"")+opinion,score);
+                DrawIcon(opinion>10?PixelArt.IconMoodGood:opinion<-10?PixelArt.IconMoodBad:PixelArt.IconMoodNeutral,new Rect(r.x+4,r.yMax-35,16,16));var score=new GUIStyle(hudLabel){fontSize=11};score.normal.textColor=mood;FitLabel(new Rect(r.x+22,r.yMax-36,r.width-24,18),Attitudes.Names[world.Attitude(o,0)],score,8);
+                {string issue=world.ActiveIssue(o,0);if(issue!=""){var ist=new GUIStyle(hudLabel){fontSize=10,alignment=TextAnchor.MiddleCenter};ist.normal.textColor=new Color(.95f,.78f,.4f);FitLabel(new Rect(r.x+2,r.yMax-18,r.width-4,16),issue,ist,7);}}
+                if(r.Contains(Event.current.mousePosition)&&!hudCovered)leaderTip=world.LeaderSummary(o);
                 if(clicked){diplomacyPartner=o;diplomacyDirect=true;OpenDetails("Diplomacy");}
             }
         }

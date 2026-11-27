@@ -12,31 +12,32 @@ public static class DiplomacyChecks {
  static DiplomaticOffer Offer(World w,TreatyKind kind,int a=0,int b=1){return w.Propose(new DiplomaticOffer{from=a,to=b,kind=kind,duration=10});}
  static void Resource(World w,int owner,int res){var c=w.cities.First(x=>x.owner==owner);var t=w.At(c.x,c.y);t.resource=res;t.farm=t.mine=t.road=true;w.RebuildTerritory();}
  static void Tech(World w,string id,params int[] owners){foreach(int o in owners)w.nations[o].tech[TechnologyCatalog.Index(id)]=true;}
- static void Like(World w,int observer,int other,int amount){w.AddOpinion(observer,other,OpinionMods.Dealings,amount);}
+ // Goodwill for a test: shared history (kept word) now, since routine dealings are capped at +8 (27 Nov 2026).
+ static void Like(World w,int observer,int other,int amount){if(amount>0)w.AddOpinion(observer,other,OpinionMods.KeptWord,amount);else w.AddOpinion(observer,other,OpinionMods.Grievance,amount);}
  public static void Run(){
   // Older saves.
   var w=Setup();Check(!w.AtWar(1,2),"new rivals begin at peace");w.version=6;w.war[1]=true;w.openBorders[2]=true;w.nations[2].relations=17;w.UpgradeSave();
-  Check(w.version==World.SaveVersion&&w.AtWar(1,2)&&w.AtWar(0,1)&&w.HasAccess(0,2)&&w.Pact(0,2,Pacts.Borders)&&w.OpinionMod(2,0,OpinionMods.Dealings)==17&&w.Valid(),"v6 migration preserves old wars, borders and goodwill");int kept=w.Opinion(2,0);w.UpgradeSave();Check(w.Opinion(2,0)==kept,"migration is idempotent");
+  Check(w.version==World.SaveVersion&&w.AtWar(1,2)&&w.AtWar(0,1)&&w.HasAccess(0,2)&&w.Pact(0,2,Pacts.Borders)&&w.OpinionMod(2,0,OpinionMods.Dealings)==Math.Min(17,OpinionTuning.Dealings)&&w.Valid(),"v6 migration preserves old wars, borders and goodwill");int kept=w.Opinion(2,0);w.UpgradeSave();Check(w.Opinion(2,0)==kept,"migration is idempotent");
   w=Setup();w.turn=20;{var p=w.Relation(0,1);p.friendUntil=w.turn+10;p.researchUntil=w.turn+10;p.trustB=30;p.grievanceB=40;p.embassyA=true;w.Relation(0,2).allianceUntil=w.turn+5;w.Relation(1,2).embargoUntil=w.turn+5;w.warWeariness[0]=9;
    w.offers.Add(new DiplomaticOffer{id=w.nextDiplomaticId++,from=1,to=0,kind=(TreatyKind)6,created=1,expires=4});w.version=39;w.UpgradeSave();
    Check(w.version==World.SaveVersion&&w.Pact(0,1,Pacts.NonAggression)&&w.Pact(0,1,Pacts.Research)&&!w.Pact(0,1,Pacts.Defensive),"an old friendship and research pact become standing agreements");
    Check(w.Allied(0,2)&&w.Friends(0,2)&&w.HasAccess(0,2),"an old alliance becomes a defensive pact");
    Check(w.Rival(1,2)&&w.Embargoed(1,2)&&w.CasusBelli(1,2)=="Rivalry","an old embargo becomes a rivalry");
-   Check(w.OpinionMod(1,0,OpinionMods.Dealings)==35&&w.OpinionMod(1,0,OpinionMods.Grievance)==-20&&w.Trust(1,0)==30,"old trust, the embassy and grievances become marks on opinion");
+   Check(w.OpinionMod(1,0,OpinionMods.Dealings)==Math.Min(35,OpinionTuning.Dealings)&&w.OpinionMod(1,0,OpinionMods.Grievance)==-20&&w.Trust(1,0)==Math.Min(30,w.TrustCap(1,0)),"old trust, the embassy and grievances become marks on opinion (dealings "+w.OpinionMod(1,0,OpinionMods.Dealings)+", grievance "+w.OpinionMod(1,0,OpinionMods.Grievance)+", trust "+w.Trust(1,0)+" cap "+w.TrustCap(1,0)+")");
    Check(w.offers.Count==0&&p.friendUntil==0&&p.grievanceB==0&&!p.embassyA&&w.warWeariness[0]==0&&w.Valid(),"retired treaties and fields are cleared, and the game is valid");}
   // Contact, opinion and its reasons.
   w=Setup();w.met[1]=false;Check(w.EnvoyReason(0,1)!=""&&w.WarReason(0,1)!=""&&w.RivalReason(0,1)!=""&&Offer(w,TreatyKind.Access).status==2,"first contact gates every action");w.met[1]=true;
   int start=w.Opinion(1,0);Check(w.OpinionLines(1,0).Sum(l=>l.Value)==start,"the reasons add up to the opinion");
-  Check(w.GiftGold(1)&&w.Opinion(1,0)==start+10&&w.OpinionLines(1,0).Any(l=>l.Key=="Gifts"&&l.Value==10),"a gift is a named reason worth +10");Next(w,30);Check(w.Opinion(1,0)==start,"a gift fades, one point every third turn");
+  Check(w.GiftGold(1)&&w.Opinion(1,0)==start+OpinionTuning.Gifts&&w.OpinionLines(1,0).Any(l=>l.Key=="Gifts"&&l.Value==OpinionTuning.Gifts),"a gift is a named reason worth at most +"+OpinionTuning.Gifts);Next(w,30);Check(w.Opinion(1,0)==start,"a gift fades, one point every third turn");
   // Proposals show their reasons; the lowest agreements come first.
   w=Setup();var borders=new DiplomaticOffer{from=0,to=1,kind=TreatyKind.Access};Check(w.AcceptanceLines(borders).Sum(l=>l.Value)==w.OfferWillingness(borders)&&w.AcceptanceLines(borders).Any(l=>l.Key=="Opinion of you"),"the reasons for an answer add up to it");
   Check(w.Attitude(1,0)==Attitudes.Neutral&&Offer(w,TreatyKind.NonAggression).status==2,"a neutral leader refuses a non-aggression pact");Check(Offer(w,TreatyKind.Access).status==2,"one proposal per pair each turn");Next(w);
   Check(Offer(w,TreatyKind.Access).status==1&&w.HasAccess(0,1)&&w.openBorders[1],"a neutral leader opens borders");Next(w,40);Check(w.HasAccess(0,1)&&w.Trust(1,0)==Pacts.TrustCap[Pacts.Borders],"agreements have no end date, and trust grows to the agreement's ceiling");
-  Check(w.OpinionLines(1,0).Any(l=>l.Key.StartsWith("Trust")&&l.Value==10),"trust is half an opinion point each");
+  Check(!w.OpinionLines(1,0).Any(l=>l.Key.StartsWith("Trust")),"trust is its own judgement, not part of opinion (27 Nov 2026)");
   // Envoys.
   w=Setup();Check(w.EnvoyLimit(0)==1&&w.SetEnvoy(0,1,true)&&w.Envoy(0,1)&&w.EnvoyReason(0,2).Contains("Recall"),"one envoy in the first age, at one court");w.SetThreat(1,0,30);Next(w,10);
-  Check(w.OpinionMod(1,0,OpinionMods.Envoy)==10&&w.Threat(1,0)==10,"an envoy adds 1 opinion a turn and halves the time fear takes to fade");Next(w,40);Check(w.OpinionMod(1,0,OpinionMods.Envoy)==Pacts.EnvoyCap&&w.Trust(1,0)==Pacts.EnvoyTrust,"an envoy's work stops at +30, and trust reaches 20 without any pact");
-  Check(w.SetEnvoy(0,1,false)&&w.EnvoyReason(0,2)=="","a recalled envoy is free again");Next(w,5);Check(w.OpinionMod(1,0,OpinionMods.Envoy)==Pacts.EnvoyCap-5&&w.Trust(1,0)==Pacts.EnvoyTrust-5,"without the envoy its work fades");
+  Check(w.OpinionMod(1,0,OpinionMods.Envoy)==Math.Min(10,Pacts.EnvoyCap)&&w.Threat(1,0)==10,"an envoy adds 1 opinion a turn up to its cap and halves the time fear takes to fade");Next(w,40);Check(w.OpinionMod(1,0,OpinionMods.Envoy)==Pacts.EnvoyCap&&w.Trust(1,0)==Pacts.EnvoyTrust,"an envoy's work stops at +"+Pacts.EnvoyCap+", and trust reaches "+Pacts.EnvoyTrust+" without any pact");
+  Check(w.SetEnvoy(0,1,false)&&w.EnvoyReason(0,2)=="","a recalled envoy is free again");Next(w,5);Check(w.OpinionMod(1,0,OpinionMods.Envoy)==Math.Max(0,Pacts.EnvoyCap-5)&&w.Trust(1,0)==Math.Max(0,Pacts.EnvoyTrust-5),"without the envoy its work fades");
   // Non-aggression: the peace it keeps, the ten turns it must stand and the notice it gives.
   w=Setup();Like(w,1,0,40);Check(w.Attitude(1,0)==Attitudes.Cordial&&Offer(w,TreatyKind.NonAggression).status==1&&w.Friends(0,1)&&!w.DeclareWar(0,1)&&w.WarReason(0,1).Contains("pact"),"a cordial leader signs non-aggression, and it keeps the peace");
   Check(!w.EndTreaty(0,1,TreatyKind.NonAggression)&&w.PactEndReason(0,1,Pacts.NonAggression).Contains("10"),"an agreement holds for at least ten turns");Next(w,10);int trusted=w.Trust(1,0);
