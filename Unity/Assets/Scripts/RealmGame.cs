@@ -69,7 +69,7 @@ namespace ParadigmRealm
             if(cityScreen){DrawTopBar();Centred();DrawCityScreen();DrawSaveToast();return;}
             NavigationInput();
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen()&&!turnRunning;
-            FollowGateArrival();mapClock.Start();DrawMap();mapClock.Stop();hudClock.Start();DrawHud();hudClock.Stop();DrawRealmBanner();DrawComposePickBar();
+            FollowGateArrival();mapClock.Start();DrawMap();mapClock.Stop();hudClock.Start();DrawHud();hudClock.Stop();DrawRealmBanner();DrawComposePickBar();DrawRealmMenu();
             // Prompts, the tutorial and the guide keep their 1280 design, centred on the display.
             if(tilePicker&&gateScene==null&&gatePanel==null&&!CampPanelOpen()&&!SitePanelOpen()&&!ValleyTalkOpen()&&!ComposeOpen()&&foundStage<=0)DrawTilePicker();
             Centred();if(!guide)DrawTutorial();
@@ -353,7 +353,7 @@ namespace ParadigmRealm
         }
         void HandleMapInput()
         {
-            var e=Event.current;bool inside=InMap(e.mousePosition);
+            var e=Event.current;if(RealmMenuBlocks(e))return;bool inside=InMap(e.mousePosition);
             int x,y;if(!MapTileAt(e.mousePosition,out x,out y)){x=-1;y=-1;inside=false;}
             // A double click on your city opens it, whatever stands on the tile; the first click may have opened the chooser (owner request).
             if(e.type==EventType.MouseDown&&e.button==0&&e.clickCount==2&&inside&&!guide&&!confirmNew&&pendingUnit==-1&&foundStage==0&&world.result==""&&!GuidePromptOpen()){var twice=world.cities.Find(c=>c.owner==0&&c.x==x&&c.y==y);if(twice!=null){tilePicker=false;e.Use();OpenCity(twice);return;}}

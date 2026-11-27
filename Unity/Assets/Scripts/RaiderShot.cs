@@ -95,3 +95,23 @@ public partial class RealmGame {
  }
 }
 }
+namespace ParadigmRealm {
+// Development aid (27 Nov 2026): "-hudShot <folder> -realmMenuOnly" starts a game, lets you know two parallel worlds, right-clicks
+// Realms for real, photographs the list, then picks the first parallel world and photographs the map there.
+public partial class RealmGame {
+ System.Collections.IEnumerator RealmMenuShots(string folder){
+  System.IO.Directory.CreateDirectory(folder);
+  seedText="421";setupSize=1;mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;yield return Frames(20);
+  foreach(int r in new[]{1,3})if(world.RealmsHere>=r){var t=world.tiles.First(x=>x.realm==r&&x.gateLink>0);foreach(var n in world.tiles.Where(x=>x.realm==r&&world.Distance(x.x,x.y,t.x,t.y)<=3))n.seen=true;}
+  int i=System.Array.IndexOf(RailScreens,"Atlas");var rail=RailRect;var bar=new Rect(rail.x+5,rail.y+5+i*RailItem,rail.width-10,RailItem-3);
+  var p=wideMatrix.MultiplyPoint3x4(new Vector3(bar.center.x,bar.center.y,0));yield return ClickAt(p.x,p.y,1);yield return Frames(5);
+  Probe("realm menu: a right-click on Realms opens the list of "+KnownRealms().Count+" worlds",realmMenuOpen&&KnownRealms().Count>=2);yield return Shot(folder,"realm-menu.bmp",10);
+  var menu=RealmMenuRect;int want=KnownRealms()[1];var q=wideMatrix.MultiplyPoint3x4(new Vector3(menu.x+60,menu.y+6+RealmMenuRow*1.5f,0));yield return ClickAt(q.x,q.y);yield return Frames(30);
+  Probe("realm menu: choosing a world shows it ("+viewRealm+")",viewRealm==want&&!realmMenuOpen);yield return Shot(folder,"realm-menu-chosen.bmp",30);
+  yield return ClickAt(p.x,p.y,1);yield return Frames(5);var home=wideMatrix.MultiplyPoint3x4(new Vector3(menu.x+60,menu.y+6+RealmMenuRow*.5f,0));yield return ClickAt(home.x,home.y);yield return Frames(10);
+  Probe("realm menu: the home world is first on the list",viewRealm==0);
+  yield return ClickAt(p.x,p.y,1);yield return Frames(5);var away=wideMatrix.MultiplyPoint3x4(new Vector3(MapW/2,400,0));yield return ClickAt(away.x,away.y);yield return Frames(5);Probe("realm menu: a click elsewhere closes it",!realmMenuOpen);
+  Application.Quit();
+ }
+}
+}

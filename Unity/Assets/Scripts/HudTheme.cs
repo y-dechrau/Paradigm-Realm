@@ -46,6 +46,7 @@ namespace ParadigmRealm
             if(NoticeShown()&&NoticeRect.Contains(p)||CallShown()&&CallRect.Contains(p))return true;
             if(TutorialShown()){var t=TutorialRect();t.x+=MidShift;if(t.Contains(p))return true;}
             if(materialsPanel&&world.buildingMaterials&&MaterialsPanelRect.Contains(p))return true;
+            if(realmMenuOpen&&RealmMenuRect.Contains(p))return true;
             return false;}
         bool InMap(Vector2 p){return MapView.Contains(p)&&!OverHud(p);}
         // The interface is laid out and drawn several times a frame; what it reads from the world is worked out at most once a frame,
@@ -70,7 +71,7 @@ namespace ParadigmRealm
         void BuildHudRects()
         {
             hudRects.Clear();if(world==null)return;
-            hudRects.Add(TopBar);hudRects.Add(RailRect);hudRects.Add(ResearchCard);hudRects.Add(MiniMap);hudRects.Add(MiniButtons);hudRects.Add(MiniLayerTab);if(miniLayerOpen)hudRects.Add(MiniLayerList);hudRects.Add(EndTurnRect);hudRects.Add(TileCard);
+            hudRects.Add(TopBar);hudRects.Add(RailRect);hudRects.Add(ResearchCard);hudRects.Add(MiniMap);hudRects.Add(MiniButtons);hudRects.Add(MiniLayerTab);if(miniLayerOpen)hudRects.Add(MiniLayerList);if(realmMenuOpen)hudRects.Add(RealmMenuRect);hudRects.Add(EndTurnRect);hudRects.Add(TileCard);
             if(materialsPanel&&world.buildingMaterials)hudRects.Add(MaterialsPanelRect);if(CardShown())hudRects.Add(UnitCard);if(moreActions&&CardShown())hudRects.Add(MorePanel);
             for(int i=0;i<MetRivals().Count;i++)hudRects.Add(LeaderRect(i));
             for(int i=0;i<RecentNotes().Count;i++)hudRects.Add(NoteRect(i));
@@ -193,7 +194,8 @@ namespace ParadigmRealm
                 DrawButtonFace(r,over);var art=RailScreens[i]=="Religion"?UiTex("icon-religion"):UiIcon(RailIcons[i]);
                 var iconRect=new Rect(r.x+14,r.y+5,r.height-10,r.height-10);if(art!=null)GUI.DrawTexture(iconRect,art,ScaleMode.ScaleToFit,true);else DrawIcon(RailIcons[i],iconRect);
                 railLabel.normal.textColor=over?new Color(1f,.9f,.6f):UiText;FitLabel(new Rect(iconRect.xMax+6,r.y,r.xMax-iconRect.xMax-30,r.height),RailLabels[i],railLabel,10);
-                if(GUI.Button(r,"",GUIStyle.none))OpenRailScreen(RailScreens[i]);
+                if(RailScreens[i]=="Atlas")RealmMenuInput(r);// right-click: the worlds you know (RealmMenu.cs)
+                if(GUI.Button(r,"",GUIStyle.none)){realmMenuOpen=false;OpenRailScreen(RailScreens[i]);}
                 if(RailScreens[i]=="Diplomacy"&&offers>0){var b=new Rect(r.xMax-24,r.y+4,16,16);Fill(b,new Color(.75f,.18f,.14f));GUI.Label(b,offers.ToString(),hudCentre);}
             }
         }
