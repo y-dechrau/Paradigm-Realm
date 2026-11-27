@@ -70,11 +70,11 @@ namespace ParadigmRealm
             GUI.enabled=!guide&&!confirmNew&&pendingUnit==-1&&!PromptOpen()&&!turnRunning;
             FollowGateArrival();mapClock.Start();DrawMap();mapClock.Stop();hudClock.Start();DrawHud();hudClock.Stop();DrawRealmBanner();
             // Prompts, the tutorial and the guide keep their 1280 design, centred on the display.
-            if(tilePicker&&gateScene==null&&gatePanel==null&&!CampPanelOpen()&&!SitePanelOpen()&&foundStage<=0)DrawTilePicker();
+            if(tilePicker&&gateScene==null&&gatePanel==null&&!CampPanelOpen()&&!SitePanelOpen()&&!ValleyTalkOpen()&&foundStage<=0)DrawTilePicker();
             Centred();if(!guide)DrawTutorial();
             if(guide)DrawGuide();if(confirmNew){GUI.Box(new Rect(420,270,440,190),"");GUILayout.BeginArea(new Rect(445,290,390,145));GUILayout.Label("Start a new world?",heading);GUILayout.Label("Save first if you want to keep your current game.",body);if(Button("Start new game")){confirmNew=false;nameSetup=true;GUIUtility.ExitGUI();}if(Button("Cancel"))confirmNew=false;GUILayout.EndArea();}
             if(pendingUnit!=-1){DrawWarPrompt();return;}
-            if(gateScene!=null)DrawGateScene();else if(gatePanel!=null)DrawGatePanel();else if(CampPanelOpen())DrawCampPanel();else if(SitePanelOpen())DrawSitePanel();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker){}else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();else if(WayPromptOpen())DrawWayPrompt();
+            if(gateScene!=null)DrawGateScene();else if(gatePanel!=null)DrawGatePanel();else if(CampPanelOpen())DrawCampPanel();else if(SitePanelOpen())DrawSitePanel();else if(ValleyTalkOpen())DrawValleyTalk();else if(foundStage>0)DrawFoundPrompt();else if(tilePicker){}else if(GuidePromptOpen())DrawGuidePrompt();else if(FaithPromptOpen())DrawFaithPrompt();else if(WayPromptOpen())DrawWayPrompt();
             DrawSaveToast();
         }
         // Meeting a civilisation opens Diplomacy with them straight away, one meeting at a time. This runs between frames, not

@@ -299,10 +299,12 @@ public partial class World {
  // ---------- what the map does to diplomacy ----------
  // Shown before a settler founds a city: a new city within six tiles of a pact partner's city strains the pact.
  public string SettlementDiplomacyWarning(int owner,int x,int y){
+  // A promise to leave a place unsettled (ValleyTalks.cs) comes first: every settler, yours and theirs, reads it.
+  {string kept=KeepPromiseWarning(owner,x,y);if(kept!="")return kept;}
   for(int other=0;other<civCount;other++){if(other==owner||!HasContact(owner,other)||!Friends(owner,other))continue;
    if(cities.Any(c=>c.owner==other&&Distance(c.x,c.y,x,y)<=6&&(VisibleTo(owner,c.x,c.y)||owner==0&&At(c.x,c.y).seen&&At(c.x,c.y).rememberedOwner==other&&!string.IsNullOrEmpty(At(c.x,c.y).rememberedCity))))return "Warning: settling this close to "+NationName(other)+" strains your pact (opinion -8, trust -5).";
   }return "";}
- void DiplomacyOnFound(City city){
+ void DiplomacyOnFound(City city){ValleyOnFound(city);
   int mine=cities.Count(c=>c.owner==city.owner);
   for(int other=0;other<civCount;other++){if(other==city.owner)continue;
    if(cities.Any(c=>c.owner==other&&Distance(c.x,c.y,city.x,city.y)<=8)&&mine>cities.Count(c=>c.owner==other))AddThreat(other,city.owner,3);

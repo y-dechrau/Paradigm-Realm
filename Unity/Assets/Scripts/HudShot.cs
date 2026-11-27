@@ -10,6 +10,7 @@ namespace ParadigmRealm { public partial class RealmGame {
   // New Game with the Zarevan Crown chosen among the Fantasy Kingdoms, and its lore page (18 Nov 2026).
   if(System.Environment.GetCommandLineArgs().Contains("-setupOnly")){yield return SetupShots(folder);Application.Quit();yield break;}
   if(System.Environment.GetCommandLineArgs().Contains("-woodOnly")){yield return WoodlandShots(folder);yield break;}
+  if(System.Environment.GetCommandLineArgs().Contains("-valleyOnly")){yield return ValleyTalkShots(folder);yield break;}
   mainMenu=false;nameSetup=true;setupPage=0;civGroupReal=false;setupCiv=FantasyKingdoms.First;proposedName=CivilisationCatalog.Names[setupCiv];yield return Frames(15);yield return Shot(folder,"hud-newgame-zarevan.bmp");
   civLoreOpen=true;yield return Frames(10);yield return Shot(folder,"hud-lore-zarevan.bmp");civLoreOpen=false;setupCiv=0;
   seedText="421";mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;

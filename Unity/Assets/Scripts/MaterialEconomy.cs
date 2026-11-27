@@ -118,6 +118,13 @@ public partial class World {
   return lines;
  }
  // ---- Forecast: the same allocation, turn after turn, with today's output and income; queued items start as lines free up ----
+ // Work under way with each line's queued items behind it (they start as the line frees up).
+ public List<MatJob> JobsWithQueue(int owner){
+  var jobs=MaterialJobs(owner);
+  foreach(var j in jobs){if(j.kind==2)continue;var c=cities.Find(x=>x.id==j.city);var q=j.kind==0?c.buildingQueue:c.queue;MatJob tail=j;
+   foreach(int b in q){int tt=j.kind==0?BuildingTimber(b):BuildUnit(b)>=0?UnitTimber(BuildUnit(b)):0,ss=j.kind==0?BuildingStone(b):0;var nx=new MatJob{key=(j.kind==0?"b":"u")+c.id+":"+b+":q",name=BuildName(b)+" in "+c.name,kind=j.kind,city=c.id,project=b,totalT=tt,totalS=ss,work=CostFor(c,b),rate=j.rate,started=turn+1};tail.next=nx;tail=nx;}}
+  return jobs;
+ }
  public List<MatJob> MaterialForecast(int owner,MatJob extra=null,int horizon=40){
   var jobs=MaterialJobs(owner);
   foreach(var j in jobs){if(j.kind==2)continue;var c=cities.Find(x=>x.id==j.city);var q=j.kind==0?c.buildingQueue:c.queue;MatJob tail=j;

@@ -549,7 +549,7 @@ namespace ParadigmRealm
         // Selection outline, destination marker and stack labels go on top so scenery never hides them.
         void DrawIsoOverlay(float s)
         {
-            int width=world.Width;float sx,sy;
+            int width=world.Width;float sx,sy;DrawValleyTiles(s);
             var chosen=Selected();
             if(chosen!=null)
             {

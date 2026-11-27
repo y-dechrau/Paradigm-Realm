@@ -8,7 +8,7 @@ namespace ParadigmRealm {
 public partial class RealmGame {
  int foundStage,foundUnit=-1;string foundName="",foundProblem="";
  bool tilePicker;int pickerX,pickerY;Vector2 pickerAt;
- bool PromptOpen(){return gateScene!=null||gatePanel!=null||CampPanelOpen()||SitePanelOpen()||foundStage>0||tilePicker||GuidePromptOpen()||FaithPromptOpen()||WayPromptOpen()||(tutorialOn&&tutorialStep==0&&!tutorialMinimised&&world!=null&&world.result=="");}
+ bool PromptOpen(){return gateScene!=null||gatePanel!=null||CampPanelOpen()||SitePanelOpen()||ValleyTalkOpen()||foundStage>0||tilePicker||GuidePromptOpen()||FaithPromptOpen()||WayPromptOpen()||(tutorialOn&&tutorialStep==0&&!tutorialMinimised&&world!=null&&world.result=="");}
  void Found(){
   var u=Selected();string reason=world.FoundReason(u);
   if(u==null||reason!=""){status=reason==""?"Select a Settler first.":reason;return;}
@@ -20,7 +20,10 @@ public partial class RealmGame {
   GUILayout.BeginArea(new Rect(box.x+24,box.y+18,box.width-48,box.height-30));
   if(foundStage==1){
    GUILayout.Label("Are you sure you want to settle here?",heading);
-   var t=world.At(u.x,u.y);GUILayout.Label(World.TerrainNames[t.terrain]+". The Settler becomes the new city.",body);GUILayout.Space(10);
+   var t=world.At(u.x,u.y);GUILayout.Label(World.TerrainNames[t.terrain]+". The Settler becomes the new city.",body);
+   // A promise to leave this land unsettled (ValleyTalks.cs): shown so you can knowingly keep or break it.
+   {string promise=world.KeepPromiseWarning(0,u.x,u.y);if(promise!="")GUILayout.Label(promise,new GUIStyle(body){normal={textColor=new Color(1f,.55f,.4f)},wordWrap=true});}
+   GUILayout.Space(10);
    GUILayout.BeginHorizontal();if(Button("Yes, settle here")){foundStage=2;foundName=world.NewCityName(0);foundProblem="";GUI.FocusControl(null);}if(Button("No")){foundStage=0;status="Settling cancelled.";}GUILayout.EndHorizontal();
   }else{
    GUILayout.Label("Name your city",heading);

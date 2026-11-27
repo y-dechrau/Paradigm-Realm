@@ -73,6 +73,8 @@ public partial class RealmGame {
   foreach(var m in mem)GUILayout.Label(m.text+": "+(m.value>0?"+":"")+m.value+(m.turnsLeft<0?" (kept up while your envoy stays)":" — fades in about "+m.turnsLeft+" turns if nothing new happens"),small);
   GUILayout.Label("How to improve relations",heading);foreach(var t in world.ImproveTips(partner,0))GUILayout.Label("• "+t,small);
   GUILayout.Label("How they see you (their reckoning)",heading);foreach(var l in world.AiExplanation(partner,0))GUILayout.Label(l,small);
+  // For developers ("-devReasoning"): the neighbour's own reckoning about land and timber, including what it would never tell you.
+  if(DevReasoning)GUILayout.Label("Developer - land and timber: "+world.ValleyReasoningText(partner),new GUIStyle(small){wordWrap=true,normal={textColor=new Color(.6f,.9f,1f)}});
   GUILayout.Label("Rival behaviour this game: "+AiProfiles.Names[Mathf.Clamp(world.aiProfile,0,1)]+". "+AiProfiles.Texts[Mathf.Clamp(world.aiProfile,0,1)],small);}
 }
 }

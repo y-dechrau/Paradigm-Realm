@@ -460,6 +460,8 @@ public partial class RealmGame {
    if(!war){if(CourtAction(new Rect(left,y,wide2,34),"handshake","Trade Deal",world.Rivals(0,partner)?"No dealings between rivals.":"","Exchange gold now, gold by the turn and access to resources for a set number of turns.",navy,"Gold, payments & resources",true))customDeal=true;y+=38;}
    {int open=world.requests.Count(x=>(x.from==0&&x.to==partner||x.to==0&&x.from==partner)&&(x.status==RequestStatus.Active||x.status==RequestStatus.Pending));
     if(CourtAction(new Rect(left,y,wide2,34),"scroll","Requests & Guarantees"+(open>0?"  ("+open+" open)":""),"","Ask them to stop a war, keep troops from your cities, join a war, guard your gateway or send aid: with a deadline, a payment on completion and, if you like, a threat. See every commitment between you.",navy,"",true)){requestsView=true;customDeal=false;claimsView=false;}y+=38;}
+   // Land and timber between you (ValleyTalks.cs): what they want of a place, why, and your own terms.
+   if(world.buildingMaterials){var vi=world.OpenIssue(partner);if(CourtAction(new Rect(left,y,wide2,34),"scroll","Land and timber"+(vi!=null?"  (they want to talk)":""),"","Ask what they want of the land between you and why it matters to them, and offer terms of your own.",navy,"",true)){OpenValleyTalk(partner);GUIUtility.ExitGUI();}y+=38;}
    // Their leader's agenda and how it judges you.
    {string agenda=world.AgendaReason(partner,0);if(agenda!=""){var s=new GUIStyle(courtItalic){fontSize=14,alignment=TextAnchor.MiddleCenter};float ah=s.CalcHeight(new GUIContent(agenda),wide2);GUI.Label(new Rect(left,y+4,wide2,ah),agenda,s);y+=ah+8;}}
   }

@@ -29,7 +29,8 @@ public partial class RealmGame {
   var n=world.nations[call.from];var face=n.portrait>=0?Portrait(n.portrait):null;if(face!=null)DrawPortrait(new Rect(r.x+8,r.y+8,45,60),face);
   int more=world.rivalCalls.Count-1;GUI.Label(new Rect(r.x+62,r.y+6,r.width-70,24),world.NationName(call.from)+(more>0?"  (+"+more+" more)":""),hudCaption);
   GUI.Label(new Rect(r.x+62,r.y+26,r.width-70,20),(string.IsNullOrEmpty(n.leader)?"Their leader":n.leader)+" "+call.text,small);
-  if(GUI.Button(new Rect(r.x+62,r.y+46,150,24),call.offer>0?"Answer":"Open Diplomacy",button)){world.rivalCalls.Remove(call);diplomacyPartner=call.from;diplomacyChooser=false;diplomacyDiscuss=false;detailsScreen="Diplomacy";researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();GUIUtility.ExitGUI();}
+  bool talk=world.OpenIssue(call.from)!=null;// a leader who wants to talk about land opens the talk itself (ValleyTalksUI.cs)
+  if(GUI.Button(new Rect(r.x+62,r.y+46,150,24),call.offer>0||talk?"Answer":"Open Diplomacy",button)){world.rivalCalls.Remove(call);if(talk){OpenValleyTalk(call.from);GUIUtility.ExitGUI();}diplomacyPartner=call.from;diplomacyChooser=false;diplomacyDiscuss=false;detailsScreen="Diplomacy";researchScreen=false;detailsScroll=Vector2.zero;ResetMapGesture();GUIUtility.ExitGUI();}
   if(GUI.Button(new Rect(r.x+218,r.y+46,90,24),"Later",button)){world.rivalCalls.Remove(call);GUIUtility.ExitGUI();}
  }
  // A glowing outline: gold on a technology you know, silver on the one you are researching. It breathes slowly.

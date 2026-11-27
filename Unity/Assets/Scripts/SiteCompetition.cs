@@ -61,16 +61,16 @@ public partial class World {
  public int CampBenefit(int owner,Tile t,int kind,int from){var b=CampForecast(owner,t,kind,from<=0?CampWork+1:from);return b.Sum(x=>Math.Max(0,x.Value[0]-x.Value[1]));}
  // For each project: {finish without, finish with} the camp (turns from now; 99 beyond the forecast).
  public Dictionary<string,int[]> CampForecast(int owner,Tile t,int kind,int from){
-  var res=new Dictionary<string,int[]>();if(!buildingMaterials)return res;var jobs=MaterialJobs(owner);if(jobs.Count==0)return res;
+  var res=new Dictionary<string,int[]>();if(!buildingMaterials)return res;var jobs=JobsWithQueue(owner);if(jobs.Count==0)return res;
   var inc=MaterialIncome(owner);var bonus=new int[2];bonus[kind]=CampYield(owner,t,kind);
   var a=ForecastJobs(jobs.Select(j=>j.Copy()).ToList(),nations[owner].timber,nations[owner].stone,inc,40,turn,null);
   var b=ForecastJobsFrom(jobs.Select(j=>j.Copy()).ToList(),nations[owner].timber,nations[owner].stone,inc,bonus,from,40);
   foreach(var j in a){var k=b.FirstOrDefault(x=>x.key==j.key);if(k==null)continue;res[j.name]=new[]{j.finish<0?99:j.finish,k.finish<0?99:k.finish};}
   return res;}
  static List<MatJob> ForecastJobsFrom(List<MatJob> jobs,int timber,int stone,int[] inc,int[] bonus,int from,int horizon){
-  var all=new List<MatJob>(jobs);var active=new List<MatJob>(jobs);
+  var all=new List<MatJob>(jobs);foreach(var j in jobs){var x=j.next;while(x!=null){all.Add(x);x=x.next;}}var active=new List<MatJob>(jobs);
   for(int k=1;k<=horizon&&active.Count>0;k++){timber+=inc[0]+(k>=from?bonus[0]:0);stone+=inc[1]+(k>=from?bonus[1]:0);Allocate(active.Where(j=>j.totalT+j.totalS>0).ToList(),ref timber,ref stone);
-   foreach(var j in active.ToList()){j.done=j.reach;if(j.done>=j.work&&j.instT>=j.totalT&&j.instS>=j.totalS){j.finish=k;active.Remove(j);}}}
+   foreach(var j in active.ToList()){j.done=j.reach;if(j.done>=j.work&&j.instT>=j.totalT&&j.instS>=j.totalS){j.finish=k;active.Remove(j);if(j.next!=null){j.next.started=k;active.Add(j.next);}}}}
   return all;}
  // ---- Buying a shipment ----
  // What a people can spare of one material: its stock less what its own work will want in the next ten turns, after its income.
