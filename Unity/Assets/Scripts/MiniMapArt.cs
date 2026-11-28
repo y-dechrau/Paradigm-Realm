@@ -85,6 +85,9 @@ public partial class RealmGame {
  void DrawMiniMarks(Rect drawn,Rect seen){
   if(Event.current.type!=EventType.Repaint)return;
   var dark=new Color(0,0,0,.85f);
+  // The Resources view: each known resource a dot at screen size, so it reads at any zoom (one pixel per tile does not).
+  if(MiniLayer==7){float size=Mathf.Clamp(seen.width/world.Width*1.6f,4f,9f);
+   foreach(var t in world.tiles){if(t.realm!=viewRealm||!t.seen||t.resource<=0)continue;var ink=ResourceInk(t);if(ink.a<=0)continue;var at=MiniPoint(drawn,t.x,t.y);if(!seen.Contains(at))continue;Mark("dot",at,size+2,dark);Mark("dot",at,size,ink);}}
   foreach(var c in world.cities){var t=world.At(c.x,c.y);if(t==null||t.realm!=viewRealm||!(c.owner==0||t.seen))continue;var at=MiniPoint(drawn,c.x,c.y);bool capital=world.nations[c.owner].capital==c.id&&(c.owner==0||world.met[c.owner]);var ink=c.owner==0?Color.white:Color.Lerp(NationInk(c.owner),Color.white,.55f);
    if(capital){Mark("star",at,c.owner==0?14.5f:11.5f,dark);Mark("star",at,c.owner==0?11.5f:9f,c.owner==0?new Color(1f,.9f,.5f):ink);}
    else{Mark("dot",at,c.owner==0?6.5f:5.5f,dark);Mark("dot",at,c.owner==0?4.4f:3.5f,ink);}}

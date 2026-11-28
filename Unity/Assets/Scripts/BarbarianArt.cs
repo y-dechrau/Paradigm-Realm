@@ -12,9 +12,21 @@ public partial class RealmGame {
   var raw=Art("barbarian-raider");if(raw==null)return null;
   var made=MatchStanding(2,new List<Texture2D>{raw});raiderPicture=made.Length>0?made[0]:null;return raiderPicture;
  }
+ // The camp set into its land (owner report, 28 Nov 2026), as a gateway is: the tile's own trees are left out (CampShown, read where
+ // scenery is drawn), a clearing in the land's colours lies under it, its platform of earth fades into the ground (SceneryArt.CampFoot),
+ // and the land's own growth (ferns, bushes, sand, snow, rock) laps over its foot.
+ Texture2D campPicture;bool campTried;
+ Texture2D CampPicture(){if(campPicture!=null||campTried)return campPicture;campTried=true;var raw=Art("barbarian-camp");if(raw==null)return null;
+  try{var cv=new PixelCanvas(raw.width,raw.height);System.Array.Copy(SceneryArt.CampFoot(ReadArtPixels(raw),raw.width,raw.height),cv.p,cv.p.Length);campPicture=SoftTexture(cv);}catch(System.Exception){campPicture=raw;}return campPicture;}
+ bool CampShown(Tile t,bool visible){if(!world.barbarians)return false;var camp=world.CampAt(t.x,t.y);return camp!=null&&(visible||camp.seen);}
  void DrawBarbarianArt(int x,int y,float sx,float gy,float s,bool visible){
   var camp=world.CampAt(x,y);
-  if(camp!=null&&(visible||camp.seen)){var tex=Art("barbarian-camp");var r=new Rect(sx-30*s,gy-40*s,60*s,52*s);if(tex!=null)GUI.DrawTexture(r,tex,ScaleMode.ScaleToFit,true);else Fill(new Rect(sx-8*s,gy-12*s,16*s,12*s),new Color(.5f,.15f,.1f));
+  if(camp!=null&&(visible||camp.seen)){var tile=world.At(x,y);int land=tile!=null?tile.terrain:0;if(land<0||land>20||PixelArt.IsWater(land))land=0;
+   // A camp remembered under the fog is drawn dimmed like the land round it, and without its clearing, which would light the fog.
+   float w=60*s,foot=gy+8*s;var keep=GUI.color;if(!visible)GUI.color=new Color(keep.r*.55f,keep.g*.55f,keep.b*.62f,keep.a);
+   if(visible)GUI.DrawTexture(new Rect(sx-w*.8f,foot-w*.52f,w*1.6f,w*.8f),IsoPicture(13,land,0));
+   var tex=CampPicture();var r=new Rect(sx-30*s,gy-40*s,60*s,52*s);if(tex!=null)GUI.DrawTexture(r,tex,ScaleMode.ScaleToFit,true);else Fill(new Rect(sx-8*s,gy-12*s,16*s,12*s),new Color(.5f,.15f,.1f));
+   if(visible)GUI.DrawTexture(new Rect(sx-w*.62f,foot-w*.42f,w*1.24f,w*.62f),IsoPicture(14,land,0));GUI.color=keep;
    if(visible&&camp.hp<10)barbarianBars.Add(new Vector4(sx,gy-42*s,s,camp.hp));}
   if(!visible)return;var raider=world.RaiderAt(x,y);if(raider==null||RaiderGliding(raider))return;
   // Drawn as DrawUnitArt draws every unit: 1.6 times its 40-unit box, feet on the box's floor (owner report, 21 Nov 2026: too small).

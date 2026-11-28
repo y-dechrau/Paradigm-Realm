@@ -115,3 +115,20 @@ public partial class RealmGame {
  }
 }
 }
+namespace ParadigmRealm {
+// Development aid (28 Nov 2026): "-hudShot <folder> -campOnly" puts barbarian camps on wooded and open tiles in sight and
+// photographs them close up, then the mini-map's Resources view.
+public partial class RealmGame {
+ System.Collections.IEnumerator CampShots(string folder){
+  System.IO.Directory.CreateDirectory(folder);
+  seedText="421";setupSize=1;mainMenu=false;nameSetup=false;guide=false;tutorialOn=false;tutorialStep=-1;StartGame();hasSession=true;guide=false;tutorialOn=false;tutorialStep=-1;yield return Frames(10);
+  world.barbarians=true;var home=world.units.First(u=>u.owner==0);selected=-1;int id=99500;
+  foreach(int[] kinds in new[]{new[]{11,13},new[]{1,19},new[]{0,16,3}}){
+   var spot=world.tiles.Where(t=>t.realm==0&&kinds.Contains(t.terrain)&&t.owner<0&&!world.units.Any(u=>u.x==t.x&&u.y==t.y)).OrderBy(t=>world.Distance(t.x,t.y,home.x,home.y)).FirstOrDefault();if(spot==null)continue;
+   foreach(var n in world.tiles.Where(n=>n.realm==0&&world.Distance(n.x,n.y,spot.x,spot.y)<=3))n.seen=true;world.Add(0,3,spot.x,spot.y+1);world.Reveal();world.camps.Add(new BarbarianCamp{id=id++,x=spot.x,y=spot.y,seen=true});
+   isoWidth=192;FocusTile(spot.x,spot.y);yield return Frames(40);yield return Shot(folder,"camp-"+World.TerrainNames[spot.terrain].Replace(' ','-')+".bmp",20);}
+  foreach(var n in world.tiles)if(n.realm==0&&n.gateLink==0)n.seen=true;int keepLayer=MiniLayer;isoWidth=96;MiniLayer=7;miniBuilt=-99;yield return Frames(20);miniKeyAlways=true;yield return Frames(10);gateScene=null;yield return CleanShot(folder,"minimap-resources.bmp");miniKeyAlways=false;MiniLayer=keepLayer;// the player's own choice of layer is kept
+  Application.Quit();
+ }
+}
+}

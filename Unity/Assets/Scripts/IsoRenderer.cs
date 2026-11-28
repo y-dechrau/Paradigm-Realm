@@ -414,7 +414,7 @@ namespace ParadigmRealm
                 // A farm replaces whatever stood on the tile (owner request), and cleared savanna or grassland has no trees left.
                 bool meadow=t.terrain==0;bool built=t.farm||t.road||viewCities.ContainsKey(t.y*width+t.x);bool bare=t.farm||t.cleared&&(meadow||t.terrain==16);
                 // Dry steppe shows its own ground and no picture (its supplied picture left straight lines; owner request, 9 Nov 2026).
-                var sprite=water||bare||meadow&&built||t.terrain==20||source.gateLink>0?null:IsoPicture(1,t.terrain,meadow?GroveVariant(t.x,t.y):IsoVariant(t.x,t.y));
+                var sprite=water||bare||meadow&&built||t.terrain==20||source.gateLink>0||CampShown(source,visible)?null:IsoPicture(1,t.terrain,meadow?GroveVariant(t.x,t.y):IsoVariant(t.x,t.y));
                 City suburbOf;bool hamlet=false;if(!water&&!(t.farm&&t.terrain!=7&&FarmPicture(t)!=null)&&suburbCells.TryGetValue(t.y*width+t.x,out suburbOf)&&(visible||suburbOf.owner==0)){sprite=HamletTexture(suburbOf,t.x,t.y);hamlet=true;}
                 City portOf=null;if(!water&&portCells.TryGetValue(t.y*width+t.x,out portOf)&&(visible||portOf.owner==0))sprite=IsoPicture(7,0,0);else portOf=null;
                 // Savanna acacias are drawn at 60% so they read as scattered trees on grassland, not woodland (owner request).

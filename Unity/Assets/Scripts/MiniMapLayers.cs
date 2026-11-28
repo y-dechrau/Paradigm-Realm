@@ -14,7 +14,12 @@ namespace ParadigmRealm {
 //  Military   - the units you can see: yours, theirs, enemies at war in red, barbarian raiders and camps.
 // Only what you know is shown: unexplored land stays dark and foreign units only where you can see them.
 public partial class RealmGame {
- static readonly string[] MiniLayerNames={"Terrain","Political","Religion","Trade routes","Diplomacy","Military","Traditions"};
+ static readonly string[] MiniLayerNames={"Terrain","Political","Religion","Trade routes","Diplomacy","Military","Traditions","Resources"};
+ // Resources (owner request, 28 Nov 2026): every resource you know of, by kind, on dimmed land; brighter where it is developed.
+ static readonly Color InkFood=new Color(.4f,.9f,.35f),InkLuxury=new Color(.95f,.45f,.9f),InkStrategic=new Color(1f,.62f,.2f),InkSea=new Color(.35f,.85f,1f);
+ Color ResourceInk(Tile t){int r=t.resource;if(r<=0||r>=ResourceRegistry.Count||!world.ResourceKnown(0,r))return Color.clear;
+  var ink=ResourceRegistry.Sea[r]?InkSea:ResourceRegistry.Kind[r]==ResourceRegistry.Luxury?InkLuxury:ResourceRegistry.Kind[r]==ResourceRegistry.Strategic?InkStrategic:InkFood;
+  bool developed=t.farm||t.mine||ResourceRegistry.Sea[r]&&t.owner>=0;return developed?ink:Dim(ink,.72f);}
  int miniLayer=-1,miniLayerBuilt=-1;bool miniLayerOpen,miniKeyAlways;// miniKeyAlways: -hudShot shows the key without a pointer
  int MiniLayer{get{if(miniLayer<0){try{miniLayer=Mathf.Clamp(PlayerPrefs.GetInt("MiniMapLayer2",1),0,MiniLayerNames.Length-1);}catch{miniLayer=0;}}return miniLayer;}
   set{miniLayer=value;try{PlayerPrefs.SetInt("MiniMapLayer2",value);}catch{}}}
@@ -41,6 +46,7 @@ public partial class RealmGame {
     return basic;}
    case 4:{if(t.owner<0)return water?MiniWater:MiniWild;return Color.Lerp(MiniUnknown,DiplomacyInk(t.owner),.7f);}
    case 5:return water?Dim(MiniWater,.8f):t.owner>=0?Dim(Color.Lerp(NationInk(t.owner),terrain,.6f),.5f):Dim(terrain,.45f);
+   case 7:return water?Dim(MiniWater,.7f):Dim(terrain,.5f);// the resources themselves are dots over it (DrawMiniMarks)
    case 6:{if(t.owner<0)return water?MiniWater:MiniWild;City c;if(!miniCityLand.TryGetValue(cell,out c)||!world.lifeways)return new Color(.55f,.55f,.58f);int way=world.WayOf(c).tradition;return way>=0?WayInk[way]:new Color(.55f,.55f,.58f);}
   }
   return terrain;
@@ -96,6 +102,7 @@ public partial class RealmGame {
     foreach(var g in seen)rows.Add(new KeyValuePair<Color,string>(FaithColour(g.Key>=0?g.Key:-1),(g.Key>=0?world.FaithName(g.Key):"No main faith yet")+" ("+g.Count()+(g.Count()==1?" city)":" cities)")));break;}
    case 3:rows.Add(new KeyValuePair<Color,string>(new Color(1f,.82f,.3f),"Roads and rivers joining cities to their capital"));rows.Add(new KeyValuePair<Color,string>(new Color(.75f,.62f,.42f),"Other roads"));rows.Add(new KeyValuePair<Color,string>(new Color(1f,.85f,.35f),"Dotted: your commercial pacts"));break;
    case 4:rows.Add(new KeyValuePair<Color,string>(InkYou,"You"));rows.Add(new KeyValuePair<Color,string>(InkFriend,"Friendly"));rows.Add(new KeyValuePair<Color,string>(InkNeutral,"Neutral"));rows.Add(new KeyValuePair<Color,string>(InkWary,"Wary or threatened"));rows.Add(new KeyValuePair<Color,string>(InkCold,"Unfriendly or rival"));rows.Add(new KeyValuePair<Color,string>(InkWar,"At war with you"));rows.Add(new KeyValuePair<Color,string>(InkUnmet,"Not yet met"));break;
+   case 7:rows.Add(new KeyValuePair<Color,string>(InkFood,"Food (grain, livestock, fruit)"));rows.Add(new KeyValuePair<Color,string>(InkStrategic,"Strategic (metals, horses, stone, timber)"));rows.Add(new KeyValuePair<Color,string>(InkLuxury,"Luxuries"));rows.Add(new KeyValuePair<Color,string>(InkSea,"Sea resources"));rows.Add(new KeyValuePair<Color,string>(Dim(InkFood,.72f),"Darker: not yet developed"));break;
    case 6:for(int way=0;way<Lifeways.Count;way++)rows.Add(new KeyValuePair<Color,string>(WayInk[way],Lifeways.Names[way]));rows.Add(new KeyValuePair<Color,string>(new Color(.55f,.55f,.58f),"No settled tradition"));break;
    case 5:rows.Add(new KeyValuePair<Color,string>(InkYou,"Your units"));rows.Add(new KeyValuePair<Color,string>(InkWar,"Enemies at war, barbarians"));rows.Add(new KeyValuePair<Color,string>(new Color(.85f,.85f,.85f),"Others' units (pale: civilians)"));break;
   }

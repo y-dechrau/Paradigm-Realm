@@ -177,6 +177,31 @@ public static class SceneryArt
         for(int pass=0;pass<2;pass++){var clear=new List<int>();for(int y=0;y<h;y++)for(int x=0;x<w;x++){int k=y*w+x;uint p=px[k];if(A(p)<40||Bright(p)>=230)continue;float d=DiamondDist(x,y,cx,cy,hw,hh);if(d<.8f||d>1.25f)continue;int n=0;for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){int nx=x+dx,ny=y+dy;if((dx!=0||dy!=0)&&nx>=0&&ny>=0&&nx<w&&ny<h&&A(px[ny*w+nx])>=120)n++;}if(n<=2)clear.Add(k);}foreach(int k in clear)px[k]=0;}
         return px;
     }
+    // The barbarian camp (owner report, 28 Nov 2026: "too at odds with the jungle"): its picture stands on a square platform of dark
+    // trodden earth. The earth that can be reached from the platform's outer edge through dark earth colours fades to an uneven,
+    // rounded patch, so the camp sits in the land like the towns do; tents, palisade, fire and banner keep every pixel (they are
+    // lighter, or walled off from the edge by their outlines).
+    public static uint[] CampFoot(uint[] src,int w,int h)
+    {
+        var px=(uint[])src.Clone();
+        Func<uint,bool> earth=p=>A(p)>=40&&Bright(p)<215&&R(p)>=G(p)-4&&G(p)>=B(p)-4;
+        // The platform's middle and extent: the opaque pixels of the lower two thirds.
+        double sx=0,sy=0;int n=0,minX=w,maxX=0,minY=h,maxY=0;for(int y=h/3;y<h;y++)for(int x=0;x<w;x++){if(A(px[y*w+x])<40)continue;sx+=x;sy+=y;n++;minX=Math.Min(minX,x);maxX=Math.Max(maxX,x);minY=Math.Min(minY,y);maxY=Math.Max(maxY,y);}
+        if(n==0)return px;float cx=(float)(sx/n),cy=(float)(sy/n),hw=Math.Max(4,(maxX-minX)/2f),hh=Math.Max(4,(maxY-minY)/2f);
+        var open=new bool[w*h];var queue=new Queue<int>();
+        for(int y=0;y<h;y++)for(int x=0;x<w;x++){int k=y*w+x;if(!earth(px[k]))continue;bool edge=false;for(int d=0;d<4&&!edge;d++){int nx=x+(d==0?1:d==1?-1:0),ny=y+(d==2?1:d==3?-1:0);if(nx<0||ny<0||nx>=w||ny>=h||A(px[ny*w+nx])<40)edge=true;}if(edge){open[k]=true;queue.Enqueue(k);}}
+        while(queue.Count>0){int k=queue.Dequeue(),x=k%w,y=k/w;for(int d=0;d<4;d++){int nx=x+(d==0?1:d==1?-1:0),ny=y+(d==2?1:d==3?-1:0);if(nx<0||ny<0||nx>=w||ny>=h)continue;int q=ny*w+nx;if(open[q]||!earth(px[q]))continue;open[q]=true;queue.Enqueue(q);}}
+        float band=Math.Max(6f,w/7f),reach=Math.Max(hw,hh)*1.2f;
+        for(int y=0;y<h;y++)for(int x=0;x<w;x++)
+        {
+            int k=y*w+x;uint p=px[k];if(A(p)==0||!open[k])continue;
+            double u=(x-cx)/hw,v=(y-cy)/hh,angle=Math.Atan2(v,u),edge=.78+.09*Math.Sin(3*angle+1.3)+.06*Math.Sin(5*angle+4.1)+.04*Math.Sin(8*angle+2.2);
+            float jitter=(((x*73856093)^(y*19349663))&15)/15f*2f-1f;
+            double inside=(edge-Math.Sqrt(u*u+v*v))*reach+jitter*2.4;if(inside>=band)continue;
+            double f=Math.Max(0,inside)/band;f=f*f*(3-2*f);px[k]=((uint)(A(p)*f)<<24)|(p&0xFFFFFFu);
+        }
+        return px;
+    }
     // Which treatment a supplied picture gets, by its slot name; null leaves it as it is.
     // Cities and farmsteads keep their ground (their walls stand on its edge) and only lose the hard rim, like landforms.
     // Only open scenery (grassland groves, savanna, bog) is cut out of its ground; dense forest, jungle, rocks, mountains, cities and
